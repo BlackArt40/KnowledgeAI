@@ -37,6 +37,10 @@ export default function SettingsPage() {
   const [profileMsg, setProfileMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
   const [savingProfile, setSavingProfile] = React.useState(false);
 
+  // notification preferences
+  const [notifPrefs, setNotifPrefs] = React.useState<{ emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean } | null>(null);
+  const [savingNotif, setSavingNotif] = React.useState<string | null>(null);
+
   const refresh = React.useCallback(async () => {
     const d = await fetch("/api/security", { cache: "no-store" }).then((r) => r.json());
     setData(d);
@@ -52,6 +56,25 @@ export default function SettingsPage() {
     }
   }, []);
   React.useEffect(() => { refreshUser(); }, [refreshUser]);
+
+  const refreshNotifPrefs = React.useCallback(async () => {
+    const d = await fetch("/api/notifications/preferences", { cache: "no-store" }).then((r) => r.json());
+    if (d.prefs) setNotifPrefs(d.prefs);
+  }, []);
+  React.useEffect(() => { refreshNotifPrefs(); }, [refreshNotifPrefs]);
+
+  async function toggleNotif(key: "emailDigest" | "kbReady" | "agentDone" | "securityAlert", val: boolean) {
+    if (!notifPrefs) return;
+    setNotifPrefs({ ...notifPrefs, [key]: val });
+    setSavingNotif(key);
+    try {
+      await fetch("/api/notifications/preferences", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: val }),
+      });
+    } catch { /* ignore */ }
+    setSavingNotif(null);
+  }
 
   async function saveProfile() {
     if (!me) return;
@@ -286,20 +309,31 @@ export default function SettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Bell className="h-4 w-4" /> 通知偏好</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-4 w-4" /> 通知偏好
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { k: "emailDigest", label: "每周用量摘要邮件", desc: "每周一收到上周的使用统计" },
-                { k: "kbReady", label: "知识库处理完成通知", desc: "文档向量化完成时邮件提醒" },
-                { k: "agentDone", label: "Agent 报告完成通知", desc: "调研报告生成完成时提醒" },
-                { k: "securityAlert", label: "安全告警", desc: "异常登录或权限变更时立即通知" },
+                { k: "emailDigest" as const, label: "每周用量摘要邮件", desc: "每周一收到上周的使用统计" },
+                { k: "kbReady" as const, label: "知识库处理完成通知", desc: "文档向量化完成时邮件提醒" },
+                { k: "agentDone" as const, label: "Agent 报告完成通知", desc: "调研报告生成完成时提醒" },
+                { k: "securityAlert" as const, label: "安全告警", desc: "异常登录或权限变更时立即通知" },
               ].map((n) => (
                 <div key={n.k} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{n.label}</p>
                     <p className="text-xs text-muted-foreground">{n.desc}</p>
                   </div>
-                  <Switch defaultChecked={n.k !== "emailDigest"} />
+                  <div className="flex items-center gap-2">
+                    {savingNotif === n.k && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    <Switch
+                      checked={notifPrefs ? notifPrefs[n.k] : false}
+                      onCheckedChange={(v) => toggleNotif(n.k, v)}
+                      disabled={!notifPrefs}
+                    />
+                  </div>
                 </div>
               ))}
             </CardContent>

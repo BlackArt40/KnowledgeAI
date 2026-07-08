@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyCredentials, sanitize } from "@/lib/auth/store";
 import { createToken } from "@/lib/auth/session";
+import { notify } from "@/lib/notifications/store";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/login { email, password }
@@ -20,6 +21,15 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
   }
+
+  // Security alert: notify on login (especially useful for detecting unauthorized access)
+  const ua = req.headers.get("user-agent") ?? "未知设备";
+  notify(
+    "securityAlert",
+    "检测到新登录",
+    `${user.name} 在 ${ua.split(") ")[0].split("(").pop() || ua} 上登录了账号。`,
+    "/settings"
+  );
 
   const token = await createToken({
     id: user.id,

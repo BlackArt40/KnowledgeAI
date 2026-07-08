@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
+import { notify } from "@/lib/notifications/store";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export async function POST(req: Request, { params }: Params) {
       size: -1,
       url: body.url.trim(),
     });
+    notify("kbReady", `知识库「${kb.name}」新增文档`, `${doc.name} 已添加并处理完成。`, "/knowledge-base");
     return NextResponse.json({ docs: [doc] }, { status: 201 });
   }
 
@@ -93,5 +95,13 @@ export async function POST(req: Request, { params }: Params) {
     created.push(doc);
   }
 
+  if (created.length > 0) {
+    notify(
+      "kbReady",
+      `知识库「${kb.name}」处理完成`,
+      `${created.length} 篇文档已成功处理${errors.length > 0 ? `（${errors.length} 篇失败）` : ""}，可以开始问答了。`,
+      "/knowledge-base"
+    );
+  }
   return NextResponse.json({ docs: created, errors }, { status: 201 });
 }

@@ -17,6 +17,9 @@ import {
   X,
   Search,
   Bell,
+  ShieldAlert,
+  Mail,
+  CheckCheck,
   ChevronRight,
   Sparkles,
   ShieldCheck,
@@ -27,6 +30,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatRelative } from "@/lib/format";
 
 type NavItem = {
   label: string;
@@ -161,6 +165,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [userMenu, setUserMenu] = React.useState(false);
+  const [notifOpen, setNotifOpen] = React.useState(false);
+  const [notifs, setNotifs] = React.useState<{ id: string; type: string; title: string; body: string; read: boolean; createdAt: number; link?: string }[]>([]);
+  const [unread, setUnread] = React.useState(0);
+
+  const refreshNotifs = React.useCallback(async () => {
+    try {
+      const d = await fetch("/api/notifications?limit=10", { cache: "no-store" }).then((r) => r.json());
+      setNotifs(d.notifications ?? []);
+      setUnread(d.unread ?? 0);
+    } catch { /* ignore */ }
+  }, []);
+  React.useEffect(() => {
+    refreshNotifs();
+    const t = setInterval(refreshNotifs, 30000);
+    return () => clearInterval(t);
+  }, [refreshNotifs]);
 
   React.useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
@@ -177,6 +197,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.cookie = "kai-token=; path=/; max-age=0";
     router.push("/login");
   }
+
+  async function markAllRead() {
+    setUnread(0);
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    await fetch("/api/notifications", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "markAllRead" }),
+    });
+  }
+
+  async function markOneRead(id: string) {
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setUnread((u) => Math.max(0, u - 1));
+    await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
+  }
+
+  const NOTIF_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+    kbReady: Library, agentDone: Bot, securityAlert: ShieldAlert, emailDigest: Mail,
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -227,13 +266,69 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="h-9 w-44 rounded-lg border border-border bg-card pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-56"
               />
             </div>
-            <button
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
-              aria-label="通知"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
+                aria-label="通知"
+              >
+                <Bell className="h-4 w-4" />
+                {unread > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white ring-2 ring-background">
+                    {unread > 9 ? "9+" : unread}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                      <span className="text-sm font-semibold">通知</span>
+                      {unread > 0 && (
+                        <button onClick={markAllRead} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <CheckCheck className="h-3 w-3" /> 全部已读
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifs.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">暂无通知</div>
+                      ) : (
+                        notifs.map((n) => {
+                          const Icon = NOTIF_ICON[n.type] ?? Bell;
+                          return (
+                            <button
+                              key={n.id}
+                              onClick={() => { if (!n.read) markOneRead(n.id); if (n.link) { router.push(n.link); setNotifOpen(false); } }}
+                              className={cn(
+                                "flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors last:border-0 hover:bg-accent/40",
+                                !n.read && "bg-primary/5"
+                              )}
+                            >
+                              <span className={cn(
+                                "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                                n.type === "securityAlert" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+                              )}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  {!n.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                                  <p className="truncate text-sm font-medium">{n.title}</p>
+                                </div>
+                                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">{formatRelative(n.createdAt)}</p>
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <ThemeToggle />
             <div className="relative ml-1">
               <button
