@@ -112,6 +112,43 @@ export function listUsers(): User[] {
   return [...store().users.values()].sort((a, b) => a.createdAt - b.createdAt);
 }
 
+
+export interface UpdateUserInput {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
+/** Update a user's profile (name) and/or password.
+ *  Password change requires verifying the current password. */
+export function updateUser(
+  userId: string,
+  input: UpdateUserInput
+): User | { error: string } {
+  seed();
+  const s = store();
+  const user = s.users.get(userId);
+  if (!user) return { error: "用户不存在" };
+
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) return { error: "姓名不能为空" };
+    user.name = name;
+  }
+
+  if (input.newPassword) {
+    if (!input.currentPassword) return { error: "修改密码需提供当前密码" };
+    if (user.passwordHash !== hashPwd(input.currentPassword)) {
+      return { error: "当前密码不正确" };
+    }
+    if (input.newPassword.length < 8) return { error: "新密码至少 8 位" };
+    user.passwordHash = hashPwd(input.newPassword);
+  }
+
+  s.users.set(user.id, user);
+  return user;
+}
+
 // Strip sensitive fields for API responses
 export function sanitize(user: User): Omit<User, "passwordHash"> {
   const { passwordHash, ...rest } = user;

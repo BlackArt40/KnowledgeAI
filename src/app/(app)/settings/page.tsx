@@ -18,10 +18,23 @@ import { formatRelative } from "@/lib/format";
 import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
 
+const ROLE_BADGE: Record<string, string> = {
+  owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
+};
+
 export default function SettingsPage() {
   const [data, setData] = React.useState<SecurityState | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
+
+  // current authenticated user (profile tab)
+  const [me, setMe] = React.useState<{ id: string; name: string; email: string; role: string; plan: string } | null>(null);
+  const [profileName, setProfileName] = React.useState("");
+  const [curPwd, setCurPwd] = React.useState("");
+  const [newPwd, setNewPwd] = React.useState("");
+  const [confirmPwd, setConfirmPwd] = React.useState("");
+  const [profileMsg, setProfileMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
+  const [savingProfile, setSavingProfile] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     const d = await fetch("/api/security", { cache: "no-store" }).then((r) => r.json());
@@ -29,6 +42,49 @@ export default function SettingsPage() {
     setLoading(false);
   }, []);
   React.useEffect(() => { refresh(); }, [refresh]);
+
+  const refreshUser = React.useCallback(async () => {
+    const d = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json());
+    if (d.user) {
+      setMe(d.user);
+      setProfileName(d.user.name);
+    }
+  }, []);
+  React.useEffect(() => { refreshUser(); }, [refreshUser]);
+
+  async function saveProfile() {
+    if (!me) return;
+    setProfileMsg(null);
+    if (newPwd && newPwd !== confirmPwd) {
+      setProfileMsg({ ok: false, text: "两次输入的新密码不一致" });
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profileName,
+          currentPassword: curPwd || undefined,
+          newPassword: newPwd || undefined,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setProfileMsg({ ok: false, text: d.error || "保存失败" });
+      } else {
+        setMe(d.user);
+        setProfileName(d.user.name);
+        if (d.token) localStorage.setItem("kai-token", d.token);
+        setCurPwd(""); setNewPwd(""); setConfirmPwd("");
+        setProfileMsg({ ok: true, text: "保存成功" });
+      }
+    } catch {
+      setProfileMsg({ ok: false, text: "网络错误，请重试" });
+    }
+    setSavingProfile(false);
+  }
 
   async function toggle2FA(enable: boolean) {
     setBusy(true);
@@ -188,29 +244,42 @@ export default function SettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>姓名</Label>
-                  <Input defaultValue="张明" />
+                  <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="你的姓名" />
                 </div>
                 <div className="space-y-2">
                   <Label>邮箱</Label>
-                  <Input defaultValue="zhangming@example.com" type="email" />
+                  <Input value={me?.email ?? ""} type="email" disabled />
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{me ? (ROLE_BADGE[me.role] ?? me.role) : "—"}</Badge>
+                <Badge variant="secondary" className="capitalize">{me?.plan ?? "—"}</Badge>
+                <span className="text-xs text-muted-foreground">角色与套餐由管理员分配，邮箱不可修改</span>
               </div>
               <Separator />
               <div className="space-y-2">
                 <Label>当前密码</Label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" value={curPwd} onChange={(e) => setCurPwd(e.target.value)} placeholder="修改密码时需填写" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>新密码</Label>
-                  <Input type="password" placeholder="留空则不修改" />
+                  <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} placeholder="留空则不修改" />
                 </div>
                 <div className="space-y-2">
                   <Label>确认新密码</Label>
-                  <Input type="password" placeholder="再次输入新密码" />
+                  <Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} placeholder="再次输入新密码" />
                 </div>
               </div>
-              <Button>保存更改</Button>
+              {profileMsg && (
+                <p className={cn("text-sm", profileMsg.ok ? "text-primary" : "text-destructive")}>
+                  {profileMsg.ok ? "✓ " : "✗ "}{profileMsg.text}
+                </p>
+              )}
+              <Button onClick={saveProfile} disabled={savingProfile}>
+                {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
+                保存更改
+              </Button>
             </CardContent>
           </Card>
 
