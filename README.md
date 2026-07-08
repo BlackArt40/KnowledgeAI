@@ -13,7 +13,8 @@
 | 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB | 4 角色 × 10 能力 |
 | AI 模型 | 导入外部 LLM / 连接测试 / 一键切换 | OpenAI·DeepSeek·Moonshot·硅基流动·Ollama |
 | 订阅计费 | 套餐 / 订单 / 账单 / 用量计量 / 收银台 | 状态机 + 支付模拟 |
-| 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner 专属后台 |
+| 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner/Admin 后台（RBAC 守卫） |
+| 通知中心 | 4 通道通知 / 偏好持久化 / 铃铛下拉 | 登录/KB/Agent 事件触发 |
 | 安全隐私 | 2FA / 会话管理 / 登录历史 / GDPR 导出 | 合规数据权利 |
 
 ## 🛠 技术栈
@@ -76,7 +77,7 @@ src/
 ├── app/
 │   ├── (app)/          # 工作台页面（AppShell 包裹）
 │   ├── (auth)/         # 登录 / 注册 / 验证
-│   ├── api/            # 25+ Route Handlers
+│   ├── api/            # 40+ Route Handlers
 │   ├── privacy/        # 隐私政策
 │   ├── terms/          # 服务条款
 │   ├── maintenance/    # 维护页
@@ -90,6 +91,8 @@ src/
 └── lib/
     ├── rag/             # RAG 引擎（全异步：嵌入/检索/生成）
     ├── llm/             # ⭐ LLM Provider（OpenAI 兼容 + 本地回退）
+    ├── models/          # ⭐ 外部模型管理（6 预设 + 连接测试 + 拉取列表）
+    ├── notifications/   # ⭐ 通知系统（4 通道 + 偏好 + 收件箱）
     ├── kb/              # 知识库 + 处理管线
     ├── chat/            # 会话存储
     ├── agent/           # 多 Agent 编排
@@ -100,7 +103,7 @@ src/
     ├── admin/           # 管理后台
     ├── db/              # ⭐ 数据库适配（Prisma + Repository）
     ├── storage/         # ⭐ 文件存储适配（S3 / 本地）
-    ├── auth/            # ⭐ JWT 认证（Web Crypto）
+    ├── auth/            # ⭐ JWT 认证 + 角色守卫（Web Crypto + guard.ts）
     └── config.ts        # ⭐ Provider 状态聚合
 ```
 
@@ -110,7 +113,7 @@ src/
 
 | 模块 | 环境变量 | 真实服务 | 演示回退 |
 | --- | --- | --- | --- |
-| LLM 对话 | `OPENAI_API_KEY` `CHAT_MODEL` | OpenAI / Azure / vLLM / Ollama | 本地抽取式生成 |
+| LLM 对话 | `OPENAI_API_KEY` `CHAT_MODEL` 或设置页导入 | OpenAI / DeepSeek / Ollama 等 | 本地抽取式生成 |
 | 嵌入向量 | `OPENAI_API_KEY` `EMBEDDING_MODEL` | OpenAI text-embedding-3-small | 本地哈希嵌入 2048 维 |
 | 数据库 | `DATABASE_URL` | PostgreSQL (Prisma) | 内存存储 |
 | 文件存储 | `S3_ENDPOINT` `S3_BUCKET` | S3 / MinIO / R2 | 本地文件系统 |
