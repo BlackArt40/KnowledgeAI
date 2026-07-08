@@ -41,6 +41,19 @@ pnpm start
 pnpm lint
 ```
 
+## 🔑 演示账号
+
+登录页提供 4 个演示账号（密码均为 `password123`），覆盖不同权限角色：
+
+| 邮箱 | 角色 | 权限范围 |
+| --- | --- | --- |
+| owner@knowledgeai.dev | Owner | 全部权限（含管理后台） |
+| admin@knowledgeai.dev | Admin | KB 管理 + 成员管理 |
+| editor@knowledgeai.dev | Editor | KB 编辑 + 问答 + Agent |
+| viewer@knowledgeai.dev | Viewer | KB 只读 + 问答 |
+
+也可自行注册新账户（默认 Editor 角色）。
+
 ## 🐳 Docker 部署
 
 ```bash

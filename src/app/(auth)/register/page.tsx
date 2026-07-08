@@ -2,17 +2,48 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { GithubIcon as Github, GoogleIcon as Google } from "@/components/icons/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [showPwd, setShowPwd] = React.useState(false);
   const [agree, setAgree] = React.useState(false);
+  const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!agree) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "注册失败");
+        return;
+      }
+      if (data.token) localStorage.setItem("kai-token", data.token);
+      router.push("/dashboard");
+    } catch {
+      setError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div>
@@ -40,10 +71,16 @@ export default function RegisterPage() {
         <Separator className="flex-1" />
       </div>
 
-      <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label htmlFor="name">昵称</Label>
-          <Input id="name" placeholder="你的名字" required />
+          <Input
+            id="name"
+            placeholder="你的名字"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">邮箱</Label>
@@ -52,6 +89,8 @@ export default function RegisterPage() {
             type="email"
             autoComplete="email"
             placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -63,6 +102,8 @@ export default function RegisterPage() {
               type={showPwd ? "text" : "password"}
               autoComplete="new-password"
               placeholder="至少 8 位"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               className="pr-10"
             />
@@ -72,11 +113,7 @@ export default function RegisterPage() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showPwd ? "隐藏密码" : "显示密码"}
             >
-              {showPwd ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
+              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
@@ -100,13 +137,20 @@ export default function RegisterPage() {
           </span>
         </label>
 
+        {error && (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
         <Button
           variant="gradient"
           size="lg"
           className="w-full"
-          disabled={!agree}
+          disabled={!agree || loading}
         >
-          创建账户
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? "创建中…" : "创建账户"}
         </Button>
       </form>
 
