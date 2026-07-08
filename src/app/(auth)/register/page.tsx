@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { GithubIcon as Github } from "@/components/icons/brand-icons";
+import { GithubIcon as Github, GoogleIcon as Google } from "@/components/icons/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ export default function RegisterPage() {
 
       <div className="grid gap-3">
         <Button variant="outline" className="h-11">
+          <Google className="h-4 w-4" />
           使用 Google 继续
         </Button>
         <Button variant="outline" className="h-11">
