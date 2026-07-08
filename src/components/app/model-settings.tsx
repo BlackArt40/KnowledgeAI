@@ -3,6 +3,7 @@ import * as React from "react";
 import {
   Bot, Plus, Trash2, Zap, Star, StarOff, Loader2, CheckCircle2,
   XCircle, KeyRound, Server, Cpu, ExternalLink, Sparkles,
+  Download, RefreshCw, Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -242,6 +243,12 @@ function AddModelDialog({
   const [testing, setTesting] = React.useState(false);
   const [testResult, setTestResult] = React.useState<{ ok: boolean; msg: string } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // fetched model list from provider
+  const [fetched, setFetched] = React.useState<{ chat: string[]; embedding: string[] } | null>(null);
+  const [fetching, setFetching] = React.useState(false);
+  const [fetchInfo, setFetchInfo] = React.useState<{ ok: boolean; msg: string } | null>(null);
+  const [manualChat, setManualChat] = React.useState(false);
+  const [manualEmb, setManualEmb] = React.useState(false);
 
   const preset = providers.find((p) => p.id === providerId);
 
@@ -253,6 +260,39 @@ function AddModelDialog({
       setChatModel(p.chatModels[0] ?? "");
       setEmbeddingModel(p.embeddingModels[0] ?? "");
     }
+    // reset fetched list when provider changes
+    setFetched(null);
+    setFetchInfo(null);
+    setManualChat(false);
+    setManualEmb(false);
+  }
+
+  async function fetchModels() {
+    setFetching(true);
+    setFetchInfo(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/models/fetch-list", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey, baseUrl }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setFetched({ chat: d.chat ?? [], embedding: d.embedding ?? [] });
+        setManualChat(false);
+        setManualEmb(false);
+        // auto-select first chat model if current is empty or not in list
+        if (d.chat?.length > 0 && !d.chat.includes(chatModel)) {
+          setChatModel(d.chat[0]);
+        }
+        setFetchInfo({ ok: true, msg: `拉取到 ${d.count} 个模型（${d.chat.length} 对话 / ${d.embedding.length} 嵌入），${d.latency}ms` });
+      } else {
+        setFetchInfo({ ok: false, msg: d.error || "拉取失败" });
+      }
+    } catch {
+      setFetchInfo({ ok: false, msg: "网络错误" });
+    }
+    setFetching(false);
   }
 
   async function doTest() {
@@ -347,12 +387,55 @@ function AddModelDialog({
                    placeholder="https://api.openai.com/v1" />
           </div>
 
+          {/* Fetch model list */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fetchModels}
+              disabled={fetching || !baseUrl}
+              className="w-full"
+            >
+              {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {fetching ? "拉取中…" : "拉取可用模型列表"}
+            </Button>
+            {fetchInfo && (
+              <div className={cn(
+                "flex items-start gap-2 rounded-lg border p-2.5 text-xs",
+                fetchInfo.ok ? "border-success/30 bg-success/5 text-success" : "border-destructive/30 bg-destructive/5 text-destructive"
+              )}>
+                {fetchInfo.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                <span>{fetchInfo.msg}</span>
+              </div>
+            )}
+          </div>
+
           {/* Chat Model */}
           <div className="space-y-2">
-            <Label>对话模型 <span className="text-destructive">*</span></Label>
-            <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)}
-                   placeholder="如 gpt-4o-mini" list="chat-models" />
-            {preset && preset.chatModels.length > 0 && (
+            <div className="flex items-center justify-between">
+              <Label>对话模型 <span className="text-destructive">*</span></Label>
+              {fetched && (
+                <button type="button" onClick={() => setManualChat((v) => !v)}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  {manualChat ? <><RefreshCw className="h-3 w-3" /> 选择列表</> : <><Pencil className="h-3 w-3" /> 手动输入</>}
+                </button>
+              )}
+            </div>
+            {fetched && !manualChat && fetched.chat.length > 0 ? (
+              <Select value={chatModel} onValueChange={setChatModel}>
+                <SelectTrigger><SelectValue placeholder="选择对话模型" /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {fetched.chat.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)}
+                     placeholder="如 gpt-4o-mini" list="chat-models" />
+            )}
+            {preset && preset.chatModels.length > 0 && (!fetched || manualChat) && (
               <datalist id="chat-models">
                 {preset.chatModels.map((m) => <option key={m} value={m} />)}
               </datalist>
@@ -361,10 +444,30 @@ function AddModelDialog({
 
           {/* Embedding Model */}
           <div className="space-y-2">
-            <Label>嵌入模型（可选）</Label>
-            <Input value={embeddingModel} onChange={(e) => setEmbeddingModel(e.target.value)}
-                   placeholder="留空则使用本地嵌入" list="emb-models" />
-            {preset && preset.embeddingModels.length > 0 && (
+            <div className="flex items-center justify-between">
+              <Label>嵌入模型（可选）</Label>
+              {fetched && (
+                <button type="button" onClick={() => setManualEmb((v) => !v)}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  {manualEmb ? <><RefreshCw className="h-3 w-3" /> 选择列表</> : <><Pencil className="h-3 w-3" /> 手动输入</>}
+                </button>
+              )}
+            </div>
+            {fetched && !manualEmb && fetched.embedding.length > 0 ? (
+              <Select value={embeddingModel || "__none__"} onValueChange={(v) => setEmbeddingModel(v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="选择嵌入模型" /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="__none__">不使用（本地哈希嵌入）</SelectItem>
+                  {fetched.embedding.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={embeddingModel} onChange={(e) => setEmbeddingModel(e.target.value)}
+                     placeholder="留空则使用本地嵌入" list="emb-models" />
+            )}
+            {preset && preset.embeddingModels.length > 0 && (!fetched || manualEmb) && (
               <datalist id="emb-models">
                 {preset.embeddingModels.map((m) => <option key={m} value={m} />)}
               </datalist>
