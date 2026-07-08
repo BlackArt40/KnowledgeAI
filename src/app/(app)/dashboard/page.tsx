@@ -28,6 +28,9 @@ interface CurrentUser {
   role: string;
   plan: string;
 }
+
+// Roles that can access Agent (matches RBAC + route guard)
+const AGENT_ROLES = ["owner", "admin", "editor"];
 interface KbItem {
   id: string;
   name: string;
@@ -227,7 +230,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* usage chart */}
-        <Card className="lg:col-span-2">
+        <Card className={user && AGENT_ROLES.includes(user.role) ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">用量趋势</CardTitle>
             <div className="flex items-center gap-2 text-xs">
@@ -251,7 +254,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* agent tasks */}
+        {/* agent tasks - only for roles with agent access */}
+        {user && AGENT_ROLES.includes(user.role) && (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">
@@ -321,6 +325,8 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        )}
+
       </div>
 
       {/* recent qa */}
