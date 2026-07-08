@@ -1,0 +1,214 @@
+// KnowledgeAI — Prisma schema for PostgreSQL
+// Production database schema. Run: prisma migrate deploy
+// 🔌 The in-memory stores (src/lib/*/store.ts) can be replaced by Prisma
+//    queries with the same interfaces.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth & Users ──────────────────────────────────────────
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String?
+  role          Role     @default(EDITOR)
+  status        UserStatus @default(ACTIVE)
+  twoFactorEnabled Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  teamMemberships TeamMember[]
+  apiKeys         ApiKey[]
+  sessions        Session[]
+  loginEvents     LoginEvent[]
+  ownedKbs        KnowledgeBase[] @relation("OwnedKBs")
+  conversations   Conversation[]
+  agentTasks      AgentTask[]
+}
+
+enum Role { OWNER ADMIN EDITOR VIEWER }
+enum UserStatus { ACTIVE BANNED TRIAL }
+
+// ── Teams ─────────────────────────────────────────────────
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  createdAt   DateTime @default(now())
+  members     TeamMember[]
+  kbs         KnowledgeBase[]
+  auditLogs   AuditLog[]
+  invites     TeamInvite[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      Role     @default(EDITOR)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+  @@unique([teamId, userId])
+}
+
+model TeamInvite {
+  id        String   @id @default(cuid())
+  teamId    String
+  email     String
+  role      Role     @default(EDITOR)
+  status    String   @default("pending")
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  teamId    String
+  actorId   String?
+  action    String
+  detail    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ── Knowledge Base ────────────────────────────────────────
+model KnowledgeBase {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  teamId      String?
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation("OwnedKBs", fields: [ownerId], references: [id])
+  team        Team?    @relation(fields: [teamId], references: [id])
+  documents   KbDocument[]
+}
+
+model KbDocument {
+  id          String   @id @default(cuid())
+  kbId        String
+  name        String
+  size        Int
+  type        String
+  status      String   @default("queued")
+  progress    Int      @default(0)
+  content     String?
+  url         String?
+  chunks      Int      @default(0)
+  kb          KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([kbId])
+}
+
+// ── Chat ──────────────────────────────────────────────────
+model Conversation {
+  id        String   @id @default(cuid())
+  kbId      String
+  userId    String
+  title     String
+  messages  Message[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  citations      Json?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+}
+
+// ── Agent ─────────────────────────────────────────────────
+model AgentTask {
+  id           String   @id @default(cuid())
+  userId       String
+  topic        String
+  kbId         String?
+  outputFormat String   @default("report")
+  status       String   @default("pending")
+  report       String?
+  outline      Json?
+  citations    Json?
+  steps        Json?
+  durationMs   Int?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+// ── Billing ───────────────────────────────────────────────
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  plan              String   @default("free")
+  status            String   @default("active")
+  periodStart       DateTime
+  periodEnd         DateTime
+  cancelAtPeriodEnd Boolean  @default(false)
+  paymentMethod     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  plan      String
+  status    String   @default("paid")
+  method    String
+  date      DateTime @default(now())
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  keyHash   String   @unique
+  prefix    String
+  scopes    String[]
+  status    String   @default("active")
+  calls     Int      @default(0)
+  lastUsed  DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ── Security ──────────────────────────────────────────────
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  device     String
+  browser    String
+  ip         String
+  location   String?
+  lastActive DateTime @default(now())
+  expiresAt  DateTime
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  device    String
+  ip        String
+  location  String?
+  success   Boolean
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

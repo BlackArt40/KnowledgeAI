@@ -1,0 +1,239 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ============================================================
+   KnowledgeAI · Design Tokens
+   A clean, premium palette built around an indigo brand,
+   tuned for an AI knowledge SaaS. HSL channel values.
+   ============================================================ */
+
+:root {
+  --radius: 0.75rem;
+
+  --background: 240 20% 99%;
+  --foreground: 240 10% 8%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 8%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 8%;
+
+  --primary: 243 75% 59%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 10% 12%;
+
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 46%;
+
+  --accent: 243 80% 97%;
+  --accent-foreground: 243 75% 40%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 152 60% 40%;
+  --warning: 35 92% 50%;
+
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 243 75% 59%;
+
+  /* Brand gradient stops */
+  --brand-from: 243 75% 59%;
+  --brand-via: 265 80% 62%;
+  --brand-to: 292 78% 60%;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.dark {
+  --background: 240 12% 4%;
+  --foreground: 0 0% 98%;
+
+  --card: 240 10% 6%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 7%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 243 80% 67%;
+  --primary-foreground: 240 12% 4%;
+
+  --secondary: 240 6% 12%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 240 6% 12%;
+  --muted-foreground: 240 5% 64%;
+
+  --accent: 243 40% 18%;
+  --accent-foreground: 243 80% 82%;
+
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 152 55% 50%;
+  --warning: 35 92% 58%;
+
+  --border: 240 6% 16%;
+  --input: 240 6% 18%;
+  --ring: 243 80% 67%;
+
+  --brand-from: 243 80% 67%;
+  --brand-via: 265 82% 68%;
+  --brand-to: 292 80% 66%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-aurora: aurora 18s ease-in-out infinite;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+  }
+}
+
+/* ---------- Custom utilities ---------- */
+
+@utility text-gradient {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--brand-from)),
+    hsl(var(--brand-via)),
+    hsl(var(--brand-to))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--brand-from)),
+    hsl(var(--brand-via)),
+    hsl(var(--brand-to))
+  );
+}
+
+/* Subtle dotted grid for hero / section backgrounds */
+@utility bg-grid {
+  background-image: radial-gradient(
+    hsl(var(--foreground) / 0.06) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+@utility bg-grid-dark {
+  background-image: radial-gradient(
+    hsl(0 0% 100% / 0.06) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* Aurora glow used behind hero */
+@utility aurora {
+  background: radial-gradient(
+      50% 50% at 20% 30%,
+      hsl(var(--brand-from) / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      45% 45% at 80% 20%,
+      hsl(var(--brand-to) / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      55% 55% at 60% 80%,
+      hsl(var(--brand-via) / 0.28),
+      transparent 70%
+    );
+  filter: blur(60px);
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(0, -3%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+/* Thin, refined scrollbar */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+}
