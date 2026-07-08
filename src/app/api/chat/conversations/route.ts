@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
-import { listConversations, createConversation } from "@/lib/chat/store";
+import { listConversations, listAllConversations, createConversation } from "@/lib/chat/store";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/chat/conversations?kbId=
+// GET /api/chat/conversations?kbId=  (omit kbId to list all, most-recent first)
 export async function GET(req: Request) {
-  const kbId = new URL(req.url).searchParams.get("kbId");
-  if (!kbId) return NextResponse.json({ error: "kbId 必填" }, { status: 400 });
+  const url = new URL(req.url);
+  const kbId = url.searchParams.get("kbId");
+  const limit = url.searchParams.get("limit");
+  if (!kbId) {
+    return NextResponse.json({
+      conversations: listAllConversations(limit ? parseInt(limit, 10) : undefined),
+    });
+  }
   return NextResponse.json({ conversations: listConversations(kbId) });
 }
 

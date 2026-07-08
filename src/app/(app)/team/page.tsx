@@ -29,18 +29,21 @@ interface TeamData {
   audit: AuditEntry[];
 }
 
-const CURRENT_USER = "王同学";
-
 export default function TeamPage() {
   const [data, setData] = React.useState<TeamData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>("members");
+  const [myEmail, setMyEmail] = React.useState<string | null>(null);
 
   const fetchTeam = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/team", { cache: "no-store" });
-      if (!res.ok) throw new Error();
-      setData(await res.json());
+      const [teamRes, meRes] = await Promise.all([
+        fetch("/api/team", { cache: "no-store" }),
+        fetch("/api/auth/me", { cache: "no-store" }),
+      ]);
+      if (teamRes.ok) setData(await teamRes.json());
+      const me = await meRes.json();
+      if (me.user) setMyEmail(me.user.email);
     } catch {
       // ignore
     } finally {
@@ -132,7 +135,7 @@ export default function TeamPage() {
           <div className="divide-y divide-border">
             {members.map((m) => {
               const isOwner = m.role === "owner";
-              const isSelf = m.name === CURRENT_USER;
+              const isSelf = myEmail !== null && m.email.toLowerCase() === myEmail.toLowerCase();
               return (
                 <div key={m.id} className="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[1fr_140px_120px_120px_40px] md:items-center">
                   <div className="flex items-center gap-3">

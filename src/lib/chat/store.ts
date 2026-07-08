@@ -39,6 +39,14 @@ export function listConversations(kbId: string): Conversation[] {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** All conversations across every KB, most-recent first. */
+export function listAllConversations(limit?: number): Conversation[] {
+  const all = Array.from(store().conversations.values()).sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
+  return limit ? all.slice(0, limit) : all;
+}
+
 export function getConversation(id: string): Conversation | undefined {
   return store().conversations.get(id);
 }

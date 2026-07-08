@@ -41,13 +41,17 @@ function seed() {
   const now = Date.now();
   const day = 1000 * 60 * 60 * 24;
 
+  // First 4 members mirror the auth seed users (by email) so the team page
+  // can correctly mark the logged-in user as "(你)". Extra members are demo data.
   const members: Array<Omit<Member, "id">> = [
-    { name: "王同学", email: "wang@knowledgeai.app", role: "owner", status: "active", lastActiveAt: now - 1000 * 60 * 5, joinedAt: now - 90 * day },
-    { name: "李明轩", email: "liming@knowledgeai.app", role: "admin", status: "active", lastActiveAt: now - 1000 * 60 * 60 * 2, joinedAt: now - 80 * day },
-    { name: "陈思雨", email: "chen@knowledgeai.app", role: "editor", status: "active", lastActiveAt: now - 1000 * 60 * 30, joinedAt: now - 60 * day },
-    { name: "王浩然", email: "wanghao@knowledgeai.app", role: "editor", status: "active", lastActiveAt: now - day, joinedAt: now - 45 * day },
-    { name: "刘洋", email: "liuyang@knowledgeai.app", role: "viewer", status: "active", lastActiveAt: now - 2 * day, joinedAt: now - 30 * day },
-    { name: "张伟", email: "zhangwei@knowledgeai.app", role: "viewer", status: "invited", lastActiveAt: now - 1000 * 60 * 60 * 6, joinedAt: now - 1000 * 60 * 60 * 6 },
+    { name: "张明", email: "owner@knowledgeai.dev", role: "owner", status: "active", lastActiveAt: now - 1000 * 60 * 5, joinedAt: now - 90 * day },
+    { name: "李芳", email: "admin@knowledgeai.dev", role: "admin", status: "active", lastActiveAt: now - 1000 * 60 * 60 * 2, joinedAt: now - 80 * day },
+    { name: "王浩", email: "editor@knowledgeai.dev", role: "editor", status: "active", lastActiveAt: now - 1000 * 60 * 30, joinedAt: now - 60 * day },
+    { name: "赵琳", email: "viewer@knowledgeai.dev", role: "viewer", status: "active", lastActiveAt: now - 2 * day, joinedAt: now - 30 * day },
+    { name: "陈思雨", email: "chensiyu@knowledgeai.dev", role: "editor", status: "active", lastActiveAt: now - 1000 * 60 * 30, joinedAt: now - 60 * day },
+    { name: "王浩然", email: "wanghaoran@knowledgeai.dev", role: "editor", status: "active", lastActiveAt: now - day, joinedAt: now - 45 * day },
+    { name: "刘洋", email: "liuyang@knowledgeai.dev", role: "viewer", status: "active", lastActiveAt: now - 3 * day, joinedAt: now - 20 * day },
+    { name: "张伟", email: "zhangwei@knowledgeai.dev", role: "viewer", status: "invited", lastActiveAt: now - 1000 * 60 * 60 * 6, joinedAt: now - 1000 * 60 * 60 * 6 },
   ];
   for (const m of members) {
     const member: Member = { ...m, id: uid() };
