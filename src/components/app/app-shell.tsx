@@ -177,6 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [userMenu, setUserMenu] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const notifRef = React.useRef<HTMLDivElement>(null);
   const [notifs, setNotifs] = React.useState<{ id: string; type: string; title: string; body: string; read: boolean; createdAt: number; link?: string }[]>([]);
   const [unread, setUnread] = React.useState(0);
 
@@ -192,6 +193,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const t = setInterval(refreshNotifs, 30000);
     return () => clearInterval(t);
   }, [refreshNotifs]);
+
+  // Close notification dropdown when clicking outside
+  React.useEffect(() => {
+    if (!notifOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [notifOpen]);
 
   // Route -> allowed roles (must match navGroups roles). Checked on every navigation.
   const routeGuard = React.useCallback((role: string | undefined, path: string) => {
@@ -302,7 +315,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="h-9 w-44 rounded-lg border border-border bg-card pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-56"
               />
             </div>
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
@@ -316,9 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </button>
               {notifOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
+                <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
                     <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                       <span className="text-sm font-semibold">通知</span>
                       {unread > 0 && (
@@ -362,7 +373,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     </div>
                   </div>
-                </>
               )}
             </div>
             <ThemeToggle />
