@@ -257,9 +257,10 @@ function AddModelDialog({
     setProviderId(id);
     if (p) {
       setBaseUrl(p.baseUrl);
-      setChatModel(p.chatModels[0] ?? "");
-      setEmbeddingModel(p.embeddingModels[0] ?? "");
     }
+    // Clear model fields - user should pull list or type manually
+    setChatModel("");
+    setEmbeddingModel("");
     // reset fetched list when provider changes
     setFetched(null);
     setFetchInfo(null);
