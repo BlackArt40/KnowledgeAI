@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EMBEDDING_MODELS, type KnowledgeBase, type KbSettings } from "@/lib/kb/types";
+import { type KnowledgeBase, type KbSettings } from "@/lib/kb/types";
 
 export function KbSettingsDialog({
   kb,
@@ -33,6 +33,36 @@ export function KbSettingsDialog({
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<KbSettings>(kb.settings);
+  const [embModels, setEmbModels] = React.useState<{ value: string; label: string }[]>([]);
+
+  // Default preset embedding models
+  const PRESET_MODELS = [
+    { value: "text-embedding-3-small", label: "OpenAI · text-embedding-3-small" },
+    { value: "text-embedding-3-large", label: "OpenAI · text-embedding-3-large" },
+    { value: "bge-large-zh", label: "BAAI · bge-large-zh (中文)" },
+    { value: "m3e-base", label: "Moka · m3e-base" },
+  ];
+
+  // Fetch user's configured external models for embedding options
+  React.useEffect(() => {
+    fetch("/api/models", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        const models: { value: string; label: string }[] = [...PRESET_MODELS];
+        for (const m of d.models ?? []) {
+          if (m.embeddingModel) {
+            models.push({
+              value: m.embeddingModel,
+              label: `${m.providerName} · ${m.embeddingModel}${m.enabled ? "" : " (未启用)"}`,
+            });
+          }
+        }
+        // Deduplicate by value
+        const seen = new Set<string>();
+        setEmbModels(models.filter((m) => !seen.has(m.value) && seen.add(m.value)));
+      })
+      .catch(() => setEmbModels(PRESET_MODELS));
+  }, []);
 
   React.useEffect(() => {
     if (open) setForm(kb.settings);
@@ -117,13 +147,16 @@ export function KbSettingsDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EMBEDDING_MODELS.map((m) => (
+                {(embModels.length > 0 ? embModels : PRESET_MODELS).map((m) => (
                   <SelectItem key={m.value} value={m.value}>
                     {m.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              预设模型 + 已配置的外部模型（设置 → AI 模型）
+            </p>
           </div>
 
           <div className="space-y-2">
