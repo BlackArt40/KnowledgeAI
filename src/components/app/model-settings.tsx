@@ -434,12 +434,23 @@ function AddModelDialog({
               </Select>
             ) : (
               <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)}
-                     placeholder="如 gpt-4o-mini" list="chat-models" />
+                     placeholder={preset?.chatModels[0] ? `如 ${preset.chatModels[0]}` : "输入或拉取模型"} />
             )}
             {preset && preset.chatModels.length > 0 && (!fetched || manualChat) && (
-              <datalist id="chat-models">
-                {preset.chatModels.map((m) => <option key={m} value={m} />)}
-              </datalist>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">推荐：</span>
+                {preset.chatModels.map((m) => (
+                  <button key={m} type="button" onClick={() => setChatModel(m)}
+                          className={cn(
+                            "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                            chatModel === m
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                          )}>
+                    {m}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
@@ -466,12 +477,32 @@ function AddModelDialog({
               </Select>
             ) : (
               <Input value={embeddingModel} onChange={(e) => setEmbeddingModel(e.target.value)}
-                     placeholder="留空则使用本地嵌入" list="emb-models" />
+                     placeholder={preset?.embeddingModels[0] ? `如 ${preset.embeddingModels[0]}` : "留空则使用本地嵌入"} />
             )}
             {preset && preset.embeddingModels.length > 0 && (!fetched || manualEmb) && (
-              <datalist id="emb-models">
-                {preset.embeddingModels.map((m) => <option key={m} value={m} />)}
-              </datalist>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">推荐：</span>
+                <button type="button" onClick={() => setEmbeddingModel("")}
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                          embeddingModel === ""
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        )}>
+                  不使用
+                </button>
+                {preset.embeddingModels.map((m) => (
+                  <button key={m} type="button" onClick={() => setEmbeddingModel(m)}
+                          className={cn(
+                            "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                            embeddingModel === m
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                          )}>
+                    {m}
+                  </button>
+                ))}
+              </div>
             )}
             <p className="text-xs text-muted-foreground">用于文档向量化；留空时回退本地哈希嵌入</p>
           </div>
