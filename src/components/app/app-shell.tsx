@@ -32,12 +32,16 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/format";
 
+type Role = "owner" | "admin" | "editor" | "viewer";
+
 type NavItem = {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  roles?: Role[]; // undefined = all roles
 };
 
+// Role-based navigation access (aligned with RBAC permission matrix)
 const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "工作区",
@@ -45,29 +49,32 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "仪表盘", href: "/dashboard", icon: LayoutDashboard },
       { label: "知识库", href: "/knowledge-base", icon: Library },
       { label: "智能问答", href: "/chat", icon: MessagesSquare },
-      { label: "Agent 调研", href: "/agent", icon: Bot, },
+      { label: "Agent 调研", href: "/agent", icon: Bot, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
     title: "协作与计费",
     items: [
       { label: "团队", href: "/team", icon: Users },
-      { label: "订阅计费", href: "/billing", icon: CreditCard },
-      { label: "用量统计", href: "/usage", icon: Gauge },
+      { label: "订阅计费", href: "/billing", icon: CreditCard, roles: ["owner", "admin"] },
+      { label: "用量统计", href: "/usage", icon: Gauge, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
     title: "系统",
     items: [
-      { label: "API 密钥", href: "/api-keys", icon: KeyRound },
+      { label: "API 密钥", href: "/api-keys", icon: KeyRound, roles: ["owner", "admin", "editor"] },
       { label: "设置", href: "/settings", icon: Settings },
-      { label: "管理后台", href: "/admin", icon: ShieldCheck },
+      { label: "管理后台", href: "/admin", icon: ShieldCheck, roles: ["owner", "admin"] },
     ],
   },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role?: string }) {
   const pathname = usePathname();
+
+  // Filter nav items by role; items without `roles` are visible to everyone
+  const canSee = (item: NavItem) => !item.roles || (role && item.roles.includes(role as Role));
 
   return (
     <div className="flex h-full flex-col">
@@ -76,13 +83,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {navGroups.map((group) => (
+        {navGroups.map((group) => {
+          const items = group.items.filter(canSee);
+          if (items.length === 0) return null;
+          return (
           <div key={group.title}>
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {group.title}
             </p>
             <div className="space-y-1">
-              {group.items.map((item) => {
+              {items.map((item) => {
                 const active = pathname === item.href;
                 return (
                   <Link
@@ -108,7 +118,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* upgrade card */}
@@ -182,6 +193,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, [refreshNotifs]);
 
+  // Route -> allowed roles (must match navGroups roles). Checked on every navigation.
+  const routeGuard = React.useCallback((role: string | undefined, path: string) => {
+    const RESTRICTED: Record<string, Role[]> = {
+      "/admin": ["owner", "admin"],
+      "/billing": ["owner", "admin"],
+      "/agent": ["owner", "admin", "editor"],
+      "/usage": ["owner", "admin", "editor"],
+      "/api-keys": ["owner", "admin", "editor"],
+    };
+    for (const [prefix, roles] of Object.entries(RESTRICTED)) {
+      if (path === prefix || path.startsWith(prefix + "/")) {
+        if (!role || !roles.includes(role as Role)) return false;
+      }
+    }
+    return true;
+  }, []);
+
+  // Fetch current user once on mount
   React.useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => r.json())
@@ -191,6 +220,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })
       .catch(() => router.push("/login"));
   }, [router]);
+
+  // Route guard: redirect unauthorized users when path or role changes
+  React.useEffect(() => {
+    if (user && !routeGuard(user.role, pathname)) {
+      router.replace("/dashboard");
+    }
+  }, [user, pathname, routeGuard, router]);
 
   function logout() {
     localStorage.removeItem("kai-token");
@@ -221,7 +257,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-background">
       {/* desktop sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-card/50 lg:block">
-        <SidebarContent />
+        <SidebarContent role={user?.role} />
       </aside>
 
       {/* mobile drawer */}
@@ -239,7 +275,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent onNavigate={() => setMobileOpen(false)} role={user?.role} />
           </aside>
         </div>
       )}
