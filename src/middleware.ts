@@ -9,10 +9,16 @@ import type { NextRequest } from "next/server";
 // ---------------------------------------------------------------------------
 
 const WINDOW_MS = 60_000; // 1 minute
-const LIMIT = parseInt(process.env.RATE_LIMIT_PER_MIN || "60", 10);
+const LIMIT = parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10);
 
 // Skip rate limiting for these (SSE streams, webhooks)
-const SKIP_PATHS = ["/api/chat", "/api/agent/run", "/api/billing/webhook"];
+const SKIP_PATHS = [
+  "/api/chat",        // SSE stream
+  "/api/agent/run",   // SSE stream
+  "/api/billing/webhook",
+  "/api/notifications",  // polled every 30s
+  "/api/auth/me",        // called on every page load
+];
 
 interface Bucket {
   count: number;

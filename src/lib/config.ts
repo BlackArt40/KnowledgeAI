@@ -60,7 +60,7 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
       id: "ratelimit",
       label: "限流",
       enabled: true,
-      detail: `${process.env.RATE_LIMIT_PER_MIN || 60} 次/分钟`,
+      detail: `${process.env.RATE_LIMIT_PER_MIN || 200} 次/分钟`,
       envVars: ["RATE_LIMIT_PER_MIN"],
     },
   ];
