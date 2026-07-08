@@ -1,57 +1,88 @@
 // ---------------------------------------------------------------------------
-// LLM Provider — abstraction over OpenAI-compatible APIs with graceful
-// fallback to local implementations when no API key is configured.
+// LLM Provider - abstraction over OpenAI-compatible APIs with graceful
+// fallback to local implementations when no provider is configured.
 //
-// When OPENAI_API_KEY is set → real OpenAI (or any OpenAI-compatible endpoint
-// via OPENAI_BASE_URL, e.g. Azure, vLLM, Ollama, DeepSeek).
-// Otherwise → local hash embeddings + extractive generation (demo mode).
+// Resolution order:
+//   1. User-configured model in models store (enabled)  ← runtime config
+//   2. Environment variables (OPENAI_API_KEY etc.)       ← deploy-time config
+//   3. Local hash embeddings + extractive generation     ← demo mode
 // ---------------------------------------------------------------------------
 
 import { embed as localEmbed, cosine } from "@/lib/rag/embeddings";
 import type { ChatMessage, ChatOptions } from "./types";
 
-/** Whether a real LLM provider is configured. */
-export function isLLMEnabled(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+interface ResolvedConfig {
+  apiKey: string;
+  baseUrl: string;
+  chatModel: string;
+  embeddingModel: string;
+  label: string;
 }
 
-function baseUrl(): string {
-  return (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+/** Resolve the active LLM config: user model store -> env -> null (demo). */
+async function resolveConfig(): Promise<ResolvedConfig | null> {
+  // 1. User-configured models (dynamic import to avoid circular deps at load)
+  try {
+    const { getActiveModel } = await import("@/lib/models/store");
+    const active = getActiveModel();
+    if (active && active.enabled) {
+      return {
+        apiKey: active.apiKey,
+        baseUrl: active.baseUrl.replace(/\/$/, ""),
+        chatModel: active.chatModel,
+        embeddingModel: active.embeddingModel || "text-embedding-3-small",
+        label: `${active.chatModel} (${active.providerName})`,
+      };
+    }
+  } catch {
+    // store not available - fall through to env
+  }
+
+  // 2. Environment variables
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      apiKey: process.env.OPENAI_API_KEY,
+      baseUrl: (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, ""),
+      chatModel: process.env.CHAT_MODEL || "gpt-4o-mini",
+      embeddingModel: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+      label: `${process.env.CHAT_MODEL || "gpt-4o-mini"} (OpenAI)`,
+    };
+  }
+
+  // 3. Demo mode
+  return null;
 }
 
-function apiKey(): string {
-  return process.env.OPENAI_API_KEY || "";
+/** Whether a real LLM provider is configured (user model or env). */
+export async function isLLMEnabled(): Promise<boolean> {
+  return (await resolveConfig()) !== null;
 }
 
-export function chatModel(): string {
-  return process.env.CHAT_MODEL || "gpt-4o-mini";
+export async function chatModel(): Promise<string> {
+  return (await resolveConfig())?.chatModel ?? "local";
 }
 
-export function embeddingModel(): string {
-  return process.env.EMBEDDING_MODEL || "text-embedding-3-small";
+export async function embeddingModel(): Promise<string> {
+  return (await resolveConfig())?.embeddingModel ?? "local";
 }
 
-export function llmLabel(): string {
-  return isLLMEnabled() ? `${chatModel()} (OpenAI)` : "本地抽取式（演示模式）";
+export async function llmLabel(): Promise<string> {
+  return (await resolveConfig())?.label ?? "本地抽取式（演示模式）";
 }
 
 // ── Embeddings ──────────────────────────────────────────────────────────
 
-/**
- * Embed text into a vector. Uses OpenAI if configured, else local hash.
- * Local returns Float32Array(2048); OpenAI returns Float32Array(1536|3072).
- * The vector store handles any dimension — just don't mix providers.
- */
 export async function embedText(text: string): Promise<Float32Array> {
-  if (!isLLMEnabled()) return localEmbed(text);
+  const cfg = await resolveConfig();
+  if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return localEmbed(text);
 
-  const res = await fetch(`${baseUrl()}/embeddings`, {
+  const res = await fetch(`${cfg.baseUrl}/embeddings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey()}`,
+      Authorization: `Bearer ${cfg.apiKey}`,
     },
-    body: JSON.stringify({ model: embeddingModel(), input: text }),
+    body: JSON.stringify({ model: cfg.embeddingModel, input: text }),
   });
   if (!res.ok) {
     console.error("[llm] embedding failed:", res.status, await res.text());
@@ -61,17 +92,17 @@ export async function embedText(text: string): Promise<Float32Array> {
   return new Float32Array(data.data[0].embedding);
 }
 
-/** Batch embed multiple texts (OpenAI supports batch input; local loops). */
 export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
-  if (!isLLMEnabled()) return texts.map((t) => localEmbed(t));
+  const cfg = await resolveConfig();
+  if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return texts.map((t) => localEmbed(t));
 
-  const res = await fetch(`${baseUrl()}/embeddings`, {
+  const res = await fetch(`${cfg.baseUrl}/embeddings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey()}`,
+      Authorization: `Bearer ${cfg.apiKey}`,
     },
-    body: JSON.stringify({ model: embeddingModel(), input: texts }),
+    body: JSON.stringify({ model: cfg.embeddingModel, input: texts }),
   });
   if (!res.ok) {
     console.error("[llm] batch embedding failed:", res.status);
@@ -83,21 +114,21 @@ export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
 
 // ── Chat Completion ─────────────────────────────────────────────────────
 
-/** Non-streaming chat completion → full text. */
 export async function chatComplete(
   messages: ChatMessage[],
   opts?: ChatOptions
 ): Promise<string> {
-  if (!isLLMEnabled()) return "";
+  const cfg = await resolveConfig();
+  if (!cfg) return "";
 
-  const res = await fetch(`${baseUrl()}/chat/completions`, {
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey()}`,
+      Authorization: `Bearer ${cfg.apiKey}`,
     },
     body: JSON.stringify({
-      model: chatModel(),
+      model: cfg.chatModel,
       messages,
       temperature: opts?.temperature ?? 0.3,
       max_tokens: opts?.maxTokens,
@@ -112,21 +143,21 @@ export async function chatComplete(
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-/** Streaming chat completion → async generator of text deltas. */
 export async function* chatStream(
   messages: ChatMessage[],
   opts?: ChatOptions
 ): AsyncGenerator<string> {
-  if (!isLLMEnabled()) return;
+  const cfg = await resolveConfig();
+  if (!cfg) return;
 
-  const res = await fetch(`${baseUrl()}/chat/completions`, {
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey()}`,
+      Authorization: `Bearer ${cfg.apiKey}`,
     },
     body: JSON.stringify({
-      model: chatModel(),
+      model: cfg.chatModel,
       messages,
       temperature: opts?.temperature ?? 0.3,
       max_tokens: opts?.maxTokens,

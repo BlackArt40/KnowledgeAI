@@ -140,7 +140,7 @@ export async function generateAsync(
     };
   }
 
-  if (isLLMEnabled()) {
+  if (await isLLMEnabled()) {
     const messages = buildRagPrompt(query, chunks);
     const text = await chatComplete(messages, { temperature: 0.3, maxTokens: 800 });
     if (text) {
@@ -182,7 +182,7 @@ export async function* generateStream(
     return { text, citations: [] };
   }
 
-  if (isLLMEnabled()) {
+  if (await isLLMEnabled()) {
     const messages = buildRagPrompt(query, chunks);
     let full = "";
     for await (const delta of chatStream(messages, { temperature: 0.3, maxTokens: 800 })) {

@@ -2,7 +2,7 @@
 import * as React from "react";
 import {
   Shield, Smartphone, Monitor, LogOut, History, Download, Trash2,
-  ShieldCheck, User, Bell, Cookie, AlertTriangle, Loader2, CheckCircle2,
+  ShieldCheck, User, Bell, Cookie, AlertTriangle, Loader2, CheckCircle2, Bot,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { formatRelative } from "@/lib/format";
 import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
+import { ModelSettings } from "@/components/app/model-settings";
 
 const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
@@ -140,6 +141,7 @@ export default function SettingsPage() {
           <TabsTrigger value="security"><Shield className="h-4 w-4" /> 安全</TabsTrigger>
           <TabsTrigger value="profile"><User className="h-4 w-4" /> 个人信息</TabsTrigger>
           <TabsTrigger value="privacy"><Cookie className="h-4 w-4" /> 数据隐私</TabsTrigger>
+          <TabsTrigger value="models"><Bot className="h-4 w-4" /> AI 模型</TabsTrigger>
         </TabsList>
 
         {/* Security */}
@@ -371,6 +373,10 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* AI Models */}
+        <TabsContent value="models" className="space-y-4">
+          <ModelSettings />
         </TabsContent>
       </Tabs>
     </div>

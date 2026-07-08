@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     ...getConfig(),
-    providers: getProviderStatus(),
-    providerSummary: getEnabledCount(),
+    providers: await getProviderStatus(),
+    providerSummary: await getEnabledCount(),
   });
 }
 
@@ -20,7 +20,7 @@ export async function PATCH(req: Request) {
   const { providers, providerSummary, ...configPatch } = body;
   return NextResponse.json({
     config: updateConfig(configPatch),
-    providers: getProviderStatus(),
-    providerSummary: getEnabledCount(),
+    providers: await getProviderStatus(),
+    providerSummary: await getEnabledCount(),
   });
 }

@@ -196,7 +196,7 @@ export async function runTask(
     task.steps.push(writer);
     await runStep(writer, 2000, emit, async () => {
       // Try LLM-enhanced report generation
-      if (isLLMEnabled()) {
+      if (await isLLMEnabled()) {
         const llmReport = await generateLlmReport(task, ctx);
         if (llmReport) {
           task.report = llmReport;

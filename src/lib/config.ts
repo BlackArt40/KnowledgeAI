@@ -3,7 +3,7 @@
 // Used by the admin panel to show which production providers are active.
 // ---------------------------------------------------------------------------
 
-import { isLLMEnabled, chatModel, embeddingModel, llmLabel } from "@/lib/llm/provider";
+import { isLLMEnabled, embeddingModel, llmLabel } from "@/lib/llm/provider";
 import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
@@ -16,20 +16,23 @@ export interface ProviderStatus {
   envVars: string[];
 }
 
-export function getProviderStatus(): ProviderStatus[] {
+export async function getProviderStatus(): Promise<ProviderStatus[]> {
+  const llmOn = await isLLMEnabled();
+  const lbl = llmOn ? await llmLabel() : "本地抽取式（演示模式）";
+  const emb = llmOn ? await embeddingModel() : "本地哈希嵌入 2048 维（演示模式）";
   return [
     {
       id: "llm",
       label: "LLM 对话模型",
-      enabled: isLLMEnabled(),
-      detail: isLLMEnabled() ? llmLabel() : "本地抽取式（演示模式）",
+      enabled: llmOn,
+      detail: lbl,
       envVars: ["OPENAI_API_KEY", "CHAT_MODEL", "OPENAI_BASE_URL"],
     },
     {
       id: "embedding",
       label: "嵌入模型",
-      enabled: isLLMEnabled(),
-      detail: isLLMEnabled() ? embeddingModel() : "本地哈希嵌入 2048 维（演示模式）",
+      enabled: llmOn,
+      detail: emb,
       envVars: ["OPENAI_API_KEY", "EMBEDDING_MODEL"],
     },
     {
@@ -63,8 +66,8 @@ export function getProviderStatus(): ProviderStatus[] {
   ];
 }
 
-export function getEnabledCount(): { enabled: number; total: number } {
-  const providers = getProviderStatus();
+export async function getEnabledCount(): Promise<{ enabled: number; total: number }> {
+  const providers = await getProviderStatus();
   return {
     enabled: providers.filter((p) => p.enabled).length,
     total: providers.length,

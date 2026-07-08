@@ -11,6 +11,7 @@
 | 智能问答 | RAG 检索 + 流式生成 + 引用溯源 | 异步 RAG + LLM Provider + SSE |
 | Agent 调研 | 多 Agent 编排（规划→检索→分析→撰写） | SSE 流式 + Markdown 报告 |
 | 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB | 4 角色 × 10 能力 |
+| AI 模型 | 导入外部 LLM / 连接测试 / 一键切换 | OpenAI·DeepSeek·Moonshot·硅基流动·Ollama |
 | 订阅计费 | 套餐 / 订单 / 账单 / 用量计量 / 收银台 | 状态机 + 支付模拟 |
 | 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner 专属后台 |
 | 安全隐私 | 2FA / 会话管理 / 登录历史 / GDPR 导出 | 合规数据权利 |
@@ -22,7 +23,7 @@
 - **组件**：shadcn 风格自建组件库（15 个基础组件）
 - **图标**：lucide-react + 自绘品牌图标
 - **语言**：TypeScript 严格模式 · React 19
-- **生产适配**：LLM Provider / Payment / Database / Storage / Rate Limit / Auth
+- **生产适配**：LLM Provider（含运行时导入外部模型）/ Payment / Database / Storage / Rate Limit / Auth
 
 ## 🚀 快速开始
 
