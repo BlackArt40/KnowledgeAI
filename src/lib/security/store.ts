@@ -1,5 +1,6 @@
 import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types";
 import type { ClientInfo } from "./ua";
+import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
@@ -31,7 +32,7 @@ function genBackup() {
 
 function blank(): UserState {
   return {
-    twoFactor: { enabled: false, method: null, backupCodes: [], enrolledAt: null },
+    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null },
     sessions: [],
     loginHistory: [],
     privacy: { analytics: true, crashReports: true, trainingOptIn: false, dataRetentionDays: 90 },
@@ -60,8 +61,8 @@ function seed(userId: string) {
   const st = stateFor(userId);
   if (st.seeded) return;
   st.seeded = true;
-  const NOW = Date.now();
-  st.twoFactor = { enabled: true, method: "app", backupCodes: genBackup(), enrolledAt: NOW - 30 * DAY };
+  
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null };
   // sessions & loginHistory start empty - populated by real logins below.
 }
 
@@ -143,17 +144,73 @@ export function ensureCurrentSession(userId: string, info: ClientInfo): void {
   if (st.loginHistory.length > 50) st.loginHistory.length = 50;
 }
 
+/** Start 2FA enrollment: generate TOTP secret + backup codes.
+ *  Returns the secret + QR code URI for the user to scan.
+ *  2FA is NOT enabled until verify2FAEnrollment() is called with a valid code. */
+export function start2FAEnrollment(userId: string, email: string): {
+  secret: string;
+  qrCodeUri: string;
+  backupCodes: string[];
+} {
+  seed(userId);
+  const st = stateFor(userId);
+  const secret = generateSecret();
+  const qrCodeUri = generateOTPAuthURI(secret, email);
+  const backupCodes = generateBackupCodes();
+  st.twoFactor.pendingSecret = secret;
+  st.twoFactor.method = "app";
+  st.twoFactor.backupCodes = backupCodes.map(hashBackupCode);
+  return { secret, qrCodeUri, backupCodes };
+}
+
+/** Verify the TOTP code during enrollment and activate 2FA. */
+export function verify2FAEnrollment(userId: string, code: string): boolean {
+  seed(userId);
+  const st = stateFor(userId);
+  const secret = st.twoFactor.pendingSecret;
+  if (!secret) return false;
+  if (!verifyTOTP(secret, code)) return false;
+  st.twoFactor.enabled = true;
+  st.twoFactor.secret = secret;
+  st.twoFactor.pendingSecret = null;
+  st.twoFactor.enrolledAt = Date.now();
+  return true;
+}
+
+/** Verify a TOTP code or backup code for login (when 2FA is enabled). */
+export function verify2FALogin(userId: string, code: string): boolean {
+  seed(userId);
+  const st = stateFor(userId);
+  if (!st.twoFactor.enabled || !st.twoFactor.secret) return false;
+  // Try TOTP code first
+  if (verifyTOTP(st.twoFactor.secret, code)) return true;
+  // Try backup code
+  const { valid, remaining } = verifyBackupCode(code, st.twoFactor.backupCodes);
+  if (valid) {
+    st.twoFactor.backupCodes = remaining;
+    return true;
+  }
+  return false;
+}
+
+/** Check if a user has 2FA enabled. */
+export function is2FAEnabled(userId: string): boolean {
+  seed(userId);
+  return stateFor(userId).twoFactor.enabled;
+}
+
+/** Legacy: enable 2FA (backward compat for old API callers). */
 export function enable2FA(userId: string, method: TwoFactor["method"]): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: true, method, backupCodes: genBackup(), enrolledAt: Date.now() };
+  st.twoFactor = { enabled: true, method, secret: null, backupCodes: genBackup(), enrolledAt: Date.now(), pendingSecret: null };
   return st.twoFactor;
 }
 
 export function disable2FA(userId: string): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: false, method: null, backupCodes: [], enrolledAt: null };
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null };
   return st.twoFactor;
 }
 

@@ -86,3 +86,21 @@ declare module "xlsx" {
     sheet_to_json(sheet: WorkSheet): unknown[];
   };
 }
+
+// ── Redis client (for distributed rate limiting) ─────────────────────────
+
+declare module "ioredis" {
+  export default class Redis {
+    constructor(url: string, opts?: unknown);
+    eval(
+      script: string,
+      keys: number,
+      ...args: (string | number)[]
+    ): Promise<number[]>;
+    zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number>;
+    zcard(key: string): Promise<number>;
+    zadd(key: string, score: number, member: string): Promise<number>;
+    pexpire(key: string, ms: number): Promise<number>;
+    quit(): Promise<void>;
+  }
+}

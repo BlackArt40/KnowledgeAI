@@ -1,8 +1,10 @@
 export interface TwoFactor {
   enabled: boolean;
   method: "app" | "sms" | null;
-  backupCodes: string[];
+  secret: string | null;        // TOTP secret (Base32), null when not enrolled
+  backupCodes: string[];        // hashed backup codes
   enrolledAt: number | null;
+  pendingSecret: string | null; // secret during enrollment (not yet verified)
 }
 
 export interface Session {

@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { verifyCredentials, sanitize } from "@/lib/auth/store";
 import { createToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
-import { addSession, recordLogin } from "@/lib/security/store";
+import { addSession, recordLogin, is2FAEnabled, verify2FALogin } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 export const dynamic = "force-dynamic";
 
-// POST /api/auth/login { email, password }
+// POST /api/auth/login { email, password, totpCode? }
+// When 2FA is enabled, first call returns { requires2FA: true }.
+// Client then re-calls with totpCode to complete login.
 export async function POST(req: Request) {
-  let body: { email?: string; password?: string };
+  let body: { email?: string; password?: string; totpCode?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
@@ -22,6 +24,21 @@ export async function POST(req: Request) {
   const user = verifyCredentials(email, password);
   if (!user) {
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
+  }
+
+  // ── 2FA check ──────────────────────────────────────────────────────────
+  if (is2FAEnabled(user.id)) {
+    if (!body.totpCode) {
+      // First step: password OK, but 2FA required
+      return NextResponse.json({
+        requires2FA: true,
+        message: "请输入两步验证码",
+      });
+    }
+    // Verify TOTP or backup code
+    if (!verify2FALogin(user.id, body.totpCode.trim())) {
+      return NextResponse.json({ error: "两步验证码不正确" }, { status: 401 });
+    }
   }
 
   // Record this real login: an active session + a login-history entry.
