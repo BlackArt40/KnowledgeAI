@@ -113,7 +113,7 @@ export async function DELETE(req: Request) {
   }
 
   // Delete all user data across stores.
-  for (const kb of listKbs(id)) deleteKb(kb.id);
+  for (const kb of listKbs(id)) await deleteKb(kb.id);
   deleteAllConversations(id);
   deleteAllTasks(id);
   deleteSecurityData(id);

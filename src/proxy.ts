@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ensureHydrated } from "@/lib/db/hydrate";
 
 // ---------------------------------------------------------------------------
 // Rate Limiting Proxy
@@ -41,6 +42,11 @@ function cleanup() {
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Hydrate in-memory stores from DB on first API request (fire-and-forget).
+  if (!pathname.startsWith("/_next")) {
+    void ensureHydrated();
+  }
 
   // Only rate-limit API routes
   if (!pathname.startsWith("/api/")) {

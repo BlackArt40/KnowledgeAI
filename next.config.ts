@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Optional production dependencies - not bundled, resolved at runtime.
+  // These are dynamically imported and gracefully fall back when not installed.
+  serverExternalPackages: ["@prisma/client", "bullmq", "ioredis", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"],
   // 生产安全响应头
   async headers() {
     return [

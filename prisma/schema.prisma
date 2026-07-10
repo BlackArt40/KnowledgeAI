@@ -1,7 +1,8 @@
-// KnowledgeAI — Prisma schema for PostgreSQL
-// Production database schema. Run: prisma migrate deploy
-// 🔌 The in-memory stores (src/lib/*/store.ts) can be replaced by Prisma
-//    queries with the same interfaces.
+// KnowledgeAI - Prisma schema for PostgreSQL
+// Production database schema. Run: npx prisma migrate deploy
+// 🔌 The in-memory stores (src/lib/*/store.ts) act as a write-through cache.
+//    On startup, data is hydrated from DB (src/lib/db/hydrate.ts).
+//    On mutation, changes are persisted to DB (src/lib/db/persist.ts).
 
 generator client {
   provider = "prisma-client-js"
@@ -20,7 +21,9 @@ model User {
   passwordHash  String?
   role          Role     @default(EDITOR)
   status        UserStatus @default(ACTIVE)
+  plan          String   @default("free")
   twoFactorEnabled Boolean @default(false)
+  lastLoginAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -83,6 +86,9 @@ model KnowledgeBase {
   id          String   @id @default(cuid())
   name        String
   description String?
+  desc        String   @default("")
+  color       String   @default("from-primary/15")
+  initial     String   @default("K")
   ownerId     String
   teamId      String?
   settings    Json     @default("{}")
@@ -174,6 +180,7 @@ model Invoice {
   date      DateTime @default(now())
 }
 
+// ── API Keys ──────────────────────────────────────────────
 model ApiKey {
   id        String   @id @default(cuid())
   userId    String
@@ -211,4 +218,22 @@ model LoginEvent {
   success   Boolean
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// ── Vector Chunks (for pgvector) ──────────────────────────
+// Created automatically by PgVectorStore when VECTOR_STORE=pgvector.
+// Requires: CREATE EXTENSION IF NOT EXISTS vector;
+model KbChunk {
+  id          String   @id @default(cuid())
+  kbId        String
+  docId       String
+  docName     String
+  chunkIndex  Int
+  text        String
+  // embedding column is added via raw SQL (vector type) since Prisma
+  // doesn't natively support pgvector types in schema.
+  createdAt   DateTime @default(now())
+
+  @@index([kbId])
+  @@index([docId])
 }

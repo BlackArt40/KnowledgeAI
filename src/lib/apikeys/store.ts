@@ -1,4 +1,5 @@
 import type { ApiKey, CallLog, KeyStatus } from "./types";
+import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };
@@ -45,12 +46,13 @@ export function createKey(name: string, scopes: string[], userId: string): ApiKe
     calls: 0,
   };
   store().keys.unshift(key);
+  void persistApiKey(key);
   return key;
 }
 
 export function toggleKey(id: string, status: KeyStatus, userId: string): ApiKey | null {
   const k = store().keys.find((k) => k.id === id && k.userId === userId);
-  if (k) k.status = status;
+  if (k) { k.status = status; void persistApiKey(k); }
   return k ?? null;
 }
 
@@ -58,6 +60,7 @@ export function deleteKey(id: string, userId: string): boolean {
   const s = store();
   const idx = s.keys.findIndex((k) => k.id === id && k.userId === userId);
   if (idx < 0) return false;
+  void deleteApiKeyFromDb(id);
   s.keys.splice(idx, 1);
   // Also remove logs for this key
   s.logs = s.logs.filter((l) => l.keyId !== id);

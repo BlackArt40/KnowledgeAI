@@ -1,47 +1,39 @@
-import { embed, cosine } from "./embeddings";
-import { embedText } from "@/lib/llm/provider";
+// ---------------------------------------------------------------------------
+// Vector Store - factory + public API.
+//
+// Selects the active VectorStore implementation based on VECTOR_STORE env var:
+//   "memory"   (default) -> MemoryVectorStore  (in-memory, demo mode)
+//   "pgvector"           -> PgVectorStore      (PostgreSQL + pgvector)
+//
+// All operations are async to support both sync (memory) and async (DB) backends.
+// ---------------------------------------------------------------------------
 
-// In-memory per-KB vector index (persisted on globalThis for dev HMR).
-// 🔌 Integration point: replace with ChromaDB / pgvector / Pinecone.
-// Vectors can be any dimension — local hash (2048) or OpenAI (1536/3072).
+import { embed } from "./embeddings";
+import { MemoryVectorStore } from "./vector-store-memory";
+import { PgVectorStore } from "./vector-store-pgvector";
+import type { VectorStore } from "./vector-store-interface";
 
-interface StoredChunk {
-  docId: string;
-  docName: string;
-  chunkIndex: number;
-  text: string;
-  vector: Float32Array;
-}
+let _instance: VectorStore | null = null;
 
-const g = globalThis as unknown as { __KAI_VS__?: Map<string, StoredChunk[]> };
-function store(): Map<string, StoredChunk[]> {
-  if (!g.__KAI_VS__) g.__KAI_VS__ = new Map();
-  return g.__KAI_VS__;
-}
-
-/**
- * Index document chunks into the per-KB vector store.
- * Uses LLM embeddings (OpenAI) if configured, else local hash embeddings.
- */
-export async function indexChunks(
-  kbId: string,
-  docId: string,
-  docName: string,
-  chunks: string[]
-) {
-  const s = store();
-  const list = s.get(kbId) ?? [];
-  // remove existing chunks for this doc (re-index safe)
-  for (let i = list.length - 1; i >= 0; i--) {
-    if (list[i].docId === docId) list.splice(i, 1);
+function getStore(): VectorStore {
+  if (_instance) return _instance;
+  const backend = process.env.VECTOR_STORE || "memory";
+  switch (backend) {
+    case "pgvector":
+      _instance = new PgVectorStore();
+      break;
+    case "memory":
+    default:
+      _instance = new MemoryVectorStore();
+      break;
   }
-  // Batch embed for efficiency (OpenAI supports batch input)
-  const vectors = await embedBatchSafe(chunks);
-  chunks.forEach((text, idx) => {
-    list.push({ docId, docName, chunkIndex: idx, text, vector: vectors[idx] });
-  });
-  s.set(kbId, list);
+  if (backend !== "memory") {
+    console.log(`[rag] Vector store: ${backend}`);
+  }
+  return _instance;
 }
+
+// ── Embedding helper (used by indexChunks callers) ───────────────────────
 
 async function embedBatchSafe(texts: string[]): Promise<Float32Array[]> {
   try {
@@ -52,32 +44,42 @@ async function embedBatchSafe(texts: string[]): Promise<Float32Array[]> {
   }
 }
 
-export function clearDoc(kbId: string, docId: string) {
-  const s = store();
-  const list = s.get(kbId);
-  if (!list) return;
-  s.set(
-    kbId,
-    list.filter((c) => c.docId !== docId)
-  );
+// ── Public API (async, delegates to active implementation) ───────────────
+
+/**
+ * Index document chunks into the per-KB vector store.
+ * Embeds the chunks (LLM if configured, else local hash) and stores them.
+ */
+export async function indexChunks(
+  kbId: string,
+  docId: string,
+  docName: string,
+  chunks: string[]
+) {
+  const vectors = await embedBatchSafe(chunks);
+  await getStore().indexChunks(kbId, docId, docName, chunks, vectors);
 }
 
-export function clearKb(kbId: string) {
-  store().delete(kbId);
+/** Remove all chunks for a specific document. */
+export async function clearDoc(kbId: string, docId: string): Promise<void> {
+  await getStore().clearDoc(kbId, docId);
 }
 
-export function search(
+/** Remove all chunks for an entire KB. */
+export async function clearKb(kbId: string): Promise<void> {
+  await getStore().clearKb(kbId);
+}
+
+/** Search for top-K similar chunks given a query vector. */
+export async function search(
   kbId: string,
   queryVec: Float32Array,
   topK: number
-): { docId: string; docName: string; chunkIndex: number; text: string; score: number }[] {
-  const list = store().get(kbId) ?? [];
-  return list
-    .map((c) => ({ docId: c.docId, docName: c.docName, chunkIndex: c.chunkIndex, text: c.text, score: cosine(queryVec, c.vector) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+) {
+  return getStore().search(kbId, queryVec, topK);
 }
 
-export function chunkCount(kbId: string): number {
-  return store().get(kbId)?.length ?? 0;
+/** Count chunks in a KB. */
+export async function chunkCount(kbId: string): Promise<number> {
+  return getStore().chunkCount(kbId);
 }

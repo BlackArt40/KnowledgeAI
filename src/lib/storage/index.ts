@@ -1,16 +1,22 @@
 // ---------------------------------------------------------------------------
-// Storage — file upload abstraction (local filesystem or S3-compatible).
+// Storage - file upload abstraction (local filesystem or S3-compatible).
 //
-// When S3_ENDPOINT + S3_ACCESS_KEY are set → upload to S3 / MinIO / R2.
-// Otherwise → save to local .uploads/ directory (demo mode).
+// When S3_ENDPOINT + S3_ACCESS_KEY + S3_SECRET_KEY are set -> upload to S3 /
+// MinIO / Cloudflare R2 using @aws-sdk/client-s3.
+// Otherwise -> save to local .uploads/ directory (demo mode).
+//
+// File type whitelist + size limits are enforced regardless of backend.
 // ---------------------------------------------------------------------------
 
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import { getS3Config, uploadToS3, downloadFromS3, deleteFromS3, getPresignedUploadUrl } from "./s3";
+
+export { getPresignedUploadUrl, getPresignedDownloadUrl } from "./s3";
 
 export function isStorageEnabled(): boolean {
-  return !!process.env.S3_ENDPOINT && !!process.env.S3_ACCESS_KEY;
+  return getS3Config() !== null;
 }
 
 export interface UploadResult {
@@ -18,6 +24,30 @@ export interface UploadResult {
   url: string;      // accessible URL
   size: number;
 }
+
+// ── File validation ──────────────────────────────────────────────────────
+
+const ALLOWED_EXTENSIONS = new Set([
+  ".txt", ".md", ".markdown", ".csv", ".json",
+  ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+  ".xls", ".xlsx",
+  ".html", ".htm",
+]);
+
+const MAX_FILE_SIZE = parseInt(process.env.MAX_UPLOAD_MB || "50", 10) * 1024 * 1024;
+
+export function validateFile(filename: string, size: number): { ok: boolean; error?: string } {
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return { ok: false, error: `不支持的文件类型: ${ext}。允许: ${[...ALLOWED_EXTENSIONS].join(", ")}` };
+  }
+  if (size > MAX_FILE_SIZE) {
+    return { ok: false, error: `文件过大: ${(size / 1024 / 1024).toFixed(1)}MB。上限: ${MAX_FILE_SIZE / 1024 / 1024}MB` };
+  }
+  return { ok: true };
+}
+
+// ── Core operations ──────────────────────────────────────────────────────
 
 /** Save a file. Returns storage key + accessible URL. */
 export async function saveFile(
@@ -58,32 +88,14 @@ export async function deleteFile(key: string): Promise<void> {
   await fs.unlink(filepath).catch(() => {});
 }
 
-// ── S3 operations (using fetch with SigV4 — or install @aws-sdk/client-s3) ──
-// 🔌 For production, install @aws-sdk/client-s3 and use PutObjectCommand etc.
-
-async function uploadToS3(key: string, data: Buffer | Uint8Array): Promise<UploadResult> {
-  const bucket = process.env.S3_BUCKET || "knowledgeai-uploads";
-  const endpoint = process.env.S3_ENDPOINT!;
-  // Simplified: in production use AWS SDK with proper SigV4 signing
-  // This is a placeholder showing the interface
-  console.log(`[storage] S3 upload: ${bucket}/${key} (${data.byteLength} bytes) → ${endpoint}`);
-  return {
-    key,
-    url: `${endpoint}/${bucket}/${key}`,
-    size: data.byteLength,
-  };
-}
-
-async function downloadFromS3(key: string): Promise<Buffer> {
-  const bucket = process.env.S3_BUCKET || "knowledgeai-uploads";
-  const endpoint = process.env.S3_ENDPOINT!;
-  const res = await fetch(`${endpoint}/${bucket}/${key}`);
-  if (!res.ok) throw new Error(`S3 download failed: ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
-async function deleteFromS3(key: string): Promise<void> {
-  const bucket = process.env.S3_BUCKET || "knowledgeai-uploads";
-  const endpoint = process.env.S3_ENDPOINT!;
-  await fetch(`${endpoint}/${bucket}/${key}`, { method: "DELETE" }).catch(() => {});
+/**
+ * Create a presigned upload URL for direct browser-to-S3 upload.
+ * Returns null in local mode (caller should use regular multipart upload).
+ */
+export async function createPresignedUpload(
+  filename: string,
+  expiresIn = 600
+): Promise<{ url: string; key: string; method: "PUT" } | null> {
+  if (!isStorageEnabled()) return null;
+  return getPresignedUploadUrl(filename, expiresIn);
 }

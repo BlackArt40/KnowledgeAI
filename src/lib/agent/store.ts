@@ -1,4 +1,5 @@
 import type { AgentTask } from "./types";
+import { persistTask } from "@/lib/db/persist";
 
 type Store = { tasks: Map<string, AgentTask> };
 const g = globalThis as unknown as { __KAI_AGENT_STORE__?: Store };
@@ -47,12 +48,14 @@ export function createTask(input: {
     userId,
   };
   store().tasks.set(task.id, task);
+  void persistTask(task);
   return task;
 }
 
 export function saveTask(task: AgentTask) {
   task.updatedAt = Date.now();
   store().tasks.set(task.id, task);
+  void persistTask(task);
 }
 
 export function deleteTask(id: string): boolean {

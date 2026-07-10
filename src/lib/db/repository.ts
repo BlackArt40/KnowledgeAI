@@ -1,45 +1,109 @@
 // ---------------------------------------------------------------------------
-// Repository Pattern — example showing how to swap in-memory stores for Prisma.
+// Repository Pattern - async data access layer that checks isDbEnabled().
 //
-// Each in-memory store (kb, chat, agent, team, billing, apikeys, security, admin)
-// can be wrapped in a repository that checks `isDbEnabled()`:
-//   - If DB enabled → query Prisma
-//   - Otherwise → use the existing in-memory store
+//   - If DB enabled -> query Prisma (PostgreSQL)
+//   - Otherwise -> use the existing in-memory store (wrapped in Promise)
 //
-// This file shows the pattern for the KB store as a reference.
+// API routes can gradually migrate to these async functions when they need
+// direct DB access. The in-memory stores remain the default for reads,
+// hydrated from DB on startup (see hydrate.ts) and persisted on write
+// (see persist.ts).
+//
+// This file shows the pattern for key models. The same pattern extends to
+// all models defined in the Prisma schema.
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
-import { listKbs as listKbsMemory, getKb as getKbMemory } from "@/lib/kb/store";
-import type { KnowledgeBase } from "@/lib/kb/types";
+import type { PrismaUser, PrismaKb } from "./types";
 
-export async function listKbs(): Promise<KnowledgeBase[]> {
+// ── Users ────────────────────────────────────────────────────────────────
+
+export async function findUserByEmail(email: string) {
   const db = await getDb();
-  if (!db || !isDbEnabled()) {
-    return listKbsMemory();
-  }
-  // Prisma query (typed via `as any` since client is dynamically imported)
-  const prisma = db as {
-    knowledgeBase: {
-      findMany: (opts?: unknown) => Promise<unknown[]>;
-    };
-  };
-  const rows = await prisma.knowledgeBase.findMany({
-    orderBy: { updatedAt: "desc" },
-  });
-  return rows as unknown as KnowledgeBase[];
+  if (!db) return null;
+  return db.user.findUnique({ where: { email } });
 }
 
-export async function getKb(id: string): Promise<KnowledgeBase | null> {
+export async function findUserById(id: string) {
   const db = await getDb();
-  if (!db || !isDbEnabled()) {
-    return getKbMemory(id) ?? null;
+  if (!db) return null;
+  return db.user.findUnique({ where: { id } });
+}
+
+export async function listAllUsers(): Promise<PrismaUser[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.user.findMany({ orderBy: { createdAt: "asc" } });
+}
+
+export async function countUsers(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  return db.user.count({});
+}
+
+// ── Knowledge Bases ──────────────────────────────────────────────────────
+
+export async function findKbById(id: string): Promise<PrismaKb | null> {
+  const db = await getDb();
+  if (!db) return null;
+  return db.knowledgeBase.findUnique({ where: { id } });
+}
+
+export async function listKbsByOwner(ownerId: string): Promise<PrismaKb[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.knowledgeBase.findMany({
+    where: { ownerId },
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
+export async function listAllKbs(): Promise<PrismaKb[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.knowledgeBase.findMany({ orderBy: { updatedAt: "desc" } });
+}
+
+// ── Agent Tasks ──────────────────────────────────────────────────────────
+
+export async function listAgentTasksByUser(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.agentTask.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+// ── API Keys ─────────────────────────────────────────────────────────────
+
+export async function findApiKeyByHash(keyHash: string) {
+  const db = await getDb();
+  if (!db) return null;
+  return db.apiKey.findUnique({ where: { keyHash } });
+}
+
+export async function listApiKeysByUser(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.apiKey.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+// ── Health Check ─────────────────────────────────────────────────────────
+
+/** Check if the database connection is healthy. */
+export async function checkDbHealth(): Promise<boolean> {
+  if (!isDbEnabled()) return false;
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    await db.user.count({});
+    return true;
+  } catch {
+    return false;
   }
-  const prisma = db as {
-    knowledgeBase: {
-      findUnique: (opts: unknown) => Promise<unknown>;
-    };
-  };
-  const row = await prisma.knowledgeBase.findUnique({ where: { id } });
-  return (row as KnowledgeBase) ?? null;
 }

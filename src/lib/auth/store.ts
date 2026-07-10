@@ -6,6 +6,7 @@
 
 import crypto from "crypto";
 import type { Role } from "@/lib/team/types";
+import { persistUser } from "@/lib/db/persist";
 import { ROLE_LABEL, ROLE_DESC } from "@/lib/team/types";
 
 export interface User {
@@ -107,6 +108,7 @@ export function createUser(name: string, email: string, password: string, role: 
   };
   s.users.set(user.id, user);
   s.emailIndex.set(email.toLowerCase(), user.id);
+  void persistUser(user);
   return user;
 }
 
@@ -149,6 +151,7 @@ export function updateUser(
   }
 
   s.users.set(user.id, user);
+  void persistUser(user);
   return user;
 }
 
@@ -159,6 +162,7 @@ export function setUserStatus(userId: string, status: "active" | "banned"): User
   const u = s.users.get(userId);
   if (!u) return null;
   u.status = status;
+  void persistUser(u);
   return u;
 }
 
@@ -169,6 +173,7 @@ export function updateUserPlan(userId: string, plan: "free" | "pro" | "enterpris
   const u = s.users.get(userId);
   if (!u) return null;
   u.plan = plan;
+  void persistUser(u);
   return u;
 }
 

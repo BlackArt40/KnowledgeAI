@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
+import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 
 // ---------------------------------------------------------------------------
 // In-memory store (demo). Structured to be swapped for PostgreSQL/Prisma +
@@ -246,6 +247,7 @@ export function createKb(input: { name: string; desc: string; color?: string; in
     settings: { ...DEFAULT_SETTINGS },
   };
   getStore().kbs.set(kb.id, kb);
+  void persistKb(kb);
   return kb;
 }
 
@@ -256,16 +258,18 @@ export function updateKbSettings(id: string, settings: Partial<KbSettings>): Kno
   kb.settings = { ...kb.settings, ...settings };
   kb.updatedAt = Date.now();
   getStore().kbs.set(id, kb);
+  void persistKb(kb);
   return kb;
 }
 
-export function deleteKb(id: string): boolean {
+export async function deleteKb(id: string): Promise<boolean> {
   seed();
   const store = getStore();
   for (const [docId, doc] of store.docs) {
     if (doc.kbId === id) store.docs.delete(docId);
   }
-  vsClearKb(id);
+  await vsClearKb(id);
+  void deleteKbFromDb(id);
   return store.kbs.delete(id);
 }
 
@@ -321,6 +325,7 @@ export function addDocument(input: {
     uploadedAt: Date.now(),
   };
   store.docs.set(doc.id, doc);
+  void persistDoc(doc);
   if (kb) {
     kb.updatedAt = Date.now();
     store.kbs.set(kb.id, kb);
@@ -329,10 +334,11 @@ export function addDocument(input: {
   return doc;
 }
 
-export function deleteDocument(docId: string): boolean {
+export async function deleteDocument(docId: string): Promise<boolean> {
   seed();
   const store = getStore();
   const doc = store.docs.get(docId);
-  if (doc) vsClearDoc(doc.kbId, docId);
+  if (doc) await vsClearDoc(doc.kbId, docId);
+  if (doc) void deleteDocFromDb(docId);
   return store.docs.delete(docId);
 }

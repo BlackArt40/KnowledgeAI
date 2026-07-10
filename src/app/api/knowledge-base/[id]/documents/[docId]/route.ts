@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: Params) {
 // DELETE /api/knowledge-base/[id]/documents/[docId]
 export async function DELETE(_req: Request, { params }: Params) {
   const { docId } = await params;
-  const ok = deleteDocument(docId);
+  const ok = await deleteDocument(docId);
   if (!ok) return NextResponse.json({ error: "文档不存在" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

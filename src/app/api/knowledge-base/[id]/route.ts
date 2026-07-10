@@ -61,7 +61,7 @@ export async function DELETE(req: Request, { params }: Params) {
   if ("error" in r) return r.error;
   if (r.kb.ownerId !== r.u.id)
     return NextResponse.json({ error: "仅拥有者可删除" }, { status: 403 });
-  const ok = deleteKb(id);
+  const ok = await deleteKb(id);
   if (!ok) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
