@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // ---------------------------------------------------------------------------
-// Rate Limiting Middleware
+// Rate Limiting Proxy
 //
 // Protects /api/* routes from abuse. Uses in-memory sliding window per IP.
 // 🔌 Production: replace with Redis/Upstash rate limiter for multi-instance.
@@ -39,7 +39,7 @@ function cleanup() {
   }
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Only rate-limit API routes
