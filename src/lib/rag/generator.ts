@@ -1,6 +1,8 @@
 import { embed, cosine } from "./embeddings";
 import { chatComplete, chatStream, isLLMEnabled } from "@/lib/llm/provider";
 import type { RetrievedChunk, Citation, GenerationResult } from "./types";
+import type { ChatMessage } from "./conversation-context";
+import { buildContextualSystemPrompt } from "./conversation-context";
 
 // ---------------------------------------------------------------------------
 // Generator — composes an answer from retrieved chunks.
@@ -83,11 +85,16 @@ export function generate(query: string, chunks: RetrievedChunk[]): GenerationRes
 
 // ── LLM RAG prompt builder ───────────────────────────────────────────────
 
-function buildRagPrompt(query: string, chunks: RetrievedChunk[]) {
+function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatMessage[]) {
   const sources = chunks
     .map((c, i) => `[${i + 1}] 《${c.docName}》\n${c.text.slice(0, 600)}`)
     .join("\n\n");
 
+
+  // Use contextual prompt (with history + intent) when history is provided
+  if (history && history.length > 0) {
+    return buildContextualSystemPrompt(query, history, sources);
+  }
   const system = `你是 KnowledgeAI 知识助手。请根据以下检索到的知识库内容回答用户问题。
 要求：
 1. 仅基于提供的来源内容回答，不要编造信息
@@ -131,7 +138,8 @@ function parseCitations(text: string, chunks: RetrievedChunk[]): Citation[] {
 
 export async function generateAsync(
   query: string,
-  chunks: RetrievedChunk[]
+  chunks: RetrievedChunk[],
+  history?: ChatMessage[]
 ): Promise<GenerationResult> {
   if (chunks.length === 0) {
     return {
@@ -141,7 +149,7 @@ export async function generateAsync(
   }
 
   if (await isLLMEnabled()) {
-    const messages = buildRagPrompt(query, chunks);
+    const messages = buildRagPrompt(query, chunks, history);
     const text = await chatComplete(messages, { temperature: 0.3, maxTokens: 800 });
     if (text) {
       return { text, citations: parseCitations(text, chunks) };
@@ -174,7 +182,8 @@ export interface StreamResult {
  */
 export async function* generateStream(
   query: string,
-  chunks: RetrievedChunk[]
+  chunks: RetrievedChunk[],
+  history?: ChatMessage[]
 ): AsyncGenerator<StreamEvent, StreamResult> {
   if (chunks.length === 0) {
     const text = "未在当前知识库中检索到相关内容。可以尝试换一种问法，或为该知识库上传更多文档。";
@@ -183,7 +192,7 @@ export async function* generateStream(
   }
 
   if (await isLLMEnabled()) {
-    const messages = buildRagPrompt(query, chunks);
+    const messages = buildRagPrompt(query, chunks, history);
     let full = "";
     for await (const delta of chatStream(messages, { temperature: 0.3, maxTokens: 800 })) {
       full += delta;

@@ -1,6 +1,8 @@
 import { getKb } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
 import { generateStream } from "@/lib/rag/generator";
+import { suggestFollowUps } from "@/lib/rag/conversation-context";
+import type { ChatMessage } from "@/lib/rag/conversation-context";
 import {
   createConversation,
   getConversation,
@@ -42,6 +44,12 @@ export async function POST(req: Request) {
 
   let conv = body.conversationId ? getConversation(body.conversationId) : undefined;
   if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id);
+  // Build conversation history for multi-turn context (exclude current query)
+  const history: ChatMessage[] = (conv.messages ?? [])
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .slice(-6) // last 3 turns
+    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
   addMessage(conv.id, { role: "user", content: query });
 
   // The entire RAG flow runs inside the user's model context so the LLM
@@ -63,7 +71,7 @@ export async function POST(req: Request) {
           let fullText = "";
           let citations: { n: number; docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[] = [];
 
-          const gen = generateStream(query, chunks);
+          const gen = generateStream(query, chunks, history);
           let result;
           while (true) {
             // Stop generating as soon as the client disconnects / aborts.
@@ -83,7 +91,9 @@ export async function POST(req: Request) {
           const assistant = addMessage(conv!.id, { role: "assistant", content: fullText, citations });
           // Count this answered question against the current user's meters.
           recordQa(authUser.id);
-          send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations });
+          // Generate follow-up question suggestions
+          const followUps = await suggestFollowUps(query, fullText, chunks);
+          send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });
         } catch (err) {
           console.error("[chat] stream error:", err);
           send({ type: "error", message: "生成回答时出错，请重试。" });

@@ -11,6 +11,7 @@
 import { embed } from "./embeddings";
 import { MemoryVectorStore } from "./vector-store-memory";
 import { PgVectorStore } from "./vector-store-pgvector";
+import { clearBM25Doc, clearBM25Kb } from "./bm25";
 import type { VectorStore } from "./vector-store-interface";
 
 let _instance: VectorStore | null = null;
@@ -60,14 +61,16 @@ export async function indexChunks(
   await getStore().indexChunks(kbId, docId, docName, chunks, vectors);
 }
 
-/** Remove all chunks for a specific document. */
+/** Remove all chunks for a specific document (vector + BM25). */
 export async function clearDoc(kbId: string, docId: string): Promise<void> {
   await getStore().clearDoc(kbId, docId);
+  clearBM25Doc(kbId, docId);
 }
 
-/** Remove all chunks for an entire KB. */
+/** Remove all chunks for an entire KB (vector + BM25). */
 export async function clearKb(kbId: string): Promise<void> {
   await getStore().clearKb(kbId);
+  clearBM25Kb(kbId);
 }
 
 /** Search for top-K similar chunks given a query vector. */

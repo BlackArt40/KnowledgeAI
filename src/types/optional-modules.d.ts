@@ -50,3 +50,39 @@ declare module "bullmq" {
     close(): Promise<void>;
   }
 }
+
+// ── Document parser optional dependencies ────────────────────────────────
+
+declare module "pdf-parse" {
+  interface PdfData {
+    text: string;
+    numpages?: number;
+    info?: { Title?: string };
+  }
+  const pdfParse: ((buf: Buffer) => Promise<PdfData>) & {
+    default?: (buf: Buffer) => Promise<PdfData>;
+  };
+  export default pdfParse;
+}
+
+declare module "mammoth" {
+  export function extractRawText(opts: {
+    buffer: Buffer;
+  }): Promise<{ value: string; messages: unknown[] }>;
+  export function convertToHtml(opts: {
+    buffer: Buffer;
+  }): Promise<{ value: string; messages: unknown[] }>;
+}
+
+declare module "xlsx" {
+  export interface WorkSheet { [cell: string]: unknown; "!ref"?: string }
+  export interface WorkBook {
+    SheetNames: string[];
+    Sheets: Record<string, WorkSheet>;
+  }
+  export function read(buf: Buffer, opts: unknown): WorkBook;
+  export const utils: {
+    sheet_to_csv(sheet: WorkSheet): string;
+    sheet_to_json(sheet: WorkSheet): unknown[];
+  };
+}

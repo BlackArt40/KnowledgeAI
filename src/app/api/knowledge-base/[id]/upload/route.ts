@@ -8,6 +8,7 @@ import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
+import { parseDocument } from "@/lib/rag/parser";
 
 export const dynamic = "force-dynamic";
 
@@ -108,9 +109,18 @@ export async function POST(req: Request, { params }: Params) {
       errors.push(`${file.name} 保存失败`);
       continue;
     }
-    // extract text for indexing (text-like formats only; PDF/Word need a real loader)
+    // extract text for indexing via multi-format parser
     const dtype = docTypeFromName(file.name);
-    const content = isTextLike(dtype) ? buf.toString("utf-8").slice(0, MAX_TEXT) : undefined;
+    let content: string | undefined;
+    if (isTextLike(dtype)) {
+      content = buf.toString("utf-8").slice(0, MAX_TEXT);
+    } else {
+      // Parse PDF/Word/Excel/PPT using the multi-format parser
+      const parsed = await parseDocument(buf, file.name, dtype);
+      if (parsed) {
+        content = parsed.text.slice(0, MAX_TEXT);
+      }
+    }
     const doc = addDocument({ kbId: id, name: file.name, size: file.size, content });
     created.push(doc);
   }
