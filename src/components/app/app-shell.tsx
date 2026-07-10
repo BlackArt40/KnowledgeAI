@@ -70,7 +70,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role?: string }) {
+function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; role?: string; plan?: string }) {
   const pathname = usePathname();
 
   // Filter nav items by role; items without `roles` are visible to everyone
@@ -122,7 +122,8 @@ function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role?: 
         })}
       </nav>
 
-      {/* upgrade card */}
+      {/* upgrade card - only show for free-plan users */}
+      {(!plan || plan === "free") && (
       <div className="m-3 rounded-xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -132,12 +133,13 @@ function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role?: 
           解锁 Agent 调研与无限问答
         </p>
         <Link
-          href="/billing"
+          href="/checkout?plan=pro"
           className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg bg-brand-gradient text-xs font-medium text-white transition hover:brightness-105"
         >
           立即升级
         </Link>
       </div>
+      )}
     </div>
   );
 }
@@ -176,6 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [userMenu, setUserMenu] = React.useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const notifRef = React.useRef<HTMLDivElement>(null);
   const [notifs, setNotifs] = React.useState<{ id: string; type: string; title: string; body: string; read: boolean; createdAt: number; link?: string }[]>([]);
@@ -205,6 +208,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [notifOpen]);
+
+  // Close user menu when clicking outside
+  React.useEffect(() => {
+    if (!userMenu) return;
+    function handleOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [userMenu]);
 
   // Route -> allowed roles (must match navGroups roles). Checked on every navigation.
   const routeGuard = React.useCallback((role: string | undefined, path: string) => {
@@ -270,7 +285,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-background">
       {/* desktop sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-card/50 lg:block">
-        <SidebarContent role={user?.role} />
+        <SidebarContent role={user?.role} plan={user?.plan} />
       </aside>
 
       {/* mobile drawer */}
@@ -288,7 +303,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} role={user?.role} />
+            <SidebarContent onNavigate={() => setMobileOpen(false)} role={user?.role} plan={user?.plan} />
           </aside>
         </div>
       )}
@@ -376,7 +391,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
             <ThemeToggle />
-            <div className="relative ml-1">
+            <div className="relative ml-1" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenu((v) => !v)}
                 className="flex items-center gap-2 rounded-lg border border-border bg-card p-1 pr-2 transition-colors hover:bg-accent"
@@ -392,7 +407,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
               {userMenu && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setUserMenu(false)} />
                   <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-xl">
                     <div className="border-b border-border px-3 py-2">
                       <div className="text-sm font-medium">{user?.name}</div>

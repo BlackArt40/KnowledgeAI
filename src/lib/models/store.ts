@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
-// Model Config Store - persists user-configured external LLM providers.
-// 🔌 Production: replace globalThis store with encrypted DB rows (Prisma).
+// Model Config Store - per-user external LLM provider configurations.
+// 🔌 Production: replace globalThis store with encrypted DB rows (Prisma)
+//    scoped by userId.
 // ---------------------------------------------------------------------------
 
 import type { ModelConfig, ModelConfigSafe, ProviderPreset, ProviderId } from "./types";
@@ -80,16 +81,26 @@ export function getProvider(id: ProviderId): ProviderPreset | undefined {
   return PROVIDERS.find((p) => p.id === id);
 }
 
-// ── Store ────────────────────────────────────────────────────────────────
+// ── Per-user store ───────────────────────────────────────────────────────
+// Outer map: userId -> (inner map: modelId -> ModelConfig)
 
-type Store = { models: Map<string, ModelConfig>; seeded: boolean };
+type Store = Map<string, Map<string, ModelConfig>>;
 const g = globalThis as unknown as { __KAI_MODEL_STORE__?: Store };
 
 function store(): Store {
-  if (!g.__KAI_MODEL_STORE__) {
-    g.__KAI_MODEL_STORE__ = { models: new Map(), seeded: false };
-  }
+  if (!g.__KAI_MODEL_STORE__) g.__KAI_MODEL_STORE__ = new Map();
   return g.__KAI_MODEL_STORE__;
+}
+
+/** Get or create the inner map for a user. */
+function userModels(userId: string): Map<string, ModelConfig> {
+  const s = store();
+  let m = s.get(userId);
+  if (!m) {
+    m = new Map();
+    s.set(userId, m);
+  }
+  return m;
 }
 
 function uid() {
@@ -102,22 +113,23 @@ function maskKey(key: string): string {
   return `${key.slice(0, 4)}••••${key.slice(-4)}`;
 }
 
-/** Convert internal config to safe (key-masked) shape for API responses. */
 export function sanitize(m: ModelConfig): ModelConfigSafe {
   const { apiKey, ...rest } = m;
   return { ...rest, apiKeyMasked: maskKey(apiKey), hasKey: !!apiKey };
 }
 
-export function listModels(): ModelConfig[] {
-  return [...store().models.values()].sort((a, b) => a.createdAt - b.createdAt);
+// ── CRUD (all scoped by userId) ──────────────────────────────────────────
+
+export function listModels(userId: string): ModelConfig[] {
+  return [...userModels(userId).values()].sort((a, b) => a.createdAt - b.createdAt);
 }
 
-export function listModelsSafe(): ModelConfigSafe[] {
-  return listModels().map(sanitize);
+export function listModelsSafe(userId: string): ModelConfigSafe[] {
+  return listModels(userId).map(sanitize);
 }
 
-export function getModel(id: string): ModelConfig | null {
-  return store().models.get(id) ?? null;
+export function getModel(userId: string, id: string): ModelConfig | null {
+  return userModels(userId).get(id) ?? null;
 }
 
 export interface CreateModelInput {
@@ -129,7 +141,10 @@ export interface CreateModelInput {
   embeddingModel?: string;
 }
 
-export function createModel(input: CreateModelInput): ModelConfig | { error: string } {
+export function createModel(
+  userId: string,
+  input: CreateModelInput
+): ModelConfig | { error: string } {
   const preset = getProvider(input.provider);
   const providerName = preset?.name ?? input.provider;
   const name = input.name.trim() || `${providerName} · ${input.chatModel}`;
@@ -142,6 +157,7 @@ export function createModel(input: CreateModelInput): ModelConfig | { error: str
 
   const m: ModelConfig = {
     id: uid(),
+    userId,
     name,
     provider: input.provider,
     providerName,
@@ -155,7 +171,7 @@ export function createModel(input: CreateModelInput): ModelConfig | { error: str
     lastTestOk: null,
     createdAt: Date.now(),
   };
-  store().models.set(m.id, m);
+  userModels(userId).set(m.id, m);
   return m;
 }
 
@@ -169,8 +185,13 @@ export interface UpdateModelInput {
   isDefault?: boolean;
 }
 
-export function updateModel(id: string, patch: UpdateModelInput): ModelConfig | { error: string } {
-  const m = store().models.get(id);
+export function updateModel(
+  userId: string,
+  id: string,
+  patch: UpdateModelInput
+): ModelConfig | { error: string } {
+  const models = userModels(userId);
+  const m = models.get(id);
   if (!m) return { error: "模型配置不存在" };
 
   if (patch.name !== undefined) m.name = patch.name.trim() || m.name;
@@ -180,35 +201,33 @@ export function updateModel(id: string, patch: UpdateModelInput): ModelConfig | 
   if (patch.embeddingModel !== undefined) m.embeddingModel = patch.embeddingModel.trim();
   if (patch.enabled !== undefined) m.enabled = patch.enabled;
 
-  // Only one default at a time; enabling default also enables it.
   if (patch.isDefault) {
-    for (const other of store().models.values()) {
+    for (const other of models.values()) {
       if (other.id !== id) other.isDefault = false;
     }
     m.isDefault = true;
     m.enabled = true;
   }
 
-  store().models.set(id, m);
+  models.set(id, m);
   return m;
 }
 
-export function deleteModel(id: string): boolean {
-  return store().models.delete(id);
+export function deleteModel(userId: string, id: string): boolean {
+  return userModels(userId).delete(id);
 }
 
-export function setTestResult(id: string, ok: boolean) {
-  const m = store().models.get(id);
+export function setTestResult(userId: string, id: string, ok: boolean) {
+  const m = userModels(userId).get(id);
   if (!m) return;
   m.lastTestedAt = Date.now();
   m.lastTestOk = ok;
-  store().models.set(id, m);
 }
 
-/** The active model config used by the LLM provider.
- *  Priority: default+enabled user model > first enabled user model > null (env fallback). */
-export function getActiveModel(): ModelConfig | null {
-  const models = listModels();
+/** The active model config for a user.
+ *  Priority: default+enabled > first enabled > null (env fallback). */
+export function getActiveModelForUser(userId: string): ModelConfig | null {
+  const models = listModels(userId);
   const def = models.find((m) => m.isDefault && m.enabled);
   if (def) return def;
   return models.find((m) => m.enabled) ?? null;

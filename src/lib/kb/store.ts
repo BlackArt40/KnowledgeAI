@@ -24,6 +24,12 @@ const g = globalThis as unknown as { __KAI_KB_STORE__?: Store };
 function getStore(): Store {
   if (!g.__KAI_KB_STORE__) {
     g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
+  } else {
+    // HMR migration: KBs created before per-user isolation lack ownerId;
+    // assign them to the demo owner so access checks keep working.
+    for (const kb of g.__KAI_KB_STORE__.kbs.values()) {
+      if (!kb.ownerId) (kb as KnowledgeBase).ownerId = "usr_owner";
+    }
   }
   return g.__KAI_KB_STORE__;
 }
@@ -173,6 +179,7 @@ function seed() {
       desc: s.desc,
       color: s.color,
       initial: s.initial,
+      ownerId: "usr_owner",
       createdAt: now - 1000 * 60 * 60 * 24 * 30,
       updatedAt: now,
       settings: { ...DEFAULT_SETTINGS },
@@ -207,7 +214,15 @@ function seed() {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-export function listKbs(): KnowledgeBase[] {
+export function listKbs(ownerId?: string): KnowledgeBase[] {
+  seed();
+  const all = Array.from(getStore().kbs.values());
+  const filtered = ownerId ? all.filter((kb) => kb.ownerId === ownerId) : all;
+  return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** List ALL knowledge bases regardless of owner (for team-level features). */
+export function listAllKbs(): KnowledgeBase[] {
   seed();
   return Array.from(getStore().kbs.values()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -217,7 +232,7 @@ export function getKb(id: string): KnowledgeBase | undefined {
   return getStore().kbs.get(id);
 }
 
-export function createKb(input: { name: string; desc: string; color?: string; initial?: string }): KnowledgeBase {
+export function createKb(input: { name: string; desc: string; color?: string; initial?: string }, ownerId: string): KnowledgeBase {
   seed();
   const kb: KnowledgeBase = {
     id: uid("kb"),
@@ -225,6 +240,7 @@ export function createKb(input: { name: string; desc: string; color?: string; in
     desc: input.desc.trim(),
     color: input.color ?? "from-primary/15",
     initial: (input.initial ?? input.name.trim()).charAt(0) || "K",
+    ownerId,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: { ...DEFAULT_SETTINGS },
@@ -251,6 +267,21 @@ export function deleteKb(id: string): boolean {
   }
   vsClearKb(id);
   return store.kbs.delete(id);
+}
+
+// Sum of all document sizes across every KB (bytes). Web links (size -1) are
+// excluded. Used for real org-level storage metering on the dashboard.
+export function totalStorageBytes(ownerId?: string): number {
+  seed();
+  const kbs = Array.from(getStore().kbs.values());
+  const kbIds = new Set(
+    (ownerId ? kbs.filter((k) => k.ownerId === ownerId) : kbs).map((k) => k.id)
+  );
+  let total = 0;
+  for (const d of getStore().docs.values()) {
+    if (kbIds.has(d.kbId) && d.size > 0) total += d.size;
+  }
+  return total;
 }
 
 export function listDocuments(kbId: string): KbDocument[] {

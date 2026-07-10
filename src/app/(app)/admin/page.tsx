@@ -26,9 +26,9 @@ interface ProviderStatus {
 import { cn } from "@/lib/utils";
 
 const STATUS_VARIANT = {
-  active: "success", banned: "destructive", trial: "warning",
+  active: "success", banned: "destructive",
 } as const;
-const STATUS_LABEL = { active: "正常", banned: "已封禁", trial: "试用中" } as const;
+const STATUS_LABEL = { active: "正常", banned: "已封禁" } as const;
 const KB_STATUS = { ready: "就绪", processing: "处理中", error: "异常" } as const;
 
 export default function AdminPage() {
@@ -214,8 +214,8 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
-                <Label className="text-xs">限流（次/分）</Label>
-                <Input type="number" value={config.rateLimitPerMin} onChange={(e) => setConfig({ ...config, rateLimitPerMin: +e.target.value })} className="h-8 text-sm" />
+                <Label className="text-xs">限流（次/分）<span className="text-muted-foreground">· 环境变量</span></Label>
+                <Input type="number" value={config.rateLimitPerMin} readOnly className="h-8 cursor-not-allowed text-sm opacity-60" />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">上传上限（MB）</Label>

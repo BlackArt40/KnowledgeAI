@@ -26,6 +26,7 @@ export interface ProviderPreset {
 
 export interface ModelConfig {
   id: string;
+  userId: string;          // owner of this config (per-user isolation)
   name: string;            // user-friendly label
   provider: ProviderId;
   providerName: string;    // resolved display name

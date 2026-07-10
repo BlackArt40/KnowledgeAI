@@ -15,6 +15,7 @@ export interface User {
   passwordHash: string;
   role: Role;
   plan: "free" | "pro" | "enterprise";
+  status: "active" | "banned";
   createdAt: number;
   lastLoginAt: number | null;
 }
@@ -41,10 +42,10 @@ function store(): Store {
 }
 
 const SEED_USERS: Omit<User, "id" | "passwordHash" | "createdAt" | "lastLoginAt">[] = [
-  { email: "owner@knowledgeai.dev", name: "张明（Owner）", role: "owner", plan: "enterprise" },
-  { email: "admin@knowledgeai.dev", name: "李芳（Admin）", role: "admin", plan: "pro" },
-  { email: "editor@knowledgeai.dev", name: "王浩（Editor）", role: "editor", plan: "pro" },
-  { email: "viewer@knowledgeai.dev", name: "赵琳（Viewer）", role: "viewer", plan: "free" },
+  { email: "owner@knowledgeai.dev", name: "张明（Owner）", role: "owner", plan: "enterprise", status: "active" },
+  { email: "admin@knowledgeai.dev", name: "李芳（Admin）", role: "admin", plan: "pro", status: "active" },
+  { email: "editor@knowledgeai.dev", name: "王浩（Editor）", role: "editor", plan: "pro", status: "active" },
+  { email: "viewer@knowledgeai.dev", name: "赵琳（Viewer）", role: "viewer", plan: "free", status: "active" },
 ];
 
 export function seed() {
@@ -58,6 +59,7 @@ export function seed() {
       ...u,
       id: `usr_${u.email.split("@")[0]}`,
       passwordHash: pwdHash,
+      status: "active",
       createdAt: now - 30 * 86400000,
       lastLoginAt: null,
     };
@@ -99,6 +101,7 @@ export function createUser(name: string, email: string, password: string, role: 
     passwordHash: hashPwd(password),
     role,
     plan: "free",
+    status: "active",
     createdAt: Date.now(),
     lastLoginAt: null,
   };
@@ -147,6 +150,37 @@ export function updateUser(
 
   s.users.set(user.id, user);
   return user;
+}
+
+/** Admin: set a user's status (active/banned). */
+export function setUserStatus(userId: string, status: "active" | "banned"): User | null {
+  seed();
+  const s = store();
+  const u = s.users.get(userId);
+  if (!u) return null;
+  u.status = status;
+  return u;
+}
+
+/** Billing: upgrade/downgrade a user's plan after payment. */
+export function updateUserPlan(userId: string, plan: "free" | "pro" | "enterprise"): User | null {
+  seed();
+  const s = store();
+  const u = s.users.get(userId);
+  if (!u) return null;
+  u.plan = plan;
+  return u;
+}
+
+/** Account deletion: remove user from auth store. */
+export function deleteUser(userId: string): boolean {
+  seed();
+  const s = store();
+  const u = s.users.get(userId);
+  if (!u) return false;
+  s.emailIndex.delete(u.email.toLowerCase());
+  s.users.delete(userId);
+  return true;
 }
 
 // Strip sensitive fields for API responses

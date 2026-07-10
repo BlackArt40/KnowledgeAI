@@ -36,6 +36,7 @@ export interface KnowledgeBase {
   desc: string;
   color: string; // tailwind gradient classes e.g. "from-indigo-500/15"
   initial: string;
+  ownerId: string; // per-user isolation: which user owns this KB
   createdAt: number;
   updatedAt: number;
   settings: KbSettings;

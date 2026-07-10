@@ -3,14 +3,17 @@ import { promises as fs } from "fs";
 import path from "path";
 import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
+import { canEditKb } from "@/lib/team/store";
+import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
+import { getRequestUser } from "@/lib/auth/guard";
+import { fetchUrlContent } from "@/lib/rag/fetcher";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads");
-const MAX_SIZE = 25 * 1024 * 1024; // 25 MB per file
 const MAX_TEXT = 2 * 1024 * 1024; // 2 MB of text indexed per file
 
 async function ensureDir(p: string) {
@@ -20,9 +23,13 @@ async function ensureDir(p: string) {
 // POST /api/knowledge-base/[id]/upload
 // multipart/form-data "files" (one or more) OR JSON { url, name } for a web link.
 export async function POST(req: Request, { params }: Params) {
+  const u = await getRequestUser(req);
+  if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await params;
   const kb = getKb(id);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
+  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId))
+    return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
 
   const contentType = req.headers.get("content-type") ?? "";
 
@@ -37,13 +44,25 @@ export async function POST(req: Request, { params }: Params) {
     if (!body.url?.trim()) {
       return NextResponse.json({ error: "URL 不能为空" }, { status: 400 });
     }
+    const link = body.url.trim();
+    // Fetch the page content so the link can be chunked + indexed like a file.
+    const fetched = await fetchUrlContent(link);
     const doc = addDocument({
       kbId: id,
-      name: body.name?.trim() || body.url.trim(),
-      size: -1,
-      url: body.url.trim(),
+      name: body.name?.trim() || fetched?.title || link,
+      size: fetched?.text.length ?? -1,
+      url: link,
+      content: fetched?.text,
     });
-    notify("kbReady", `知识库「${kb.name}」新增文档`, `${doc.name} 已添加并处理完成。`, "/knowledge-base");
+    notify(
+      u.id,
+      "kbReady",
+      `知识库「${kb.name}」新增文档`,
+      fetched
+        ? `${doc.name} 已添加并处理完成。`
+        : `${link} 已添加，但未能抓取页面内容（可能需要稍后重试）。`,
+      "/knowledge-base"
+    );
     return NextResponse.json({ docs: [doc] }, { status: 201 });
   }
 
@@ -70,8 +89,9 @@ export async function POST(req: Request, { params }: Params) {
   const errors: string[] = [];
 
   for (const file of files) {
-    if (file.size > MAX_SIZE) {
-      errors.push(`${file.name} 超过 25MB 限制`);
+    const maxBytes = getConfig().maxUploadMb * 1024 * 1024;
+    if (file.size > maxBytes) {
+      errors.push(`${file.name} 超过 ${getConfig().maxUploadMb}MB 限制`);
       continue;
     }
     let buf: Buffer;
@@ -97,6 +117,7 @@ export async function POST(req: Request, { params }: Params) {
 
   if (created.length > 0) {
     notify(
+      u.id,
       "kbReady",
       `知识库「${kb.name}」处理完成`,
       `${created.length} 篇文档已成功处理${errors.length > 0 ? `（${errors.length} 篇失败）` : ""}，可以开始问答了。`,

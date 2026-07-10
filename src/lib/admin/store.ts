@@ -1,25 +1,18 @@
 import type { AdminUser, AdminOverview, KbMonitor, SystemConfig, UserStatus } from "./types";
+import { listUsers as authListUsers, getUserById, setUserStatus as authSetUserStatus } from "@/lib/auth/store";
+import { listAllKbs, listDocuments, totalStorageBytes } from "@/lib/kb/store";
+import { getUsage, listAllInvoices } from "@/lib/billing/store";
+import { listTasks } from "@/lib/agent/store";
+import { getPlan } from "@/lib/billing/plans";
 
-type Store = {
-  users: AdminUser[];
-  kbs: KbMonitor[];
-  config: SystemConfig;
-  seeded: boolean;
-};
+// ── System config (in-memory, the only piece that was already real) ──────
+
+type Store = { config: SystemConfig };
 const g = globalThis as unknown as { __KAI_ADMIN_STORE__?: Store };
-
-const NOW = Date.now();
-const DAY = 86400000;
-
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function store(): Store {
   if (!g.__KAI_ADMIN_STORE__) {
     g.__KAI_ADMIN_STORE__ = {
-      users: [],
-      kbs: [],
       config: {
         defaultModel: "gpt-4o",
         embeddingModel: "bge-m3",
@@ -28,110 +21,193 @@ function store(): Store {
         maintenanceMode: false,
         allowSignup: true,
       },
-      seeded: false,
     };
   }
   return g.__KAI_ADMIN_STORE__;
 }
 
-const NAMES = [
-  ["张明", "zhangming", "pro", "owner"],
-  ["李芳", "lifang", "enterprise", "admin"],
-  ["王浩", "wanghao", "pro", "editor"],
-  ["赵琳", "zhaolin", "free", "viewer"],
-  ["陈杰", "chenjie", "pro", "editor"],
-  ["刘洋", "liuyang", "enterprise", "admin"],
-  ["周婷", "zhouting", "free", "viewer"],
-  ["吴磊", "wulei", "pro", "editor"],
-  ["郑雪", "zhengxue", "free", "viewer"],
-  ["孙强", "sunqiang", "enterprise", "admin"],
-  ["马丽", "mali", "pro", "editor"],
-  ["朱涛", "zhutao", "free", "viewer"],
-  ["胡静", "hujing", "pro", "editor"],
-  ["林峰", "linfeng", "enterprise", "admin"],
-  ["黄梅", "huangmei", "free", "viewer"],
-] as const;
+// ── Users ────────────────────────────────────────────────────────────────
 
-function seed() {
-  const s = store();
-  if (s.seeded) return;
-  s.seeded = true;
-
-  s.users = NAMES.map(([name, email, plan, role], i) => ({
-    id: `usr_${email}`,
-    name: name as string,
-    email: `${email}@example.com`,
-    plan: plan as AdminUser["plan"],
-    status: i % 11 === 0 ? "banned" : i % 7 === 0 ? "trial" : "active",
-    role: role as AdminUser["role"],
-    kbs: Math.floor(Math.random() * 8) + 1,
-    docs: Math.floor(Math.random() * 200) + 5,
-    lastActive: NOW - Math.floor(Math.random() * 20) * DAY,
-    joinedAt: NOW - (i + 1) * 12 * DAY,
-  }));
-
-  const kbNames = ["产品文档库", "技术规范库", "客服FAQ库", "销售话术库", "法律合规库", "研发知识库", "市场调研库", "HR制度库"];
-  s.kbs = kbNames.map((name, i) => ({
-    id: `kb_mon_${i}`,
-    name,
-    owner: s.users[i % s.users.length].name,
-    docs: Math.floor(Math.random() * 180) + 10,
-    size: `${(Math.random() * 800 + 20).toFixed(0)} MB`,
-    status: i % 9 === 0 ? "error" : i % 5 === 0 ? "processing" : "ready",
-    queries: Math.floor(Math.random() * 5000) + 100,
-    updatedAt: NOW - Math.floor(Math.random() * 10) * DAY,
-  }));
-}
-
-export function getOverview(): AdminOverview {
-  seed();
-  const s = store();
-  const active = s.users.filter((u) => NOW - u.lastActive < 30 * DAY).length;
-  const monthlyRevenue = s.users.reduce((sum, u) => {
-    if (u.status === "banned") return sum;
-    return sum + (u.plan === "pro" ? 49 : u.plan === "enterprise" ? 299 : 0);
-  }, 0);
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月"];
-  return {
-    stats: {
-      totalUsers: s.users.length + 847,
-      activeUsers30d: active + 312,
-      totalKbs: s.kbs.length + 124,
-      totalDocs: s.users.reduce((a, u) => a + u.docs, 0) + 3210,
-      monthlyRevenue,
-      qaThisMonth: 48210,
-      agentTasksThisMonth: 1267,
-      storageUsedGb: 38.6,
-    },
-    recentSignups: [...s.users].sort((a, b) => b.joinedAt - a.joinedAt).slice(0, 6),
-    revenueTrend: months.map((m, i) => ({ month: m, revenue: 3200 + i * 850 + Math.round(Math.random() * 400) })),
-  };
-}
-
+/** Build AdminUser records from the real auth store, enriched with KB/doc
+ *  counts from the KB store and QA usage from the billing store. */
 export function listUsers(): AdminUser[] {
-  seed();
-  return [...store().users].sort((a, b) => b.joinedAt - a.joinedAt);
+  const users = authListUsers();
+  return users.map((u) => {
+    const userKbs = listAllKbs().filter((kb) => kb.ownerId === u.id);
+    const docs = userKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
+    const usage = getUsage(u.id);
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      plan: u.plan,
+      status: (u.status ?? "active") as UserStatus,
+      role: u.role,
+      kbs: userKbs.length,
+      docs,
+      lastActive: u.lastLoginAt ?? u.createdAt,
+      joinedAt: u.createdAt,
+    };
+  }).sort((a, b) => b.joinedAt - a.joinedAt);
 }
 
 export function setUserStatus(id: string, status: UserStatus): AdminUser | null {
-  seed();
-  const u = store().users.find((u) => u.id === id);
-  if (u) u.status = status;
-  return u ?? null;
+  const updated = authSetUserStatus(id, status);
+  if (!updated) return null;
+  // Re-derive the enriched record.
+  const userKbs = listAllKbs().filter((kb) => kb.ownerId === updated.id);
+  const docs = userKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
+  return {
+    id: updated.id,
+    name: updated.name,
+    email: updated.email,
+    plan: updated.plan,
+    status,
+    role: updated.role,
+    kbs: userKbs.length,
+    docs,
+    lastActive: updated.lastLoginAt ?? updated.createdAt,
+    joinedAt: updated.createdAt,
+  };
+}
+
+// ── Overview stats ───────────────────────────────────────────────────────
+
+const DAY = 86400000;
+const PLAN_PRICE: Record<string, number> = { free: 0, pro: 49, enterprise: 299 };
+
+function monthLabel(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}月`;
+}
+
+export function getOverview(): AdminOverview {
+  const users = authListUsers();
+  const allKbs = listAllKbs();
+  const allTasks = listTasks();
+  const now = Date.now();
+  const monthStart = (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d.getTime(); })();
+
+  // Active = logged in within 30 days (fallback to createdAt if never logged in)
+  const active30d = users.filter(
+    (u) => (u.lastLoginAt ?? u.createdAt) > now - 30 * DAY
+  ).length;
+
+  // Monthly revenue: sum of plan prices for non-banned users
+  const monthlyRevenue = users
+    .filter((u) => (u.status ?? "active") !== "banned")
+    .reduce((sum, u) => sum + (PLAN_PRICE[u.plan] ?? 0), 0);
+
+  // Total docs across all KBs
+  const totalDocs = allKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
+
+  // QA this month: sum of all users' qaUsed
+  const qaThisMonth = users.reduce((sum, u) => sum + getUsage(u.id).qaUsed, 0);
+
+  // Agent tasks this month
+  const agentTasksThisMonth = allTasks.filter((t) => t.createdAt >= monthStart).length;
+
+  // Storage in GB
+  const storageBytes = totalStorageBytes();
+  const storageUsedGb = +(storageBytes / 1e9).toFixed(1);
+
+  // Revenue trend: last 6 months from invoices, fall back to current MRR
+  const invoices = listAllInvoices();
+  const trend: { month: string; revenue: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth() - i, 1); d.setHours(0,0,0,0);
+    const start = d.getTime();
+    const end = start + 31 * DAY;
+    const label = monthLabel(start);
+    const invRev = invoices
+      .filter((inv) => inv.date >= start && inv.date < end && inv.status === "paid")
+      .reduce((s, inv) => s + inv.amount, 0);
+    // For the current month, use computed MRR (more accurate than invoices).
+    const revenue = i === 0 ? monthlyRevenue : invRev;
+    trend.push({ month: label, revenue });
+  }
+
+  // Recent signups: last 6 users by createdAt
+  const recentSignups = [...users]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 6)
+    .map((u) => {
+      const userKbs = listAllKbs().filter((kb) => kb.ownerId === u.id);
+      const docs = userKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        plan: u.plan,
+        status: (u.status ?? "active") as UserStatus,
+        role: u.role,
+        kbs: userKbs.length,
+        docs,
+        lastActive: u.lastLoginAt ?? u.createdAt,
+        joinedAt: u.createdAt,
+      };
+    });
+
+  return {
+    stats: {
+      totalUsers: users.length,
+      activeUsers30d: active30d,
+      totalKbs: allKbs.length,
+      totalDocs,
+      monthlyRevenue,
+      qaThisMonth,
+      agentTasksThisMonth,
+      storageUsedGb,
+    },
+    recentSignups,
+    revenueTrend: trend,
+  };
+}
+
+// ── KB monitor ───────────────────────────────────────────────────────────
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 export function listKbs(): KbMonitor[] {
-  seed();
-  return store().kbs;
+  const allKbs = listAllKbs();
+  return allKbs.map((kb) => {
+    const docs = listDocuments(kb.id);
+    const owner = getUserById(kb.ownerId);
+    const sizeBytes = docs.reduce((sum, d) => sum + Math.max(0, d.size), 0);
+    // Status: "processing" if any doc is still processing, "error" if any
+    // errored, otherwise "ready".
+    const statuses = docs.map((d) => d.status);
+    const status: KbMonitor["status"] = statuses.some((s) =>
+      ["queued", "parsing", "chunking", "vectorizing"].includes(s)
+    ) ? "processing"
+      : statuses.some((s) => s === "failed") ? "error"
+      : "ready";
+
+    return {
+      id: kb.id,
+      name: kb.name,
+      owner: owner?.name ?? "未知",
+      docs: docs.length,
+      size: formatSize(sizeBytes),
+      status,
+      queries: 0, // per-KB query tracking not yet implemented
+      updatedAt: kb.updatedAt,
+    };
+  }).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+// ── System config (unchanged - was already real) ────────────────────────
+
 export function getConfig(): SystemConfig {
-  seed();
   return store().config;
 }
 
 export function updateConfig(patch: Partial<SystemConfig>): SystemConfig {
-  seed();
   const s = store();
   s.config = { ...s.config, ...patch };
   return s.config;

@@ -93,7 +93,7 @@ export function getMember(id: string): Member | undefined {
   return store().members.get(id);
 }
 
-export function inviteMember(input: { name: string; email: string; role: Role }): Member {
+export function inviteMember(input: { name: string; email: string; role: Role }, actor = "系统"): Member {
   seed();
   const s = store();
   const member: Member = {
@@ -108,7 +108,7 @@ export function inviteMember(input: { name: string; email: string; role: Role })
   s.members.set(member.id, member);
   s.audit.unshift({
     id: uid(),
-    actor: "王同学",
+    actor,
     action: "邀请成员",
     target: member.name,
     detail: `以 ${member.role} 角色邀请加入团队`,
@@ -117,7 +117,7 @@ export function inviteMember(input: { name: string; email: string; role: Role })
   return member;
 }
 
-export function updateMemberRole(id: string, role: Role): Member | undefined {
+export function updateMemberRole(id: string, role: Role, actor = "系统"): Member | undefined {
   seed();
   const s = store();
   const m = s.members.get(id);
@@ -126,7 +126,7 @@ export function updateMemberRole(id: string, role: Role): Member | undefined {
   m.role = role;
   s.audit.unshift({
     id: uid(),
-    actor: "王同学",
+    actor,
     action: "修改角色",
     target: m.name,
     detail: `角色由 ${prev} 调整为 ${role}`,
@@ -135,14 +135,14 @@ export function updateMemberRole(id: string, role: Role): Member | undefined {
   return m;
 }
 
-export function removeMember(id: string): boolean {
+export function removeMember(id: string, actor = "系统"): boolean {
   seed();
   const s = store();
   const m = s.members.get(id);
   if (!m) return false;
   s.audit.unshift({
     id: uid(),
-    actor: "王同学",
+    actor,
     action: "移除成员",
     target: m.name,
     detail: `从团队移除 ${m.email}`,
@@ -160,6 +160,18 @@ export function getKbAccess(kbId: string, kbName: string): KbAccess {
   seed();
   const s = store();
   return s.kbAccess.get(kbId) ?? DEFAULT_ACCESS_BY_NAME[kbName] ?? "view";
+}
+
+/** Can the user VIEW (read) this KB? Owner always; others if not private. */
+export function canViewKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
+  if (ownerId === userId) return true;
+  return getKbAccess(kbId, kbName) !== "private";
+}
+
+/** Can the user EDIT (upload/modify) this KB? Owner always; others only with "edit". */
+export function canEditKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
+  if (ownerId === userId) return true;
+  return getKbAccess(kbId, kbName) === "edit";
 }
 
 export function setKbAccess(kbId: string, access: KbAccess): void {

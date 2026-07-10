@@ -17,51 +17,66 @@ import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { type KnowledgeBase, type KbSettings } from "@/lib/kb/types";
 
+// Built-in preset embedding models (always available, no config needed).
+const PRESET_MODELS = [
+  { value: "text-embedding-3-small", label: "OpenAI · text-embedding-3-small" },
+  { value: "text-embedding-3-large", label: "OpenAI · text-embedding-3-large" },
+  { value: "bge-large-zh", label: "BAAI · bge-large-zh (中文)" },
+  { value: "m3e-base", label: "Moka · m3e-base" },
+];
+
 export function KbSettingsDialog({
   kb,
   onSaved,
+  open: openProp,
+  onOpenChange,
 }: {
   kb: KnowledgeBase;
   onSaved: (kb: KnowledgeBase) => void;
+  /** Controlled open state (e.g. opened from a parent menu). When omitted the
+   *  dialog manages its own state and renders its built-in trigger button. */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? (openProp as boolean) : internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<KbSettings>(kb.settings);
-  const [embModels, setEmbModels] = React.useState<{ value: string; label: string }[]>([]);
+  // Embedding models imported by the user in Settings -> AI models.
+  const [userEmbModels, setUserEmbModels] = React.useState<{ value: string; label: string }[]>([]);
 
-  // Default preset embedding models
-  const PRESET_MODELS = [
-    { value: "text-embedding-3-small", label: "OpenAI · text-embedding-3-small" },
-    { value: "text-embedding-3-large", label: "OpenAI · text-embedding-3-large" },
-    { value: "bge-large-zh", label: "BAAI · bge-large-zh (中文)" },
-    { value: "m3e-base", label: "Moka · m3e-base" },
-  ];
-
-  // Fetch user's configured external models for embedding options
+  // Fetch the user's configured external models and surface their embedding
+  // models as a separate "user-configured" group (excluding built-in presets).
   React.useEffect(() => {
     fetch("/api/models", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        const models: { value: string; label: string }[] = [...PRESET_MODELS];
-        for (const m of d.models ?? []) {
-          if (m.embeddingModel) {
-            models.push({
-              value: m.embeddingModel,
-              label: `${m.providerName} · ${m.embeddingModel}${m.enabled ? "" : " (未启用)"}`,
-            });
-          }
-        }
-        // Deduplicate by value
+        const presetValues = new Set(PRESET_MODELS.map((m) => m.value));
         const seen = new Set<string>();
-        setEmbModels(models.filter((m) => !seen.has(m.value) && seen.add(m.value)));
+        const userModels: { value: string; label: string }[] = [];
+        for (const m of d.models ?? []) {
+          if (!m.embeddingModel) continue;
+          // Skip duplicates of built-in presets (they already appear above).
+          if (presetValues.has(m.embeddingModel) || seen.has(m.embeddingModel)) continue;
+          seen.add(m.embeddingModel);
+          userModels.push({
+            value: m.embeddingModel,
+            label: `${m.providerName} · ${m.embeddingModel}${m.enabled ? "" : "（未启用）"}`,
+          });
+        }
+        setUserEmbModels(userModels);
       })
-      .catch(() => setEmbModels(PRESET_MODELS));
+      .catch(() => setUserEmbModels([]));
   }, []);
 
   React.useEffect(() => {
@@ -89,13 +104,23 @@ export function KbSettingsDialog({
     }
   }
 
+  // Whether the currently selected embedding model is a user-configured one.
+  const selectedIsUser = userEmbModels.some((m) => m.value === form.embeddingModel);
+  // Fallback: keep the current value selectable if it's missing from both groups.
+  const selectedMissing =
+    !!form.embeddingModel &&
+    !PRESET_MODELS.some((m) => m.value === form.embeddingModel) &&
+    !userEmbModels.some((m) => m.value === form.embeddingModel);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Settings2 className="h-4 w-4" /> 设置
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Settings2 className="h-4 w-4" /> 设置
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>知识库设置</DialogTitle>
@@ -138,7 +163,12 @@ export function KbSettingsDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Embedding 模型</Label>
+            <div className="flex items-center justify-between">
+              <Label>Embedding 模型</Label>
+              <span className="text-xs text-muted-foreground">
+                {selectedIsUser ? "用户配置" : selectedMissing ? "其他" : "自带预设"}
+              </span>
+            </div>
             <Select
               value={form.embeddingModel}
               onValueChange={(v) => set("embeddingModel", v)}
@@ -147,15 +177,33 @@ export function KbSettingsDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(embModels.length > 0 ? embModels : PRESET_MODELS).map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
+                <SelectGroup>
+                  <SelectLabel>自带预设</SelectLabel>
+                  {PRESET_MODELS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                {userEmbModels.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>用户配置（设置 → AI 模型）</SelectLabel>
+                    {userEmbModels.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+                {selectedMissing && (
+                  <SelectItem value={form.embeddingModel}>
+                    {form.embeddingModel}
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              预设模型 + 已配置的外部模型（设置 → AI 模型）
+              自带预设 {PRESET_MODELS.length} 个 · 用户配置 {userEmbModels.length} 个（来自 设置 → AI 模型）
             </p>
           </div>
 

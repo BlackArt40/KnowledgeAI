@@ -38,6 +38,7 @@ export interface AgentTask {
   createdAt: number;
   updatedAt: number;
   durationMs?: number;
+  userId?: string;
 }
 
 export const AGENT_DEFS: { role: AgentRole; name: string; icon: string }[] = [

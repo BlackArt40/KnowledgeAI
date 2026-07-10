@@ -34,6 +34,7 @@ export default function TeamPage() {
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>("members");
   const [myEmail, setMyEmail] = React.useState<string | null>(null);
+  const [myRole, setMyRole] = React.useState<Role | null>(null);
 
   const fetchTeam = React.useCallback(async () => {
     try {
@@ -43,7 +44,10 @@ export default function TeamPage() {
       ]);
       if (teamRes.ok) setData(await teamRes.json());
       const me = await meRes.json();
-      if (me.user) setMyEmail(me.user.email);
+      if (me.user) {
+        setMyEmail(me.user.email);
+        setMyRole(me.user.role as Role);
+      }
     } catch {
       // ignore
     } finally {
@@ -81,12 +85,17 @@ export default function TeamPage() {
   }
 
   const { team, members, stats, sharedKbs, audit } = data;
-  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const canManage = myRole ? can(myRole, "member.manage") : false;
+  const canInvite = myRole ? can(myRole, "member.invite") : false;
+  const canSettings = myRole ? can(myRole, "team.settings") : false;
+  const allTabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: "members", label: "成员管理", icon: Users },
     { id: "shared", label: "共享知识库", icon: Library },
     { id: "matrix", label: "权限矩阵", icon: ShieldCheck },
     { id: "audit", label: "操作日志", icon: ScrollText },
   ];
+  // Audit log is restricted to managers; hide the tab for everyone else.
+  const tabs = canManage ? allTabs : allTabs.filter((t) => t.id !== "audit");
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -105,8 +114,8 @@ export default function TeamPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <TeamSettingsDialog team={team} onSaved={(t) => setData((d) => d ? { ...d, team: t } : d)} />
-          <InviteDialog onInvited={fetchTeam} />
+          {canSettings && <TeamSettingsDialog team={team} onSaved={(t) => setData((d) => d ? { ...d, team: t } : d)} />}
+          {canInvite && <InviteDialog onInvited={fetchTeam} />}
         </div>
       </div>
 
@@ -151,7 +160,7 @@ export default function TeamPage() {
                   <div>
                     {isOwner ? (
                       <Badge variant="default" className="gap-1"><Crown className="h-3 w-3" /> Owner</Badge>
-                    ) : (
+                    ) : canManage ? (
                       <Select value={m.role} onValueChange={(v) => changeRole(m.id, v as Role)}>
                         <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -160,20 +169,24 @@ export default function TeamPage() {
                           <SelectItem value="viewer">Viewer</SelectItem>
                         </SelectContent>
                       </Select>
+                    ) : (
+                      <Badge variant="secondary">{ROLE_LABEL[m.role]}</Badge>
                     )}
                   </div>
                   <div><StatusBadge status={m.status} /></div>
                   <div className="text-xs text-muted-foreground">{formatRelative(m.lastActiveAt)}</div>
                   <div className="flex justify-end">
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-                      disabled={isOwner || isSelf}
-                      onClick={() => removeMember(m.id)}
-                      aria-label="移除成员"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {canManage && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                        disabled={isOwner || isSelf}
+                        onClick={() => removeMember(m.id)}
+                        aria-label="移除成员"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -185,7 +198,9 @@ export default function TeamPage() {
       {/* shared kbs */}
       {tab === "shared" && (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">设置团队共享知识库的访问权限。</p>
+          <p className="text-sm text-muted-foreground">
+            {canManage ? "设置团队共享知识库的访问权限。" : "团队共享知识库的访问权限。"}
+          </p>
           <div className="overflow-hidden rounded-2xl border border-border">
             <div className="divide-y divide-border">
               {sharedKbs.map((k) => (
@@ -194,17 +209,26 @@ export default function TeamPage() {
                     <Library className="h-[18px] w-[18px]" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{k.kbName}</p>
-                    <p className="text-xs text-muted-foreground">{k.docs} 篇文档</p>
+                    <p className="truncate text-sm font-medium">
+                      {k.kbName}
+                      {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">（我的）</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {k.ownerName} · {k.docs} 篇文档
+                    </p>
                   </div>
-                  <Select value={k.access} onValueChange={(v) => changeAccess(k.kbId, v as KbAccess)}>
-                    <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="view">全员可读</SelectItem>
-                      <SelectItem value="edit">成员可编辑</SelectItem>
-                      <SelectItem value="private">仅 Owner/Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {canManage ? (
+                    <Select value={k.access} onValueChange={(v) => changeAccess(k.kbId, v as KbAccess)}>
+                      <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="view">全员可读</SelectItem>
+                        <SelectItem value="edit">成员可编辑</SelectItem>
+                        <SelectItem value="private">仅 Owner/Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant="secondary">{ACCESS_LABEL[k.access]}</Badge>
+                  )}
                 </div>
               ))}
             </div>

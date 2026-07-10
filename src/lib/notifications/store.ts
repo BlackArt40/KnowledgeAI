@@ -1,5 +1,6 @@
 // ---------------------------------------------------------------------------
 // Notification Store - preferences + in-app notification inbox.
+// Per-user isolated: every user has their own preferences and inbox.
 // 🔌 Production: replace with DB + email worker (Resend/SendGrid) + cron for
 //    weekly digest.  In-app notifications -> push (Web Push / FCM).
 // ---------------------------------------------------------------------------
@@ -7,19 +8,20 @@
 import type { Notification, NotificationPrefs, NotifType } from "./types";
 
 interface Store {
-  prefs: NotificationPrefs;
-  notifications: Notification[];
-  seeded: boolean;
+  prefsByUser: Map<string, NotificationPrefs>;
+  notificationsByUser: Map<string, Notification[]>;
+  seededUsers: Set<string>;
 }
 
 const g = globalThis as unknown as { __KAI_NOTIF_STORE__?: Store };
 
 function store(): Store {
-  if (!g.__KAI_NOTIF_STORE__) {
+  if (!g.__KAI_NOTIF_STORE__ || !g.__KAI_NOTIF_STORE__.seededUsers) {
+    // HMR migration: reset singletons created by an older store revision.
     g.__KAI_NOTIF_STORE__ = {
-      prefs: { emailDigest: false, kbReady: true, agentDone: true, securityAlert: true },
-      notifications: [],
-      seeded: false,
+      prefsByUser: new Map(),
+      notificationsByUser: new Map(),
+      seededUsers: new Set(),
     };
   }
   return g.__KAI_NOTIF_STORE__;
@@ -29,36 +31,62 @@ function uid() {
   return `ntf_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function defaultPrefs(): NotificationPrefs {
+  return { emailDigest: false, kbReady: true, agentDone: true, securityAlert: true };
+}
+
 // ── Preferences ──────────────────────────────────────────────────────────
 
-export function getPrefs(): NotificationPrefs {
-  seed();
-  return { ...store().prefs };
-}
-
-export function updatePrefs(patch: Partial<NotificationPrefs>): NotificationPrefs {
-  seed();
+export function getPrefs(userId: string): NotificationPrefs {
+  ensureSeed(userId);
   const s = store();
-  s.prefs = { ...s.prefs, ...patch };
-  return { ...s.prefs };
+  let p = s.prefsByUser.get(userId);
+  if (!p) {
+    p = defaultPrefs();
+    s.prefsByUser.set(userId, p);
+  }
+  return { ...p };
 }
 
-function isChannelEnabled(type: NotifType): boolean {
-  return store().prefs[type];
+export function updatePrefs(
+  userId: string,
+  patch: Partial<NotificationPrefs>
+): NotificationPrefs {
+  ensureSeed(userId);
+  const s = store();
+  const p = { ...defaultPrefs(), ...s.prefsByUser.get(userId), ...patch };
+  s.prefsByUser.set(userId, p);
+  return { ...p };
+}
+
+function isChannelEnabled(userId: string, type: NotifType): boolean {
+  return getPrefs(userId)[type];
+}
+
+function inbox(userId: string): Notification[] {
+  ensureSeed(userId);
+  const s = store();
+  let list = s.notificationsByUser.get(userId);
+  if (!list) {
+    list = [];
+    s.notificationsByUser.set(userId, list);
+  }
+  return list;
 }
 
 // ── Notifications ────────────────────────────────────────────────────────
 
-/** Create a notification (only if the channel is enabled). Returns the
- *  notification or null if the channel is disabled. */
+/** Create a notification for a user (only if their channel is enabled). */
 export function notify(
+  userId: string,
   type: NotifType,
   title: string,
   body: string,
   link?: string
 ): Notification | null {
-  seed();
-  if (!isChannelEnabled(type)) return null;
+  if (!userId) return null;
+  ensureSeed(userId);
+  if (!isChannelEnabled(userId, type)) return null;
   const n: Notification = {
     id: uid(),
     type,
@@ -68,51 +96,56 @@ export function notify(
     createdAt: Date.now(),
     link,
   };
-  store().notifications.unshift(n);
-  // keep max 50
-  if (store().notifications.length > 50) {
-    store().notifications = store().notifications.slice(0, 50);
-  }
+  const list = inbox(userId);
+  list.unshift(n);
+  if (list.length > 50) ssplice(list, 0, list.length - 50);
   return n;
 }
 
-export function listNotifications(limit?: number): Notification[] {
-  seed();
-  const all = [...store().notifications].sort((a, b) => b.createdAt - a.createdAt);
+// in-place truncate helper (keeps the most recent 50)
+function ssplice(arr: Notification[], start: number, deleteCount: number) {
+  arr.splice(start, deleteCount);
+}
+
+export function listNotifications(userId: string, limit?: number): Notification[] {
+  ensureSeed(userId);
+  const all = [...inbox(userId)].sort((a, b) => b.createdAt - a.createdAt);
   return limit ? all.slice(0, limit) : all;
 }
 
-export function markRead(id: string): void {
-  seed();
-  const n = store().notifications.find((x) => x.id === id);
+export function markRead(userId: string, id: string): void {
+  ensureSeed(userId);
+  const n = inbox(userId).find((x) => x.id === id);
   if (n) n.read = true;
 }
 
-export function markAllRead(): void {
-  seed();
-  store().notifications.forEach((n) => (n.read = true));
+export function markAllRead(userId: string): void {
+  ensureSeed(userId);
+  inbox(userId).forEach((n) => (n.read = true));
 }
 
-export function unreadCount(): number {
-  seed();
-  return store().notifications.filter((n) => !n.read).length;
+export function unreadCount(userId: string): number {
+  ensureSeed(userId);
+  return inbox(userId).filter((n) => !n.read).length;
 }
 
-export function deleteNotification(id: string): boolean {
-  seed();
-  const s = store();
-  const idx = s.notifications.findIndex((x) => x.id === id);
+export function deleteNotification(userId: string, id: string): boolean {
+  ensureSeed(userId);
+  const list = inbox(userId);
+  const idx = list.findIndex((x) => x.id === id);
   if (idx === -1) return false;
-  s.notifications.splice(idx, 1);
+  list.splice(idx, 1);
   return true;
 }
 
-// ── Seed demo data ───────────────────────────────────────────────────────
+// ── Seed demo data (per user, on first access) ──────────────────────────
 
-function seed() {
+function ensureSeed(userId: string) {
   const s = store();
-  if (s.seeded) return;
-  s.seeded = true;
+  if (s.seededUsers.has(userId)) return;
+  s.seededUsers.add(userId);
+  if (!s.prefsByUser.has(userId)) s.prefsByUser.set(userId, defaultPrefs());
+
   const now = Date.now();
   const min = 60 * 1000;
   const hr = 60 * min;
@@ -149,7 +182,7 @@ function seed() {
     },
   ];
 
-  for (const d of demos) {
-    store().notifications.push({ ...d, id: uid(), read: false });
-  }
+  const list: Notification[] = [];
+  for (const d of demos) list.push({ ...d, id: uid(), read: false });
+  s.notificationsByUser.set(userId, list);
 }

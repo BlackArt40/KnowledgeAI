@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/billing/store";
+import { getRequestUser } from "@/lib/auth/guard";
 import { createCheckoutSession, isPaymentEnabled } from "@/lib/billing/provider";
 import type { PlanId, PayMethod } from "@/lib/billing/types";
 export const dynamic = "force-dynamic";
 
 // POST /api/billing/checkout  { plan, method } → create order + checkout session
 export async function POST(req: Request) {
+  const user = await getRequestUser(req);
+  if (!user) return NextResponse.json({ error: "未登录" }, { status: 401 });
   let body: { plan?: PlanId; method?: PayMethod };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
@@ -13,7 +16,7 @@ export async function POST(req: Request) {
   if (!body.plan || !body.method) {
     return NextResponse.json({ error: "plan 与 method 必填" }, { status: 400 });
   }
-  const order = createOrder(body.plan, body.method);
+  const order = createOrder(body.plan, body.method, user.id);
 
   // If Stripe is configured, create a real checkout session
   if (isPaymentEnabled()) {

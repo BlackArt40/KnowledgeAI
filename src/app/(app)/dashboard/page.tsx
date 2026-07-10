@@ -142,6 +142,7 @@ export default function DashboardPage() {
     const lastUser = [...c.messages].reverse().find((m) => m.role === "user");
     return {
       id: c.id,
+      kbId: c.kbId,
       q: lastUser?.content ?? c.title,
       kb: kbMap.get(c.kbId) ?? "未知知识库",
       time: formatRelative(c.updatedAt),
@@ -360,7 +361,7 @@ export default function DashboardPage() {
             recentQA.map((qa) => (
               <Link
                 key={qa.id}
-                href="/chat"
+                href={`/chat?conv=${qa.id}&kb=${qa.kbId}`}
                 className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 transition-colors hover:bg-accent/40"
               >
                 <Avatar

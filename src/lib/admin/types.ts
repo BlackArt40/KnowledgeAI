@@ -1,4 +1,4 @@
-export type UserStatus = "active" | "banned" | "trial";
+export type UserStatus = "active" | "banned";
 
 export interface AdminUser {
   id: string;

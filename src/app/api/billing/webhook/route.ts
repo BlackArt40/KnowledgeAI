@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook } from "@/lib/billing/provider";
-import { payOrder } from "@/lib/billing/store";
+import { payOrder, getOrder } from "@/lib/billing/store";
 export const dynamic = "force-dynamic";
 
 // POST /api/billing/webhook — Stripe webhook handler
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     const session = event.data.object;
     const orderId = session.metadata?.order_id;
     if (orderId) {
-      payOrder(orderId);
+      const order = getOrder(orderId);
+      if (order) payOrder(orderId, order.userId);
     }
   }
 

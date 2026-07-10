@@ -217,12 +217,15 @@ export async function runTask(
 
     task.status = "done";
     task.durationMs = Date.now() - start;
-    notify(
-      "agentDone",
-      `Agent 调研报告已完成`,
-      `「${task.topic}」报告已生成，耗时 ${Math.round(task.durationMs / 1000)} 秒。`,
-      "/agent"
-    );
+    if (task.userId) {
+      notify(
+        task.userId,
+        "agentDone",
+        `Agent 调研报告已完成`,
+        `「${task.topic}」报告已生成，耗时 ${Math.round(task.durationMs / 1000)} 秒。`,
+        "/agent"
+      );
+    }
     await emit({ type: "done", task });
   } catch (e) {
     task.status = "failed";

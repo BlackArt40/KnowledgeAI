@@ -7,7 +7,10 @@ export function UsageChart({ data = DEFAULT_DATA, labels = DEFAULT_LABELS }: { d
   const w = 640;
   const h = 220;
   const pad = { top: 16, right: 12, bottom: 24, left: 12 };
-  const max = Math.max(...data) * 1.15;
+  const rawMax = Math.max(...data);
+  // Guard against an all-zero series (e.g. a new user with no questions yet):
+  // avoid 0/0 -> NaN by falling back to 1 so the line sits flat at the bottom.
+  const max = (rawMax > 0 ? rawMax : 1) * 1.15;
   const stepX = (w - pad.left - pad.right) / (data.length - 1);
   const points = data.map((v, i) => {
     const x = pad.left + i * stepX;

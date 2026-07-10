@@ -265,7 +265,7 @@ export default function AgentPage() {
                     {copied === "report" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     复制
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => copyText(`https://knowledgeai.app/r/${task!.id}`, "share")}>
+                  <Button variant="outline" size="sm" onClick={() => copyText(`${window.location.origin}/r/${task!.id}`, "share")}>
                     {copied === "share" ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
                     分享
                   </Button>

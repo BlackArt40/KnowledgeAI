@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { verifyCredentials, sanitize } from "@/lib/auth/store";
 import { createToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
+import { addSession, recordLogin } from "@/lib/security/store";
+import { clientInfoFromRequest } from "@/lib/security/ua";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/login { email, password }
@@ -22,12 +24,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
   }
 
+  // Record this real login: an active session + a login-history entry.
+  const info = clientInfoFromRequest(req);
+  addSession(user.id, info);
+  recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: true });
+
   // Security alert: notify on login (especially useful for detecting unauthorized access)
-  const ua = req.headers.get("user-agent") ?? "未知设备";
   notify(
+    user.id,
     "securityAlert",
     "检测到新登录",
-    `${user.name} 在 ${ua.split(") ")[0].split("(").pop() || ua} 上登录了账号。`,
+    `${user.name} 在 ${info.device}（${info.browser}）上登录了账号，IP: ${info.ip}。`,
     "/settings"
   );
 

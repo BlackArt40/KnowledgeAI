@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createUser, sanitize } from "@/lib/auth/store";
+import { getConfig } from "@/lib/admin/store";
 import { createToken } from "@/lib/auth/session";
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,11 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
+  // Check if registration is allowed (admin config).
+  if (!getConfig().allowSignup) {
+    return NextResponse.json({ error: "管理员已关闭新用户注册" }, { status: 403 });
+  }
+
   const name = body.name?.trim();
   const email = body.email?.trim().toLowerCase();
   const password = body.password;

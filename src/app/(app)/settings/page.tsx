@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { formatRelative } from "@/lib/format";
 import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,8 @@ export default function SettingsPage() {
   const [confirmPwd, setConfirmPwd] = React.useState("");
   const [profileMsg, setProfileMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
   const [savingProfile, setSavingProfile] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteConfirm, setDeleteConfirm] = React.useState("");
 
   // notification preferences
   const [notifPrefs, setNotifPrefs] = React.useState<{ emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean } | null>(null);
@@ -139,6 +142,23 @@ export default function SettingsPage() {
 
   function exportData() {
     window.open("/api/security/export", "_blank");
+  }
+
+  async function deleteAccount() {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/auth/me", { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        setProfileMsg({ ok: false, text: d.error || "删除失败" });
+        setDeleting(false);
+        return;
+      }
+      window.location.href = "/login";
+    } catch {
+      setProfileMsg({ ok: false, text: "网络错误，请重试" });
+      setDeleting(false);
+    }
   }
 
   if (loading || !data) {
@@ -367,7 +387,21 @@ export default function SettingsPage() {
                   <p className="text-sm font-medium">数据保留期限</p>
                   <p className="text-xs text-muted-foreground">超过此期限的会话与日志将自动清理</p>
                 </div>
-                <Badge variant="outline">{privacy.dataRetentionDays} 天</Badge>
+                <Select
+                  value={String(privacy.dataRetentionDays)}
+                  onValueChange={(v) => patchPrivacy({ dataRetentionDays: Number(v) })}
+                >
+                  <SelectTrigger className="h-8 w-[120px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 天</SelectItem>
+                    <SelectItem value="60">60 天</SelectItem>
+                    <SelectItem value="90">90 天</SelectItem>
+                    <SelectItem value="180">180 天</SelectItem>
+                    <SelectItem value="365">365 天</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -397,10 +431,31 @@ export default function SettingsPage() {
                       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
                         ⚠️ 删除后您将无法登录，所有 API 密钥将立即失效。
                       </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">请输入 <strong>DELETE</strong> 以确认</Label>
+                        <Input
+                          value={deleteConfirm}
+                          onChange={(e) => setDeleteConfirm(e.target.value)}
+                          placeholder="DELETE"
+                          className="h-8"
+                        />
+                      </div>
+                      {profileMsg && !profileMsg.ok && (
+                        <p className="text-sm text-destructive">✗ {profileMsg.text}</p>
+                      )}
                     </div>
                     <DialogFooter>
-                      <Button variant="outline">取消</Button>
-                      <Button variant="destructive">确认永久删除</Button>
+                      <DialogClose asChild>
+                        <Button variant="outline">取消</Button>
+                      </DialogClose>
+                      <Button
+                        variant="destructive"
+                        onClick={deleteAccount}
+                        disabled={deleting || deleteConfirm !== "DELETE"}
+                      >
+                        {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        确认永久删除
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>

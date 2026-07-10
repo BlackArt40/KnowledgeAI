@@ -34,6 +34,8 @@ export interface KbAccessEntry {
   kbName: string;
   access: KbAccess;
   docs: number;
+  ownerName: string;
+  isOwner: boolean;
 }
 
 export const ROLE_LABEL: Record<Role, string> = {

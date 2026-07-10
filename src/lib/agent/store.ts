@@ -11,10 +11,10 @@ function uid() {
   return `task_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function listTasks(): AgentTask[] {
-  return Array.from(store().tasks.values()).sort(
-    (a, b) => b.updatedAt - a.updatedAt
-  );
+export function listTasks(userId?: string): AgentTask[] {
+  const all = Array.from(store().tasks.values());
+  const filtered = userId ? all.filter((t) => t.userId === userId) : all;
+  return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function getTask(id: string): AgentTask | undefined {
@@ -28,7 +28,7 @@ export function createTask(input: {
   outputFormat: AgentTask["outputFormat"];
   agents: AgentTask["agents"];
   maxSteps: number;
-}): AgentTask {
+}, userId?: string): AgentTask {
   const now = Date.now();
   const task: AgentTask = {
     id: uid(),
@@ -44,6 +44,7 @@ export function createTask(input: {
     outline: [],
     createdAt: now,
     updatedAt: now,
+    userId,
   };
   store().tasks.set(task.id, task);
   return task;
@@ -56,4 +57,17 @@ export function saveTask(task: AgentTask) {
 
 export function deleteTask(id: string): boolean {
   return store().tasks.delete(id);
+}
+
+/** Delete ALL tasks for a user (account deletion). */
+export function deleteAllTasks(userId: string): number {
+  const s = store();
+  let count = 0;
+  for (const [id, task] of s.tasks) {
+    if (task.userId === userId) {
+      s.tasks.delete(id);
+      count++;
+    }
+  }
+  return count;
 }

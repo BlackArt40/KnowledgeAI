@@ -1,6 +1,7 @@
 export type KeyStatus = "active" | "disabled";
 
 export interface ApiKey {
+  userId: string;
   id: string;
   name: string;
   prefix: string; // visible prefix, e.g. "kai_sk_…3f2a"

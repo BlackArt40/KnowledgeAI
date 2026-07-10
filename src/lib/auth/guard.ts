@@ -4,13 +4,23 @@
 
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth/session";
+import { validateApiKey } from "@/lib/apikeys/store";
+import { getUserById } from "@/lib/auth/store";
 import type { Role } from "@/lib/team/types";
 
+/** Authenticated user resolved from a request. */
+export interface RequestUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
 /** Extract + verify the authenticated user from a Request (cookie or Bearer).
- *  Returns { id, role } or null. */
+ *  Returns the user (id/email/name/role) or null if not authenticated. */
 export async function getRequestUser(
   req: Request
-): Promise<{ id: string; role: string } | null> {
+): Promise<RequestUser | null> {
   const cookieToken = req.headers
     .get("cookie")
     ?.split(";")
@@ -19,11 +29,32 @@ export async function getRequestUser(
     ?.split("=")[1];
   const authHeader = req.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  // If the Bearer token looks like an API key (kai_sk_...), validate it as such
+  // and resolve the key owner's identity.
+  if (bearerToken && bearerToken.startsWith("kai_sk_")) {
+    const apiKey = validateApiKey(bearerToken);
+    if (!apiKey) return null;
+    const owner = getUserById(apiKey.userId);
+    if (!owner) return null;
+    return {
+      id: owner.id,
+      email: owner.email,
+      name: owner.name,
+      role: owner.role,
+    };
+  }
+
   const token = cookieToken || bearerToken;
   if (!token) return null;
   const payload = await verifyToken(token);
   if (!payload) return null;
-  return { id: payload.id, role: payload.role };
+  return {
+    id: payload.id,
+    email: payload.email,
+    name: payload.name,
+    role: payload.role,
+  };
 }
 
 /** Require one of the given roles for an API route.
@@ -36,7 +67,7 @@ export async function requireRole(
   req: Request,
   roles: Role[]
 ): Promise<
-  { user: { id: string; role: string }; error: null } | { user: null; error: Response }
+  { user: RequestUser; error: null } | { user: null; error: Response }
 > {
   const u = await getRequestUser(req);
   if (!u) {
