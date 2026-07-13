@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useChunkedUpload, CHUNKED_THRESHOLD } from "@/lib/upload/use-chunked-upload";
 
 export function UploadZone({
   kbId,
@@ -22,48 +23,78 @@ export function UploadZone({
   const [error, setError] = React.useState<string | null>(null);
   const [url, setUrl] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const chunked = useChunkedUpload();
+  const [chunkedFile, setChunkedFile] = React.useState<string | null>(null);
 
   async function uploadFiles(files: FileList | File[]) {
     const arr = Array.from(files);
     if (arr.length === 0) return;
     setError(null);
-    setUploading(true);
-    setProgress(0);
-    setPending(arr.map((f) => f.name));
 
-    const form = new FormData();
-    arr.forEach((f) => form.append("files", f));
+    // Split into small (direct upload) and large (chunked upload) files
+    const small = arr.filter((f) => f.size < CHUNKED_THRESHOLD);
+    const large = arr.filter((f) => f.size >= CHUNKED_THRESHOLD);
 
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else {
-            try {
-              const m = JSON.parse(xhr.responseText);
-              reject(new Error(m.error ?? "上传失败"));
-            } catch {
-              reject(new Error("上传失败"));
-            }
-          }
-        };
-        xhr.onerror = () => reject(new Error("网络错误"));
-        xhr.open("POST", `/api/knowledge-base/${kbId}/upload`);
-        xhr.send(form);
-      });
-      onUploaded();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "上传失败");
-    } finally {
-      setUploading(false);
+    // ── Large files: chunked upload one by one ──────────────────
+    for (const file of large) {
+      setUploading(true);
+      setChunkedFile(file.name);
       setProgress(0);
-      setPending([]);
-      if (inputRef.current) inputRef.current.value = "";
+      const result = await chunked.upload(file, kbId);
+      if (result === null) {
+        if (chunked.state.status === "error") {
+          setError(chunked.state.error ?? `${file.name} 上传失败`);
+        }
+        setUploading(false);
+        setChunkedFile(null);
+        if (inputRef.current) inputRef.current.value = "";
+        return;
+      }
+      setChunkedFile(null);
     }
+
+    // ── Small files: batch direct upload ────────────────────────
+    if (small.length > 0) {
+      setUploading(true);
+      setProgress(0);
+      setPending(small.map((f) => f.name));
+      const form = new FormData();
+      small.forEach((f) => form.append("files", f));
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else {
+              try {
+                const m = JSON.parse(xhr.responseText);
+                reject(new Error(m.error ?? "上传失败"));
+              } catch {
+                reject(new Error("上传失败"));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error("网络错误"));
+          xhr.open("POST", `/api/knowledge-base/${kbId}/upload`);
+          xhr.send(form);
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "上传失败");
+      } finally {
+        setUploading(false);
+        setProgress(0);
+        setPending([]);
+      }
+    }
+
+    onUploaded();
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+    chunked.reset();
   }
 
   async function addLink() {
@@ -145,15 +176,26 @@ export function UploadZone({
           {uploading ? (
             <>
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-medium">上传中… {progress}%</p>
+              <p className="text-sm font-medium">
+                {chunkedFile
+                  ? chunked.state.status === "completing"
+                    ? `合并中… ${chunkedFile}`
+                    : `分片上传… ${chunkedFile} ${chunked.state.progress}%`
+                  : `上传中… ${progress}%`}
+              </p>
               <div className="w-full max-w-xs">
-                <Progress value={progress} />
+                <Progress value={chunkedFile ? chunked.state.progress : progress} />
               </div>
-              {pending.length > 0 && (
+              {chunkedFile ? (
+                <p className="text-xs text-muted-foreground">
+                  {chunked.state.receivedChunks}/{chunked.state.totalChunks} 分片
+                  {chunked.state.status === "uploading" && " · 支持断点续传"}
+                </p>
+              ) : pending.length > 0 ? (
                 <p className="line-clamp-1 text-xs text-muted-foreground">
                   {pending.join(", ")}
                 </p>
-              )}
+              ) : null}
             </>
           ) : (
             <>
@@ -164,7 +206,7 @@ export function UploadZone({
                 拖拽文件到此处，或<span className="text-primary">点击上传</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                支持 PDF / Word / Markdown / TXT / CSV，单个文件 ≤ 25MB
+                支持 PDF / Word / Markdown / TXT / CSV · 大文件自动分片上传（≤ 500MB）
               </p>
             </>
           )}

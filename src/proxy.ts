@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ensureHydrated } from "@/lib/db/hydrate";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { startCleanupTimer } from "@/lib/storage/cleanup";
 
 // ---------------------------------------------------------------------------
 // Rate Limiting Proxy
@@ -26,6 +27,9 @@ const SKIP_PATHS = [
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Start periodic cleanup timer (idempotent, auto-starts on first request)
+  startCleanupTimer();
 
   // Hydrate in-memory stores from DB on first API request (fire-and-forget).
   if (!pathname.startsWith("/_next")) {

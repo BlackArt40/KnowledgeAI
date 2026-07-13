@@ -8,6 +8,8 @@ import {
 import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
 import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
+import { promises as fs } from "fs";
+import path from "path";
 
 // ---------------------------------------------------------------------------
 // In-memory store (demo). Structured to be swapped for PostgreSQL/Prisma +
@@ -270,6 +272,9 @@ export async function deleteKb(id: string): Promise<boolean> {
   }
   await vsClearKb(id);
   void deleteKbFromDb(id);
+  // Clean up local files for this KB (fire-and-forget)
+  const kbDir = path.join(process.cwd(), ".uploads", id);
+  void fs.rm(kbDir, { recursive: true, force: true }).catch(() => {});
   return store.kbs.delete(id);
 }
 

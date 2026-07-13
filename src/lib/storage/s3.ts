@@ -52,6 +52,10 @@ type S3Module = {
   PutObjectCommand: new (input: unknown) => unknown;
   GetObjectCommand: new (input: unknown) => unknown;
   DeleteObjectCommand: new (input: unknown) => unknown;
+  CreateMultipartUploadCommand: new (input: unknown) => unknown;
+  UploadPartCommand: new (input: unknown) => unknown;
+  CompleteMultipartUploadCommand: new (input: unknown) => unknown;
+  AbortMultipartUploadCommand: new (input: unknown) => unknown;
 };
 type PresignerModule = {
   getSignedUrl: (client: S3Client, command: unknown, options: unknown) => Promise<string>;
@@ -176,4 +180,97 @@ export async function getPresignedDownloadUrl(key: string, expiresIn = 3600): Pr
     Key: key,
   });
   return loaded.presigner.getSignedUrl(loaded.client, command, { expiresIn });
+}
+
+
+// ── Multipart upload (for large file chunked upload) ─────────────────────
+
+/** Initiate a multipart upload. Returns the S3 upload ID. */
+export async function createMultipartUpload(
+  key: string
+): Promise<string> {
+  const loaded = await loadS3();
+  const config = getS3Config();
+  if (!loaded || !config) throw new Error("S3 not configured");
+
+  const res = await loaded.client.send(
+    new loaded.mod.CreateMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: key,
+    })
+  ) as { UploadId?: string };
+
+  if (!res.UploadId) throw new Error("S3 CreateMultipartUpload: no UploadId");
+  return res.UploadId;
+}
+
+/** Upload a single part. Returns the ETag for later completion. */
+export async function uploadPart(
+  key: string,
+  uploadId: string,
+  partNumber: number,
+  data: Buffer | Uint8Array
+): Promise<string> {
+  const loaded = await loadS3();
+  const config = getS3Config();
+  if (!loaded || !config) throw new Error("S3 not configured");
+
+  const buffer = data instanceof Buffer ? data : Buffer.from(data);
+  const res = await loaded.client.send(
+    new loaded.mod.UploadPartCommand({
+      Bucket: config.bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+      Body: buffer,
+      ContentLength: buffer.byteLength,
+    })
+  ) as { ETag?: string };
+
+  if (!res.ETag) throw new Error(`S3 UploadPart ${partNumber}: no ETag`);
+  return res.ETag;
+}
+
+/** Complete a multipart upload by providing all part ETags. */
+export async function completeMultipartUpload(
+  key: string,
+  uploadId: string,
+  parts: { partNumber: number; etag: string }[]
+): Promise<string> {
+  const loaded = await loadS3();
+  const config = getS3Config();
+  if (!loaded || !config) throw new Error("S3 not configured");
+
+  const res = await loaded.client.send(
+    new loaded.mod.CompleteMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: parts
+          .sort((a, b) => a.partNumber - b.partNumber)
+          .map((p) => ({ PartNumber: p.partNumber, ETag: p.etag })),
+      },
+    })
+  ) as { Location?: string };
+
+  return res.Location ?? `${config.publicUrl}/${key}`;
+}
+
+/** Abort a multipart upload (cleans up uploaded parts on S3). */
+export async function abortMultipartUpload(
+  key: string,
+  uploadId: string
+): Promise<void> {
+  const loaded = await loadS3();
+  const config = getS3Config();
+  if (!loaded || !config) throw new Error("S3 not configured");
+
+  await loaded.client.send(
+    new loaded.mod.AbortMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: key,
+      UploadId: uploadId,
+    })
+  );
 }
