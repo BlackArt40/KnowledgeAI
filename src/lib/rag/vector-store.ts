@@ -11,6 +11,7 @@
 import { embed } from "./embeddings";
 import { MemoryVectorStore } from "./vector-store-memory";
 import { PgVectorStore } from "./vector-store-pgvector";
+import { ChromaVectorStore } from "./vector-store-chromadb";
 import { clearBM25Doc, clearBM25Kb } from "./bm25";
 import type { VectorStore } from "./vector-store-interface";
 
@@ -22,6 +23,9 @@ function getStore(): VectorStore {
   switch (backend) {
     case "pgvector":
       _instance = new PgVectorStore();
+      break;
+    case "chromadb":
+      _instance = new ChromaVectorStore();
       break;
     case "memory":
     default:
