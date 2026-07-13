@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "@radix-ui/react-dialog": "^1.1.19",
     "@radix-ui/react-progress": "^1.1.12",
     "@radix-ui/react-select": "^2.3.3",
@@ -30,8 +31,13 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.0.0",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@11.7.0"
+  "packageManager": "pnpm@11.7.0",
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  }
 }

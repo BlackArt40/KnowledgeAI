@@ -4,6 +4,7 @@ import { listAllKbs, listDocuments, totalStorageBytes } from "@/lib/kb/store";
 import { getUsage, listAllInvoices } from "@/lib/billing/store";
 import { listTasks } from "@/lib/agent/store";
 import { getPlan } from "@/lib/billing/plans";
+import { persistSystemConfig } from "@/lib/db/persist";
 
 // ── System config (in-memory, the only piece that was already real) ──────
 
@@ -210,5 +211,6 @@ export function getConfig(): SystemConfig {
 export function updateConfig(patch: Partial<SystemConfig>): SystemConfig {
   const s = store();
   s.config = { ...s.config, ...patch };
+  void persistSystemConfig(s.config);
   return s.config;
 }

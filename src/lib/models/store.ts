@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ModelConfig, ModelConfigSafe, ProviderPreset, ProviderId } from "./types";
+import { persistModelConfig, deleteModelConfigFromDb } from "@/lib/db/persist";
 
 // ── Provider presets ────────────────────────────────────────────────────
 
@@ -214,6 +215,7 @@ export function updateModel(
 }
 
 export function deleteModel(userId: string, id: string): boolean {
+  void deleteModelConfigFromDb(id);
   return userModels(userId).delete(id);
 }
 

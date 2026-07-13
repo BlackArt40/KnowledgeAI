@@ -1,6 +1,7 @@
 import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types";
 import type { ClientInfo } from "./ua";
 import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
+import { persistLoginEvent } from "@/lib/db/persist";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };

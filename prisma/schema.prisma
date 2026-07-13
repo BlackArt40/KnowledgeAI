@@ -15,17 +15,17 @@ datasource db {
 
 // ── Auth & Users ──────────────────────────────────────────
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String
-  passwordHash  String?
-  role          Role     @default(EDITOR)
-  status        UserStatus @default(ACTIVE)
-  plan          String   @default("free")
-  twoFactorEnabled Boolean @default(false)
-  lastLoginAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String     @id @default(cuid())
+  email            String     @unique
+  name             String
+  passwordHash     String?
+  role             Role       @default(EDITOR)
+  status           UserStatus @default(ACTIVE)
+  plan             String     @default("free")
+  twoFactorEnabled Boolean    @default(false)
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   teamMemberships TeamMember[]
   apiKeys         ApiKey[]
@@ -36,14 +36,28 @@ model User {
   agentTasks      AgentTask[]
 }
 
-enum Role { OWNER ADMIN EDITOR VIEWER }
-enum UserStatus { ACTIVE BANNED TRIAL }
+enum Role {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  TRIAL
+}
 
 // ── Teams ─────────────────────────────────────────────────
 model Team {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
-  createdAt   DateTime @default(now())
+  logoInitial String          @default("K")
+  plan        String          @default("专业版")
+  kbAccess    Json            @default("{}")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   members     TeamMember[]
   kbs         KnowledgeBase[]
   auditLogs   AuditLog[]
@@ -51,13 +65,14 @@ model Team {
 }
 
 model TeamMember {
-  id        String   @id @default(cuid())
-  teamId    String
-  userId    String
-  role      Role     @default(EDITOR)
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     Role     @default(EDITOR)
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
   @@unique([teamId, userId])
 }
 
@@ -75,6 +90,8 @@ model AuditLog {
   id        String   @id @default(cuid())
   teamId    String
   actorId   String?
+  actor     String   @default("")
+  target    String   @default("")
   action    String
   detail    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -83,60 +100,60 @@ model AuditLog {
 
 // ── Knowledge Base ────────────────────────────────────────
 model KnowledgeBase {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   description String?
-  desc        String   @default("")
-  color       String   @default("from-primary/15")
-  initial     String   @default("K")
+  desc        String       @default("")
+  color       String       @default("from-primary/15")
+  initial     String       @default("K")
   ownerId     String
   teamId      String?
-  settings    Json     @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  owner       User     @relation("OwnedKBs", fields: [ownerId], references: [id])
-  team        Team?    @relation(fields: [teamId], references: [id])
+  settings    Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  owner       User         @relation("OwnedKBs", fields: [ownerId], references: [id])
+  team        Team?        @relation(fields: [teamId], references: [id])
   documents   KbDocument[]
 }
 
 model KbDocument {
-  id          String   @id @default(cuid())
-  kbId        String
-  name        String
-  size        Int
-  type        String
-  status      String   @default("queued")
-  progress    Int      @default(0)
-  content     String?
-  url         String?
-  chunks      Int      @default(0)
-  kb          KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
-  uploadedAt  DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String        @id @default(cuid())
+  kbId       String
+  name       String
+  size       Int
+  type       String
+  status     String        @default("queued")
+  progress   Int           @default(0)
+  content    String?
+  url        String?
+  chunks     Int           @default(0)
+  kb         KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  uploadedAt DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@index([kbId])
 }
 
 // ── Chat ──────────────────────────────────────────────────
 model Conversation {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   kbId      String
   userId    String
   title     String
   messages  Message[]
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Message {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   role           String
   content        String
   citations      Json?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
 }
 
 // ── Agent ─────────────────────────────────────────────────
@@ -171,28 +188,28 @@ model Subscription {
 }
 
 model Invoice {
-  id        String   @id @default(cuid())
-  userId    String
-  amount    Int
-  plan      String
-  status    String   @default("paid")
-  method    String
-  date      DateTime @default(now())
+  id     String   @id @default(cuid())
+  userId String
+  amount Int
+  plan   String
+  status String   @default("paid")
+  method String
+  date   DateTime @default(now())
 }
 
 // ── API Keys ──────────────────────────────────────────────
 model ApiKey {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   name      String
-  keyHash   String   @unique
+  keyHash   String    @unique
   prefix    String
   scopes    String[]
-  status    String   @default("active")
-  calls     Int      @default(0)
+  status    String    @default("active")
+  calls     Int       @default(0)
   lastUsed  DateTime?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
 }
 
 // ── Security ──────────────────────────────────────────────
@@ -224,16 +241,83 @@ model LoginEvent {
 // Created automatically by PgVectorStore when VECTOR_STORE=pgvector.
 // Requires: CREATE EXTENSION IF NOT EXISTS vector;
 model KbChunk {
-  id          String   @id @default(cuid())
-  kbId        String
-  docId       String
-  docName     String
-  chunkIndex  Int
-  text        String
+  id         String   @id @default(cuid())
+  kbId       String
+  docId      String
+  docName    String
+  chunkIndex Int
+  text       String
   // embedding column is added via raw SQL (vector type) since Prisma
   // doesn't natively support pgvector types in schema.
-  createdAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@index([kbId])
   @@index([docId])
+}
+
+// ── Notifications ────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // emailDigest | kbReady | agentDone | securityAlert
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model NotificationPrefs {
+  userId        String  @id
+  emailDigest   Boolean @default(false)
+  kbReady       Boolean @default(true)
+  agentDone     Boolean @default(true)
+  securityAlert Boolean @default(true)
+}
+
+// ── External Model Configs (per-user LLM provider settings) ──────────────
+model ModelConfig {
+  id             String    @id @default(cuid())
+  userId         String
+  name           String
+  provider       String // openai | deepseek | moonshot | siliconflow | ollama | custom
+  providerName   String
+  apiKey         String // 🔌 encrypt with AES-256-GCM in production
+  baseUrl        String
+  chatModel      String
+  embeddingModel String    @default("")
+  enabled        Boolean   @default(true)
+  isDefault      Boolean   @default(false)
+  lastTestedAt   DateTime?
+  lastTestOk     Boolean?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ── Billing Orders ───────────────────────────────────────────────────────
+model Order {
+  id        String   @id @default(cuid())
+  userId    String
+  plan      String // free | pro | enterprise
+  amount    Int
+  method    String // wechat | alipay | card
+  status    String   @default("pending") // pending | paid | failed
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ── Admin System Config (single-row, admin-tunable settings) ─────────────
+model SystemConfig {
+  id              Int      @id @default(1)
+  defaultModel    String   @default("gpt-4o")
+  embeddingModel  String   @default("bge-m3")
+  rateLimitPerMin Int      @default(60)
+  maxUploadMb     Int      @default(50)
+  maintenanceMode Boolean  @default(false)
+  allowSignup     Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
 }

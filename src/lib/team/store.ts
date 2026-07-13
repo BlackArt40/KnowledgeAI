@@ -1,4 +1,5 @@
 import type { Team, Member, AuditEntry, Role, KbAccess } from "./types";
+import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFromDb } from "@/lib/db/persist";
 
 type Store = {
   team: Team;
@@ -80,6 +81,7 @@ export function updateTeam(patch: Partial<Pick<Team, "name" | "logoInitial" | "p
   seed();
   const s = store();
   s.team = { ...s.team, ...patch };
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
   return s.team;
 }
 
@@ -106,14 +108,17 @@ export function inviteMember(input: { name: string; email: string; role: Role },
     joinedAt: Date.now(),
   };
   s.members.set(member.id, member);
-  s.audit.unshift({
+  const entry: AuditEntry = {
     id: uid(),
     actor,
     action: "邀请成员",
     target: member.name,
     detail: `以 ${member.role} 角色邀请加入团队`,
     createdAt: Date.now(),
-  });
+  };
+  s.audit.unshift(entry);
+  void persistTeamMember(member);
+  void persistAuditEntry(entry);
   return member;
 }
 
@@ -124,14 +129,17 @@ export function updateMemberRole(id: string, role: Role, actor = "系统"): Memb
   if (!m) return undefined;
   const prev = m.role;
   m.role = role;
-  s.audit.unshift({
+  const entry: AuditEntry = {
     id: uid(),
     actor,
     action: "修改角色",
     target: m.name,
     detail: `角色由 ${prev} 调整为 ${role}`,
     createdAt: Date.now(),
-  });
+  };
+  s.audit.unshift(entry);
+  void persistTeamMember(m);
+  void persistAuditEntry(entry);
   return m;
 }
 
@@ -140,14 +148,17 @@ export function removeMember(id: string, actor = "系统"): boolean {
   const s = store();
   const m = s.members.get(id);
   if (!m) return false;
-  s.audit.unshift({
+  const entry: AuditEntry = {
     id: uid(),
     actor,
     action: "移除成员",
     target: m.name,
     detail: `从团队移除 ${m.email}`,
     createdAt: Date.now(),
-  });
+  };
+  s.audit.unshift(entry);
+  void persistAuditEntry(entry);
+  void deleteTeamMemberFromDb(id);
   return s.members.delete(id);
 }
 
@@ -176,5 +187,7 @@ export function canEditKb(kbId: string, kbName: string, userId: string, ownerId:
 
 export function setKbAccess(kbId: string, access: KbAccess): void {
   seed();
-  store().kbAccess.set(kbId, access);
+  const s = store();
+  s.kbAccess.set(kbId, access);
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
 }

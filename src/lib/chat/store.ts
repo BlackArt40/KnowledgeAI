@@ -1,4 +1,5 @@
 import type { Citation } from "@/lib/rag/types";
+import { persistConversation, deleteConversationFromDb } from "@/lib/db/persist";
 
 export interface ChatMessage {
   id: string;
@@ -64,6 +65,7 @@ export function createConversation(kbId: string, title = "新会话", userId?: s
     userId,
   };
   store().conversations.set(conv.id, conv);
+  void persistConversation(conv);
   return conv;
 }
 
@@ -80,10 +82,12 @@ export function addMessage(
     conv.title = deriveTitle(msg.content);
   }
   store().conversations.set(convId, conv);
+  void persistConversation(conv);
   return message;
 }
 
 export function deleteConversation(id: string): boolean {
+  void deleteConversationFromDb(id);
   return store().conversations.delete(id);
 }
 

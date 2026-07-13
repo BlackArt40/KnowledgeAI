@@ -1,6 +1,7 @@
 import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
 import { getUserById, updateUserPlan } from "@/lib/auth/store";
+import { persistSubscription, persistInvoice } from "@/lib/db/persist";
 
 // ── Per-user billing store ───────────────────────────────────────────────
 // Subscriptions, invoices, and orders are all tracked per-user so each user

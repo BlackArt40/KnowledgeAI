@@ -10,7 +10,9 @@ export interface PrismaUser {
   passwordHash: string | null;
   role: string;
   status: string;
+  plan: string;
   twoFactorEnabled: boolean;
+  lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -201,4 +203,52 @@ export interface PrismaClient {
   };
   $queryRaw<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
   $executeRaw(sql: string, ...params: unknown[]): Promise<number>;
+}
+
+// ── Additional model interfaces ──────────────────────────────────────────
+
+export interface PrismaNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  link: string | null;
+  createdAt: Date;
+}
+
+export interface PrismaNotificationPrefs {
+  userId: string;
+  emailDigest: boolean;
+  kbReady: boolean;
+  agentDone: boolean;
+  securityAlert: boolean;
+}
+
+export interface PrismaModelConfig {
+  id: string;
+  userId: string;
+  name: string;
+  provider: string;
+  providerName: string;
+  apiKey: string;
+  baseUrl: string;
+  chatModel: string;
+  embeddingModel: string;
+  enabled: boolean;
+  isDefault: boolean;
+  lastTestedAt: Date | null;
+  lastTestOk: boolean | null;
+  createdAt: Date;
+}
+
+export interface PrismaOrder {
+  id: string;
+  userId: string;
+  plan: string;
+  amount: number;
+  method: string;
+  status: string;
+  createdAt: Date;
 }

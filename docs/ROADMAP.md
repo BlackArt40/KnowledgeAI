@@ -63,14 +63,14 @@
 
 ### P0-1 数据库持久化 — Prisma + PostgreSQL
 
-**现状**：12 个 `*/store.ts` 全部使用 `globalThis` 内存 Map，Prisma schema 已定义但未接入。
+**现状**：11 个 `*/store.ts` 通过写穿缓存（hydrate + persist）接入 PostgreSQL；`@prisma/client` 已安装、初始迁移已生成、CI 迁移漂移校验已就绪。未配置 `DATABASE_URL` 时自动回退内存模式。
 
 **计划**：
 - [x] 实现 `src/lib/db/repository.ts` 统一仓储层，封装 Prisma CRUD ✅
-- [ ] 逐模块迁移内存 store → Prisma 仓储（优先级：auth → kb → chat → billing → 其余）
+- [x] 逐模块迁移内存 store → Prisma 仓储（auth/kb/chat/billing/agent/apikeys/models/notifications/security/team/admin 全部接入） ✅
 - [x] Repository 层提供 checkDbHealth() ✅
-- [ ] 编写种子数据脚本 `prisma/seed.ts`（迁移现有演示数据）
-- [ ] 添加 Prisma 迁移 CI 校验（`prisma migrate diff --exit-code`）
+- [x] 编写种子数据脚本 `prisma/seed.ts`（迁移现有演示数据） ✅
+- [x] 添加 Prisma 迁移 CI 校验（`.github/workflows/ci.yml` 中 `prisma migrate diff --exit-code`） ✅
 
 **验收标准**：
 - 配置 `DATABASE_URL` 后所有数据持久化至 PostgreSQL
