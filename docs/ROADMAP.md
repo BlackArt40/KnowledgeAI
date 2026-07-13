@@ -81,7 +81,7 @@
 
 ### P0-2 向量数据库接入
 
-**现状**：四种后端可选：`MemoryVectorStore`（内存/默认）、`PgVectorStore`（PostgreSQL + pgvector）、`ChromaVectorStore`（自托管 ChromaDB v2 API）。新增 `PineconeVectorStore`（托管 Pinecone Serverless）。通过 `VECTOR_STORE` 环境变量切换。
+**现状**：四种后端可选：`MemoryVectorStore`（内存/默认）、`PgVectorStore`（PostgreSQL + pgvector）、`ChromaVectorStore`（自托管 ChromaDB v2 API）、`PineconeVectorStore`（托管 Pinecone Serverless）。通过 `VECTOR_STORE` 环境变量切换。`scripts/migrate-vector-store.ts` 支持批量迁移。
 
 **计划**：
 - [x] 抽象 `VectorStore` 接口 ✅
@@ -89,7 +89,7 @@
 - [x] 实现 `ChromaDB` 适配器（自托管场景） ✅
 - [x] 实现 `Pinecone` 适配器（Serverless 场景） ✅
 - [x] 通过 `VECTOR_STORE` 环境变量切换实现 ✅
-- [ ] 迁移脚本：将现有内存索引批量导入目标向量库
+- [x] 迁移脚本：将现有内存索引批量导入目标向量库 ✅
 
 **验收标准**：
 - 10 万级 chunk 检索延迟 < 200ms（P95）

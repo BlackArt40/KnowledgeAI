@@ -92,13 +92,15 @@ async function deleteCollection(kbId: string): Promise<void> {
   }
 }
 
-/** Internal: get collection ID by KB ID, or null if not found. */
+/** Internal: get collection ID by KB ID, or null if not found.
+ *  ChromaDB v2 ignores the ?name= query param, so we filter client-side. */
 async function _getColIdByName(kbId: string): Promise<string | null> {
   const name = colName(kbId);
   try {
-    const res = await chromaFetch(`/collections?name=${encodeURIComponent(name)}`);
+    const res = await chromaFetch("/collections");
     const cols: ChromaCollection[] = await res.json();
-    return cols.length > 0 ? cols[0].id : null;
+    const found = cols.find((c) => c.name === name);
+    return found ? found.id : null;
   } catch {
     return null;
   }
