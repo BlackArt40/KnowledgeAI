@@ -12,6 +12,7 @@ import { embed } from "./embeddings";
 import { MemoryVectorStore } from "./vector-store-memory";
 import { PgVectorStore } from "./vector-store-pgvector";
 import { ChromaVectorStore } from "./vector-store-chromadb";
+import { PineconeVectorStore } from "./vector-store-pinecone";
 import { clearBM25Doc, clearBM25Kb } from "./bm25";
 import type { VectorStore } from "./vector-store-interface";
 
@@ -26,6 +27,9 @@ function getStore(): VectorStore {
       break;
     case "chromadb":
       _instance = new ChromaVectorStore();
+      break;
+    case "pinecone":
+      _instance = new PineconeVectorStore();
       break;
     case "memory":
     default:
