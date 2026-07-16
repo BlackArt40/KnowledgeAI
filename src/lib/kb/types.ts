@@ -6,7 +6,7 @@ export type DocStatus =
   | "ready"
   | "failed";
 
-export type DocType = "pdf" | "word" | "markdown" | "text" | "web" | "csv" | "other";
+export type DocType = "pdf" | "word" | "markdown" | "text" | "web" | "csv" | "image" | "other";
 
 export interface KbDocument {
   id: string;

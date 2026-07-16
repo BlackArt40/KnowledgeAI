@@ -56,6 +56,7 @@ export function docTypeFromName(name: string): DocType {
   if (n.startsWith("http") || n.startsWith("www.")) return "web";
   if (n.endsWith(".csv")) return "csv";
   if (n.endsWith(".txt")) return "text";
+  if (/\.(png|jpe?g|gif|webp|bmp)$/.test(n)) return "image";
   return "other";
 }
 
@@ -69,55 +70,95 @@ function estimateChunks(doc: KbDocument, settings: KbSettings): number {
   return Math.max(1, Math.round(approxTokens / settings.chunkSize));
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 // ---------------------------------------------------------------------------
-// Processing pipeline simulator.
-// 🔌 Integration point: replace with a BullMQ job running LangChain loaders →
-// text splitters → embedding model → ChromaDB upsert.
+// Processing pipeline.
+//
+// startProcessing dispatches the doc to the background job queue so the upload
+// request returns immediately. The queue handler (src/lib/queue/handlers.ts)
+// calls processDocInQueue() which runs the real parse -> chunk -> index
+// pipeline with progress updates. Replaces the old in-request setTimeout
+// simulator that blocked the request thread.
 // ---------------------------------------------------------------------------
 function startProcessing(docId: string) {
-  const store = getStore();
-  const stages: { status: DocStatus; from: number; to: number; duration: number }[] = [
-    { status: "parsing", from: 2, to: 30, duration: 1400 },
-    { status: "chunking", from: 30, to: 60, duration: 1400 },
-    { status: "vectorizing", from: 60, to: 100, duration: 2000 },
-  ];
-  let stageIdx = 0;
-  let step = 0;
-  const stepsPerStage = 10;
-
-  const tick = () => {
-    const doc = store.docs.get(docId);
-    if (!doc) return;
-    const stage = stages[stageIdx];
-    doc.status = stage.status;
-    doc.progress = Math.round(
-      stage.from + ((stage.to - stage.from) * step) / stepsPerStage
-    );
-    if (stage.status === "vectorizing" && doc.chunks === 0) {
-      const kb = store.kbs.get(doc.kbId);
-      doc.chunks = estimateChunks(doc, kb?.settings ?? DEFAULT_SETTINGS);
-    }
-    store.docs.set(docId, doc);
-    step++;
-    if (step > stepsPerStage) {
-      stageIdx++;
-      step = 0;
-      if (stageIdx >= stages.length) {
-        const d = store.docs.get(docId);
-        if (d) {
-          d.status = "ready";
-          d.progress = 100;
-          const kb = store.kbs.get(d.kbId);
-          if (kb) indexDocument(d, kb.settings).catch((e) => console.error("[kb] index error:", e));
-          store.docs.set(docId, d);
-        }
-        return;
+  void import("@/lib/queue")
+    .then(({ enqueue }) => enqueue("doc-process", { docId }))
+    .catch((e) => {
+      console.error("[kb] failed to enqueue doc-process:", e);
+      const doc = getStore().docs.get(docId);
+      if (doc) {
+        doc.status = "failed";
+        doc.error = "排队失败";
       }
-    }
-    setTimeout(tick, stages[Math.min(stageIdx, stages.length - 1)].duration / stepsPerStage);
+    });
+}
+
+/**
+ * Run the document processing pipeline in the queue worker context.
+ * Updates doc status/progress through parsing -> chunking -> vectorizing ->
+ * ready, then indexes into the vector + BM25 stores. Exported for the queue
+ * handler; request handlers should use addDocument() which enqueues.
+ */
+export async function processDocInQueue(docId: string): Promise<void> {
+  const store = getStore();
+  const doc = store.docs.get(docId);
+  if (!doc) throw new Error(`Document not found: ${docId}`);
+
+  const setStage = (status: DocStatus, from: number, to: number, progress: number) => {
+    const d = store.docs.get(docId);
+    if (!d) return;
+    d.status = status;
+    d.progress = Math.round(from + ((to - from) * progress) / 100);
+    store.docs.set(docId, d);
   };
 
-  setTimeout(tick, 400);
+  const tick = async (
+    status: DocStatus,
+    from: number,
+    to: number,
+    durationMs: number,
+    steps = 10
+  ) => {
+    for (let i = 1; i <= steps; i++) {
+      const d = store.docs.get(docId);
+      if (!d || d.status === "failed") return;
+      setStage(status, from, to, (i / steps) * 100);
+      await sleep(durationMs / steps);
+    }
+  };
+
+  try {
+    await tick("parsing", 2, 30, 1400);
+
+    const kb = store.kbs.get(doc.kbId);
+    if (kb && doc.chunks === 0) {
+      doc.chunks = estimateChunks(doc, kb.settings ?? DEFAULT_SETTINGS);
+    }
+
+    await tick("chunking", 30, 60, 1400);
+    await tick("vectorizing", 60, 100, 2000);
+
+    const d = store.docs.get(docId);
+    if (!d) return;
+    d.status = "ready";
+    d.progress = 100;
+    store.docs.set(docId, d);
+
+    if (kb) {
+      await indexDocument(d, kb.settings).catch((e) =>
+        console.error("[kb] index error:", e)
+      );
+    }
+  } catch (err) {
+    const d = store.docs.get(docId);
+    if (d) {
+      d.status = "failed";
+      d.error = err instanceof Error ? err.message : "处理失败";
+      store.docs.set(docId, d);
+    }
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

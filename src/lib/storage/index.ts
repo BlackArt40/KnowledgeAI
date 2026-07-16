@@ -32,6 +32,7 @@ const ALLOWED_EXTENSIONS = new Set([
   ".pdf", ".doc", ".docx", ".ppt", ".pptx",
   ".xls", ".xlsx",
   ".html", ".htm",
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
 ]);
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_UPLOAD_MB || "50", 10) * 1024 * 1024;

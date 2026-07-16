@@ -1,4 +1,4 @@
-import { FileText, FileType2, FileCode, Link2, FileSpreadsheet, File } from "lucide-react";
+import { FileText, FileType2, FileCode, Link2, FileSpreadsheet, FileImage, File } from "lucide-react";
 import type { DocType } from "@/lib/kb/types";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ const map: Record<DocType, { icon: React.ComponentType<{ className?: string }>; 
   text: { icon: FileText, cls: "bg-muted text-muted-foreground" },
   web: { icon: Link2, cls: "bg-violet-500/12 text-violet-500" },
   csv: { icon: FileSpreadsheet, cls: "bg-amber-500/12 text-amber-500" },
+  image: { icon: FileImage, cls: "bg-pink-500/12 text-pink-500" },
   other: { icon: File, cls: "bg-muted text-muted-foreground" },
 };
 

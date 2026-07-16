@@ -110,6 +110,7 @@
 - [x] 本地存储模式添加清理任务（过期临时文件） ✅
 
 **验收标准**：
+
 - 大文件（> 100MB）支持分片直传至 S3
 - 文件删除时 S3 对象同步清理
 - 支持私有桶 + 预签名 URL 访问
@@ -122,10 +123,10 @@
 
 **计划**：
 - [x] 引入 BullMQ + Redis 作为任务队列 ✅
-- [x] 文档处理管线迁移至 Worker（handlers.ts）✅（解析 → 切片 → 嵌入 → 入库）
-- [ ] Agent 调研迁移至 Worker（SSE 改为订阅 Redis Pub/Sub 事件流）
+- [x] 文档处理管线迁移至 Worker（handlers.ts）✅（解析 -> 切片 -> 嵌入 -> 入库）
+- [x] Agent 调研迁移至 Worker（SSE 改为订阅 Redis Pub/Sub 事件流）✅
 - [x] 添加任务重试（3次,指数退避）、死信队列 ✅
-- [ ] Worker 独立进程部署（`docker-compose.yml` 添加 worker 服务）
+- [x] Worker 独立进程部署（`docker-compose.yml` 添加 worker 服务）✅
 
 **验收标准**：
 - 文档上传后立即返回，后台异步处理
@@ -144,10 +145,10 @@
 
 **计划**：
 - [x] 接入 PDF 解析（`pdf-parse`，动态导入）✅
-- [ ] 接入 Word 解析（`mammoth` .docx → HTML → 文本）
+- [x] 接入 Word 解析（`mammoth` .docx → HTML → 文本）
 - [x] 接入 Excel 解析（`xlsx` SheetJS，CSV 直接读取）✅
 - [x] 接入 PPT 解析（内置 ZIP/XML 提取）✅
-- [ ] OCR 支持：扫描版 PDF / 图片文字识别
+- [x] OCR 支持：扫描版 PDF / 图片文字识别 ✅
 - [x] 统一 `parseDocument()` 接口，按 DocType 路由 ✅
 
 **验收标准**：
@@ -165,8 +166,8 @@
 - [x] 添加 BM25 关键词检索（k1=1.5, b=0.75, CJK 分词）✅
 - [x] 实现 RRF 融合（k=60, 权重可配置）✅
 - [x] 添加文档 ID 过滤（docIdFilter）✅
-- [ ] 支持检索重排序（Reranking）
-- [ ] 查询改写：LLQ 扩展同义词 / 多查询融合
+- [x] 支持检索重排序（Reranking）
+- [x] 查询改写：LLQ 扩展同义词 / 多查询融合
 
 **验收标准**：
 - 混合检索召回率比纯向量提升 > 20%

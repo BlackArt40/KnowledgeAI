@@ -16,6 +16,7 @@
 
 import zlib from "zlib";
 import type { DocType } from "@/lib/kb/types";
+import { isScannedPdf, ocrScannedPdf, ocrImage } from "./ocr";
 
 export interface ParsedDocument {
   text: string;
@@ -41,6 +42,8 @@ export async function parseDocument(
       return parsePdf(buf);
     case "word":
       return parseWord(buf, filename);
+    case "image":
+      return parseImage(buf);
     case "other":
       // Try by extension
       return parseByExtension(buf, filename);
@@ -61,13 +64,10 @@ function extractTitle(text: string): string | null {
   return m ? m[1].trim().slice(0, 120) : null;
 }
 
-// ── HTML ────────────────────────────────────────────────────────────────
+// ── Shared HTML tag stripper ──────────────────────────────────────────────
 
-function parseHtml(buf: Buffer): ParsedDocument | null {
-  const html = buf.toString("utf-8");
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim().slice(0, 120) : null;
-
+/** Strip HTML tags, remove script/style/svg/noscript, decode entities, collapse whitespace. */
+function stripHtml(html: string): string {
   let body = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -84,7 +84,16 @@ function parseHtml(buf: Buffer): ParsedDocument | null {
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  return body;
+}
 
+// ── HTML ────────────────────────────────────────────────────────────────
+
+function parseHtml(buf: Buffer): ParsedDocument | null {
+  const html = buf.toString("utf-8");
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim().slice(0, 120) : null;
+  const body = stripHtml(html);
   if (body.length < 40) return null;
   return { text: body.slice(0, 500_000), title };
 }
@@ -92,44 +101,58 @@ function parseHtml(buf: Buffer): ParsedDocument | null {
 // ── PDF (pdf-parse) ─────────────────────────────────────────────────────
 
 async function parsePdf(buf: Buffer): Promise<ParsedDocument | null> {
+  let text: string | null = null;
+  let pages: number | undefined;
+  let title: string | null = null;
   try {
     const mod = await import("pdf-parse");
     const pdfParse = (mod as { default?: (buf: Buffer) => Promise<{ text: string; numpages?: number; info?: { Title?: string } }> }).default
       || (mod as unknown as (buf: Buffer) => Promise<{ text: string; numpages?: number; info?: { Title?: string } }>);
-    const data = await pdfParse(buf);
-    const text = data.text?.trim();
-    if (!text || text.length < 10) return null;
-    return {
-      text: text.slice(0, 500_000),
-      title: data.info?.Title?.trim() || null,
-      pages: data.numpages,
-    };
+    const data = await pdfParse(Buffer.from(buf));
+    text = data.text?.trim() || null;
+    pages = data.numpages;
+    title = data.info?.Title?.trim() || null;
   } catch {
-    console.warn("[parser] pdf-parse not installed - PDF parsing unavailable");
-    return null;
+    console.warn("[parser] pdf-parse not installed or failed - will try OCR fallback");
   }
+  if (text && text.length >= 10 && !isScannedPdf(text, pages)) {
+    return { text: text.slice(0, 500_000), title, pages };
+  }
+  const ocrText = await ocrScannedPdf(buf);
+  if (ocrText && ocrText.length >= 10) {
+    return { text: ocrText.slice(0, 500_000), title, pages };
+  }
+  return null;
 }
 
 // ── Word .docx (mammoth) ────────────────────────────────────────────────
 
 async function parseWord(buf: Buffer, filename: string): Promise<ParsedDocument | null> {
-  // .docx -> mammoth.extractRawText
+  // .docx -> mammoth.convertToHtml -> stripHtml (preserves table/list/heading structure)
   if (filename.toLowerCase().endsWith(".docx")) {
     try {
       const mammoth = await import("mammoth");
-      const result = await (mammoth as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> })
-        .extractRawText({ buffer: buf });
-      const text = result.value?.trim();
+      const result = await (mammoth as { convertToHtml: (opts: { buffer: Buffer }) => Promise<{ value: string }> })
+        .convertToHtml({ buffer: buf });
+      const text = stripHtml(result.value || "");
       if (!text || text.length < 10) return null;
       return { text: text.slice(0, 500_000), title: null };
     } catch {
-      console.warn("[parser] mammoth not installed - .docx parsing unavailable");
+      console.warn("[parser] mammoth not installed or .docx parse failed");
       return null;
     }
   }
   // .doc (legacy binary) - not supported without antiword/textract
   console.warn("[parser] .doc (legacy) not supported - convert to .docx");
   return null;
+}
+
+// ── Image (OCR via tesseract.js) ─────────────────────────────────────────
+
+async function parseImage(buf: Buffer): Promise<ParsedDocument | null> {
+  const text = await ocrImage(buf);
+  if (!text || text.length < 10) return null;
+  return { text: text.slice(0, 500_000), title: null };
 }
 
 // ── Excel .xlsx (xlsx / SheetJS) ────────────────────────────────────────
@@ -240,6 +263,7 @@ async function parseByExtension(buf: Buffer, filename: string): Promise<ParsedDo
   if (ext.endsWith(".pptx")) return parsePptx(buf);
   if (ext.endsWith(".html") || ext.endsWith(".htm")) return parseHtml(buf);
   if (ext.endsWith(".json")) return parseText(buf);
+  if (/\.(png|jpe?g|gif|webp|bmp)$/.test(ext)) return parseImage(buf);
   // Try as plain text
   return parseText(buf);
 }

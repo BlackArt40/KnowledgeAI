@@ -5,3 +5,5 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+  msgpackr-extract: false
+  tesseract.js: false

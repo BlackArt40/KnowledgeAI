@@ -27,6 +27,8 @@ export interface HybridSearchOptions {
   keywordWeight?: number;
   /** Filter by document IDs (only return chunks from these docs) */
   docIdFilter?: string[];
+  /** Only return chunks from documents uploaded after this timestamp (ms epoch) */
+  createdAfter?: number;
 }
 
 /**
@@ -42,9 +44,25 @@ export async function hybridSearch(
   const topK = options?.topK ?? 5;
   const vWeight = options?.vectorWeight ?? 0.5;
   const kWeight = options?.keywordWeight ?? 0.5;
-  const docFilter = options?.docIdFilter
+  let docFilter = options?.docIdFilter
     ? new Set(options.docIdFilter)
     : null;
+
+  // createdAfter: restrict to documents uploaded after a timestamp
+  if (options?.createdAfter) {
+    try {
+      const { listDocuments } = await import("@/lib/kb/store");
+      const docs = listDocuments(kbId);
+      const recent = new Set(
+        docs.filter((d) => d.uploadedAt > options.createdAfter!).map((d) => d.id)
+      );
+      docFilter = docFilter
+        ? new Set([...docFilter].filter((id) => recent.has(id)))
+        : recent;
+    } catch {
+      // KB store unavailable - createdAfter filter cannot be applied
+    }
+  }
 
   // Fetch more candidates than topK for better fusion
   const candidateK = Math.max(topK * 3, 15);
