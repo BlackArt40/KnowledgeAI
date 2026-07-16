@@ -49,6 +49,7 @@ export default function SettingsPage() {
     setData(d);
     setLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refresh(); }, [refresh]);
 
   const refreshUser = React.useCallback(async () => {
@@ -58,12 +59,14 @@ export default function SettingsPage() {
       setProfileName(d.user.name);
     }
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refreshUser(); }, [refreshUser]);
 
   const refreshNotifPrefs = React.useCallback(async () => {
     const d = await fetch("/api/notifications/preferences", { cache: "no-store" }).then((r) => r.json());
     if (d.prefs) setNotifPrefs(d.prefs);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refreshNotifPrefs(); }, [refreshNotifPrefs]);
 
   async function toggleNotif(key: "emailDigest" | "kbReady" | "agentDone" | "securityAlert", val: boolean) {

@@ -80,6 +80,7 @@ export function KbSettingsDialog({
   }, []);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setForm(kb.settings);
   }, [open, kb.settings]);
 

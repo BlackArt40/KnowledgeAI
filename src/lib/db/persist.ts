@@ -658,8 +658,7 @@ export async function persistSystemConfig(config: {
     };
     const existing = await sc.systemConfig.findUnique({ where: { id: 1 } });
     if (existing) {
-      const { id: _omit, ...rest } = data;
-      await sc.systemConfig.update({ where: { id: 1 }, data: rest });
+      await sc.systemConfig.update({ where: { id: 1 }, data });
     } else {
       await sc.systemConfig.create({ data });
     }

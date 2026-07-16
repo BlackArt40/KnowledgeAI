@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ModelConfig, ModelConfigSafe, ProviderPreset, ProviderId } from "./types";
-import { persistModelConfig, deleteModelConfigFromDb } from "@/lib/db/persist";
+import { deleteModelConfigFromDb } from "@/lib/db/persist";
 
 // ── Provider presets ────────────────────────────────────────────────────
 

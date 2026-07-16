@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listKbs, listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
+import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";

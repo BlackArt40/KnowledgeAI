@@ -16,13 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelative } from "@/lib/format";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/lib/admin/types";
 
-interface ProviderStatus {
-  id: string;
-  label: string;
-  enabled: boolean;
-  detail: string;
-}
-
 import { cn } from "@/lib/utils";
 
 const STATUS_VARIANT = {
@@ -39,7 +32,6 @@ export default function AdminPage() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [savingCfg, setSavingCfg] = React.useState(false);
-  const [providers, setProviders] = React.useState<ProviderStatus[]>([]);
 
   const refresh = React.useCallback(async () => {
     const [o, u, k, c] = await Promise.all([
@@ -49,9 +41,9 @@ export default function AdminPage() {
       fetch("/api/admin/config", { cache: "no-store" }).then((r) => r.json()),
     ]);
     setOverview(o); setUsers(u.users ?? []); setKbs(k.kbs ?? []); setConfig(c);
-    setProviders(c.providers ?? []);
     setLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refresh(); }, [refresh]);
 
   async function setUserStatus(id: string, status: "active" | "banned") {

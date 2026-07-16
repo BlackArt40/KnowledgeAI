@@ -57,6 +57,7 @@ export function ModelSettings() {
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refresh(); }, [refresh]);
 
   async function patch(id: string, body: Record<string, unknown>) {

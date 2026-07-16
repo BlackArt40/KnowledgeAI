@@ -14,13 +14,11 @@ import {
   FileText,
   Sparkles,
   Library,
-  Loader2,
   MessageSquareText,
   Check,
   Trash2,
   Square,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -189,6 +187,7 @@ export default function ChatPage() {
   // load conversations when KB changes
   React.useEffect(() => {
     if (!selectedKb) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveConv(null);
     setMessages([]);
     fetch(`/api/chat/conversations?kbId=${selectedKb}`, { cache: "no-store" })
@@ -199,6 +198,7 @@ export default function ChatPage() {
   // Generate example questions from the selected KB's documents so the prompts
   // reflect the current knowledge base.
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedKb) { setSuggestions([]); return; }
     fetch(`/api/knowledge-base/${selectedKb}`, { cache: "no-store" })
       .then((r) => r.json())

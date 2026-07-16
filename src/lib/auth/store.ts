@@ -190,6 +190,7 @@ export function deleteUser(userId: string): boolean {
 
 // Strip sensitive fields for API responses
 export function sanitize(user: User): Omit<User, "passwordHash"> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash, ...rest } = user;
   return rest;
 }

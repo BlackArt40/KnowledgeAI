@@ -9,8 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelative } from "@/lib/format";
-import { COMPARISON, PLANS } from "@/lib/billing/plans";
+import { COMPARISON } from "@/lib/billing/plans";
 import { METHOD_LABEL, STATUS_LABEL, type Plan, type Subscription, type Invoice, type Usage } from "@/lib/billing/types";
 import { cn } from "@/lib/utils";
 

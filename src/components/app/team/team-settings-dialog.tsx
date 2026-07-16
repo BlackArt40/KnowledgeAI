@@ -21,6 +21,7 @@ export function TeamSettingsDialog({
   const [saving, setSaving] = React.useState(false);
   const [name, setName] = React.useState(team.name);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { if (open) setName(team.name); }, [open, team.name]);
 
   async function save() {

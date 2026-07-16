@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatSize, formatRelative } from "@/lib/format";
 import { STATUS_LABEL, type KbDocument, type DocStatus } from "@/lib/kb/types";
-import { cn } from "@/lib/utils";
 
 const IN_FLIGHT: DocStatus[] = ["queued", "parsing", "chunking", "vectorizing"];
 

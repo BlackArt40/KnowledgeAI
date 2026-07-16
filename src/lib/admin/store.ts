@@ -3,7 +3,6 @@ import { listUsers as authListUsers, getUserById, setUserStatus as authSetUserSt
 import { listAllKbs, listDocuments, totalStorageBytes } from "@/lib/kb/store";
 import { getUsage, listAllInvoices } from "@/lib/billing/store";
 import { listTasks } from "@/lib/agent/store";
-import { getPlan } from "@/lib/billing/plans";
 import { persistSystemConfig } from "@/lib/db/persist";
 
 // ── System config (in-memory, the only piece that was already real) ──────
@@ -36,7 +35,6 @@ export function listUsers(): AdminUser[] {
   return users.map((u) => {
     const userKbs = listAllKbs().filter((kb) => kb.ownerId === u.id);
     const docs = userKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
-    const usage = getUsage(u.id);
     return {
       id: u.id,
       name: u.name,

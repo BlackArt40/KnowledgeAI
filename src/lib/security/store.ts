@@ -1,7 +1,6 @@
 import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types";
 import type { ClientInfo } from "./ua";
 import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
-import { persistLoginEvent } from "@/lib/db/persist";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
@@ -19,8 +18,6 @@ function store(): Store {
   }
   return g.__KAI_SECURITY_STORE__;
 }
-
-const DAY = 86400000;
 
 function uid(p: string) {
   return `${p}_${Math.random().toString(36).slice(2, 10)}`;

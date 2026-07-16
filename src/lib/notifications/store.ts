@@ -6,7 +6,6 @@
 // ---------------------------------------------------------------------------
 
 import type { Notification, NotificationPrefs, NotifType } from "./types";
-import { persistNotification } from "@/lib/db/persist";
 
 interface Store {
   prefsByUser: Map<string, NotificationPrefs>;

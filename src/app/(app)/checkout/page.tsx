@@ -29,6 +29,7 @@ export default function CheckoutPage() {
 
   React.useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("plan") as PlanId | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q && PLANS.some((p) => p.id === q)) setPlanId(q);
   }, []);
 

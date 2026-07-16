@@ -192,6 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, []);
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshNotifs();
     const t = setInterval(refreshNotifs, 30000);
     return () => clearInterval(t);

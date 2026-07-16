@@ -55,6 +55,7 @@ export default function TeamPage() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { fetchTeam(); }, [fetchTeam]);
 
   async function changeRole(id: string, role: Role) {

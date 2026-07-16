@@ -37,6 +37,7 @@ export default function ApiKeysPage() {
     setLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refresh(); }, [refresh]);
 
   function toggleScope(id: string) {

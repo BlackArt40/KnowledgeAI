@@ -47,8 +47,7 @@ export function useChunkedUpload() {
       uploadId: string,
       file: File,
       index: number,
-      chunkSize: number,
-      totalChunks: number
+      chunkSize: number
     ): Promise<boolean> => {
       const start = index * chunkSize;
       const end = Math.min(start + chunkSize, file.size);
@@ -126,7 +125,7 @@ export function useChunkedUpload() {
         async function worker() {
           while (queue.length > 0 && !abortRef.current) {
             const index = queue.shift()!;
-            await uploadChunk(uploadId, file, index, chunkSize, totalChunks);
+            await uploadChunk(uploadId, file, index, chunkSize);
             completed++;
             update({
               receivedChunks: completed,
