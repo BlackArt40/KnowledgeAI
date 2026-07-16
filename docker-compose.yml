@@ -14,6 +14,18 @@ services:
       start_period: 10s
       retries: 3
 
+  # Background worker: consumes the BullMQ queue (doc-process, agent-run,
+  # index-cleanup). Runs the same image as the app but overrides the command
+  # to start the worker entrypoint instead of `next start`. Shares REDIS_URL
+  # so the app (producer) and worker (consumer) talk to the same queue.
+  worker:
+    build: .
+    command: ["node", "worker.js"]
+    env_file: .env.local
+    depends_on:
+      - redis
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:

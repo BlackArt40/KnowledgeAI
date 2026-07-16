@@ -1,13 +1,18 @@
-import { createTask, saveTask } from "@/lib/agent/store";
-import { runTask } from "@/lib/agent/orchestrator";
+import { createTask, saveTask, getTask } from "@/lib/agent/store";
 import { getKb } from "@/lib/kb/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
+import { enqueue, subscribeAgentEvents } from "@/lib/queue";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/agent/run -> text/event-stream
+//
+// Creates the task, enqueues an agent-run job, then opens an SSE stream that
+// relays events from the background worker (via the agent event bus) to the
+// client. The request thread is NOT blocked by runTask -- it runs in the
+// queue worker. Events: init -> step* -> done|error -> (stream closes).
 export async function POST(req: Request) {
   const authUser = await getRequestUser(req);
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
@@ -39,24 +44,69 @@ export async function POST(req: Request) {
 
   const enc = new TextEncoder();
 
-  const doAgent = () => {
+  const streamResponse = () => {
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (obj: unknown) =>
-          controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        const send = (obj: unknown): boolean => {
+          if (req.signal.aborted) return false;
+          try {
+            controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`));
+            return true;
+          } catch {
+            return false;
+          }
+        };
+
+        // Subscribe to the event bus BEFORE enqueuing so we never miss the
+        // first event (avoids a race where the worker publishes before we
+        // attach the listener).
+        let unsubscribe: (() => void) | null = null;
+        let streamClosed = false;
+
+        const closeStream = () => {
+          if (streamClosed) return;
+          streamClosed = true;
+          if (unsubscribe) {
+            try { unsubscribe(); } catch { /* already unsubscribed */ }
+          }
+          try { controller.close(); } catch { /* already closed */ }
+        };
+
         try {
-          send({ type: "init", taskId: task.id });
-          await runTask(task, async (e) => {
-            saveTask(task);
-            if (e.type === "step" && e.step) send({ type: "step", step: e.step });
-            else if (e.type === "done") send({ type: "done", task });
-            else if (e.type === "error") send({ type: "error", message: e.message });
+          unsubscribe = await subscribeAgentEvents(task.id, (event) => {
+            if (streamClosed) return;
+            if (event.type === "step") {
+              send({ type: "step", step: event.step });
+            } else if (event.type === "done") {
+              // Reload the latest task state from the store in case the
+              // worker's in-memory copy has fields the event snapshot lacks.
+              const latest = getTask(task.id);
+              send({ type: "done", task: latest ?? event.task });
+            } else if (event.type === "error") {
+              send({ type: "error", message: event.message });
+            } else if (event.type === "end") {
+              closeStream();
+            }
           });
+
+          send({ type: "init", taskId: task.id });
+
+          // Enqueue the background job. Worker picks it up and publishes
+          // step/done/error events to the bus, which we relay above.
+          await enqueue("agent-run", { taskId: task.id, userId: authUser.id });
+        } catch (err) {
+          console.error("[agent/run] stream error:", err);
+          send({ type: "error", message: "排队或执行失败" });
+          // Mark the task as failed so the UI reflects the error state.
+          task.status = "failed";
           saveTask(task);
-        } catch {
-          send({ type: "error", message: "执行失败" });
+          closeStream();
         }
-        controller.close();
+
+        // If the client disconnects, clean up the subscription.
+        req.signal.addEventListener("abort", () => {
+          closeStream();
+        });
       },
     });
 
@@ -65,5 +115,5 @@ export async function POST(req: Request) {
     });
   };
 
-  return runWithUser(authUser.id, doAgent);
+  return runWithUser(authUser.id, streamResponse);
 }

@@ -9,9 +9,10 @@ import type { JobQueue, JobHandler } from "./interface";
 
 // ── Document Processing Handler ──────────────────────────────────────────
 //
-// Processes a document through the pipeline: parse -> chunk -> vectorize.
-// In memory mode, this runs in-process (same as the previous setTimeout
-// simulator). In BullMQ mode, this runs in a separate worker process.
+// Runs the full document pipeline: parse -> chunk -> vectorize -> index.
+// Replaces the in-request setTimeout simulator so the upload route returns
+// immediately and processing happens in the background (in-process for
+// MemoryQueue, separate worker process for BullMQ).
 //
 // Payload: { docId: string }
 
@@ -19,43 +20,63 @@ const docProcessHandler: JobHandler = async (payload) => {
   const docId = payload.docId as string;
   if (!docId) return { ok: false, error: "Missing docId" };
 
+  const { getDocument, processDocInQueue } = await import("@/lib/kb/store");
+  const doc = getDocument(docId);
+  if (!doc) return { ok: false, error: `Document not found: ${docId}` };
+
   try {
-    // Lazy imports to avoid circular deps
-
-    // The actual processing is still driven by kb/store.ts's startProcessing
-    // for the in-memory case. This handler exists so that when a real queue
-    // (BullMQ) is configured, document processing can be dispatched to a
-    // separate worker instead of blocking the request thread.
-    //
-    // In the future, this handler will:
-    //   1. Fetch the document from DB (not globalThis)
-    //   2. Parse with LangChain document loaders (PDF/Word/etc.)
-    //   3. Chunk with semantic splitters
-    //   4. Embed + index into the vector store
-    //   5. Update doc status in DB
-
-    // For now, the in-memory startProcessing handles everything.
-    // This handler is a no-op confirmation that the job was received.
+    await processDocInQueue(docId);
     return { ok: true, data: { docId } };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
 };
 
-// ── Agent Run Handler (placeholder for future BullMQ migration) ──────────
+// ── Agent Run Handler ────────────────────────────────────────────────────
 //
-// When the Agent orchestrator is migrated to a background worker, this
-// handler will run the full 4-stage pipeline and publish events via
-// Redis Pub/Sub for SSE consumers to relay to the client.
+// Runs the full 4-stage agent pipeline in the background and publishes
+// progress events to the event bus. The SSE route subscribes to these
+// events and relays them to the client. When REDIS_URL is set, events go
+// through Redis Pub/Sub so the worker can run in a separate process.
 //
-// Payload: { taskId: string }
+// Payload: { taskId: string, userId: string }
 
 const agentRunHandler: JobHandler = async (payload) => {
   const taskId = payload.taskId as string;
+  const userId = payload.userId as string | undefined;
   if (!taskId) return { ok: false, error: "Missing taskId" };
-  // Placeholder - agent runs are currently in-process via SSE streaming.
-  // Migration to queue will be done in a future iteration.
-  return { ok: true, data: { taskId } };
+
+  const { getTask, saveTask } = await import("@/lib/agent/store");
+  const task = getTask(taskId);
+  if (!task) return { ok: false, error: `Task not found: ${taskId}` };
+
+  const { runTask } = await import("@/lib/agent/orchestrator");
+  const { publishAgentEvent } = await import("./index");
+
+  // The per-user model context must be re-established inside the worker
+  // because AsyncLocalStorage does not cross process boundaries (BullMQ)
+  // or even await boundaries of a fresh call stack.
+  const { runWithUser } = await import("@/lib/models/context");
+
+  try {
+    await runWithUser(userId ?? "", async () => {
+      await runTask(task, async (e) => {
+        saveTask(task);
+        await publishAgentEvent(taskId, e);
+      });
+      saveTask(task);
+    });
+    return { ok: true, data: { taskId } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    await publishAgentEvent(taskId, { type: "error", message });
+    return { ok: false, error: message };
+  } finally {
+    // Always signal end so the SSE consumer closes its stream, whether the
+    // task succeeded, failed, or exhausted retries.
+    const { publishAgentEnd } = await import("./index");
+    await publishAgentEnd(taskId);
+  }
 };
 
 // ── Index Cleanup Handler ────────────────────────────────────────────────

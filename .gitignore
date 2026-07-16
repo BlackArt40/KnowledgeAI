@@ -43,3 +43,6 @@ next-env.d.ts
 
 # tesseract.js language data (downloaded at runtime)
 *.traineddata
+
+# OpenCode tool state
+.omo/
