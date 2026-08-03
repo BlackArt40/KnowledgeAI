@@ -1,7 +1,7 @@
 // Smoke test for the stripHtml refactor + parseWord HTML route.
 // Tests the pure-logic tag stripping by feeding synthetic HTML through parseHtml.
 async function main() {
-  const { parseDocument } = await import("../src/lib/rag/parser");
+  const { parseDocument } = await import("../../src/lib/rag/parser");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {

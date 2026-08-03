@@ -56,6 +56,23 @@ pnpm lint
 
 也可自行注册新账户（默认 Editor 角色）。
 
+## 📁 项目结构
+
+```
+src/
+├── app/            # Next.js App Router（页面 + API 路由）
+├── components/      # React 组件（ui 基础库 + app 业务 + marketing）
+├── lib/             # 业务逻辑（auth/kb/rag/agent/queue/db/storage…）
+└── proxy.ts         # 中间件（限流 + DB 水合）
+prisma/              # 数据库 schema + 迁移 + 种子
+scripts/             # 运维脚本（清理/迁移/CI 检查）
+└── smoke/           # 手动冒烟测试
+tests/               # 集成测试（需 dev server）
+docs/                # 产品文档 / 设计说明 / 路线图
+```
+
+> 完整目录说明见 [docs/项目结构.md](docs/项目结构.md)。
+
 ## 🐳 Docker 部署
 
 ```bash

@@ -10,7 +10,7 @@ async function main() {
   }
 
   // ── 1. parseIndexList (reranker response parser) ──────────────────────
-  const { parseIndexList } = await import("../src/lib/rag/reranker");
+  const { parseIndexList } = await import("../../src/lib/rag/reranker");
   check("parseIndexList: basic", JSON.stringify(parseIndexList("3,0,1,2", 4)) === "[3,0,1,2]");
   check("parseIndexList: with brackets/spaces", JSON.stringify(parseIndexList("[3], [0], 1 2", 4)) === "[3,0,1,2]");
   check("parseIndexList: dedup", parseIndexList("1,1,0,0", 2).length === 2);
@@ -19,7 +19,7 @@ async function main() {
   check("parseIndexList: garbage response", parseIndexList("not a list", 5).length === 0);
 
   // ── 2. parseQueryLines (query rewrite parser) ─────────────────────────
-  const { parseQueryLines } = await import("../src/lib/rag/query-rewrite");
+  const { parseQueryLines } = await import("../../src/lib/rag/query-rewrite");
   check("parseQueryLines: basic", parseQueryLines("what is RAG\nhow does retrieval work\nRAG explanation", 3).length === 3);
   check("parseQueryLines: strips numbering", parseQueryLines("1. first\n2. second", 3)[0] === "first");
   check("parseQueryLines: dedup", parseQueryLines("same query\nsame query\ndifferent", 3).length === 2);
@@ -27,7 +27,7 @@ async function main() {
   check("parseQueryLines: caps at maxCount", parseQueryLines("a\nb\nc\nd\ne", 3).length === 3);
 
   // ── 3. rerank demo-mode fallback (no LLM) ─────────────────────────────
-  const { rerank } = await import("../src/lib/rag/reranker");
+  const { rerank } = await import("../../src/lib/rag/reranker");
   const chunks = [
     { docId: "d1", docName: "doc1", chunkIndex: 0, text: "chunk zero", score: 0.9 },
     { docId: "d2", docName: "doc2", chunkIndex: 0, text: "chunk one", score: 0.8 },
@@ -38,7 +38,7 @@ async function main() {
   check("rerank demo-mode truncates to topK", reranked.length === 2);
 
   // ── 4. rewriteQuery demo-mode fallback (no LLM) ───────────────────────
-  const { rewriteQuery } = await import("../src/lib/rag/query-rewrite");
+  const { rewriteQuery } = await import("../../src/lib/rag/query-rewrite");
   const queries = await rewriteQuery("what is knowledge management");
   check("rewriteQuery demo-mode returns [original]", queries.length === 1 && queries[0] === "what is knowledge management");
 
@@ -48,10 +48,10 @@ async function main() {
   delete process.env.QUERY_REWRITE_ENABLED;
 
   // ── 5. hybridSearch with docIdFilter ──────────────────────────────────
-  const { indexChunks } = await import("../src/lib/rag/vector-store");
-  const { indexBM25 } = await import("../src/lib/rag/bm25");
-  const { hybridSearch } = await import("../src/lib/rag/hybrid-search");
-  const { embedText } = await import("../src/lib/llm/provider");
+  const { indexChunks } = await import("../../src/lib/rag/vector-store");
+  const { indexBM25 } = await import("../../src/lib/rag/bm25");
+  const { hybridSearch } = await import("../../src/lib/rag/hybrid-search");
+  const { embedText } = await import("../../src/lib/llm/provider");
 
   const kbId = "test-kb-p12";
   const docChunks1 = ["Knowledge management is the process of creating sharing and managing knowledge.", "RAG combines retrieval with generation for accurate answers."];
@@ -71,7 +71,7 @@ async function main() {
   check("hybridSearch docIdFilter excludes non-matching docs", allFromDocA, `got docIds: ${filteredResults.map((r) => r.docId).join(",")}`);
 
   // ── 6. End-to-end retrieve (demo mode: rewrite no-op + rerank no-op) ──
-  const { retrieve } = await import("../src/lib/rag/retriever");
+  const { retrieve } = await import("../../src/lib/rag/retriever");
   const retrieved = await retrieve(kbId, "knowledge management", 3);
   check("retrieve (demo mode) returns results", retrieved.length > 0, `got ${retrieved.length} results`);
   check("retrieve respects topK", retrieved.length <= 3);

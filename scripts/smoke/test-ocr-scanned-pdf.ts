@@ -1,7 +1,7 @@
 // Builds a minimal 1-page PDF whose only content is a JPEG image of text.
 // This simulates a "scanned" PDF (no text layer) for OCR fallback testing.
 async function main() {
-  const { ocrScannedPdf, isScannedPdf } = await import("../src/lib/rag/ocr");
+  const { ocrScannedPdf, isScannedPdf } = await import("../../src/lib/rag/ocr");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {

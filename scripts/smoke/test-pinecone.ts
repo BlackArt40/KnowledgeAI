@@ -1,14 +1,14 @@
 // @ts-nocheck
 // End-to-end test for PineconeVectorStore against a mock Pinecone server.
 // Usage: npx tsx scripts/test-pinecone.ts
-import { embed } from "../src/lib/rag/embeddings";
+import { embed } from "../../src/lib/rag/embeddings";
 
 async function main() {
   process.env.VECTOR_STORE = "pinecone";
   process.env.PINECONE_API_KEY = "test-key";
   process.env.PINECONE_INDEX_HOST = "http://localhost:5080";
 
-  const { PineconeVectorStore } = await import("../src/lib/rag/vector-store-pinecone");
+  const { PineconeVectorStore } = await import("../../src/lib/rag/vector-store-pinecone");
   const store = new PineconeVectorStore();
 
   const KB_ID = "test_kb_pinecone_e2e";

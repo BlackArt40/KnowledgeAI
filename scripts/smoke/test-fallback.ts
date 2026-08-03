@@ -1,10 +1,10 @@
 // @ts-nocheck
 // Verify in-memory fallback works when DATABASE_URL is NOT set.
 async function main() {
-  const { createUser, listUsers } = await import("../src/lib/auth/store");
-  const { isDbEnabled } = await import("../src/lib/db/client");
-  const { createKb, listAllKbs } = await import("../src/lib/kb/store");
-  const { updateConfig, getConfig } = await import("../src/lib/admin/store");
+  const { createUser, listUsers } = await import("../../src/lib/auth/store");
+  const { isDbEnabled } = await import("../../src/lib/db/client");
+  const { createKb, listAllKbs } = await import("../../src/lib/kb/store");
+  const { updateConfig, getConfig } = await import("../../src/lib/admin/store");
 
   console.log("isDbEnabled (no DATABASE_URL):", isDbEnabled());
   const u = createUser("fallback", "fallback@x.dev", "pw", "editor") as any;

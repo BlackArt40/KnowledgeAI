@@ -12,7 +12,7 @@ async function touchOld(filePath: string) {
 }
 
 async function main() {
-  const { runCleanup, cleanupOrphanedChunks, cleanupOrphanedKbDirs } = await import("../src/lib/storage/cleanup");
+  const { runCleanup, cleanupOrphanedChunks, cleanupOrphanedKbDirs } = await import("../../src/lib/storage/cleanup");
 
   let pass = 0, fail = 0;
   const check = (label: string, ok: boolean) => {
@@ -42,7 +42,7 @@ async function main() {
   await touchOld(orphanKbDir);
 
   // 4. Create old file in a "real" KB dir (from KB store, not filesystem)
-  const { listAllKbs } = await import("../src/lib/kb/store");
+  const { listAllKbs } = await import("../../src/lib/kb/store");
   const realKbs = listAllKbs();
   const realKbId = realKbs[0]?.id;
   let oldFilePath: string | null = null;

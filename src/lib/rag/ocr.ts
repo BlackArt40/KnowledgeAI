@@ -68,7 +68,8 @@ export async function ocrImage(buf: Buffer, lang?: string): Promise<string | nul
   if (!ocrEnabled()) return null;
   try {
     const { createWorker } = await import("tesseract.js");
-    const worker = await createWorker(lang ?? ocrLang(), 1, {});
+    // langPath: keep tesseract language packs in .tessdata/ (project root stays clean)
+    const worker = await createWorker(lang ?? ocrLang(), 1, { langPath: ".tessdata" });
     try {
       const { data } = await worker.recognize(buf);
       return data?.text?.trim() || null;

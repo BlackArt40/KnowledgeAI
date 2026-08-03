@@ -3,7 +3,7 @@
 // + scanned-PDF OCR + image OCR. Run: npx tsx scripts/test-parser.ts
 async function main() {
   process.env.OCR_LANG = process.env.OCR_LANG || "eng";
-  const { parseDocument } = await import("../src/lib/rag/parser");
+  const { parseDocument } = await import("../../src/lib/rag/parser");
 
   let failures = 0;
   const results: string[] = [];

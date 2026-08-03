@@ -1,6 +1,6 @@
 async function main() {
-  const { parseDocument } = await import("../src/lib/rag/parser");
-  const { docTypeFromName } = await import("../src/lib/kb/store");
+  const { parseDocument } = await import("../../src/lib/rag/parser");
+  const { docTypeFromName } = await import("../../src/lib/kb/store");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {

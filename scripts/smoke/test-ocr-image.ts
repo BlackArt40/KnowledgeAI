@@ -1,5 +1,5 @@
 async function main() {
-  const { ocrImage } = await import("../src/lib/rag/ocr");
+  const { ocrImage } = await import("../../src/lib/rag/ocr");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {

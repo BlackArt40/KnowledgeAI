@@ -1,5 +1,5 @@
 async function main() {
-  const { isScannedPdf } = await import("../src/lib/rag/ocr");
+  const { isScannedPdf } = await import("../../src/lib/rag/ocr");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {

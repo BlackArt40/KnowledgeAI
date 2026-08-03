@@ -3,13 +3,13 @@
 // Requires: ChromaDB running on localhost:8000
 // Usage: VECTOR_STORE=chromadb npx tsx scripts/test-chromadb.ts
 
-import { embed } from "../src/lib/rag/embeddings";
+import { embed } from "../../src/lib/rag/embeddings";
 
 async function main() {
   process.env.VECTOR_STORE = "chromadb";
   process.env.CHROMA_URL = "http://localhost:8000";
 
-  const { ChromaVectorStore } = await import("../src/lib/rag/vector-store-chromadb");
+  const { ChromaVectorStore } = await import("../../src/lib/rag/vector-store-chromadb");
   const store = new ChromaVectorStore();
 
   const KB_ID = "test_kb_chroma_e2e";

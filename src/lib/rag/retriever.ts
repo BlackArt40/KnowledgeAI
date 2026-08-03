@@ -13,6 +13,7 @@ import { embedText } from "@/lib/llm/provider";
 import { hybridSearch } from "./hybrid-search";
 import { rewriteQuery } from "./query-rewrite";
 import { rerank } from "./reranker";
+import { getParentText } from "./indexer";
 import type { RetrievedChunk } from "./types";
 
 const MULTI_QUERY_RRF_K = 60;
@@ -64,6 +65,31 @@ async function multiQueryRetrieve(
  * LLM reranking. Interface unchanged from original; all enhancements are
  * env-gated with graceful demo fallback.
  */
+/** Expand child chunks into their parent context (parent-child strategy).
+ *  When PARENT_CHILD_CHUNKING is enabled, indexed chunks are small "children"
+ *  but the retriever returns the larger "parent" text for richer generation
+ *  context. Multiple children from the same parent are deduplicated. */
+function expandWithParent(
+  chunks: RetrievedChunk[],
+  kbId: string
+): RetrievedChunk[] {
+  const seen = new Set<string>();
+  const expanded: RetrievedChunk[] = [];
+  for (const chunk of chunks) {
+    const parentText = getParentText(kbId, chunk.docId, chunk.chunkIndex);
+    if (parentText) {
+      const dedupKey = `${chunk.docId}:${chunk.chunkIndex}`;
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey);
+        expanded.push({ ...chunk, text: parentText });
+      }
+    } else {
+      expanded.push(chunk);
+    }
+  }
+  return expanded;
+}
+
 export async function retrieve(
   kbId: string,
   query: string,
@@ -72,5 +98,6 @@ export async function retrieve(
   const queries = await rewriteQuery(query);
   const candidateK = Math.max(candidatePoolSize(), topK);
   const candidates = await multiQueryRetrieve(kbId, queries, candidateK);
-  return rerank(query, candidates, topK);
+  const reranked = await rerank(query, candidates, topK);
+  return expandWithParent(reranked, kbId);
 }

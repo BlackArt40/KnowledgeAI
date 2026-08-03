@@ -35,7 +35,7 @@ node tests/performance/performance-test.mjs  # ~120s, rate-limit window waits
 
 Each script writes a Chinese-named Markdown report next to itself. They are smoke/integration checks, not unit tests - there is no unit test framework.
 
-`scripts/test-*.ts` and `scripts/mock-pinecone-server.ts` are manual smoke scripts run via `npx tsx`; not part of any suite.
+`scripts/smoke/test-*.ts` and `scripts/smoke/mock-pinecone-server.ts` are manual smoke scripts run via `npx tsx scripts/smoke/<name>.ts`; not part of any suite. Operational scripts (`scripts/cleanup-temp-files.ts`, `scripts/migrate-vector-store.ts`, `scripts/check-prisma-migrations.sh`) stay at `scripts/` root.
 
 ## Architecture: in-memory store + write-through DB (critical)
 

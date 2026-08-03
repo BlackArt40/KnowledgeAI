@@ -16,10 +16,10 @@ const TEST_EMAIL = "test_persist@knowledgeai.dev";
 const TEST_KB = "持久化测试KB";
 
 async function writeMode() {
-  const { createUser, listUsers } = await import("../src/lib/auth/store");
-  const { createKb, listAllKbs } = await import("../src/lib/kb/store");
-  const { inviteMember, updateTeam } = await import("../src/lib/team/store");
-  const { updateConfig } = await import("../src/lib/admin/store");
+  const { createUser, listUsers } = await import("../../src/lib/auth/store");
+  const { createKb, listAllKbs } = await import("../../src/lib/kb/store");
+  const { inviteMember, updateTeam } = await import("../../src/lib/team/store");
+  const { updateConfig } = await import("../../src/lib/admin/store");
 
   console.log("[write] performing mutations...");
   const u = createUser("测试用户", TEST_EMAIL, "password123", "editor") as any;
@@ -70,11 +70,11 @@ async function writeMode() {
 }
 
 async function verifyMode() {
-  const { listUsers } = await import("../src/lib/auth/store");
-  const { listAllKbs } = await import("../src/lib/kb/store");
-  const { getTeam, listMembers, listAudit } = await import("../src/lib/team/store");
-  const { getConfig } = await import("../src/lib/admin/store");
-  const { hydrateFromDb } = await import("../src/lib/db/hydrate");
+  const { listUsers } = await import("../../src/lib/auth/store");
+  const { listAllKbs } = await import("../../src/lib/kb/store");
+  const { getTeam, listMembers, listAudit } = await import("../../src/lib/team/store");
+  const { getConfig } = await import("../../src/lib/admin/store");
+  const { hydrateFromDb } = await import("../../src/lib/db/hydrate");
 
   // Touch each store to initialize globals (seeds demo data in memory).
   listUsers(); listAllKbs(); getTeam(); listMembers(); listAudit(); getConfig();
