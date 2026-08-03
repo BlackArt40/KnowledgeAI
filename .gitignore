@@ -45,5 +45,14 @@ next-env.d.ts
 .tessdata/
 *.traineddata
 
+# development screenshots (not needed to build/run)
+docs/screenshots/
+
+# development planning docs (historical, not project docs)
+docs/superpowers/
+
+# generated test reports (output of running tests, not source)
+tests/**/*测试报告.md
+
 # OpenCode tool state
 .omo/
