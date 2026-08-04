@@ -17,6 +17,7 @@ import { GraphBuilder, runGraph } from "./graph";
 import type { GraphState } from "./graph";
 import { getTemplate } from "./templates";
 import type { TemplateId } from "./templates";
+import { saveVersion } from "./store";
 
 export interface AgentEvent {
   type: "step" | "done" | "error";
@@ -374,6 +375,8 @@ export async function runTask(
 
     task.status = "done";
     task.durationMs = Date.now() - start;
+    // P2-3: snapshot the initial report as v1 for revision traceability.
+    saveVersion(task.id, "v1 · 初始报告");
     if (task.userId) {
       notify(
         task.userId, "agentDone", `Agent 调研报告已完成`,

@@ -161,6 +161,9 @@ export async function persistTask(task: {
   steps: unknown[];
   durationMs?: number;
   createdAt: number;
+  shareConfig?: unknown;
+  versions?: unknown;
+  comments?: unknown;
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -177,6 +180,9 @@ export async function persistTask(task: {
       citations: task.citations,
       steps: task.steps,
       durationMs: task.durationMs ?? null,
+      shareConfig: task.shareConfig ?? null,
+      versions: task.versions ?? null,
+      comments: task.comments ?? null,
     };
     if (existing) {
       await db.agentTask.update({ where: { id: task.id }, data });
