@@ -73,6 +73,9 @@ export interface PrismaAgentTask {
   citations: unknown;
   steps: unknown;
   durationMs: number | null;
+  shareConfig: unknown;
+  versions: unknown;
+  comments: unknown;
   createdAt: Date;
 }
 

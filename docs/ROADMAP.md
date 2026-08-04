@@ -4,9 +4,9 @@
 >
 > **更新日期**：2026-08-04
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源 + P3 安全加固 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4/P2-1/P2-2 全部验收通过；P2-2 外部数据源 provider（Tavily/SerpAPI/Brave + ArXiv + GitHub + 网页抓取 + 去重 + 质量评分）；P2-1 StateGraph DAG 引擎；P1-4 流式引用/追问/导出；P1-3 双重前缀修复；P1-1 gzip 修复；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4/P2-3 报告增强验收通过（4 导出格式 PDF/PPTX/Markdown/思维导图 + 分享链接权限 + 版本追溯 + 协作评论）；P2-1/P2-2 全部验收通过；P2-2 外部数据源 provider（Tavily/SerpAPI/Brave + ArXiv + GitHub + 网页抓取 + 去重 + 质量评分）；P2-1 StateGraph DAG 引擎；P1-4 流式引用/追问/导出；P1-3 双重前缀修复；P1-1 gzip 修复；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -256,20 +256,20 @@
 
 ### P2-3 报告增强
 
-**现状**：Markdown 报告 + 引用列表。
+**现状**：✅ 已完成。四种导出格式（Markdown / PDF 打印 HTML / PPTX OOXML / OPML 思维导图，零外部依赖，服务端 `src/lib/agent/export/`）+ 分享链接权限（过期 / 密码 / 访问次数，`/api/agent/public/[id]` 校验 410/401/403）+ 报告修订追溯（编辑自动快照 + 版本历史 + LCS Diff + 恢复，`src/lib/agent/diff.ts`）+ 协作评论（按引用 [n] 锚定 + 回复串）。AgentTask 扩展 shareConfig/versions/comments 字段（内存 + DB 持久化 + migration）。
 
 **计划**：
-- [ ] 报告导出为 PDF（保留格式 + 引用链接）
-- [ ] 报告导出为 PPTX（大纲 → 幻灯片）
-- [ ] 报告导出为思维导图（Markdown → Markmap / Xmind）
-- [ ] 报告版本管理：修订历史 + Diff 对比
-- [ ] 协作评论：报告内联批注与讨论
-- [ ] 分享链接权限控制（有效期 / 密码 / 访问次数限制）
+- [x] 报告导出为 PDF（自包含打印 HTML，保留格式 + 引用链接，浏览器另存 PDF）✅
+- [x] 报告导出为 PPTX（自实现 OOXML + zip，大纲转幻灯片）✅
+- [x] 报告导出为思维导图（Markdown 转 OPML，Xmind 可导入）✅
+- [x] 报告版本管理：自动快照 + 修订历史 + LCS Diff 对比 + 恢复 ✅
+- [x] 协作评论：报告内联批注（按引用 [n] 锚定）+ 讨论回复 ✅
+- [x] 分享链接权限控制（有效期 / 密码 / 访问次数限制）✅
 
 **验收标准**：
-- 支持 PDF / PPTX / Markdown / 思维导图四种导出格式
-- 分享链接支持过期与密码保护
-- 报告修订可追溯
+- ✅ 支持 PDF / PPTX / Markdown / 思维导图四种导出格式（`scripts/smoke/test-report-enhance.ts` 50+ 断言通过）
+- ✅ 分享链接支持过期与密码保护（+ 访问次数限制，public 路由 410/401/403 校验）
+- ✅ 报告修订可追溯（版本快照 + Diff 对比 + 恢复）
 
 ---
 

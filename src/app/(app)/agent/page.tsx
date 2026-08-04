@@ -17,6 +17,18 @@ import {
   ChevronRight,
   FileText,
   History,
+  FileDown,
+  Presentation,
+  Network,
+  Pencil,
+  Save,
+  X,
+  MessageSquare,
+  GitBranch,
+  Trash2,
+  RotateCcw,
+  ChevronDown,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +40,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Markdown } from "@/components/app/agent/markdown";
 import { cn } from "@/lib/utils";
-import type { AgentStep, AgentTask, DagNode, DagEdge, OutputFormat } from "@/lib/agent/types";
+import type {
+  AgentStep,
+  AgentTask,
+  DagNode,
+  DagEdge,
+  OutputFormat,
+  ExportFormat,
+  ReportVersion,
+  Comment,
+  ShareConfig,
+  AgentCitation,
+} from "@/lib/agent/types";
+import { diffLines, type DiffLine } from "@/lib/agent/diff";
 import { TEMPLATES } from "@/lib/agent/templates";
 import type { TemplateId } from "@/lib/agent/templates";
 
@@ -39,6 +74,13 @@ const FORMAT_OPTS: { value: OutputFormat; label: string }[] = [
   { value: "report", label: "调研报告" },
   { value: "ppt", label: "PPT 大纲" },
   { value: "mindmap", label: "思维导图" },
+];
+
+const EXPORT_ITEMS: { value: ExportFormat; label: string; icon: typeof FileText }[] = [
+  { value: "md", label: "Markdown (.md)", icon: FileText },
+  { value: "pdf", label: "PDF (打印另存)", icon: FileDown },
+  { value: "pptx", label: "PPTX 幻灯片", icon: Presentation },
+  { value: "mindmap", label: "思维导图 (.opml)", icon: Network },
 ];
 
 interface KbLite { id: string; name: string }
@@ -59,6 +101,13 @@ export default function AgentPage() {
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
 
+  // P2-3: report enhancement state
+  const [activeTab, setActiveTab] = React.useState("report");
+  const [editing, setEditing] = React.useState(false);
+  const [editText, setEditText] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
+
   React.useEffect(() => {
     fetch("/api/knowledge-base", { cache: "no-store" })
       .then((r) => r.json())
@@ -70,6 +119,18 @@ export default function AgentPage() {
     fetch("/api/agent/tasks", { cache: "no-store" })
       .then((r) => r.json())
       .then(({ tasks }) => setHistory(tasks));
+  }
+
+  async function loadTask(id: string) {
+    const res = await fetch(`/api/agent/tasks/${id}`, { cache: "no-store" });
+    const { task } = await res.json();
+    if (task) {
+      setTask(task);
+      setSteps(task.steps);
+      setHighlightN(null);
+      setActiveTab("report");
+      setEditing(false);
+    }
   }
 
   async function run() {
@@ -130,31 +191,55 @@ export default function AgentPage() {
     }
   }
 
-  async function viewHistory(id: string) {
-    const res = await fetch(`/api/agent/tasks/${id}`, { cache: "no-store" });
-    const { task } = await res.json();
-    if (task) {
-      setTask(task);
-      setSteps(task.steps);
-      setHighlightN(null);
-    }
-  }
-
-  function downloadMd() {
-    if (!task?.report) return;
-    const blob = new Blob([task.report], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${task.topic}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   function copyText(text: string, key: string) {
     navigator.clipboard?.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
+  }
+
+  // P2-3: export (criterion #1). PDF opens a print window; others download.
+  function doExport(fmt: ExportFormat) {
+    if (!task) return;
+    const url = `/api/agent/tasks/${task.id}/export?format=${fmt}`;
+    if (fmt === "pdf") {
+      window.open(url, "_blank");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function startEdit() {
+    if (!task?.report) return;
+    setEditText(task.report);
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!task) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/agent/tasks/${task.id}/report`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report: editText }),
+      });
+      const { task: updated } = await res.json();
+      if (updated) {
+        setTask(updated);
+        setEditing(false);
+        refreshHistory();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onVersionRestored() {
+    if (task) await loadTask(task.id);
   }
 
   const showTimeline = running || steps.length > 0;
@@ -233,7 +318,6 @@ export default function AgentPage() {
 
         {/* template selector + agent combo */}
         <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
-          {/* Templates */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">调研模板</label>
             <div className="flex flex-wrap gap-1.5">
@@ -259,7 +343,6 @@ export default function AgentPage() {
             </div>
           </div>
 
-          {/* Agent toggles */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Agent 组合（可启用/禁用）</label>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -314,7 +397,6 @@ export default function AgentPage() {
                   </Badge>
                 )}
               </h3>
-              {/* DAG workflow visualization (criterion #1) */}
               {(task?.dagNodes ?? (steps.length > 0 ? inferDagFromSteps(steps, enabledAgents) : null)) && (
                 <WorkflowDag
                   nodes={task?.dagNodes ?? inferDagFromSteps(steps, enabledAgents)!}
@@ -331,21 +413,71 @@ export default function AgentPage() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <FileText className="h-4 w-4 text-primary" /> 调研结果
                 </h3>
-                <div className="ml-auto flex gap-1.5">
-                  <Button variant="outline" size="sm" onClick={() => copyText(task!.report!, "report")}>
-                    {copied === "report" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    复制
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => copyText(`${window.location.origin}/r/${task!.id}`, "share")}>
-                    {copied === "share" ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
-                    分享
-                  </Button>
-                  <Button variant="gradient" size="sm" onClick={downloadMd}>
-                    <Download className="h-3.5 w-3.5" /> 导出 MD
-                  </Button>
+                <div className="ml-auto flex flex-wrap gap-1.5">
+                  {editing ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                        <X className="h-3.5 w-3.5" /> 取消
+                      </Button>
+                      <Button variant="gradient" size="sm" onClick={saveEdit} disabled={saving}>
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        保存
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => copyText(task!.report!, "report")}>
+                        {copied === "report" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        复制
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={startEdit}>
+                        <Pencil className="h-3.5 w-3.5" /> 编辑
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+                        <Share2 className="h-3.5 w-3.5" /> 分享设置
+                      </Button>
+                      <DropdownMenu
+                        trigger={
+                          <Button variant="gradient" size="sm">
+                            <Download className="h-3.5 w-3.5" /> 导出 <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        }
+                      >
+                        {EXPORT_ITEMS.map((it) => (
+                          <DropdownMenuItem key={it.value} onClick={() => doExport(it.value)}>
+                            <it.icon className="h-3.5 w-3.5" /> {it.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenu>
+                    </>
+                  )}
                 </div>
               </div>
-              <Markdown text={showReport} onCite={setHighlightN} />
+
+              {!editing && (task!.versions?.length ?? 0) > 0 && (
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-2">
+                  <TabsList>
+                    <TabsTrigger value="report"><FileText className="h-3.5 w-3.5" /> 报告</TabsTrigger>
+                    <TabsTrigger value="versions"><GitBranch className="h-3.5 w-3.5" /> 版本 ({task!.versions!.length})</TabsTrigger>
+                    <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> 评论 ({task!.comments?.length ?? 0})</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
+
+              {editing ? (
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  rows={24}
+                  className="w-full resize-y rounded-xl border border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              ) : activeTab === "versions" ? (
+                <VersionsPanel taskId={task!.id} versions={task!.versions ?? []} current={task!.report ?? ""} onRestore={onVersionRestored} />
+              ) : activeTab === "comments" ? (
+                <CommentsPanel taskId={task!.id} citations={task!.citations} />
+              ) : (
+                <Markdown text={showReport} onCite={setHighlightN} />
+              )}
             </div>
           ) : (
             !showTimeline && (
@@ -373,7 +505,7 @@ export default function AgentPage() {
                 {history.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => viewHistory(t.id)}
+                    onClick={() => loadTask(t.id)}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors",
                       task?.id === t.id ? "bg-primary/10 text-primary" : "hover:bg-accent"
@@ -424,6 +556,10 @@ export default function AgentPage() {
           )}
         </div>
       </div>
+
+      {task && (
+        <ShareDialog open={shareOpen} onOpenChange={setShareOpen} taskId={task.id} />
+      )}
     </div>
   );
 }
@@ -509,7 +645,6 @@ function inferDagEdges(template: TemplateId): DagEdge[] {
 }
 
 // DAG workflow visualization component (criterion #1: Agent 工作流可视化展示).
-// Renders nodes as connected pills in a horizontal flow with edges as arrows.
 function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-muted/20 p-3">
@@ -519,7 +654,6 @@ function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
         const isDone = node.status === "done";
         const isRunning = node.status === "running";
         const isSkipped = node.status === "skipped";
-        // Find edge to next node
         const edge = edges.find((e) => e.from === node.id);
         return (
           <React.Fragment key={node.id}>
@@ -541,7 +675,7 @@ function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
             {edge && i < nodes.length - 1 && (
               <span className="inline-flex items-center gap-0.5">
                 <span className={cn("text-[10px]", edge.conditional ? "text-amber-500" : "text-muted-foreground")}>
-                  {edge.conditional ? "?" : "→"}
+                  {edge.conditional ? "?" : "->"}
                 </span>
               </span>
             )}
@@ -549,5 +683,396 @@ function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
         );
       })}
     </div>
+  );
+}
+
+// ── P2-3: Version history panel (criterion #3) ───────────────────────────
+
+function VersionsPanel({
+  taskId,
+  versions,
+  current,
+  onRestore,
+}: {
+  taskId: string;
+  versions: ReportVersion[];
+  current: string;
+  onRestore: () => Promise<void>;
+}) {
+  const [diffVid, setDiffVid] = React.useState<string | null>(null);
+  const [diff, setDiff] = React.useState<DiffLine[]>([]);
+  const [busy, setBusy] = React.useState(false);
+
+  const selected = versions.find((v) => v.id === diffVid);
+
+  function showDiff(v: ReportVersion) {
+    setDiffVid(v.id);
+    setDiff(diffLines(v.content, current));
+  }
+
+  async function restore(v: ReportVersion) {
+    if (!confirm(`恢复到「${v.label}」？当前内容会先自动保存为一个版本。`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/agent/tasks/${taskId}/versions/${v.id}`, { method: "POST" });
+      if (res.ok) {
+        await onRestore();
+        setDiffVid(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (versions.length === 0) {
+    return <p className="py-8 text-center text-xs text-muted-foreground">暂无修订历史</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        {versions.map((v) => (
+          <div
+            key={v.id}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border p-2.5 transition-colors",
+              diffVid === v.id ? "border-primary bg-primary/5" : "border-border"
+            )}
+          >
+            <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium">{v.label}</div>
+              <div className="text-[10px] text-muted-foreground">
+                {new Date(v.createdAt).toLocaleString("zh-CN", { hour12: false })}
+                {v.author ? ` · ${v.author}` : ""}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => showDiff(v)}>
+              对比当前
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => restore(v)} disabled={busy}>
+              <RotateCcw className="h-3 w-3" /> 恢复
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      {selected && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-medium">
+              「{selected.label}」→ 当前 的差异
+            </span>
+            <button className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setDiffVid(null)}>
+              <X className="h-3 w-3" /> 关闭
+            </button>
+          </div>
+          <DiffView diff={diff} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiffView({ diff }: { diff: DiffLine[] }) {
+  if (diff.every((d) => d.op === "equal")) {
+    return <p className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">两个版本内容完全相同。</p>;
+  }
+  const added = diff.filter((d) => d.op === "add").length;
+  const removed = diff.filter((d) => d.op === "remove").length;
+  return (
+    <div>
+      <div className="mb-1.5 flex gap-3 text-[11px]">
+        <span className="text-green-600">+{added} 新增</span>
+        <span className="text-red-600">-{removed} 删除</span>
+      </div>
+      <div className="max-h-80 overflow-auto rounded-lg border border-border bg-muted/20 p-2 font-mono text-[11px] leading-relaxed">
+        {diff.map((d, i) => (
+          <div
+            key={i}
+            className={cn(
+              "whitespace-pre-wrap break-words px-1.5 py-0.5",
+              d.op === "add" && "bg-green-500/10 text-green-700 dark:text-green-400",
+              d.op === "remove" && "bg-red-500/10 text-red-700 dark:text-red-400"
+            )}
+          >
+            <span className="mr-1 select-none text-muted-foreground">
+              {d.op === "add" ? "+" : d.op === "remove" ? "-" : " "}
+            </span>
+            {d.text || " "}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── P2-3: Comments panel (collaboration) ─────────────────────────────────
+
+function CommentsPanel({ taskId, citations }: { taskId: string; citations: AgentCitation[] }) {
+  const [comments, setComments] = React.useState<Comment[]>([]);
+  const [text, setText] = React.useState("");
+  const [citeN, setCiteN] = React.useState<string>("general");
+  const [replyTo, setReplyTo] = React.useState<string | null>(null);
+  const [replyText, setReplyText] = React.useState("");
+
+  function load() {
+    fetch(`/api/agent/tasks/${taskId}/comments`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then(({ comments }) => setComments(comments ?? []));
+  }
+  React.useEffect(load, [taskId]);
+
+  async function submit() {
+    if (!text.trim()) return;
+    const body: { text: string; citeN?: number } = { text: text.trim() };
+    if (citeN !== "general") body.citeN = Number(citeN);
+    await fetch(`/api/agent/tasks/${taskId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setText("");
+    load();
+  }
+
+  async function submitReply(parentId: string) {
+    if (!replyText.trim()) return;
+    await fetch(`/api/agent/tasks/${taskId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: replyText.trim(), parentId }),
+    });
+    setReplyText("");
+    setReplyTo(null);
+    load();
+  }
+
+  async function remove(id: string) {
+    await fetch(`/api/agent/tasks/${taskId}/comments/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  // group: general (no citeN) + per-citation
+  const general = comments.filter((c) => c.citeN === undefined);
+  const byCite = new Map<number, Comment[]>();
+  for (const c of comments) {
+    if (c.citeN !== undefined) {
+      const arr = byCite.get(c.citeN) ?? [];
+      arr.push(c);
+      byCite.set(c.citeN, arr);
+    }
+  }
+  const childrenOf = (pid: string) => comments.filter((c) => c.parentId === pid);
+
+  const renderComment = (c: Comment) => (
+    <div key={c.id} className="rounded-lg border border-border p-2.5">
+      <div className="flex items-center gap-1.5">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+          {(c.userName || "?").charAt(0).toUpperCase()}
+        </span>
+        <span className="text-xs font-medium">{c.userName}</span>
+        <span className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
+        <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => remove(c.id)} title="删除">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+      <p className="mt-1.5 text-xs text-foreground/90 whitespace-pre-wrap">{c.text}</p>
+      <button
+        className="mt-1 text-[11px] text-muted-foreground hover:text-primary"
+        onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
+      >
+        回复
+      </button>
+      {replyTo === c.id && (
+        <div className="mt-2 flex gap-1.5">
+          <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="回复…" className="h-8 text-xs" />
+          <Button size="sm" className="h-8" onClick={() => submitReply(c.id)}>回复</Button>
+        </div>
+      )}
+      {childrenOf(c.id).length > 0 && (
+        <div className="mt-2 space-y-1.5 border-l-2 border-border pl-2.5">
+          {childrenOf(c.id).map(renderComment)}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* new comment */}
+      <div className="rounded-lg border border-border bg-muted/20 p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Plus className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium">添加评论</span>
+          <Select value={citeN} onValueChange={setCiteN}>
+            <SelectTrigger className="ml-auto h-7 w-[160px] text-[11px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="general">通用评论</SelectItem>
+              {citations.map((c) => (
+                <SelectItem key={c.n} value={String(c.n)}>引用 [{c.n}]</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder="写下你的批注或讨论…"
+          className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <div className="mt-2 flex justify-end">
+          <Button size="sm" onClick={submit} disabled={!text.trim()}>发表</Button>
+        </div>
+      </div>
+
+      {comments.length === 0 ? (
+        <p className="py-6 text-center text-xs text-muted-foreground">暂无评论，添加第一条批注吧</p>
+      ) : (
+        <>
+          {general.filter((c) => !c.parentId).map(renderComment)}
+          {Array.from(byCite.entries()).map(([n, list]) => (
+            <div key={n}>
+              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <span className="flex h-4 min-w-4 items-center justify-center rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary">{n}</span>
+                引用 [{n}] 的批注
+              </div>
+              <div className="space-y-1.5">
+                {list.filter((c) => !c.parentId).map(renderComment)}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── P2-3: Share settings dialog (criterion #2) ───────────────────────────
+
+function ShareDialog({
+  open,
+  onOpenChange,
+  taskId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  taskId: string;
+}) {
+  const [cfg, setCfg] = React.useState<ShareConfig | null>(null);
+  const [enabled, setEnabled] = React.useState(false);
+  const [days, setDays] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [maxViews, setMaxViews] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    fetch(`/api/agent/tasks/${taskId}/share`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then(({ shareConfig }) => {
+        setCfg(shareConfig);
+        setEnabled(!!shareConfig?.enabled);
+        if (shareConfig?.expiresAt) {
+          setDays(String(Math.max(1, Math.ceil((shareConfig.expiresAt - Date.now()) / 86400000))));
+        }
+        setMaxViews(shareConfig?.maxViews ? String(shareConfig.maxViews) : "");
+      });
+  }, [open, taskId]);
+
+  async function save() {
+    setSaving(true);
+    const body: Record<string, unknown> = { enabled };
+    if (days) body.expiresAt = Date.now() + Number(days) * 86400000;
+    else body.expiresAt = null;
+    body.password = password || null;
+    body.maxViews = maxViews ? Number(maxViews) : null;
+    try {
+      const res = await fetch(`/api/agent/tasks/${taskId}/share`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const { shareConfig } = await res.json();
+      setCfg(shareConfig);
+      setPassword("");
+      setEnabled(!!shareConfig?.enabled);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const shareUrl = `${window.location.origin}/r/${taskId}`;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogTitle className="flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" /> 分享设置</DialogTitle>
+        <DialogDescription className="text-xs">
+          控制公开分享链接的访问权限：有效期、密码、访问次数。
+        </DialogDescription>
+
+        <div className="space-y-3">
+          {/* share link */}
+          <div className="rounded-lg border border-border bg-muted/20 p-2.5">
+            <div className="mb-1 text-[11px] font-medium text-muted-foreground">分享链接</div>
+            <div className="flex items-center gap-1.5">
+              <code className="flex-1 truncate rounded bg-background px-2 py-1 text-[11px]">{shareUrl}</code>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  navigator.clipboard?.writeText(shareUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+              >
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+            {cfg && <div className="mt-1.5 text-[10px] text-muted-foreground">已访问 {cfg.views} 次{cfg.maxViews ? ` / 上限 ${cfg.maxViews}` : ""}</div>}
+          </div>
+
+          {/* enable protection */}
+          <div className="flex items-center justify-between rounded-lg border border-border p-2.5">
+            <div>
+              <div className="text-xs font-medium">启用访问保护</div>
+              <div className="text-[10px] text-muted-foreground">关闭后任何人持链接可访问</div>
+            </div>
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+
+          {enabled && (
+            <div className="space-y-2.5 rounded-lg border border-border p-2.5">
+              <div>
+                <Label className="mb-1 block text-[11px]">有效期（天，留空=永久）</Label>
+                <Input value={days} onChange={(e) => setDays(e.target.value)} type="number" min={1} placeholder="如 7" className="h-8 text-xs" />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[11px]">访问密码（留空=无密码）</Label>
+                <Input value={password} onChange={(e) => setPassword(e.target.value)} type="text" placeholder="设置密码" className="h-8 text-xs" />
+                {cfg?.passwordHash && !password && <span className="mt-0.5 block text-[10px] text-muted-foreground">已设置密码（输入新密码可替换）</span>}
+              </div>
+              <div>
+                <Label className="mb-1 block text-[11px]">最大访问次数（留空=不限）</Label>
+                <Input value={maxViews} onChange={(e) => setMaxViews(e.target.value)} type="number" min={1} placeholder="如 100" className="h-8 text-xs" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>关闭</Button>
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} 保存
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
