@@ -18,6 +18,7 @@ import {
   Check,
   Trash2,
   Square,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ interface Msg {
   citations?: Citation[];
   streaming?: boolean;
   feedback?: "up" | "down";
+  followUps?: string[];
 }
 
 // Generic words to strip from page titles / URL host segments.
@@ -287,6 +289,9 @@ export default function ChatPage() {
     const controller = new AbortController();
     abortRef.current = controller;
     let acc = "";
+    // Chunk metadata from the `sources` event; used to build real-time
+    // citations as [n] markers appear in the token stream.
+    let sourceChunks: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[] = [];
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -312,17 +317,28 @@ export default function ChatPage() {
           const line = raw.split("\n").find((l) => l.startsWith("data:"));
           if (!line) continue;
           const data = JSON.parse(line.slice(5).trim());
-          if (data.type === "token") {
+          if (data.type === "sources") {
+            // Store chunk metadata for real-time citation rendering.
+            sourceChunks = data.chunks ?? [];
+          } else if (data.type === "token") {
             acc += data.text;
+            // Real-time citation extraction: parse [n] markers from the
+            // accumulated text and build citations from sourceChunks so the
+            // reference panel updates live during streaming.
+            const liveCites = extractLiveCitations(acc, sourceChunks);
             setMessages((m) =>
-              m.map((x) => (x.id === aiMsgId ? { ...x, content: acc } : x))
+              m.map((x) =>
+                x.id === aiMsgId
+                  ? { ...x, content: acc, citations: liveCites.length > 0 ? liveCites : x.citations }
+                  : x
+              )
             );
           } else if (data.type === "done") {
             convId = data.conversationId;
             setMessages((m) =>
               m.map((x) =>
                 x.id === aiMsgId
-                  ? { ...x, content: acc, citations: data.citations, streaming: false }
+                  ? { ...x, content: acc, citations: data.citations, followUps: data.followUps, streaming: false }
                   : x
               )
             );
@@ -353,6 +369,25 @@ export default function ChatPage() {
     } finally {
       abortRef.current = null;
     }
+  }
+
+  /** Parse [n] markers from accumulated text and map to sourceChunks for
+   *  real-time citation rendering during streaming. The `n` in [n] is 1-based
+   *  and maps to the retrieval order (sourceChunks[n-1]). */
+  function extractLiveCitations(text: string, sources: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[]): Citation[] {
+    if (sources.length === 0) return [];
+    const seen = new Set<number>();
+    const citations: Citation[] = [];
+    const re = /\[(\d+)\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const n = parseInt(m[1], 10);
+      if (n < 1 || n > sources.length || seen.has(n)) continue;
+      seen.add(n);
+      const s = sources[n - 1];
+      citations.push({ n, docId: s.docId, docName: s.docName, chunkIndex: s.chunkIndex, snippet: s.snippet, score: s.score });
+    }
+    return citations;
   }
 
   async function send(text?: string) {
@@ -400,6 +435,63 @@ export default function ChatPage() {
         x.id === id ? { ...x, feedback: x.feedback === v ? undefined : v } : x
       )
     );
+
+  // Export the current conversation as a Markdown file download. Includes
+  // user/assistant messages, inline citations, and a reference list.
+  function exportConversation(convId: string, msgs: Msg[]) {
+    const lines: string[] = [];
+    lines.push(`# 对话导出`);
+    lines.push("");
+    lines.push(`> 导出时间：${new Date().toLocaleString("zh-CN")}`);
+    lines.push(`> 会话 ID：${convId}`);
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+    for (const m of msgs) {
+      if (m.role === "user") {
+        lines.push(`### 👤 用户`);
+        lines.push("");
+        lines.push(m.content);
+        lines.push("");
+      } else {
+        lines.push(`### 🤖 助手`);
+        lines.push("");
+        // Strip [n] markers for cleaner prose, but keep citation references.
+        const cleanText = m.content.replace(/\[(\d+)\]/g, (_, n) => `[[${n}]](#ref-${n})`);
+        lines.push(cleanText);
+        lines.push("");
+        if (m.citations && m.citations.length > 0) {
+          lines.push("**引用来源：**");
+          lines.push("");
+          for (const c of m.citations) {
+            lines.push(`- <a id="ref-${c.n}"></a>[${c.n}] 《${c.docName}》片段 #${c.chunkIndex + 1}（相似度 ${(c.score * 100).toFixed(0)}%）`);
+            lines.push(`  > ${c.snippet.replace(/\n/g, " ")}`);
+          }
+          lines.push("");
+        }
+        if (m.followUps && m.followUps.length > 0) {
+          lines.push("**追问建议：**");
+          lines.push("");
+          for (const f of m.followUps) {
+            lines.push(`- ${f}`);
+          }
+          lines.push("");
+        }
+      }
+      lines.push("---");
+      lines.push("");
+    }
+    const md = lines.join("\n");
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `conversation-${convId.slice(-8)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   const activeCitations =
     [...messages].reverse().find((m) => m.role === "assistant" && m.citations && m.citations.length > 0)?.citations ?? [];
@@ -493,6 +585,18 @@ export default function ChatPage() {
               {selectedKbObj.stats.ready} 篇可检索
             </Badge>
           )}
+          {activeConv && messages.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2 h-8 gap-1.5"
+              onClick={() => exportConversation(activeConv, messages)}
+              aria-label="导出对话"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">导出</span>
+            </Button>
+          )}
         </div>
 
         {/* messages */}
@@ -500,15 +604,29 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <EmptyState onPick={send} kbReady={!!selectedKbObj?.stats.ready} suggestions={suggestions} />
           ) : (
-            messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                msg={m}
-                onCite={(n) => setHighlightN(n)}
-                onRegenerate={regenerate}
-                onFeedback={(v) => setFeedback(m.id, v)}
-              />
-            ))
+            messages.map((m, i) => {
+              // Render follow-up suggestions after the last assistant message
+              // (when it's done streaming and has followUps).
+              const isLastAssistant =
+                m.role === "assistant" && !m.streaming &&
+                i === messages.length - 1 && m.followUps && m.followUps.length > 0;
+              return (
+                <React.Fragment key={m.id}>
+                  <MessageBubble
+                    msg={m}
+                    onCite={(n) => setHighlightN(n)}
+                    onRegenerate={regenerate}
+                    onFeedback={(v) => setFeedback(m.id, v)}
+                  />
+                  {isLastAssistant && (
+                    <FollowUpSuggestions
+                      suggestions={m.followUps!}
+                      onPick={(q) => send(q)}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })
           )}
         </div>
 
@@ -772,5 +890,32 @@ function ActionBtn({
     >
       <Icon className="h-3 w-3" /> {label}
     </button>
+  );
+}
+
+// Follow-up question suggestions shown after the last assistant message.
+// Clicking a suggestion sends it as the next user query.
+function FollowUpSuggestions({
+  suggestions,
+  onPick,
+}: {
+  suggestions: string[];
+  onPick: (q: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 pl-11">
+      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+        <Sparkles className="h-3 w-3" /> 追问建议
+      </span>
+      {suggestions.map((s, i) => (
+        <button
+          key={i}
+          onClick={() => onPick(s)}
+          className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        >
+          {s}
+        </button>
+      ))}
+    </div>
   );
 }

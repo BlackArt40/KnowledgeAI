@@ -67,7 +67,20 @@ export async function POST(req: Request) {
         };
 
         try {
-          send({ type: "sources", count: chunks.length });
+          // Send chunk metadata upfront so the frontend can render citation
+          // chips in real-time during streaming (before the final `done` event).
+          send({
+            type: "sources",
+            count: chunks.length,
+            chunks: chunks.map((c) => ({
+              n: 0, // assigned dynamically as [n] markers appear in the stream
+              docId: c.docId,
+              docName: c.docName,
+              chunkIndex: c.chunkIndex,
+              snippet: c.text.slice(0, 180),
+              score: c.score,
+            })),
+          });
           let fullText = "";
           let citations: { n: number; docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[] = [];
 

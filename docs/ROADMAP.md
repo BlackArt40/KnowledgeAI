@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3 全部验收通过；P1-3 修复 `parentChildChunk` 双重前缀 bug（`structuredChunk` 给父切片加前缀后 `parentChildChunk` 又给子切片加一次，导致 `[path]\n[path]\n...` 重复，修复方式：父切片生成时关闭 `addSectionPrefix`，前缀只在子切片层添加一次）；P1-1 修复 tesseract.js gzip 默认值；P1-2 增强验收脚本（召回率对比 + createdAfter + LLM rerank）；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4 全部验收通过；P1-4 实施流式引用实时渲染（`sources` 事件 + `extractLiveCitations`）、追问建议前端渲染（`FollowUpSuggestions` 可点击按钮）、对话导出（`exportConversation` Markdown 下载）；P1-3 修复 `parentChildChunk` 双重前缀 bug；P1-1 修复 tesseract.js gzip 默认值；P1-2 增强验收脚本；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -198,19 +198,19 @@
 
 ### P1-4 对话增强
 
-**现状**：单轮问答，无多轮上下文管理。
+**现状**：✅ 已完成。多轮上下文（最近 6 条历史 + system prompt 注入）+ 意图识别（闲聊/元问题/知识查询）+ 流式引用实时渲染（`sources` 事件携带 chunk 元数据，token 流中实时解析 `[n]` 更新引用面板）+ 智能追问建议（LLM 生成 3 个，渲染为可点击按钮）+ 对话导出（Markdown 下载，含引用列表和追问建议）。
 
 **计划**：
 - [x] 多轮对话上下文：最近 6 条消息（3 轮）✅
 - [x] 查询意图识别：chitchat / meta / knowledge ✅（"这个库有哪些文档"）
-- [ ] 流式引用实时渲染
-- [x] 追问建议：LLM / 模板生成 3 条，SSE done 事件携带 ✅
-- [ ] 对话导出
+- [x] 流式引用实时渲染 ✅（`sources` 事件携带 chunk 元数据，前端 `extractLiveCitations` 实时解析 `[n]`）
+- [x] 追问建议：LLM / 模板生成 3 条，SSE done 事件携带 ✅（前端 `FollowUpSuggestions` 渲染为可点击按钮）
+- [x] 对话导出 ✅（`exportConversation` 导出为 Markdown 下载）
 
 **验收标准**：
-- 多轮对话正确理解上下文指代（"它"/"上面提到的"）
-- 意图识别准确率 > 90%
-- 回答末尾展示智能追问
+- ✅ 多轮对话正确理解上下文指代（"它"/"上面提到的"）
+- ✅ 意图识别准确率 > 90%（18/18 = 100%）
+- ✅ 回答末尾展示智能追问
 
 ---
 
