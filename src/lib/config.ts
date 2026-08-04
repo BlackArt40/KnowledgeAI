@@ -7,6 +7,7 @@ import { isLLMEnabled, embeddingModel, llmLabel } from "@/lib/llm/provider";
 import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
+import { isExternalEnabled, externalLabel } from "@/lib/external";
 
 export interface ProviderStatus {
   id: string;
@@ -62,6 +63,13 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
       enabled: true,
       detail: `${process.env.RATE_LIMIT_PER_MIN || 200} 次/分钟`,
       envVars: ["RATE_LIMIT_PER_MIN"],
+    },
+    {
+      id: "external",
+      label: "外部数据源",
+      enabled: isExternalEnabled(),
+      detail: isExternalEnabled() ? externalLabel() : "演示模式（模拟结果）",
+      envVars: ["TAVILY_API_KEY", "SERPAPI_KEY", "BRAVE_SEARCH_KEY", "GITHUB_TOKEN"],
     },
   ];
 }

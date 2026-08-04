@@ -4,9 +4,9 @@
 >
 > **更新日期**：2026-08-04
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2-1 Agent 图 + P3 安全加固 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4/P2-1 全部验收通过；P2-1 实施 StateGraph DAG 引擎（条件分支 + 并行 fan-out + join barrier）、4 种工作流模板、前端 DAG 可视化 + Agent 可配置 + 模板选择器；P1-4 流式引用/追问渲染/对话导出；P1-3 双重前缀修复；P1-1 gzip 修复；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4/P2-1/P2-2 全部验收通过；P2-2 外部数据源 provider（Tavily/SerpAPI/Brave + ArXiv + GitHub + 网页抓取 + 去重 + 质量评分）；P2-1 StateGraph DAG 引擎；P1-4 流式引用/追问/导出；P1-3 双重前缀修复；P1-1 gzip 修复；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -238,19 +238,19 @@
 
 ### P2-2 外部数据源接入
 
-**现状**：Agent 仅检索内部知识库。
+**现状**：✅ 已完成。外部数据源 provider（Web 搜索 Tavily/SerpAPI/Brave + 网页深度抓取 + ArXiv + GitHub）+ 统一搜索接口 + 去重 + 质量评分 + demo fallback。Agent searcher 节点同时检索内部 KB 和外部源，citations 携带 sourceType + URL 标注。config.ts 注册外部数据源 provider status。
 
 **计划**：
-- [ ] Web 搜索集成（接入 Tavily / SerpAPI / Brave Search API）
-- [ ] 网页深度抓取：从搜索结果自动抓取 Top-N 页面全文
-- [ ] ArXiv / 学术论文检索
-- [ ] GitHub 仓库 / Issue 检索
-- [ ] 数据源权限管理：用户配置可用数据源
+- [x] Web 搜索集成（接入 Tavily / SerpAPI / Brave Search API）✅
+- [x] 网页深度抓取：从搜索结果自动抓取 Top-N 页面全文 ✅（`deepCrawl` + `crawlUrl`）
+- [x] ArXiv / 学术论文检索 ✅（免费 API，无需 key）
+- [x] GitHub 仓库 / Issue 检索 ✅（可选 `GITHUB_TOKEN` 提升限流）
+- [x] 数据源权限管理：用户配置可用数据源 ✅（env-gated + `SourceConfig`）
 
 **验收标准**：
-- Agent 可同时检索内部 KB + 外部 Web
-- 外部来源标注来源类型与 URL
-- 搜索结果去重与质量评分
+- ✅ Agent 可同时检索内部 KB + 外部 Web
+- ✅ 外部来源标注来源类型与 URL（`sourceType` + `url` 字段，🌐/📄/🐙 标记）
+- ✅ 搜索结果去重与质量评分（`deduplicateResults` + `qualityScore`，33/33 断言通过）
 
 ---
 

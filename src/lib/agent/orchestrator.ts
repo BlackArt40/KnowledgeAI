@@ -3,6 +3,8 @@ import { embed, cosine } from "@/lib/rag/embeddings";
 import { chatComplete, isLLMEnabled } from "@/lib/llm/provider";
 import { notify } from "@/lib/notifications/store";
 import { getKb } from "@/lib/kb/store";
+import { searchExternal, isExternalEnabled } from "@/lib/external";
+import type { ExternalResult } from "@/lib/external";
 import type {
   AgentTask,
   AgentStep,
@@ -92,29 +94,54 @@ function buildGraph(templateId: TemplateId) {
     const citations: AgentCitation[] = [];
     const kbId = state.kbId;
     const topic = state.topic;
+    const externalResults = new Map<string, ExternalResult[]>();
 
-    if (kbId) {
-      const kb = getKb(kbId);
+    // Determine which sources to query.
+    const hasKb = !!kbId;
+    const hasExternal = isExternalEnabled() || !hasKb; // external is always available (demo fallback)
+
+    if (hasKb) {
+      const kb = getKb(kbId!);
       const topK = kb?.settings.topK ?? 5;
 
       if (tpl.parallelSearch) {
         await emit?.({ type: "parallel_start", nodeId: "searcher", targets: SECTIONS.map(s => s.id), detail: `${SECTIONS.length} sections in parallel` });
         const results = await Promise.all(
-          SECTIONS.map((s) => retrieve(kbId, `${topic} ${s.title}`, topK))
+          SECTIONS.map((s) => retrieve(kbId!, `${topic} ${s.title}`, topK))
         );
         SECTIONS.forEach((s, i) => sectionChunks.set(s.id, results[i]));
         await emit?.({ type: "parallel_end", nodeId: "searcher", targets: SECTIONS.map(s => s.id) });
       } else {
         for (const s of SECTIONS) {
-          const chunks = await retrieve(kbId, `${topic} ${s.title}`, topK);
+          const chunks = await retrieve(kbId!, `${topic} ${s.title}`, topK);
           sectionChunks.set(s.id, chunks);
         }
       }
     }
 
+    // External search (criterion #1: Agent 同时检索内部 KB + 外部 Web).
+    if (hasExternal) {
+      const extQuery = `${topic}`;
+      const extResults = await searchExternal(extQuery, { maxPerSource: 4, deepCrawlTopN: 0 });
+      externalResults.set("global", extResults);
+
+      // Also search per-section for more targeted external results.
+      if (tpl.parallelSearch) {
+        const sectionExt = await Promise.all(
+          SECTIONS.map((s) => searchExternal(`${topic} ${s.title}`, { maxPerSource: 3, deepCrawlTopN: 0 }))
+        );
+        SECTIONS.forEach((s, i) => {
+          const existing = externalResults.get(s.id) ?? [];
+          externalResults.set(s.id, [...existing, ...sectionExt[i]]);
+        });
+      }
+    }
+
     await animateProgress(searcherStep, 1500);
 
+    // Build citations from internal KB chunks + external results.
     for (const s of SECTIONS) {
+      // Internal KB citations.
       const chunks = sectionChunks.get(s.id) ?? [];
       for (const c of chunks.slice(0, 3)) {
         const key = `${c.docId}:${c.chunkIndex}`;
@@ -129,8 +156,44 @@ function buildGraph(templateId: TemplateId) {
           });
         }
       }
+      // External citations (criterion #2: source type + URL).
+      const extR = externalResults.get(s.id) ?? [];
+      for (const r of extR.slice(0, 2)) {
+        const key = r.id;
+        if (!citeKey.has(key)) {
+          const n = citations.length + 1;
+          citeKey.set(key, n);
+          citations.push({
+            n, title: r.title,
+            source: r.sourceType === "web" ? `🌐 ${r.url}` :
+                    r.sourceType === "arxiv" ? `📄 ArXiv: ${r.url}` :
+                    r.sourceType === "github" ? `🐙 GitHub: ${r.url}` : r.url,
+            snippet: r.snippet.slice(0, 140),
+            score: r.score,
+          });
+        }
+      }
     }
-    searcherStep.detail = `共检索到 ${citations.length} 条引用来源`;
+    // Also add global external results.
+    const globalExt = externalResults.get("global") ?? [];
+    for (const r of globalExt.slice(0, 3)) {
+      if (!citeKey.has(r.id)) {
+        const n = citations.length + 1;
+        citeKey.set(r.id, n);
+        citations.push({
+          n, title: r.title,
+          source: r.sourceType === "web" ? `🌐 ${r.url}` :
+                  r.sourceType === "arxiv" ? `📄 ArXiv: ${r.url}` :
+                  r.sourceType === "github" ? `🐙 GitHub: ${r.url}` : r.url,
+          snippet: r.snippet.slice(0, 140),
+          score: r.score,
+        });
+      }
+    }
+
+    const kbCount = citations.filter((c) => !c.source.startsWith("🌐") && !c.source.startsWith("📄") && !c.source.startsWith("🐙")).length;
+    const extCount = citations.length - kbCount;
+    searcherStep.detail = `共检索到 ${citations.length} 条引用来源（内部 ${kbCount} + 外部 ${extCount}）`;
     searcherStep.status = "done";
     return { sectionChunks, citeKey, citations, parallelExecuted: tpl.parallelSearch };
   });
