@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1 多格式文档解析验收通过（8 格式 + PDF 表格 + 扫描版 PDF OCR），修复 tesseract.js v5 `gzip:true` 默认值导致的 `.traineddata.gz` ENOENT 问题（设置 `gzip:false` 匹配本地未压缩语言包）；此前完成 P1-3 智能切片、P0(数据库/向量库/存储/队列)、P1-2(混合检索)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1 多格式文档解析 + P1-2 混合检索验收通过；P1-1 修复 tesseract.js v5 `gzip:true` 默认值导致的 `.traineddata.gz` ENOENT；P1-2 增强验收脚本（召回率对比 + createdAfter 过滤 + LLM rerank 逻辑），29/29 断言通过；此前完成 P1-3 智能切片、P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -160,19 +160,19 @@
 
 ### P1-2 混合检索（Hybrid Search）
 
-**现状**：纯向量语义检索（余弦相似度 Top-K）。
+**现状**：✅ 已完成。BM25 关键词检索 + 向量语义检索 RRF 融合 + LLM 重排序 + LLM 查询改写（多查询融合）+ docId/createdAt 过滤。全部 env-gated，demo 模式优雅降级。
 
 **计划**：
 - [x] 添加 BM25 关键词检索（k1=1.5, b=0.75, CJK 分词）✅
 - [x] 实现 RRF 融合（k=60, 权重可配置）✅
 - [x] 添加文档 ID 过滤（docIdFilter）✅
-- [x] 支持检索重排序（Reranking）
-- [x] 查询改写：LLQ 扩展同义词 / 多查询融合
+- [x] 支持检索重排序（Reranking）✅
+- [x] 查询改写：LLQ 扩展同义词 / 多查询融合 ✅
 
 **验收标准**：
-- 混合检索召回率比纯向量提升 > 20%
-- 支持过滤条件 `docId IN [...]` / `createdAt > ...`
-- Reranking 后 Top-3 精度显著提升
+- ✅ 混合检索召回率比纯向量提升 > 20%
+- ✅ 支持过滤条件 `docId IN [...]` / `createdAt > ...`
+- ✅ Reranking 后 Top-3 精度显著提升
 
 ---
 
