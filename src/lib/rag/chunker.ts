@@ -298,12 +298,17 @@ function parentChildChunk(
   const childSize = Math.max(50, Math.round(chunkSize / 2));
   const childOverlap = Math.round(childSize * 0.2);
 
+  // Generate parent chunks WITHOUT section prefix — the prefix is added to
+  // children only (below). This avoids double-prefixing: previously
+  // structuredChunk added [sectionPath] to parent.text, then parentChildChunk
+  // added it again to each child, producing "[path]\n[path]\n..." content.
   const parents = structuredChunk(text, {
     ...options,
     chunkSize: parentSize,
     chunkOverlap: 0,
     parentChild: false,
     dynamic: false,
+    addSectionPrefix: false,
   });
 
   const children: ChunkResult[] = [];

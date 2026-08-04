@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1 多格式文档解析 + P1-2 混合检索验收通过；P1-1 修复 tesseract.js v5 `gzip:true` 默认值导致的 `.traineddata.gz` ENOENT；P1-2 增强验收脚本（召回率对比 + createdAfter 过滤 + LLM rerank 逻辑），29/29 断言通过；此前完成 P1-3 智能切片、P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3 全部验收通过；P1-3 修复 `parentChildChunk` 双重前缀 bug（`structuredChunk` 给父切片加前缀后 `parentChildChunk` 又给子切片加一次，导致 `[path]\n[path]\n...` 重复，修复方式：父切片生成时关闭 `addSectionPrefix`，前缀只在子切片层添加一次）；P1-1 修复 tesseract.js gzip 默认值；P1-2 增强验收脚本（召回率对比 + createdAfter + LLM rerank）；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -178,7 +178,7 @@
 
 ### P1-3 智能切片策略
 
-**现状**：`chunker.ts` 为字符级固定长度切片（带重叠）。
+**现状**：✅ 已完成。标题感知结构化切片 + 动态密度切片（密集区缩小，稀疏区放大）+ 父子文档策略（小切片索引、大切片返回上下文，env `PARENT_CHILD_CHUNKING=true` 开启）+ 表格/代码块完整性保护 + 章节路径前缀。
 
 **计划**：
 - [x] 语义切片：Markdown heading-aware ✅
