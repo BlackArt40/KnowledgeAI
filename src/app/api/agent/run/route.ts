@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
   let body: {
     topic?: string; kbId?: string; outputFormat?: OutputFormat;
-    agents?: string[]; maxSteps?: number;
+    agents?: string[]; maxSteps?: number; template?: string;
   };
   try { body = await req.json(); } catch {
     return Response.json({ error: "无效的请求体" }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       outputFormat: (body.outputFormat as OutputFormat) ?? "report",
       agents: (body.agents as never[]) ?? ["planner", "searcher", "analyzer", "writer"],
       maxSteps: body.maxSteps ?? 5,
+      template: body.template ?? "default",
     },
     authUser.id
   );

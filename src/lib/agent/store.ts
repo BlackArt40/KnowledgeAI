@@ -29,6 +29,7 @@ export function createTask(input: {
   outputFormat: AgentTask["outputFormat"];
   agents: AgentTask["agents"];
   maxSteps: number;
+  template?: string;
 }, userId?: string): AgentTask {
   const now = Date.now();
   const task: AgentTask = {
@@ -39,6 +40,7 @@ export function createTask(input: {
     outputFormat: input.outputFormat,
     agents: input.agents,
     maxSteps: input.maxSteps,
+    template: input.template,
     status: "queued",
     steps: [],
     citations: [],

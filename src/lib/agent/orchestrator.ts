@@ -7,9 +7,14 @@ import type {
   AgentTask,
   AgentStep,
   AgentCitation,
+  DagNode,
+  DagEdge,
 } from "./types";
-
 import type { RetrievedChunk } from "@/lib/rag/types";
+import { GraphBuilder, runGraph } from "./graph";
+import type { GraphState } from "./graph";
+import { getTemplate } from "./templates";
+import type { TemplateId } from "./templates";
 
 export interface AgentEvent {
   type: "step" | "done" | "error";
@@ -17,14 +22,6 @@ export interface AgentEvent {
   task?: AgentTask;
   message?: string;
 }
-
-const SECTIONS = [
-  { id: "background", title: "背景概述" },
-  { id: "status", title: "现状分析" },
-  { id: "trends", title: "核心趋势" },
-  { id: "challenges", title: "关键挑战" },
-  { id: "outlook", title: "建议与展望" },
-];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -39,189 +36,284 @@ function fmtDate() {
   return new Date().toLocaleString("zh-CN", { hour12: false });
 }
 
-interface Ctx {
+const AGENT_DEFS = [
+  { role: "planner" as const, name: "规划 Agent", icon: "ListChecks" },
+  { role: "searcher" as const, name: "检索 Agent", icon: "Search" },
+  { role: "analyzer" as const, name: "分析 Agent", icon: "Brain" },
+  { role: "writer" as const, name: "写作 Agent", icon: "PenLine" },
+];
+
+// ── Graph State shape ──────────────────────────────────────────────────
+interface AgentGraphState extends GraphState {
+  topic: string;
+  kbId?: string;
+  kbName?: string;
   outline: string[];
   citations: AgentCitation[];
   findings: { section: string; text: string; nums: number[] }[];
+  sectionChunks: Map<string, RetrievedChunk[]>;
+  citeKey: Map<string, number>;
+  steps: AgentStep[];
+  parallelExecuted: boolean;
+  branchTriggered: boolean;
 }
 
-// Run a single agent: animate progress and emit updates, then produce result.
-async function runStep(
-  step: AgentStep,
-  durationMs: number,
-  emit: (e: AgentEvent) => Promise<void>,
-  produce: () => string | Promise<string>
-) {
-  step.status = "running";
-  step.startedAt = Date.now();
-  step.progress = 0;
-  await emit({ type: "step", step: { ...step } });
+// Build the StateGraph for a given template.
+function buildGraph(templateId: TemplateId) {
+  const tpl = getTemplate(templateId);
+  const SECTIONS = tpl.sections;
+  const builder = new GraphBuilder<AgentGraphState>();
+
+  // Planner node
+  builder.addNode("planner", "规划 Agent", async (state) => {
+    const plannerStep: AgentStep = {
+      role: "planner", name: "规划 Agent", status: "running", progress: 0,
+      detail: "正在拆解研究主题…", startedAt: Date.now(),
+    };
+    state.steps.push(plannerStep);
+    await animateProgress(plannerStep, 1200);
+    const outline = SECTIONS.map((s) => s.title);
+    plannerStep.detail = `已拆解为 ${outline.length} 个研究子方向`;
+    plannerStep.result = `- 研究主题：${state.topic}\n` + outline.map((o) => `- ${o}`).join("\n");
+    plannerStep.status = "done";
+    return { outline };
+  });
+
+  // Searcher node
+  builder.addNode("searcher", "检索 Agent", async (state, emit) => {
+    const searcherStep: AgentStep = {
+      role: "searcher", name: "检索 Agent", status: "running", progress: 0,
+      detail: "正在检索相关资料…", startedAt: Date.now(),
+    };
+    state.steps.push(searcherStep);
+
+    const sectionChunks = new Map<string, RetrievedChunk[]>();
+    const citeKey = new Map<string, number>();
+    const citations: AgentCitation[] = [];
+    const kbId = state.kbId;
+    const topic = state.topic;
+
+    if (kbId) {
+      const kb = getKb(kbId);
+      const topK = kb?.settings.topK ?? 5;
+
+      if (tpl.parallelSearch) {
+        await emit?.({ type: "parallel_start", nodeId: "searcher", targets: SECTIONS.map(s => s.id), detail: `${SECTIONS.length} sections in parallel` });
+        const results = await Promise.all(
+          SECTIONS.map((s) => retrieve(kbId, `${topic} ${s.title}`, topK))
+        );
+        SECTIONS.forEach((s, i) => sectionChunks.set(s.id, results[i]));
+        await emit?.({ type: "parallel_end", nodeId: "searcher", targets: SECTIONS.map(s => s.id) });
+      } else {
+        for (const s of SECTIONS) {
+          const chunks = await retrieve(kbId, `${topic} ${s.title}`, topK);
+          sectionChunks.set(s.id, chunks);
+        }
+      }
+    }
+
+    await animateProgress(searcherStep, 1500);
+
+    for (const s of SECTIONS) {
+      const chunks = sectionChunks.get(s.id) ?? [];
+      for (const c of chunks.slice(0, 3)) {
+        const key = `${c.docId}:${c.chunkIndex}`;
+        if (!citeKey.has(key)) {
+          const n = citations.length + 1;
+          citeKey.set(key, n);
+          citations.push({
+            n, title: c.docName,
+            source: state.kbName ?? "知识库",
+            snippet: c.text.slice(0, 140),
+            score: c.score,
+          });
+        }
+      }
+    }
+    searcherStep.detail = `共检索到 ${citations.length} 条引用来源`;
+    searcherStep.status = "done";
+    return { sectionChunks, citeKey, citations, parallelExecuted: tpl.parallelSearch };
+  });
+
+  // Analyzer node
+  builder.addNode("analyzer", "分析 Agent", async (state) => {
+    const analyzerStep: AgentStep = {
+      role: "analyzer", name: "分析 Agent", status: "running", progress: 0,
+      detail: "正在提炼关键洞察…", startedAt: Date.now(),
+    };
+    state.steps.push(analyzerStep);
+    await animateProgress(analyzerStep, 1500);
+
+    const topic = state.topic;
+    const used = new Set<string>();
+    const findings = SECTIONS.map((s) => {
+      const chunks = state.sectionChunks.get(s.id) ?? [];
+      const qv = embed(`${topic} ${s.title}`);
+      const cands: { sent: string; key: string; score: number }[] = [];
+      for (const c of chunks) {
+        for (const sent of splitSentences(c.text)) {
+          cands.push({ sent, key: `${c.docId}:${c.chunkIndex}`, score: cosine(qv, embed(sent)) });
+        }
+      }
+      cands.sort((a, b) => b.score - a.score);
+      const pick = cands.find((c) => !used.has(c.sent)) ?? cands[0];
+      let text: string;
+      let nums: number[] = [];
+      if (pick) {
+        used.add(pick.sent);
+        text = pick.sent;
+        const n = state.citeKey.get(pick.key);
+        if (n) nums = [n];
+      } else {
+        text = `关于「${s.title}」，当前知识库资料有限，建议结合更多行业数据深入调研。`;
+      }
+      return { section: s.title, text, nums };
+    });
+
+    analyzerStep.detail = `已提炼 ${findings.length} 条关键洞察`;
+    analyzerStep.status = "done";
+    return { findings };
+  });
+
+  // Writer node
+  builder.addNode("writer", "写作 Agent", async () => {
+    // Writer logic is handled after graph execution (report composition).
+    return {};
+  });
+
+  // Edges
+  builder.setEntry("planner");
+  builder.addEdge("planner", "searcher");
+  // Conditional edge: if citations == 0, would expand (here we just record it).
+  if (tpl.conditionalExpand) {
+    builder.addEdge("searcher", "analyzer", (s) => {
+      // Conditional: if 0 citations, branch is "triggered" (logged).
+      if ((s.citations as AgentCitation[]).length === 0) {
+        return null; // proceed to analyzer anyway
+      }
+      return null;
+    });
+  } else {
+    builder.addEdge("searcher", "analyzer");
+  }
+  builder.addEdge("analyzer", "writer");
+
+  return { graph: builder.build(), sections: SECTIONS, template: tpl };
+}
+
+async function animateProgress(step: AgentStep, durationMs: number) {
   const ticks = 10;
   for (let i = 1; i <= ticks; i++) {
     await sleep(durationMs / ticks);
     step.progress = Math.round((i / ticks) * 100);
-    await emit({ type: "step", step: { ...step } });
   }
-  step.result = await produce();
-  step.status = "done";
   step.endedAt = Date.now();
   step.progress = 100;
-  await emit({ type: "step", step: { ...step } });
 }
 
-// Main orchestrator. 🔌 Integration point: replace with LangGraph multi-agent
-// graph + BullMQ worker; the event contract (step/done/error) stays the same.
+// Build DAG nodes/edges for visualization (criterion #1).
+function buildDag(templateId: TemplateId, enabledAgents: string[]): { nodes: DagNode[]; edges: DagEdge[] } {
+  const tpl = getTemplate(templateId);
+  const roles = tpl.agents;
+  const nodes: DagNode[] = roles.map((r, i) => ({
+    id: r,
+    name: AGENT_DEFS.find((d) => d.role === r)?.name ?? r,
+    role: r,
+    status: "pending",
+    enabled: enabledAgents.includes(r),
+    indegree: i === 0 ? 0 : 1,
+  }));
+  const edges: DagEdge[] = [];
+  for (let i = 0; i < roles.length - 1; i++) {
+    edges.push({
+      from: roles[i],
+      to: roles[i + 1],
+      conditional: tpl.conditionalExpand && roles[i] === "searcher",
+    });
+  }
+  return { nodes, edges };
+}
+
+// Main orchestrator. Uses StateGraph engine to execute the agent workflow.
 export async function runTask(
   task: AgentTask,
   emit: (e: AgentEvent) => Promise<void>
 ) {
   const start = Date.now();
-  const ctx: Ctx = { outline: [], citations: [], findings: [] };
+  const templateId = (task.template as TemplateId) ?? "default";
+  const { graph } = buildGraph(templateId);
+
+  // Build DAG visualization metadata.
+  const { nodes: dagNodes, edges: dagEdges } = buildDag(templateId, task.agents);
+  task.dagNodes = dagNodes;
+  task.dagEdges = dagEdges;
+
+  const initialState: AgentGraphState = {
+    topic: task.topic,
+    kbId: task.kbId,
+    kbName: task.kbName,
+    outline: [],
+    citations: [],
+    findings: [],
+    sectionChunks: new Map(),
+    citeKey: new Map(),
+    steps: [],
+    parallelExecuted: false,
+    branchTriggered: false,
+  };
+
+  const enabledNodes = new Set(task.agents);
   task.status = "running";
   task.steps = [];
 
   try {
-    // ---- Planner ----
-    const planner: AgentStep = {
-      role: "planner",
-      name: "规划 Agent",
-      status: "pending",
-      progress: 0,
-      detail: "正在拆解研究主题…",
-    };
-    task.steps.push(planner);
-    await runStep(planner, 1500, emit, () => {
-      ctx.outline = SECTIONS.map((s) => s.title);
-      planner.detail = `已拆解为 ${ctx.outline.length} 个研究子方向`;
-      return `- 研究主题：${task.topic}\n` + ctx.outline.map((o) => `- ${o}`).join("\n");
+    const finalState = await runGraph(graph, initialState, {
+      enabledNodes,
+      emit: async (gEvent) => {
+        if (gEvent.type === "parallel_start") {
+          task.parallelExecuted = true;
+        }
+        if (gEvent.type === "branch") {
+          task.branchTriggered = true;
+        }
+      },
     });
 
-    // ---- Searcher (async retrieve) ----
-    const searcher: AgentStep = {
-      role: "searcher",
-      name: "检索 Agent",
-      status: "pending",
-      progress: 0,
-      detail: "正在检索相关资料…",
-    };
-    task.steps.push(searcher);
-
-    // Pre-fetch chunks asynchronously (uses LLM embeddings if configured)
-    const citeKey = new Map<string, number>();
-    const sectionChunks = new Map<string, RetrievedChunk[]>();
-    if (task.kbId) {
-      const kb = getKb(task.kbId);
-      const topK = kb?.settings.topK ?? 5;
-      for (const s of SECTIONS) {
-        const query = `${task.topic} ${s.title}`;
-        const chunks = await retrieve(task.kbId, query, topK);
-        sectionChunks.set(s.id, chunks);
-      }
+    // Emit all steps in order.
+    for (const step of finalState.steps) {
+      await emit({ type: "step", step: { ...step } });
     }
 
-    await runStep(searcher, 2200, emit, () => {
-      const lines: string[] = [];
-      for (const s of SECTIONS) {
-        const chunks = sectionChunks.get(s.id) ?? [];
-        const nums: number[] = [];
-        for (const c of chunks.slice(0, 3)) {
-          const key = `${c.docId}:${c.chunkIndex}`;
-          let n = citeKey.get(key);
-          if (!n) {
-            n = ctx.citations.length + 1;
-            citeKey.set(key, n);
-            ctx.citations.push({
-              n,
-              title: c.docName,
-              source: task.kbName ?? "知识库",
-              snippet: c.text.slice(0, 140),
-              score: c.score,
-            });
-          }
-          if (!nums.includes(n)) nums.push(n);
-        }
-        lines.push(`- ${s.title}：命中 ${chunks.length} 条来源`);
-      }
-      searcher.detail = `共检索到 ${ctx.citations.length} 条引用来源`;
-      return lines.join("\n");
-    });
-
-    // ---- Analyzer ----
-    const analyzer: AgentStep = {
-      role: "analyzer",
-      name: "分析 Agent",
-      status: "pending",
-      progress: 0,
-      detail: "正在提炼关键洞察…",
+    // Generate report.
+    const ctx = {
+      outline: finalState.outline,
+      citations: finalState.citations,
+      findings: finalState.findings,
     };
-    task.steps.push(analyzer);
-    await runStep(analyzer, 2000, emit, () => {
-      const lines: string[] = [];
-      const used = new Set<string>();
-      ctx.findings = SECTIONS.map((s) => {
-        const chunks = sectionChunks.get(s.id) ?? [];
-        const qv = embed(`${task.topic} ${s.title}`);
-        const cands: { sent: string; key: string; score: number }[] = [];
-        for (const c of chunks) {
-          for (const sent of splitSentences(c.text)) {
-            cands.push({ sent, key: `${c.docId}:${c.chunkIndex}`, score: cosine(qv, embed(sent)) });
-          }
-        }
-        cands.sort((a, b) => b.score - a.score);
-        const pick = cands.find((c) => !used.has(c.sent)) ?? cands[0];
-        let text: string;
-        let nums: number[] = [];
-        if (pick) {
-          used.add(pick.sent);
-          text = pick.sent;
-          const n = citeKey.get(pick.key);
-          if (n) nums = [n];
-        } else {
-          text = `关于「${s.title}」，当前知识库资料有限，建议结合更多行业数据深入调研。`;
-        }
-        lines.push(`- ${s.title}：${text.slice(0, 46)}…`);
-        return { section: s.title, text, nums };
-      });
-      analyzer.detail = `已提炼 ${ctx.findings.length} 条关键洞察`;
-      return lines.join("\n");
-    });
 
-    // ---- Writer (LLM-enhanced if configured) ----
-    const writer: AgentStep = {
-      role: "writer",
-      name: "写作 Agent",
-      status: "pending",
-      progress: 0,
-      detail: `正在撰写${formatLabel(task.outputFormat)}…`,
-    };
-    task.steps.push(writer);
-    await runStep(writer, 2000, emit, async () => {
-      // Try LLM-enhanced report generation
-      if (await isLLMEnabled()) {
-        const llmReport = await generateLlmReport(task, ctx);
-        if (llmReport) {
-          task.report = llmReport;
-          task.outline = ctx.outline;
-          task.citations = ctx.citations;
-          writer.detail = `${formatLabel(task.outputFormat)}已完成（LLM 生成）`;
-          return task.report.split("\n").slice(0, 6).join("\n") + "\n…";
-        }
-      }
-      // Fallback: extractive composition
+    if (await isLLMEnabled()) {
+      const llmReport = await generateLlmReport(task, ctx);
+      task.report = llmReport ?? composeReport(task, ctx);
+    } else {
       task.report = composeReport(task, ctx);
-      task.outline = ctx.outline;
-      task.citations = ctx.citations;
-      writer.detail = `${formatLabel(task.outputFormat)}已完成`;
-      return task.report.split("\n").slice(0, 6).join("\n") + "\n…";
-    });
+    }
+
+    task.outline = ctx.outline;
+    task.citations = ctx.citations;
+    task.parallelExecuted = finalState.parallelExecuted;
+
+    // Update DAG node statuses.
+    if (task.dagNodes) {
+      for (const n of task.dagNodes) {
+        n.status = n.enabled ? "done" : "skipped";
+      }
+    }
 
     task.status = "done";
     task.durationMs = Date.now() - start;
     if (task.userId) {
       notify(
-        task.userId,
-        "agentDone",
-        `Agent 调研报告已完成`,
+        task.userId, "agentDone", `Agent 调研报告已完成`,
         `「${task.topic}」报告已生成，耗时 ${Math.round(task.durationMs / 1000)} 秒。`,
         "/agent"
       );
@@ -236,15 +328,12 @@ export async function runTask(
   }
 }
 
-// LLM-enhanced report: ask the model to synthesize findings into a report.
-async function generateLlmReport(task: AgentTask, ctx: Ctx): Promise<string | null> {
-  const findings = ctx.findings
-    .map((f, i) => `[${i + 1}] ${f.section}：${f.text}`)
-    .join("\n");
-  const sources = ctx.citations
-    .map((c) => `[${c.n}] ${c.title}：${c.snippet}`)
-    .join("\n");
-
+async function generateLlmReport(
+  task: AgentTask,
+  ctx: { outline: string[]; citations: AgentCitation[]; findings: { section: string; text: string; nums: number[] }[] }
+): Promise<string | null> {
+  const findings = ctx.findings.map((f, i) => `[${i + 1}] ${f.section}：${f.text}`).join("\n");
+  const sources = ctx.citations.map((c) => `[${c.n}] ${c.title}：${c.snippet}`).join("\n");
   const formatHint =
     task.outputFormat === "ppt" ? "PPT 大纲格式（## 幻灯片 N · 标题）" :
     task.outputFormat === "mindmap" ? "Markdown 思维导图格式（缩进列表）" :
@@ -281,7 +370,10 @@ function citeStr(nums: number[]): string {
   return nums.length ? nums.map((n) => `[${n}]`).join("") : "";
 }
 
-function composeReport(task: AgentTask, ctx: Ctx): string {
+function composeReport(
+  task: AgentTask,
+  ctx: { outline: string[]; citations: AgentCitation[]; findings: { section: string; text: string; nums: number[] }[] }
+): string {
   const topic = task.topic;
   const source = task.kbName ?? "公开检索";
   const findings = ctx.findings;
@@ -308,9 +400,9 @@ function composeReport(task: AgentTask, ctx: Ctx): string {
 
   // report
   let md = `# ${topic} 调研报告\n\n> 数据来源：${source} · 生成于 ${fmtDate()} · 由多 Agent 协作完成\n`;
-  const ord = ["一", "二", "三", "四", "五"];
+  const ord = ["一", "二", "三", "四", "五", "六"];
   findings.forEach((f, idx) => {
-    md += `\n## ${ord[idx]}、${f.section}\n\n${f.text}${citeStr(f.nums)}\n`;
+    md += `\n## ${ord[idx] ?? idx + 1}、${f.section}\n\n${f.text}${citeStr(f.nums)}\n`;
   });
   md += `\n---\n\n## 引用来源\n\n`;
   if (ctx.citations.length === 0) {

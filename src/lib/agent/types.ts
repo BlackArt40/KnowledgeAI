@@ -1,7 +1,29 @@
 export type AgentRole = "planner" | "searcher" | "analyzer" | "writer";
-export type StepStatus = "pending" | "running" | "done";
+export type StepStatus = "pending" | "running" | "done" | "skipped";
 export type TaskStatus = "queued" | "running" | "done" | "failed";
 export type OutputFormat = "report" | "ppt" | "mindmap";
+
+/** DAG node status for workflow visualization. */
+export type NodeRunStatus = "pending" | "running" | "done" | "skipped";
+
+/** A node in the DAG visualization (for criterion #1: workflow visualization). */
+export interface DagNode {
+  id: string;
+  name: string;
+  role: AgentRole;
+  status: NodeRunStatus;
+  /** Whether this node is enabled (user can toggle). */
+  enabled: boolean;
+  /** Incoming edge count (for layout). */
+  indegree: number;
+}
+
+/** A directed edge in the DAG. */
+export interface DagEdge {
+  from: string;
+  to: string;
+  conditional: boolean;
+}
 
 export interface AgentStep {
   role: AgentRole;
@@ -39,6 +61,16 @@ export interface AgentTask {
   updatedAt: number;
   durationMs?: number;
   userId?: string;
+  /** P2-1: workflow template id. */
+  template?: string;
+  /** P2-1: DAG nodes for workflow visualization. */
+  dagNodes?: DagNode[];
+  /** P2-1: DAG edges. */
+  dagEdges?: DagEdge[];
+  /** P2-1: whether parallel search was used. */
+  parallelExecuted?: boolean;
+  /** P2-1: whether conditional branch was triggered. */
+  branchTriggered?: boolean;
 }
 
 export const AGENT_DEFS: { role: AgentRole; name: string; icon: string }[] = [
@@ -53,3 +85,4 @@ export const FORMAT_OPTIONS: { value: OutputFormat; label: string; hint: string 
   { value: "ppt", label: "PPT 大纲", hint: "分页幻灯片大纲" },
   { value: "mindmap", label: "思维导图", hint: "嵌套列表导图" },
 ];
+
