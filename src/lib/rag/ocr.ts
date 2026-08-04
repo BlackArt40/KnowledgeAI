@@ -69,7 +69,9 @@ export async function ocrImage(buf: Buffer, lang?: string): Promise<string | nul
   try {
     const { createWorker } = await import("tesseract.js");
     // langPath: keep tesseract language packs in .tessdata/ (project root stays clean)
-    const worker = await createWorker(lang ?? ocrLang(), 1, { langPath: ".tessdata" });
+    // gzip: false — the local .tessdata/*.traineddata files are uncompressed; without
+    // this, tesseract.js v5 defaults gzip=true and looks for .traineddata.gz (ENOENT).
+    const worker = await createWorker(lang ?? ocrLang(), 1, { langPath: ".tessdata", gzip: false });
     try {
       const { data } = await worker.recognize(buf);
       return data?.text?.trim() || null;
