@@ -119,5 +119,7 @@ All four share password `password123`:
 - `src/lib/queue/` - background job queue (doc-process, agent-run, index-cleanup)
 - `src/lib/db/{client,hydrate,persist}.ts` - the DB adaptation triad
 - `src/lib/auth/guard.ts` - RBAC role guard for route handlers
+- `src/lib/rag/parser.ts` - multi-format document parser (PDF/Word/Excel/PPT/HTML/MD/TXT/CSV + image via OCR)
+- `src/lib/rag/ocr.ts` - OCR pipeline (tesseract.js + pdfjs-dist + @napi-rs/canvas; env: `OCR_ENABLED`/`OCR_LANG`/`OCR_MAX_PAGES`; `.tessdata/` caches language packs, gitignored)
 - `prisma/schema.prisma` + `prisma/migrations/` - DB schema (drift-checked in CI)
 - `.env.example` - full env var reference with demo-fallback docs

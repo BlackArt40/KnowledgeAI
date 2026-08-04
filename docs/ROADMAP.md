@@ -2,11 +2,11 @@
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。
 >
-> **更新日期**：2026-07-20
+> **更新日期**：2026-08-04
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-07-20 — 完成 P1-3 智能切片策略（动态密度切片 + 父子文档上下文保留）；此前完成 P0(数据库/向量库/存储/队列)、P1-1/P1-2(多格式解析/混合检索)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-04 — P1-1 多格式文档解析验收通过（8 格式 + PDF 表格 + 扫描版 PDF OCR），修复 tesseract.js v5 `gzip:true` 默认值导致的 `.traineddata.gz` ENOENT 问题（设置 `gzip:false` 匹配本地未压缩语言包）；此前完成 P1-3 智能切片、P0(数据库/向量库/存储/队列)、P1-2(混合检索)、P3(TOTP 2FA/分布式限流/AES加密)。
 
 ---
 
@@ -141,20 +141,20 @@
 
 ### P1-1 多格式文档解析
 
-**现状**：仅支持纯文本 / Markdown / 网页 HTML 提取。
+**现状**：✅ 已完成。支持 PDF/DOCX/XLSX/PPTX/MD/TXT/HTML/CSV 共 8 种格式 + 扫描版 PDF/图片 OCR（tesseract.js + pdfjs-dist + @napi-rs/canvas）。全部依赖动态导入 + 优雅降级。
 
 **计划**：
 - [x] 接入 PDF 解析（`pdf-parse`，动态导入）✅
-- [x] 接入 Word 解析（`mammoth` .docx → HTML → 文本）
+- [x] 接入 Word 解析（`mammoth` .docx → HTML → 文本）✅
 - [x] 接入 Excel 解析（`xlsx` SheetJS，CSV 直接读取）✅
 - [x] 接入 PPT 解析（内置 ZIP/XML 提取）✅
 - [x] OCR 支持：扫描版 PDF / 图片文字识别 ✅
 - [x] 统一 `parseDocument()` 接口，按 DocType 路由 ✅
 
 **验收标准**：
-- 支持 PDF / DOCX / XLSX / PPTX / MD / TXT / HTML / CSV 共 8 种格式
-- PDF 表格内容正确提取
-- 扫描版 PDF 通过 OCR 可索引
+- ✅ 支持 PDF / DOCX / XLSX / PPTX / MD / TXT / HTML / CSV 共 8 种格式
+- ✅ PDF 表格内容正确提取
+- ✅ 扫描版 PDF 通过 OCR 可索引
 
 ---
 
