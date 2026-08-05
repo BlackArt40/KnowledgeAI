@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { verifyCredentials, sanitize } from "@/lib/auth/store";
-import { createToken } from "@/lib/auth/session";
+import { createToken, createPreAuthToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
-import { addSession, recordLogin, is2FAEnabled, verify2FALogin } from "@/lib/security/store";
+import { addSession, recordLogin, is2FAEnabled, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/login { email, password, totpCode? }
-// When 2FA is enabled, first call returns { requires2FA: true }.
-// Client then re-calls with totpCode to complete login.
+// Three possible outcomes once the password is verified:
+//   1. 2FA enabled            -> { requires2FA: true } (client re-calls with totpCode)
+//   2. 2FA required by admin  -> { mustEnroll2FA: true, preAuthToken } (forced enrollment)
+//                               but not yet enabled
+//   3. Otherwise              -> { user, token } (session issued)
 export async function POST(req: Request) {
   let body: { email?: string; password?: string; totpCode?: string };
   try { body = await req.json(); } catch {
@@ -39,6 +42,21 @@ export async function POST(req: Request) {
     if (!verify2FALogin(user.id, body.totpCode.trim())) {
       return NextResponse.json({ error: "两步验证码不正确" }, { status: 401 });
     }
+  } else if (mustEnroll2FA(user.id, user.role)) {
+    // Admin requires 2FA for this role but the user hasn't enrolled yet.
+    // Issue a short-lived pre-auth token so they can enroll, but do NOT
+    // create a session until enrollment completes.
+    const preAuthToken = await createPreAuthToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+    return NextResponse.json({
+      mustEnroll2FA: true,
+      preAuthToken,
+      message: "管理员已为该角色开启两步验证强制策略，请先完成两步验证绑定。",
+    });
   }
 
   // Record this real login: an active session + a login-history entry.

@@ -20,6 +20,7 @@ function store(): Store {
         maxUploadMb: 50,
         maintenanceMode: false,
         allowSignup: true,
+        required2FARoles: [],
       },
     };
   }

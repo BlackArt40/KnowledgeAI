@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSecurity, ensureCurrentSession, runRetentionCleanup } from "@/lib/security/store";
+import { getSecurity, ensureCurrentSession, runRetentionCleanup, is2FARequiredForRole } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 import { getRequestUser } from "@/lib/auth/guard";
 export const dynamic = "force-dynamic";
@@ -12,5 +12,5 @@ export async function GET(req: Request) {
   // Run data-retention cleanup: delete conversations and login history
   // older than the user's configured retention period.
   runRetentionCleanup(u.id);
-  return NextResponse.json(getSecurity(u.id));
+  return NextResponse.json({ ...getSecurity(u.id), twoFactorRequired: is2FARequiredForRole(u.role) });
 }

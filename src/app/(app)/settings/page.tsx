@@ -3,6 +3,7 @@ import * as React from "react";
 import {
   Shield, Smartphone, Monitor, LogOut, History, Download, Trash2,
   ShieldCheck, User, Bell, Cookie, AlertTriangle, Loader2, CheckCircle2, Bot,
+  Copy, Check,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,21 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const [data, setData] = React.useState<SecurityState | null>(null);
+  const [data, setData] = React.useState<(SecurityState & { twoFactorRequired?: boolean }) | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [busy, setBusy] = React.useState(false);
+
+  // 2FA enrollment flow
+  const [enrollOpen, setEnrollOpen] = React.useState(false);
+  const [enrollData, setEnrollData] = React.useState<{ secret: string; qrCodeDataUrl: string; backupCodes: string[] } | null>(null);
+  const [enrollCode, setEnrollCode] = React.useState("");
+  const [enrollBusy, setEnrollBusy] = React.useState(false);
+  const [enrollError, setEnrollError] = React.useState<string | null>(null);
+  const [copied, setCopied] = React.useState(false);
+  // 2FA disable flow
+  const [disableOpen, setDisableOpen] = React.useState(false);
+  const [disableCode, setDisableCode] = React.useState("");
+  const [disableBusy, setDisableBusy] = React.useState(false);
+  const [disableError, setDisableError] = React.useState<string | null>(null);
 
   // current authenticated user (profile tab)
   const [me, setMe] = React.useState<{ id: string; name: string; email: string; role: string; plan: string } | null>(null);
@@ -116,14 +129,73 @@ export default function SettingsPage() {
     setSavingProfile(false);
   }
 
-  async function toggle2FA(enable: boolean) {
-    setBusy(true);
-    await fetch("/api/security/2fa", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enable, method: "app" }),
-    });
-    refresh();
-    setBusy(false);
+  // ── 2FA enrollment (real TOTP flow) ────────────────────────────────────
+  async function startEnroll() {
+    setEnrollError(null);
+    setEnrollData(null);
+    setEnrollCode("");
+    setEnrollOpen(true);
+    try {
+      const res = await fetch("/api/security/2fa", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "enroll" }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setEnrollError(d.error || "无法启动绑定"); return; }
+      setEnrollData({ secret: d.secret, qrCodeDataUrl: d.qrCodeDataUrl, backupCodes: d.backupCodes });
+    } catch {
+      setEnrollError("网络错误，请重试");
+    }
+  }
+
+  async function confirmEnroll(e: React.FormEvent) {
+    e.preventDefault();
+    setEnrollError(null);
+    if (!/^\d{6}$/.test(enrollCode.trim())) { setEnrollError("请输入 6 位验证码"); return; }
+    setEnrollBusy(true);
+    try {
+      const res = await fetch("/api/security/2fa", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", code: enrollCode.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setEnrollError(d.error || "验证码不正确"); return; }
+      setEnrollOpen(false);
+      await refresh();
+    } catch {
+      setEnrollError("网络错误，请重试");
+    } finally {
+      setEnrollBusy(false);
+    }
+  }
+
+  async function confirmDisable(e: React.FormEvent) {
+    e.preventDefault();
+    setDisableError(null);
+    if (!disableCode.trim()) { setDisableError("请输入验证码"); return; }
+    setDisableBusy(true);
+    try {
+      const res = await fetch("/api/security/2fa", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disable", code: disableCode.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setDisableError(d.error || "验证码不正确"); return; }
+      setDisableOpen(false);
+      setDisableCode("");
+      await refresh();
+    } catch {
+      setDisableError("网络错误，请重试");
+    } finally {
+      setDisableBusy(false);
+    }
+  }
+
+  function copyBackupCodes() {
+    if (!enrollData) return;
+    void navigator.clipboard?.writeText(enrollData.backupCodes.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function revokeSession(id: string) {
@@ -204,26 +276,110 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                开启两步验证后，登录时需输入手机验证器生成的动态验证码，为账户增加一层保护。
+                开启两步验证后，登录时需输入手机验证器（Google Authenticator / 1Password / Microsoft Authenticator）生成的动态验证码，为账户增加一层保护。
               </p>
-              {twoFactor.enabled && twoFactor.backupCodes.length > 0 && (
-                <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
-                  <p className="mb-2 text-xs font-medium text-warning">备用恢复码（每枚仅可使用一次）</p>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {twoFactor.backupCodes.map((c) => (
-                      <code key={c} className="rounded bg-muted px-2 py-1 text-center font-mono text-xs">{c}</code>
-                    ))}
+
+              {twoFactor.enabled ? (
+                <>
+                  {twoFactor.enrolledAt && (
+                    <p className="text-xs text-muted-foreground">
+                      绑定时间：{formatRelative(twoFactor.enrolledAt)}
+                    </p>
+                  )}
+                  <div className="rounded-lg border border-border bg-muted/40 p-3">
+                    <p className="text-xs font-medium">备用恢复码剩余：{twoFactor.backupCodesRemaining} 枚</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      恢复码在丢失验证器时使用，每枚仅可使用一次，使用后自动作废。绑定时仅显示一次，请妥善保存。
+                    </p>
                   </div>
-                </div>
+                  <Button variant="outline" onClick={() => { setDisableError(null); setDisableCode(""); setDisableOpen(true); }}>
+                    关闭两步验证
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {data.twoFactorRequired && (
+                    <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>管理员已为你的角色开启两步验证强制策略，请尽快开启。下次登录时将强制要求绑定。</span>
+                    </div>
+                  )}
+                  <Button variant="gradient" onClick={startEnroll}>
+                    <ShieldCheck className="h-4 w-4" /> 开启两步验证
+                  </Button>
+                </>
               )}
-              <Button
-                variant={twoFactor.enabled ? "outline" : "gradient"}
-                onClick={() => toggle2FA(!twoFactor.enabled)}
-                disabled={busy}
-              >
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {twoFactor.enabled ? "关闭两步验证" : "开启两步验证"}
-              </Button>
+
+              {/* Enrollment dialog */}
+              <Dialog open={enrollOpen} onOpenChange={(v) => { setEnrollOpen(v); if (!v) setEnrollError(null); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>绑定两步验证</DialogTitle>
+                  </DialogHeader>
+                  {enrollError && (
+                    <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                      <AlertTriangle className="h-4 w-4 shrink-0" /> {enrollError}
+                    </p>
+                  )}
+                  {enrollData ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-col items-center">
+                        <p className="mb-2 text-center text-xs text-muted-foreground">使用验证器 App 扫描二维码</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={enrollData.qrCodeDataUrl} alt="2FA 二维码" width={180} height={180} className="rounded-lg border border-border bg-white p-1" />
+                        <p className="mt-2 text-center text-xs text-muted-foreground">或手动输入密钥：</p>
+                        <code className="mt-1 max-w-full break-all rounded bg-muted px-2 py-1 text-center font-mono text-xs">{enrollData.secret}</code>
+                      </div>
+                      <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-xs font-medium text-warning">备用恢复码（仅显示一次）</p>
+                          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={copyBackupCodes}>
+                            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copied ? "已复制" : "复制"}
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {enrollData.backupCodes.map((c) => (
+                            <code key={c} className="rounded bg-muted px-2 py-1 text-center font-mono text-xs">{c}</code>
+                          ))}
+                        </div>
+                      </div>
+                      <form className="space-y-2" onSubmit={confirmEnroll}>
+                        <Label htmlFor="enroll-code" className="text-xs">输入验证器显示的 6 位验证码</Label>
+                        <Input id="enroll-code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={enrollCode} onChange={(e) => setEnrollCode(e.target.value)} className="text-center tracking-[0.3em]" required />
+                        <Button type="submit" variant="gradient" className="w-full" disabled={enrollBusy}>
+                          {enrollBusy && <Loader2 className="h-4 w-4 animate-spin" />} 完成绑定
+                        </Button>
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 正在生成验证密钥…
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+              {/* Disable dialog */}
+              <Dialog open={disableOpen} onOpenChange={(v) => { setDisableOpen(v); if (!v) setDisableError(null); }}>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>关闭两步验证</DialogTitle>
+                  </DialogHeader>
+                  {disableError && (
+                    <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                      <AlertTriangle className="h-4 w-4 shrink-0" /> {disableError}
+                    </p>
+                  )}
+                  <form className="space-y-3" onSubmit={confirmDisable}>
+                    <p className="text-sm text-muted-foreground">为防止误操作，请输入当前验证码或恢复码以确认关闭。</p>
+                    <Input inputMode="numeric" autoComplete="one-time-code" placeholder="验证码 / 恢复码" value={disableCode} onChange={(e) => setDisableCode(e.target.value)} autoFocus required />
+                    <Button type="submit" variant="destructive" className="w-full" disabled={disableBusy}>
+                      {disableBusy && <Loader2 className="h-4 w-4 animate-spin" />} 确认关闭
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 

@@ -57,6 +57,67 @@ export async function createToken(user: AuthUser, expiresInSeconds = 7 * 86400):
   return `${data}.${b64url(sig)}`;
 }
 
+// ── Pre-auth token (2FA forced enrollment) ────────────────────────────────
+//
+// When an admin requires 2FA for a role and a user without 2FA tries to log
+// in, the password is verified but no session is issued yet. Instead a short-
+// lived pre-auth token (purpose: "2fa-enroll") is returned so the client can
+// complete TOTP enrollment. Only after enrollment succeeds does the user get a
+// real session token. Reuses the same HMAC key as session JWTs.
+
+export interface PreAuthPayload {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  purpose: "2fa-enroll";
+  exp: number;
+}
+
+/** Create a short-lived pre-auth token for 2FA forced enrollment (default 5 min). */
+export async function createPreAuthToken(user: AuthUser, expiresInSeconds = 5 * 60): Promise<string> {
+  const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+  const payload = b64url(
+    new TextEncoder().encode(
+      JSON.stringify({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        purpose: "2fa-enroll",
+        exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
+      } satisfies PreAuthPayload)
+    )
+  );
+  const data = `${header}.${payload}`;
+  const key = await getKey();
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return `${data}.${b64url(sig)}`;
+}
+
+/** Verify a pre-auth token and return its payload, or null if invalid/expired/wrong purpose. */
+export async function verifyPreAuthToken(token: string): Promise<PreAuthPayload | null> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [header, payload, sig] = parts;
+  const key = await getKey();
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    b64urlDecode(sig),
+    new TextEncoder().encode(`${header}.${payload}`)
+  );
+  if (!valid) return null;
+  try {
+    const data = JSON.parse(new TextDecoder().decode(b64urlDecode(payload))) as PreAuthPayload;
+    if (data.purpose !== "2fa-enroll") return null;
+    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 /** Verify a JWT and return the user, or null if invalid/expired. */
 export async function verifyToken(token: string): Promise<AuthUser | null> {
   const parts = token.split(".");

@@ -2,6 +2,7 @@ import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types
 import type { ClientInfo } from "./ua";
 import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
+import { getConfig } from "@/lib/admin/store";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
 
@@ -30,7 +31,7 @@ function genBackup() {
 
 function blank(): UserState {
   return {
-    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null },
+    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null },
     sessions: [],
     loginHistory: [],
     privacy: { analytics: true, crashReports: true, trainingOptIn: false, dataRetentionDays: 90 },
@@ -60,13 +61,20 @@ function seed(userId: string) {
   if (st.seeded) return;
   st.seeded = true;
   
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null };
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null };
   // sessions & loginHistory start empty - populated by real logins below.
 }
 
 function snapshot(st: UserState): SecurityState {
+  // Sanitize for API responses: never leak hashed backup codes. Expose only
+  // the remaining count so the UI can show "N 枚恢复码剩余" without revealing
+  // the hashes (which must never be displayed as if they were usable codes).
   return {
-    twoFactor: st.twoFactor,
+    twoFactor: {
+      ...st.twoFactor,
+      backupCodes: [],
+      backupCodesRemaining: st.twoFactor.backupCodes.length,
+    },
     sessions: st.sessions,
     loginHistory: st.loginHistory,
     privacy: st.privacy,
@@ -158,6 +166,7 @@ export function start2FAEnrollment(userId: string, email: string): {
   st.twoFactor.pendingSecret = secret;
   st.twoFactor.method = "app";
   st.twoFactor.backupCodes = backupCodes.map(hashBackupCode);
+  st.twoFactor.backupCodesRemaining = backupCodes.length;
   return { secret, qrCodeUri, backupCodes };
 }
 
@@ -182,10 +191,11 @@ export function verify2FALogin(userId: string, code: string): boolean {
   if (!st.twoFactor.enabled || !st.twoFactor.secret) return false;
   // Try TOTP code first
   if (verifyTOTP(st.twoFactor.secret, code)) return true;
-  // Try backup code
+  // Try backup code (one-time use: consumed + auto-invalidated on success)
   const { valid, remaining } = verifyBackupCode(code, st.twoFactor.backupCodes);
   if (valid) {
     st.twoFactor.backupCodes = remaining;
+    st.twoFactor.backupCodesRemaining = remaining.length;
     return true;
   }
   return false;
@@ -197,18 +207,34 @@ export function is2FAEnabled(userId: string): boolean {
   return stateFor(userId).twoFactor.enabled;
 }
 
+/** Whether 2FA is administratively required for a given role. */
+export function is2FARequiredForRole(role: string): boolean {
+  try {
+    return getConfig().required2FARoles.includes(role);
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a user must enroll in 2FA: their role requires it but they haven't
+ *  enabled it yet. Used by the login flow to force enrollment. */
+export function mustEnroll2FA(userId: string, role: string): boolean {
+  return is2FARequiredForRole(role) && !is2FAEnabled(userId);
+}
+
 /** Legacy: enable 2FA (backward compat for old API callers). */
 export function enable2FA(userId: string, method: TwoFactor["method"]): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: true, method, secret: null, backupCodes: genBackup(), enrolledAt: Date.now(), pendingSecret: null };
+  const codes = genBackup();
+  st.twoFactor = { enabled: true, method, secret: null, backupCodes: codes, backupCodesRemaining: codes.length, enrolledAt: Date.now(), pendingSecret: null };
   return st.twoFactor;
 }
 
 export function disable2FA(userId: string): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], enrolledAt: null, pendingSecret: null };
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null };
   return st.twoFactor;
 }
 

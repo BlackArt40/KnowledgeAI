@@ -2,11 +2,11 @@
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。
 >
-> **更新日期**：2026-08-04
+> **更新日期**：2026-08-05
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-04 — P1-1/P1-2/P1-3/P1-4/P2-3 报告增强验收通过（4 导出格式 PDF/PPTX/Markdown/思维导图 + 分享链接权限 + 版本追溯 + 协作评论）；P2-1/P2-2 全部验收通过；P2-2 外部数据源 provider（Tavily/SerpAPI/Brave + ArXiv + GitHub + 网页抓取 + 去重 + 质量评分）；P2-1 StateGraph DAG 引擎；P1-4 流式引用/追问/导出；P1-3 双重前缀修复；P1-1 gzip 修复；此前完成 P0(数据库/向量库/存储/队列)、P3(TOTP 2FA/分布式限流/AES加密)。
+> **最新更新**：2026-08-05 - P3-1 真实 2FA（TOTP）完整验收通过（RFC 6238 测试向量 T=59->287082 + QR 码可扫描 + 恢复码一次性使用 + 登录流程集成 密码->2FA->会话 + 2FA 强制策略 管理员按角色强制开启 + 预授权令牌强制注册；smoke 59+18 断言通过）；此前 P1/P2 全部验收通过、P0 生产化、P3(分布式限流/AES加密)。
 
 ---
 
@@ -279,19 +279,19 @@
 
 ### P3-1 真实 2FA（TOTP）
 
-**现状**：`security/store.ts` 中 2FA 为模拟开关，无真实 TOTP。
+**现状**：✅ 已完成。真实 TOTP（RFC 6238，Node.js crypto 零外部依赖，通过 RFC 6238 测试向量 T=59->287082 校验）+ otpauth:// URI（兼容 Google/Microsoft Authenticator/1Password/Authy）+ QR 码可扫描渲染（`qrcode` 库 -> PNG dataURL，SVG 兜底）+ 备用恢复码 SHA-256 哈希存储 + 一次性使用 + 使用后自动作废 + 登录流程集成（密码 -> `requires2FA` -> TOTP/恢复码验证 -> 会话）+ 2FA 强制策略（管理员可勾选角色强制开启，未开启者登录时返回 `mustEnroll2FA` + 短时预授权令牌，强制完成绑定后才发会话）。`scripts/smoke/test-2fa.ts`（59 项）+ `test-2fa-http.ts`（18 项）全部通过。
 
 **计划**：
 - [x] 实现 TOTP（RFC 6238, Node.js crypto, 无外部依赖）✅
 - [x] 兼容 Google/Microsoft Authenticator/1Password（otpauth:// URI）✅
 - [x] 备用恢复码 SHA-256 哈希存储 + 一次性使用 ✅
-- [ ] 2FA 强制策略：管理员可要求特定角色必须开启
-- [ ] 登录流程集成：密码 → 2FA 验证 → 会话
+- [x] 2FA 强制策略：管理员可要求特定角色必须开启 ✅（`SystemConfig.required2FARoles` + 管理后台勾选 + `mustEnroll2FA` 登录拦截）
+- [x] 登录流程集成：密码 → 2FA 验证 → 会话 ✅（前端登录页 `requires2FA` 两步流程 + 强制注册页 `/2fa-enroll`）
 
 **验收标准**：
-- 使用标准 TOTP 协议（RFC 6238）
-- QR Code 可被主流验证器 App 扫描
-- 恢复码一次性使用，使用后自动作废
+- ✅ 使用标准 TOTP 协议（RFC 6238）（`scripts/smoke/test-2fa.ts` 59 项断言 + RFC 测试向量 T=59->287082）
+- ✅ QR Code 可被主流验证器 App 扫描（`renderOtpAuthQR` -> PNG dataURL，设置页/强制注册页 `<img>` 渲染）
+- ✅ 恢复码一次性使用，使用后自动作废（`verifyBackupCode` 移除已用 hash + `verify2FALogin` 消费）
 
 ---
 

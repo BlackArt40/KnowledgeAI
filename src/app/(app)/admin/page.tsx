@@ -64,6 +64,22 @@ export default function AdminPage() {
     setSavingCfg(false);
   }
 
+  const ROLE_OPTIONS: { role: string; label: string }[] = [
+    { role: "owner", label: "Owner" },
+    { role: "admin", label: "Admin" },
+    { role: "editor", label: "Editor" },
+    { role: "viewer", label: "Viewer" },
+  ];
+
+  function toggle2FARole(role: string, on: boolean) {
+    if (!config) return;
+    const current = new Set(config.required2FARoles);
+    if (on) current.add(role); else current.delete(role);
+    const next = ROLE_OPTIONS.map((r) => r.role).filter((r) => current.has(r));
+    setConfig({ ...config, required2FARoles: next });
+    void patchConfig({ required2FARoles: next });
+  }
+
   if (loading || !overview || !config) {
     return (
       <div className="mx-auto max-w-6xl space-y-4">
@@ -228,6 +244,24 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground">开启后用户看到维护页面</p>
               </div>
               <Switch checked={config.maintenanceMode} onCheckedChange={(v) => patchConfig({ maintenanceMode: v })} />
+            </div>
+            <Separator />
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">两步验证强制策略</p>
+                <p className="text-xs text-muted-foreground">要求所选角色的用户必须开启两步验证（TOTP），下次登录时将强制绑定</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLE_OPTIONS.map((r) => (
+                  <label key={r.role} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <span className="text-sm">{r.label}</span>
+                    <Switch
+                      checked={config.required2FARoles.includes(r.role)}
+                      onCheckedChange={(v) => toggle2FARole(r.role, v)}
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
             <Button size="sm" className="w-full" onClick={() => patchConfig(config)} disabled={savingCfg}>
               {savingCfg && <Loader2 className="h-4 w-4 animate-spin" />} 保存配置
