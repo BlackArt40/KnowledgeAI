@@ -63,14 +63,13 @@
 
 ### P0-1 数据库持久化 — Prisma + PostgreSQL
 
-**现状**：11 个 `*/store.ts` 通过写穿缓存（hydrate + persist）接入 PostgreSQL；`@prisma/client` 已安装、初始迁移已生成、CI 迁移漂移校验已就绪。未配置 `DATABASE_URL` 时自动回退内存模式。
+**现状**：11 个 `*/store.ts` 通过写穿缓存（hydrate + persist）接入 PostgreSQL；`@prisma/client` 已安装、初始迁移已生成、迁移漂移可经 `scripts/check-prisma-migrations.sh` 本地校验。未配置 `DATABASE_URL` 时自动回退内存模式。
 
 **计划**：
 - [x] 实现 `src/lib/db/repository.ts` 统一仓储层，封装 Prisma CRUD ✅
 - [x] 逐模块迁移内存 store → Prisma 仓储（auth/kb/chat/billing/agent/apikeys/models/notifications/security/team/admin 全部接入） ✅
 - [x] Repository 层提供 checkDbHealth() ✅
 - [x] 编写种子数据脚本 `prisma/seed.ts`（迁移现有演示数据） ✅
-- [x] 添加 Prisma 迁移 CI 校验（`.github/workflows/ci.yml` 中 `prisma migrate diff --exit-code`） ✅
 
 **验收标准**：
 - 配置 `DATABASE_URL` 后所有数据持久化至 PostgreSQL
@@ -541,7 +540,6 @@
 **现状**：无自动化测试与部署。
 
 **计划**：
-- [ ] GitHub Actions CI：lint + type-check + build + test
 - [ ] 单元测试：核心 lib 模块（RAG / auth / billing / team）覆盖率 > 70%
 - [ ] 集成测试：API 路由端到端测试
 - [ ] E2E 测试：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent）

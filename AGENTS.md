@@ -8,22 +8,15 @@ Compact guidance for OpenCode sessions working in this repo. Read this before ed
 pnpm install              # install (uses pnpm@11.7.0, Node 22)
 pnpm dev                  # dev server on :3000
 pnpm build                # production build (output: "standalone")
-pnpm lint                 # ESLint (next core-web-vitals + TS). NOT run in CI.
-npx tsc --noEmit          # typecheck - this is what CI runs, not a script
+pnpm lint                 # ESLint (next core-web-vitals + TS)
+npx tsc --noEmit          # typecheck
 ```
 
-### CI gate (`.github/workflows/ci.yml`)
+### Prisma migrations
 
-CI does **not** run `lint` or tests. It runs, in order:
+Never edit `prisma/schema.prisma` without running `npx prisma migrate dev --name <descriptive>` to generate a matching migration. There is currently only one migration (`20260713022119_init`). To verify schema <-> migration sync locally, run `./scripts/check-prisma-migrations.sh` (fails if the schema has drifted).
 
-1. `npx prisma generate`
-2. `npx tsc --noEmit`
-3. `npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code`  ← **fails if `schema.prisma` drifted from migrations**
-4. `pnpm build`
-
-So: run `pnpm lint` locally before pushing (CI won't catch it), and never edit `prisma/schema.prisma` without running `npx prisma migrate dev --name <descriptive>` to generate a matching migration. There is currently only one migration (`20260713022119_init`).
-
-### Tests (not in CI, not Jest/Vitest)
+### Tests (not Jest/Vitest)
 
 `tests/<suite>/<suite>-test.mjs` are standalone Node scripts that hit a **live** `pnpm dev` server. Start the dev server first, then:
 

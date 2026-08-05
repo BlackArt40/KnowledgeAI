@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Prisma Migration CI Check
+# Prisma Migration Drift Check
 #
 # Verifies that the Prisma schema is in sync with migrations.
 # Fails (exit code 1) if the schema has drifted from migrations.

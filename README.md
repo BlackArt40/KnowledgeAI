@@ -65,7 +65,7 @@ src/
 ├── lib/             # 业务逻辑（auth/kb/rag/agent/queue/db/storage…）
 └── proxy.ts         # 中间件（限流 + DB 水合）
 prisma/              # 数据库 schema + 迁移 + 种子
-scripts/             # 运维脚本（清理/迁移/CI 检查）
+scripts/             # 运维脚本（清理/迁移/校验）
 └── smoke/           # 手动冒烟测试
 tests/               # 集成测试（需 dev server）
 docs/                # 产品文档 / 设计说明 / 路线图
