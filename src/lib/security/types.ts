@@ -3,9 +3,11 @@ export interface TwoFactor {
   method: "app" | "sms" | null;
   secret: string | null;        // TOTP secret (Base32), null when not enrolled
   backupCodes: string[];        // hashed backup codes (internal; empty in API responses)
-  backupCodesRemaining: number; // count of unused backup codes (public, for display)
+  backupCodesRemaining: number; // derived count of unused backup codes (snapshot/exportData recompute)
   enrolledAt: number | null;
   pendingSecret: string | null; // secret during enrollment (not yet verified)
+  pendingBackupCodes: string[]; // hashed backup codes staged during enrollment,
+                                // committed to `backupCodes` only on successful verify
 }
 
 export interface Session {
