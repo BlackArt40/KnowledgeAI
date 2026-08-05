@@ -27,9 +27,17 @@ export async function renderOtpAuthQR(uri: string): Promise<QrRenderResult> {
     const dataUrl = await QRCode.toDataURL(uri, opts);
     return { dataUrl, uri };
   } catch {
-    // Fallback: SVG -> data URL (pure JS, no canvas needed)
-    const svg = await QRCode.toString(uri, { ...opts, type: "svg" as const });
-    const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg, "utf-8").toString("base64")}`;
-    return { dataUrl, uri };
+    // Fallback: SVG -> data URL (pure JS, no canvas needed). Guarded with its
+    // own try/catch so a failure here never propagates and crashes the API
+    // route — both encoders share the same underlying matrix generator, so if
+    // toDataURL threw, toString likely will too. Return an empty dataUrl and
+    // let the caller fall back to displaying the raw otpauth:// URI as text.
+    try {
+      const svg = await QRCode.toString(uri, { ...opts, type: "svg" as const });
+      const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg, "utf-8").toString("base64")}`;
+      return { dataUrl, uri };
+    } catch {
+      return { dataUrl: "", uri };
+    }
   }
 }

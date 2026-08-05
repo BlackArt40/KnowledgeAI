@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyPreAuthToken, createToken } from "@/lib/auth/session";
-import { start2FAEnrollment, verify2FAEnrollment, addSession, recordLogin } from "@/lib/security/store";
+import { start2FAEnrollment, verify2FAEnrollment, addSession, recordLogin, is2FAEnabled } from "@/lib/security/store";
 import { renderOtpAuthQR } from "@/lib/security/qr";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 import { notify } from "@/lib/notifications/store";
@@ -23,6 +23,18 @@ export async function POST(req: Request) {
   const preAuth = body.preAuthToken ? await verifyPreAuthToken(body.preAuthToken) : null;
   if (!preAuth) {
     return NextResponse.json({ error: "预授权令牌无效或已过期，请重新登录" }, { status: 401 });
+  }
+
+  // A preAuthToken is for first-time forced enrollment only. Once 2FA is
+  // already enabled, reject it so the token can't be replayed within its 5-min
+  // validity window to overwrite the TOTP secret/backup codes or mint extra
+  // sessions. Changes to an already-enabled account must go through an
+  // authenticated session, not a pre-auth token.
+  if (is2FAEnabled(preAuth.id)) {
+    return NextResponse.json(
+      { error: "两步验证已开启，无需重复绑定；如需修改请登录后在设置中操作。" },
+      { status: 409 }
+    );
   }
 
   const action = body.action || "enroll";

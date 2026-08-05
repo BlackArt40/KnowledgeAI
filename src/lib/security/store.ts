@@ -23,15 +23,10 @@ function store(): Store {
 function uid(p: string) {
   return `${p}_${Math.random().toString(36).slice(2, 10)}`;
 }
-function genBackup() {
-  return Array.from({ length: 8 }, () =>
-    Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 31)]).join("")
-  );
-}
 
 function blank(): UserState {
   return {
-    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null },
+    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] },
     sessions: [],
     loginHistory: [],
     privacy: { analytics: true, crashReports: true, trainingOptIn: false, dataRetentionDays: 90 },
@@ -60,20 +55,23 @@ function seed(userId: string) {
   const st = stateFor(userId);
   if (st.seeded) return;
   st.seeded = true;
-  
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null };
+
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] };
   // sessions & loginHistory start empty - populated by real logins below.
 }
 
 function snapshot(st: UserState): SecurityState {
-  // Sanitize for API responses: never leak hashed backup codes. Expose only
-  // the remaining count so the UI can show "N 枚恢复码剩余" without revealing
-  // the hashes (which must never be displayed as if they were usable codes).
+  // Sanitize for API responses: never leak hashed backup codes (committed or
+  // pending). Expose only the remaining count so the UI can show "N 枚恢复码
+  // 剩余" without revealing the hashes (which must never be displayed as if
+  // they were usable codes). backupCodesRemaining is derived from
+  // backupCodes.length so it can never drift from reality.
   return {
     twoFactor: {
       ...st.twoFactor,
       backupCodes: [],
       backupCodesRemaining: st.twoFactor.backupCodes.length,
+      pendingBackupCodes: [],
     },
     sessions: st.sessions,
     loginHistory: st.loginHistory,
@@ -165,8 +163,12 @@ export function start2FAEnrollment(userId: string, email: string): {
   const backupCodes = generateBackupCodes();
   st.twoFactor.pendingSecret = secret;
   st.twoFactor.method = "app";
-  st.twoFactor.backupCodes = backupCodes.map(hashBackupCode);
-  st.twoFactor.backupCodesRemaining = backupCodes.length;
+  // Stage the hashed backup codes apart from `backupCodes`: they must not take
+  // effect until enrollment is verified. Keeping `backupCodes` empty until then
+  // means a snapshot (and backupCodesRemaining) correctly reports zero while
+  // 2FA is still disabled, avoiding an inconsistent "enabled:false but 8 codes
+  // remaining" state if the user abandons enrollment mid-flow.
+  st.twoFactor.pendingBackupCodes = backupCodes.map(hashBackupCode);
   return { secret, qrCodeUri, backupCodes };
 }
 
@@ -180,6 +182,9 @@ export function verify2FAEnrollment(userId: string, code: string): boolean {
   st.twoFactor.enabled = true;
   st.twoFactor.secret = secret;
   st.twoFactor.pendingSecret = null;
+  // Commit the staged backup codes now that enrollment is confirmed.
+  st.twoFactor.backupCodes = st.twoFactor.pendingBackupCodes;
+  st.twoFactor.pendingBackupCodes = [];
   st.twoFactor.enrolledAt = Date.now();
   return true;
 }
@@ -195,7 +200,8 @@ export function verify2FALogin(userId: string, code: string): boolean {
   const { valid, remaining } = verifyBackupCode(code, st.twoFactor.backupCodes);
   if (valid) {
     st.twoFactor.backupCodes = remaining;
-    st.twoFactor.backupCodesRemaining = remaining.length;
+    // backupCodesRemaining is a derived value: snapshot()/exportData() recompute
+    // it from backupCodes.length, so it need not be maintained here.
     return true;
   }
   return false;
@@ -222,19 +228,10 @@ export function mustEnroll2FA(userId: string, role: string): boolean {
   return is2FARequiredForRole(role) && !is2FAEnabled(userId);
 }
 
-/** Legacy: enable 2FA (backward compat for old API callers). */
-export function enable2FA(userId: string, method: TwoFactor["method"]): TwoFactor {
-  seed(userId);
-  const st = stateFor(userId);
-  const codes = genBackup();
-  st.twoFactor = { enabled: true, method, secret: null, backupCodes: codes, backupCodesRemaining: codes.length, enrolledAt: Date.now(), pendingSecret: null };
-  return st.twoFactor;
-}
-
 export function disable2FA(userId: string): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null };
+  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] };
   return st.twoFactor;
 }
 
@@ -297,7 +294,15 @@ export function exportData(userId: string): string {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      twoFactor: st.twoFactor,
+      // Mirror snapshot(): never leak hashed backup codes (committed or
+      // pending), and recompute the remaining count from backupCodes.length so
+      // it can't drift from the stored (possibly stale) backupCodesRemaining.
+      twoFactor: {
+        ...st.twoFactor,
+        backupCodes: [],
+        backupCodesRemaining: st.twoFactor.backupCodes.length,
+        pendingBackupCodes: [],
+      },
       sessions: st.sessions,
       loginHistory: st.loginHistory,
       privacy: st.privacy,
