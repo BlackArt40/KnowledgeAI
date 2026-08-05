@@ -134,6 +134,13 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
     const data = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
     if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    // Reject scoped tokens such as the 2FA-enrollment pre-auth token. Only
+    // purposeless session JWTs issued by createToken() are valid session
+    // credentials; a token carrying a `purpose` field must be verified by its
+    // dedicated verifier (verifyPreAuthToken), never treated as a session.
+    // Without this check, a preAuthToken (same HMAC key, same JWT shape) would
+    // be accepted here, letting users bypass forced 2FA enrollment.
+    if (data.purpose) return null;
     return { id: data.id, email: data.email, name: data.name, role: data.role };
   } catch {
     return null;
