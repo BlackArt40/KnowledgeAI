@@ -29,6 +29,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
   }
 
+  // Client info is needed for failed-2FA auditing below and for the successful
+  // login record, so resolve it once up front.
+  const info = clientInfoFromRequest(req);
+
   // ── 2FA check ──────────────────────────────────────────────────────────
   if (is2FAEnabled(user.id)) {
     if (!body.totpCode) {
@@ -38,8 +42,10 @@ export async function POST(req: Request) {
         message: "请输入两步验证码",
       });
     }
-    // Verify TOTP or backup code
+    // Verify TOTP or backup code. A wrong code is a failed login attempt -
+    // record it so brute-force tries surface in the user's login history.
     if (!verify2FALogin(user.id, body.totpCode.trim())) {
+      recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: false });
       return NextResponse.json({ error: "两步验证码不正确" }, { status: 401 });
     }
   } else if (mustEnroll2FA(user.id, user.role)) {
@@ -60,7 +66,6 @@ export async function POST(req: Request) {
   }
 
   // Record this real login: an active session + a login-history entry.
-  const info = clientInfoFromRequest(req);
   addSession(user.id, info);
   recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: true });
 

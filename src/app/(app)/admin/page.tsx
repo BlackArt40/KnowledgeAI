@@ -56,11 +56,16 @@ export default function AdminPage() {
 
   async function patchConfig(patch: Partial<SystemConfig>) {
     setSavingCfg(true);
-    await fetch("/api/admin/config", {
+    const res = await fetch("/api/admin/config", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    refresh();
+    if (!res.ok) {
+      // PATCH failed: refresh from server to discard the optimistic update so
+      // the UI doesn't display a change that was never persisted.
+      console.error("patchConfig failed:", res.status, await res.text().catch(() => ""));
+    }
+    await refresh();
     setSavingCfg(false);
   }
 
