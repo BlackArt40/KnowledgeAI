@@ -281,6 +281,8 @@
 
 **现状**：✅ 已完成。真实 TOTP（RFC 6238，Node.js crypto 零外部依赖，通过 RFC 6238 测试向量 T=59->287082 校验）+ otpauth:// URI（兼容 Google/Microsoft Authenticator/1Password/Authy）+ QR 码可扫描渲染（`qrcode` 库 -> PNG dataURL，SVG 兜底）+ 备用恢复码 SHA-256 哈希存储 + 一次性使用 + 使用后自动作废 + 登录流程集成（密码 -> `requires2FA` -> TOTP/恢复码验证 -> 会话）+ 2FA 强制策略（管理员可勾选角色强制开启，未开启者登录时返回 `mustEnroll2FA` + 短时预授权令牌，强制完成绑定后才发会话）。`scripts/smoke/test-2fa.ts`（59 项）+ `test-2fa-http.ts`（18 项）全部通过。
 
+> **2026-08-05 安全加固**：代码审查修复 8 条问题——CRITICAL（`preAuthToken` 因 `verifyToken` 未校验 `purpose` 字段被当作会话令牌，可绕过强制 2FA）+ 7 条 LOW（恢复码存储时机不一致 / QR 回退崩溃 / preAuthToken 重放 / 2FA 失败未审计 / patchConfig 未 await / `enable2FA` 明文恢复码死代码 / `backupCodesRemaining` 冗余）。`tsc --noEmit` + 端到端 19 项 HTTP 断言通过。
+
 **计划**：
 - [x] 实现 TOTP（RFC 6238, Node.js crypto, 无外部依赖）✅
 - [x] 兼容 Google/Microsoft Authenticator/1Password（otpauth:// URI）✅
