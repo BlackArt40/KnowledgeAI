@@ -641,6 +641,7 @@ export async function persistSystemConfig(config: {
   maxUploadMb: number;
   maintenanceMode: boolean;
   allowSignup: boolean;
+  required2FARoles: string[];
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -661,6 +662,7 @@ export async function persistSystemConfig(config: {
       maxUploadMb: config.maxUploadMb,
       maintenanceMode: config.maintenanceMode,
       allowSignup: config.allowSignup,
+      required2FARoles: config.required2FARoles,
     };
     const existing = await sc.systemConfig.findUnique({ where: { id: 1 } });
     if (existing) {

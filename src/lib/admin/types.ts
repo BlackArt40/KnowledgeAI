@@ -42,6 +42,8 @@ export interface SystemConfig {
   maxUploadMb: number;
   maintenanceMode: boolean;
   allowSignup: boolean;
+  /** Roles whose members must enable 2FA before they can log in. */
+  required2FARoles: string[];
 }
 
 export interface AdminOverview {

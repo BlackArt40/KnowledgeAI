@@ -2,7 +2,8 @@ export interface TwoFactor {
   enabled: boolean;
   method: "app" | "sms" | null;
   secret: string | null;        // TOTP secret (Base32), null when not enrolled
-  backupCodes: string[];        // hashed backup codes
+  backupCodes: string[];        // hashed backup codes (internal; empty in API responses)
+  backupCodesRemaining: number; // count of unused backup codes (public, for display)
   enrolledAt: number | null;
   pendingSecret: string | null; // secret during enrollment (not yet verified)
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Loader2, Info } from "lucide-react";
+import { Eye, EyeOff, Mail, Loader2, Info, ShieldCheck, ArrowLeft } from "lucide-react";
 import { GithubIcon, GoogleIcon } from "@/components/icons/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,15 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [totpCode, setTotpCode] = React.useState("");
+  const [step, setStep] = React.useState<"credentials" | "2fa">("credentials");
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
 
+  // Step 1: verify email + password. The server responds with one of:
+  //   { token }                  -> login complete
+  //   { requires2FA: true }      -> ask for the TOTP / backup code (step 2)
+  //   { mustEnroll2FA, preAuthToken } -> forced enrollment (redirect)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -40,9 +46,54 @@ export default function LoginPage() {
         setError(data.error || "登录失败");
         return;
       }
-      // Store token and redirect
-      if (data.token) localStorage.setItem("kai-token", data.token);
-      router.push("/dashboard");
+      if (data.mustEnroll2FA) {
+        // Admin requires 2FA for this role but it isn't set up yet.
+        sessionStorage.setItem("kai-2fa-preauth", data.preAuthToken);
+        sessionStorage.setItem("kai-2fa-email", email);
+        router.push("/2fa-enroll");
+        return;
+      }
+      if (data.requires2FA) {
+        setStep("2fa");
+        return;
+      }
+      if (data.token) {
+        localStorage.setItem("kai-token", data.token);
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 2: submit the TOTP / backup code together with the credentials.
+  async function handle2FA(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!/^\d{6}$/.test(totpCode.trim()) && !totpCode.trim().includes("-")) {
+      setError("请输入 6 位验证码或恢复码");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, totpCode: totpCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "验证失败");
+        return;
+      }
+      if (data.token) {
+        localStorage.setItem("kai-token", data.token);
+        router.push("/dashboard");
+      } else {
+        setError("验证失败，请重试");
+      }
     } catch {
       setError("网络错误，请重试");
     } finally {
@@ -53,6 +104,54 @@ export default function LoginPage() {
   function fillDemo(em: string) {
     setEmail(em);
     setPassword("password123");
+  }
+
+  if (step === "2fa") {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight">两步验证</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            请输入验证器 App 生成的 6 位动态验证码，或使用备用恢复码。
+          </p>
+        </div>
+        <form className="space-y-4" onSubmit={handle2FA}>
+          <div className="space-y-2">
+            <Label htmlFor="totp">验证码</Label>
+            <Input
+              id="totp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              autoFocus
+              required
+              className="text-center text-lg tracking-[0.3em]"
+            />
+            <p className="text-xs text-muted-foreground">
+              恢复码格式为 XXXX-XXXX，每枚仅可使用一次。
+            </p>
+          </div>
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <Button variant="gradient" size="lg" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {loading ? "验证中…" : "验证并登录"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => { setStep("credentials"); setTotpCode(""); setError(null); }}
+            className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> 返回重新输入账号
+          </button>
+        </form>
+      </div>
+    );
   }
 
   return (

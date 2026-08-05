@@ -315,12 +315,13 @@ model Order {
 
 // ── Admin System Config (single-row, admin-tunable settings) ─────────────
 model SystemConfig {
-  id              Int      @id @default(1)
-  defaultModel    String   @default("gpt-4o")
-  embeddingModel  String   @default("bge-m3")
-  rateLimitPerMin Int      @default(60)
-  maxUploadMb     Int      @default(50)
-  maintenanceMode Boolean  @default(false)
-  allowSignup     Boolean  @default(true)
-  updatedAt       DateTime @updatedAt
+  id               Int      @id @default(1)
+  defaultModel     String   @default("gpt-4o")
+  embeddingModel   String   @default("bge-m3")
+  rateLimitPerMin  Int      @default(60)
+  maxUploadMb      Int      @default(50)
+  maintenanceMode  Boolean  @default(false)
+  allowSignup      Boolean  @default(true)
+  required2FARoles String[] @default([])
+  updatedAt        DateTime @updatedAt
 }

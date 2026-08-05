@@ -393,6 +393,7 @@ async function hydrateSystemConfig(): Promise<boolean> {
       maxUploadMb: row.maxUploadMb,
       maintenanceMode: row.maintenanceMode,
       allowSignup: row.allowSignup,
+      required2FARoles: (row.required2FARoles as string[]) ?? [],
     };
     return true;
   } catch (err) {

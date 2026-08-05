@@ -5,6 +5,7 @@ import {
   disable2FA,
   verify2FALogin,
 } from "@/lib/security/store";
+import { renderOtpAuthQR } from "@/lib/security/qr";
 import { getRequestUser } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,12 @@ export async function POST(req: Request) {
     case "enroll": {
       // Start enrollment: generate TOTP secret + backup codes
       const result = start2FAEnrollment(u.id, u.email);
+      const qr = await renderOtpAuthQR(result.qrCodeUri);
       return NextResponse.json({
         action: "enroll",
         secret: result.secret,
         qrCodeUri: result.qrCodeUri,
+        qrCodeDataUrl: qr.dataUrl,
         backupCodes: result.backupCodes,
         message: "请使用验证器 App 扫描二维码，然后输入 6 位验证码完成绑定。",
       });
