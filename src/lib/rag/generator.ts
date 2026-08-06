@@ -53,7 +53,7 @@ export function generate(query: string, chunks: RetrievedChunk[]): GenerationRes
     const snippet = c.text.slice(0, 140);
     return {
       text: snippet,
-      citations: [{ n: 1, docId: c.docId, docName: c.docName, chunkIndex: c.chunkIndex, snippet: c.text.slice(0, 180), score: c.score }],
+      citations: [{ n: 1, docId: c.docId, docName: c.docName, chunkIndex: c.chunkIndex, snippet: c.text.slice(0, 180), score: c.score, ...(c.url ? { url: c.url } : {}), ...(c.sourceType ? { sourceType: c.sourceType } : {}) }],
     };
   }
 
@@ -76,6 +76,8 @@ export function generate(query: string, chunks: RetrievedChunk[]): GenerationRes
         chunkIndex: s.chunkIndex,
         snippet: chunk.text.slice(0, 180),
         score: chunk.score,
+        ...(chunk.url ? { url: chunk.url } : {}),
+        ...(chunk.sourceType ? { sourceType: chunk.sourceType } : {}),
       });
     }
     text += (text ? " " : "") + s.sentence + `[${n}]`;
@@ -87,7 +89,7 @@ export function generate(query: string, chunks: RetrievedChunk[]): GenerationRes
 
 function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatMessage[]) {
   const sources = chunks
-    .map((c, i) => `[${i + 1}] 《${c.docName}》\n${c.text.slice(0, 600)}`)
+    .map((c, i) => `[${i + 1}] 《${c.docName}》${c.url ? `（来源：${c.url}）` : ""}\n${c.text.slice(0, 600)}`)
     .join("\n\n");
 
 
@@ -95,7 +97,7 @@ function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatM
   if (history && history.length > 0) {
     return buildContextualSystemPrompt(query, history, sources);
   }
-  const system = `你是 KnowledgeAI 知识助手。请根据以下检索到的知识库内容回答用户问题。
+  const system = `你是 KnowledgeAI 知识助手。请根据以下检索到的来源内容回答用户问题。
 要求：
 1. 仅基于提供的来源内容回答，不要编造信息
 2. 在引用来源处标注 [n]，n 对应来源编号
@@ -129,6 +131,8 @@ function parseCitations(text: string, chunks: RetrievedChunk[]): Citation[] {
       chunkIndex: c.chunkIndex,
       snippet: c.text.slice(0, 180),
       score: c.score,
+      ...(c.url ? { url: c.url } : {}),
+      ...(c.sourceType ? { sourceType: c.sourceType } : {}),
     });
   }
   return citations;
