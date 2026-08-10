@@ -28,6 +28,12 @@ const ROLE_BADGE: Record<string, string> = {
 export default function SettingsPage() {
   const [data, setData] = React.useState<(SecurityState & { twoFactorRequired?: boolean }) | null>(null);
   const [loading, setLoading] = React.useState(true);
+  // P5-2: active tab, initialized from ?tab= (global search deep-link) and
+  // kept in sync with the URL via history.replaceState.
+  const [tab, setTab] = React.useState<string>(() => {
+    if (typeof window === "undefined") return "security";
+    return new URLSearchParams(window.location.search).get("tab") ?? "security";
+  });
 
   // 2FA enrollment flow
   const [enrollOpen, setEnrollOpen] = React.useState(false);
@@ -254,7 +260,17 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-muted-foreground">管理个人信息、安全设置与数据隐私。</p>
       </div>
 
-      <Tabs defaultValue="security">
+      {/* P5-2: tab is URL-synced (?tab=security|profile|privacy|models) so
+          global search results can deep-link to a settings section */}
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          setTab(v);
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", v);
+          window.history.replaceState(null, "", url.toString());
+        }}
+      >
         <TabsList>
           <TabsTrigger value="security"><Shield className="h-4 w-4" /> 安全</TabsTrigger>
           <TabsTrigger value="profile"><User className="h-4 w-4" /> 个人信息</TabsTrigger>

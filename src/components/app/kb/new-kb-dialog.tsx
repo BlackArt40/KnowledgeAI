@@ -26,9 +26,21 @@ const COLORS = [
   { value: "from-rose-500/15", cls: "bg-rose-500" },
 ];
 
-export function NewKbDialog({ trigger }: { trigger?: React.ReactNode }) {
+export function NewKbDialog({
+  trigger,
+  open,
+  onOpenChange,
+}: {
+  trigger?: React.ReactNode;
+  /** P5-2: controlled mode (global search ?new=1 deep-link). When omitted the
+   *  dialog manages its own open state. */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const [internal, setInternal] = React.useState(false);
+  const isOpen = open ?? internal;
+  const setOpen = onOpenChange ?? setInternal;
   const [saving, setSaving] = React.useState(false);
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
@@ -55,7 +67,7 @@ export function NewKbDialog({ trigger }: { trigger?: React.ReactNode }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button variant="gradient">

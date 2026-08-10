@@ -111,18 +111,33 @@ export default function AgentPage() {
   const [editText, setEditText] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
+  // P5-2: holds a task ID from URL params (?task=xxx) for deep-linking from
+  // global search. Cleared after the task is loaded.
+  const pendingTaskRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskParam = params.get("task");
+    if (taskParam) pendingTaskRef.current = taskParam;
     fetch("/api/knowledge-base", { cache: "no-store" })
       .then((r) => r.json())
       .then(({ kbs }) => setKbs(kbs));
     refreshHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect (refreshHistory is stable)
   }, []);
 
   function refreshHistory() {
     fetch("/api/agent/tasks", { cache: "no-store" })
       .then((r) => r.json())
-      .then(({ tasks }) => setHistory(tasks));
+      .then(({ tasks }) => {
+        setHistory(tasks);
+        // P5-2: deep-link - open the requested task once history is ready.
+        if (pendingTaskRef.current) {
+          const tid = pendingTaskRef.current;
+          pendingTaskRef.current = null;
+          if (tasks.some((t: { id: string }) => t.id === tid)) loadTask(tid);
+        }
+      });
   }
 
   async function loadTask(id: string) {
