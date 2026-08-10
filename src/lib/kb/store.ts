@@ -8,6 +8,7 @@ import {
 import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
 import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
+import { publish } from "@/lib/realtime/bus";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -29,9 +30,11 @@ function getStore(): Store {
     g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
   } else {
     // HMR migration: KBs created before per-user isolation lack ownerId;
-    // assign them to the demo owner so access checks keep working.
+    // assign them to the demo owner so access checks keep working. KBs
+    // created before P4-1 lack the OCC version - backfill to 1.
     for (const kb of g.__KAI_KB_STORE__.kbs.values()) {
       if (!kb.ownerId) (kb as KnowledgeBase).ownerId = "usr_owner";
+      if (typeof (kb as KnowledgeBase).version !== "number") (kb as KnowledgeBase).version = 1;
     }
   }
   return g.__KAI_KB_STORE__;
@@ -111,6 +114,14 @@ export async function processDocInQueue(docId: string): Promise<void> {
     d.status = status;
     d.progress = Math.round(from + ((to - from) * progress) / 100);
     store.docs.set(docId, d);
+    // P4-1: broadcast doc progress so viewers see processing live.
+    publish(`kb:${d.kbId}`, {
+      type: "doc_status",
+      kbId: d.kbId,
+      docId,
+      status: d.status,
+      progress: d.progress,
+    });
   };
 
   const tick = async (
@@ -227,6 +238,7 @@ function seed() {
       createdAt: now - 1000 * 60 * 60 * 24 * 30,
       updatedAt: now,
       settings: { ...DEFAULT_SETTINGS },
+      version: 1,
     };
     store.kbs.set(kb.id, kb);
     byName.set(kb.name, kb);
@@ -288,21 +300,43 @@ export function createKb(input: { name: string; desc: string; color?: string; in
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: { ...DEFAULT_SETTINGS },
+    version: 1,
   };
   getStore().kbs.set(kb.id, kb);
   void persistKb(kb);
   return kb;
 }
 
-export function updateKbSettings(id: string, settings: Partial<KbSettings>): KnowledgeBase | undefined {
+/**
+ * Update KB settings with optimistic concurrency (P4-1): pass `baseVersion`
+ * (the version the client last saw); if the KB has moved on, returns
+ * `{ conflict: true }` instead of silently overwriting. On success the
+ * version is bumped and a `settings` event is broadcast on `kb:<id>`.
+ */
+export function updateKbSettings(
+  id: string,
+  settings: Partial<KbSettings>,
+  opts?: { baseVersion?: number; actor?: string }
+): { kb: KnowledgeBase; conflict: boolean } | undefined {
   seed();
   const kb = getStore().kbs.get(id);
   if (!kb) return undefined;
+  if (opts?.baseVersion !== undefined && kb.version !== opts.baseVersion) {
+    return { kb, conflict: true };
+  }
   kb.settings = { ...kb.settings, ...settings };
+  kb.version = (kb.version ?? 1) + 1;
   kb.updatedAt = Date.now();
   getStore().kbs.set(id, kb);
   void persistKb(kb);
-  return kb;
+  publish(`kb:${id}`, {
+    type: "settings",
+    kbId: id,
+    settings: kb.settings,
+    version: kb.version,
+    actor: opts?.actor ?? null,
+  });
+  return { kb, conflict: false };
 }
 
 export async function deleteKb(id: string): Promise<boolean> {
@@ -316,7 +350,9 @@ export async function deleteKb(id: string): Promise<boolean> {
   // Clean up local files for this KB (fire-and-forget)
   const kbDir = path.join(process.cwd(), ".uploads", id);
   void fs.rm(kbDir, { recursive: true, force: true }).catch(() => {});
-  return store.kbs.delete(id);
+  const ok = store.kbs.delete(id);
+  if (ok) publish(`kb:${id}`, { type: "deleted", kbId: id });
+  return ok;
 }
 
 // Sum of all document sizes across every KB (bytes). Web links (size -1) are
@@ -376,6 +412,12 @@ export function addDocument(input: {
     kb.updatedAt = Date.now();
     store.kbs.set(kb.id, kb);
   }
+  // P4-1: broadcast the new document (without its extracted content).
+  publish(`kb:${input.kbId}`, {
+    type: "docs",
+    kbId: input.kbId,
+    doc: { id: doc.id, kbId: doc.kbId, name: doc.name, type: doc.type, size: doc.size, status: doc.status, progress: doc.progress, uploadedAt: doc.uploadedAt },
+  });
   startProcessing(doc.id);
   return doc;
 }
@@ -386,5 +428,7 @@ export async function deleteDocument(docId: string): Promise<boolean> {
   const doc = store.docs.get(docId);
   if (doc) await vsClearDoc(doc.kbId, docId);
   if (doc) void deleteDocFromDb(docId);
-  return store.docs.delete(docId);
+  const ok = store.docs.delete(docId);
+  if (ok && doc) publish(`kb:${doc.kbId}`, { type: "doc_deleted", kbId: doc.kbId, docId });
+  return ok;
 }

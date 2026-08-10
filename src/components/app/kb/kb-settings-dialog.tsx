@@ -51,6 +51,7 @@ export function KbSettingsDialog({
   const open = isControlled ? (openProp as boolean) : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [saving, setSaving] = React.useState(false);
+  const [conflict, setConflict] = React.useState(false);
   const [form, setForm] = React.useState<KbSettings>(kb.settings);
   // Embedding models imported by the user in Settings -> AI models.
   const [userEmbModels, setUserEmbModels] = React.useState<{ value: string; label: string }[]>([]);
@@ -90,12 +91,19 @@ export function KbSettingsDialog({
 
   async function save() {
     setSaving(true);
+    setConflict(false);
     try {
+      // P4-1 optimistic concurrency: send the version this dialog last saw;
+      // a 409 means another member already changed the settings.
       const res = await fetch(`/api/knowledge-base/${kb.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, baseVersion: kb.version }),
       });
+      if (res.status === 409) {
+        setConflict(true);
+        return;
+      }
       if (!res.ok) throw new Error("保存失败");
       const { kb: updated } = await res.json();
       onSaved(updated);
@@ -225,14 +233,21 @@ export function KbSettingsDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            取消
-          </Button>
-          <Button variant="gradient" onClick={save} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            保存设置
-          </Button>
+        <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {conflict && (
+            <p className="text-xs text-destructive">
+              设置已被其他成员修改（版本冲突），请关闭后重新打开以加载最新设置。
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              取消
+            </Button>
+            <Button variant="gradient" onClick={save} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              保存设置
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

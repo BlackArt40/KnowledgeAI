@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UploadZone } from "@/components/app/kb/upload-zone";
 import { DocumentList } from "@/components/app/kb/document-list";
 import { KbSettingsDialog } from "@/components/app/kb/kb-settings-dialog";
+import { useSse } from "@/lib/use-sse";
 import { formatSize } from "@/lib/format";
 import type { KnowledgeBase, KbDocument } from "@/lib/kb/types";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,32 @@ export default function KbDetailPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDetail();
   }, [fetchDetail]);
+
+  // P4-1: realtime collaboration - live KB changes (settings/docs/progress)
+  // made by other members refresh this view instantly.
+  useSse(`/api/kb/${id}/events`, (event) => {
+    if (!event?.type) return;
+    if (event.type === "doc_status") {
+      // Cheap local progress update; no full refetch per tick.
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              docs: d.docs.map((x) =>
+                x.id === event.docId
+                  ? { ...x, status: event.status, progress: event.progress }
+                  : x
+              ),
+            }
+          : d
+      );
+    } else if (event.type === "deleted") {
+      setError("该知识库已被删除");
+    } else {
+      // settings / docs / doc_deleted -> full refresh
+      fetchDetail();
+    }
+  });
 
   async function deleteDoc(docId: string) {
     // optimistic remove

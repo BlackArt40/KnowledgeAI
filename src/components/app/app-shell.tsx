@@ -29,6 +29,7 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PresenceProvider } from "@/components/app/presence-context";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/format";
 
@@ -283,6 +284,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
+    <PresenceProvider>
     <div className="flex min-h-screen bg-background">
       {/* desktop sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-card/50 lg:block">
@@ -432,5 +434,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
+    </PresenceProvider>
   );
 }

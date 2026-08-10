@@ -20,6 +20,7 @@ import {
   Square,
   Download,
   Globe,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useSse } from "@/lib/use-sse";
 import type { Citation } from "@/lib/rag/types";
 
 interface KbLite {
@@ -52,6 +54,14 @@ interface ConvLite {
   id: string;
   title: string;
   updatedAt: number;
+  /** P4-1: shared conversations also appear in the team-shared group. */
+  shared?: boolean;
+}
+interface SharedConv {
+  id: string;
+  title: string;
+  updatedAt: number;
+  ownerName: string;
 }
 interface Msg {
   id: string;
@@ -155,6 +165,8 @@ export default function ChatPage() {
   const [kbs, setKbs] = React.useState<KbLite[]>([]);
   const [selectedKb, setSelectedKb] = React.useState<string>("");
   const [conversations, setConversations] = React.useState<ConvLite[]>([]);
+  // P4-1: team-shared conversations (collaborative Q&A view).
+  const [sharedConvs, setSharedConvs] = React.useState<SharedConv[]>([]);
   const [convSearch, setConvSearch] = React.useState("");
   const [activeConv, setActiveConv] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<Msg[]>([]);
@@ -205,6 +217,14 @@ export default function ChatPage() {
       .then(({ conversations }) => setConversations(conversations));
   }, [selectedKb]);
 
+  // P4-1: team-shared conversations (span all KBs) - load once on mount.
+  React.useEffect(() => {
+    fetch("/api/chat/conversations/shared", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setSharedConvs(d.conversations ?? []))
+      .catch(() => setSharedConvs([]));
+  }, []);
+
   // Generate example questions from the selected KB's documents so the prompts
   // reflect the current knowledge base.
   React.useEffect(() => {
@@ -219,6 +239,46 @@ export default function ChatPage() {
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // P4-1: while viewing a team-shared conversation, stream new messages from
+  // other members in real time (collaborative Q&A).
+  const activeIsShared =
+    activeConv !== null && sharedConvs.some((c) => c.id === activeConv);
+  useSse(
+    activeIsShared ? `/api/chat/conversations/${activeConv}/events` : "",
+    (event) => {
+      if (event?.type === "message" && event.message) {
+        setMessages((m) => [...m, { ...event.message, streaming: false }]);
+      }
+    },
+    { enabled: activeIsShared }
+  );
+
+  // P4-1: share/unshare the active conversation with the team.
+  const activeIsMine = activeConv !== null && conversations.some((c) => c.id === activeConv);
+  async function toggleShare() {
+    if (!activeConv) return;
+    await fetch(`/api/chat/conversations/${activeConv}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shared: !activeIsShared }),
+    });
+    refreshConversations();
+    fetch("/api/chat/conversations/shared", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setSharedConvs(d.conversations ?? []))
+      .catch(() => setSharedConvs([]));
+  }
+
+  async function loadConversation(id: string) {
+    if (abortStream()) refreshConversations();
+    setActiveConv(id);
+    const res = await fetch(`/api/chat/conversations/${id}`, { cache: "no-store" });
+    const { conversation } = await res.json();
+    setMessages(
+      conversation.messages.map((m: Msg) => ({ ...m, streaming: false }))
+    );
+  }
 
   // Deep-link: if a conversation ID was passed via URL (?conv=xxx), load it
   // once the KB has been selected. Runs after the conversations-reset effect
@@ -238,16 +298,6 @@ export default function ChatPage() {
     fetch(`/api/chat/conversations?kbId=${selectedKb}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(({ conversations }) => setConversations(conversations));
-  }
-
-  async function loadConversation(id: string) {
-    if (abortStream()) refreshConversations();
-    setActiveConv(id);
-    const res = await fetch(`/api/chat/conversations/${id}`, { cache: "no-store" });
-    const { conversation } = await res.json();
-    setMessages(
-      conversation.messages.map((m: Msg) => ({ ...m, streaming: false }))
-    );
   }
 
   function newChat() {
@@ -529,10 +579,13 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-3">
-          {filteredConvs.length === 0 && (
+          {filteredConvs.length === 0 && sharedConvs.length === 0 && (
             <p className="px-3 py-6 text-center text-xs text-muted-foreground">
               {convSearch ? "未找到匹配的会话" : "暂无历史会话"}
             </p>
+          )}
+          {filteredConvs.length > 0 && (
+            <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">我的会话</p>
           )}
           {filteredConvs.map((c) => (
             <div
@@ -561,6 +614,25 @@ export default function ChatPage() {
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
+            </div>
+          ))}
+          {sharedConvs.length > 0 && (
+            <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">团队共享</p>
+          )}
+          {sharedConvs.map((c) => (
+            <div
+              key={c.id}
+              onClick={() => loadConversation(c.id)}
+              className={cn(
+                "group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors",
+                activeConv === c.id
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <Share2 className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+              <span className="line-clamp-1 flex-1 text-sm font-medium">{c.title}</span>
+              <span className="shrink-0 text-[10px] text-muted-foreground">{c.ownerName}</span>
             </div>
           ))}
         </div>
@@ -603,6 +675,19 @@ export default function ChatPage() {
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">导出</span>
+            </Button>
+          )}
+          {activeIsMine && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn("ml-2 h-8 gap-1.5", activeIsShared && "border-sky-500/40 text-sky-600")}
+              onClick={toggleShare}
+              aria-label={activeIsShared ? "取消共享会话" : "共享给团队"}
+              title={activeIsShared ? "已共享给团队，成员可实时查看（点击取消）" : "共享给团队，成员可实时查看新消息"}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{activeIsShared ? "已共享" : "共享"}</span>
             </Button>
           )}
         </div>
