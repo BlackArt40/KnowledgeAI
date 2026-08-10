@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-10 - P3-3 分级分布式限流完整验收通过（匿名/已认证/API Key 分级限额 + 按 KB 维度限流 + 管理后台限流仪表盘 + 准确 Retry-After；`scripts/smoke/test-rate-limit.ts` 全部断言通过）；此前 P3-1 真实 2FA 验收通过、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P3-4 数据加密与审计完整验收通过（API Key/模型 Key AES-256-GCM 密文落库 + 密码 PBKDF2 迁移 + 全局审计哈希链（登录/删除/权限/导出 12 类操作）+ 按时间/操作者/类型检索 + 保留策略；`scripts/smoke/test-audit-encrypt.ts` 45 项断言全部通过）；此前 P3-3 分级限流验收通过、P3-1 真实 2FA 验收通过、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -338,19 +338,21 @@
 
 ### P3-4 数据加密与审计
 
-**现状**：API Key 明文存储于内存 Map。
+**现状**：✅ 已完成（2026-08-10）。**加密落地**：API Key secret 以 AES-256-GCM（HKDF 派生密钥，`AUTH_SECRET`）加密存储于内存 + DB（`keyHash` 列为密文，`validateApiKey` 解密比对，兼容旧明文行）；模型 Key 写 DB 前加密（`persistModelConfig`），`hydrateModelConfigs` 解密加载；登录密码升级为 PBKDF2-100k（`auth/session.ts`），旧 SHA-256 哈希兼容校验 + 登录成功自动迁移；`GET /api/api-keys` 不再泄露完整 secret（仅创建响应可见一次）；`decryptFromString` 对密文解密失败抛错（不再静默明文回退）。**统一审计**：`src/lib/security/audit.ts` 全局审计链——HMAC-SHA256 哈希链（`prevHash` 链接 + 逐条重算校验，篡改即断链）、覆盖登录成功/失败/2FA 失败、KB/文档/API Key 删除、封禁/解封、KB 共享权限、2FA 启用/禁用、GDPR 导出、系统配置变更；`GET /api/admin/audit` 支持按 action/actor/时间范围/limit 检索 + `chainValid` 校验状态；保留策略 `AUDIT_RETENTION_DAYS`（默认 90 天）+ 内存上限 + admin cleanup 触发裁剪。**顺带修复**：`documents/[docId]` 路由此前完全无鉴权（可匿名删文档），现补 getRequestUser + KB 可见性/编辑权限校验。
+
+> **2026-08-10 验收**：`scripts/smoke/test-audit-encrypt.ts` 全部断言通过（45 项）——crypto 往返/密文损坏抛错、API Key 加密存储且校验可用、GET 不泄露 secret、PBKDF2 迁移后二次登录成功、12 类敏感操作全部产生审计记录、检索过滤（action/actor/时间）正确、`chainValid=true`、篡改一条后链校验失败、恢复后重新有效、`trimAudit()` 按保留期裁剪旧条目、非 admin 访问审计 API 403。migration `20260810090000_p3_4_audit` 与 schema 一致。
 
 **计划**：
 - [x] AES-256-GCM 加密工具（HKDF 密钥派生, AUTH_SECRET）✅
 - [x] 可用于 API Key / TOTP secret / 模型 Key 加密 ✅
-- [ ] 敏感操作审计日志增强（登录 / 删除 / 权限变更 / 数据导出）
-- [ ] 审计日志不可篡改
-- [ ] 数据保留策略执行
+- [x] 敏感操作审计日志增强（登录 / 删除 / 权限变更 / 数据导出）✅
+- [x] 审计日志不可篡改（HMAC 哈希链 + 链校验）✅
+- [x] 数据保留策略执行（`AUDIT_RETENTION_DAYS` + admin cleanup 裁剪）✅
 
 **验收标准**：
-- 数据库中不存储明文密钥
-- 所有敏感操作有审计记录
-- 审计日志支持按时间 / 操作者 / 操作类型检索
+- ✅ 数据库中不存储明文密钥（API Key / 模型 Key 密文落 DB，密码 PBKDF2 哈希）
+- ✅ 所有敏感操作有审计记录（登录 / 删除 / 权限变更 / 数据导出 / 配置变更，12 类 action）
+- ✅ 审计日志支持按时间 / 操作者 / 操作类型检索（`GET /api/admin/audit` + 管理面板）
 
 ---
 
