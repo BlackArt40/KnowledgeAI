@@ -8,6 +8,8 @@ export type DocStatus =
 
 export type DocType = "pdf" | "word" | "markdown" | "text" | "web" | "csv" | "image" | "other";
 
+import type { DocAccess } from "@/lib/team/types";
+
 export interface KbDocument {
   id: string;
   kbId: string;
@@ -21,6 +23,9 @@ export interface KbDocument {
   content?: string; // extracted text for indexing
   uploadedAt: number;
   error?: string;
+  /** P4-2: document-level access override. Undefined = inherit KB access.
+   *  Chain: doc.access (view/edit/private) -> KB access -> default by name. */
+  access?: DocAccess;
 }
 
 export interface KbSettings {

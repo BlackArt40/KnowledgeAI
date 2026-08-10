@@ -1,13 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Trash2, Loader2, CheckCircle2, AlertCircle, Share2 } from "lucide-react";
 import { DocTypeIcon } from "./doc-type-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatSize, formatRelative } from "@/lib/format";
 import { STATUS_LABEL, type KbDocument, type DocStatus } from "@/lib/kb/types";
+import { DOC_ACCESS_LABEL, type DocAccess } from "@/lib/team/types";
 
 const IN_FLIGHT: DocStatus[] = ["queued", "parsing", "chunking", "vectorizing"];
 
@@ -48,10 +56,13 @@ export function DocumentList({
   docs,
   onRefresh,
   onDelete,
+  onShare,
 }: {
   docs: KbDocument[];
   onRefresh: () => void;
   onDelete: (docId: string) => void;
+  /** P4-2: open the share-link dialog for a document. */
+  onShare: (doc: KbDocument) => void;
 }) {
   const hasInFlight = docs.some((d) => IN_FLIGHT.includes(d.status));
 
@@ -60,6 +71,16 @@ export function DocumentList({
     const t = setInterval(onRefresh, 1200);
     return () => clearInterval(t);
   }, [hasInFlight, onRefresh]);
+
+  // P4-2: set a document's access override (null = inherit KB access).
+  async function changeAccess(doc: KbDocument, value: string) {
+    await fetch(`/api/knowledge-base/${doc.kbId}/documents/${doc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access: value === "inherit" ? null : value }),
+    });
+    onRefresh();
+  }
 
   if (docs.length === 0) {
     return (
@@ -115,6 +136,23 @@ export function DocumentList({
                       {doc.type === "web" ? "网页链接" : formatSize(doc.size)}
                     </p>
                   )}
+                  {/* P4-2: document-level access override (inherit / view / edit / private) */}
+                  <div className="mt-1.5">
+                    <Select
+                      value={doc.access ?? "inherit"}
+                      onValueChange={(v) => changeAccess(doc, v)}
+                    >
+                      <SelectTrigger className="h-6 w-[110px] text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">继承 KB 权限</SelectItem>
+                        {(Object.keys(DOC_ACCESS_LABEL) as DocAccess[]).map((a) => (
+                          <SelectItem key={a} value={a}>{DOC_ACCESS_LABEL[a]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
@@ -138,7 +176,17 @@ export function DocumentList({
               </div>
 
               {/* actions */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  onClick={() => onShare(doc)}
+                  aria-label="分享文档"
+                  title="创建分享链接"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

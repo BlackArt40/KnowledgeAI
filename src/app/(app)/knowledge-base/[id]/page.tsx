@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UploadZone } from "@/components/app/kb/upload-zone";
 import { DocumentList } from "@/components/app/kb/document-list";
 import { KbSettingsDialog } from "@/components/app/kb/kb-settings-dialog";
+import { DocShareDialog } from "@/components/app/kb/doc-share-dialog";
 import { useSse } from "@/lib/use-sse";
 import { formatSize } from "@/lib/format";
 import type { KnowledgeBase, KbDocument } from "@/lib/kb/types";
@@ -37,6 +38,8 @@ export default function KbDetailPage() {
   const [data, setData] = React.useState<Detail | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  // P4-2: share-link dialog target document.
+  const [shareDoc, setShareDoc] = React.useState<KbDocument | null>(null);
 
   const fetchDetail = React.useCallback(async () => {
     try {
@@ -188,8 +191,17 @@ export default function KbDetailPage() {
             </span>
           )}
         </div>
-        <DocumentList docs={docs} onRefresh={fetchDetail} onDelete={deleteDoc} />
+        <DocumentList docs={docs} onRefresh={fetchDetail} onDelete={deleteDoc} onShare={setShareDoc} />
       </section>
+
+      {shareDoc && (
+        <DocShareDialog
+          doc={shareDoc}
+          open={!!shareDoc}
+          onOpenChange={(v) => { if (!v) setShareDoc(null); }}
+          onChanged={fetchDetail}
+        />
+      )}
     </div>
   );
 }

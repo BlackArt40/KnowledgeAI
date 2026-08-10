@@ -32,6 +32,7 @@ const SKIP_PATHS = [
   "/api/auth/me",        // called on every page load
   "/api/kb",             // P4-1: realtime KB event streams (per-KB tier enforced in the route)
   "/api/team/presence",  // P4-1: presence SSE stream + heartbeat (long-lived)
+  "/api/share",          // P4-2: public doc share links (token is the credential)
 ];
 
 interface Tier {

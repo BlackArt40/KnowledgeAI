@@ -1,11 +1,14 @@
-import type { Team, Member, AuditEntry, Role, KbAccess } from "./types";
+import type { Team, Member, AuditEntry, Role, KbAccess, KbMemberRole } from "./types";
 import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFromDb } from "@/lib/db/persist";
+import { getUserById } from "@/lib/auth/store";
 
 type Store = {
   team: Team;
   members: Map<string, Member>;
   audit: AuditEntry[];
   kbAccess: Map<string, KbAccess>;
+  /** P4-2: per-KB member role overrides (kbId -> userId -> role). */
+  kbMemberRoles: Map<string, Record<string, KbMemberRole>>;
   seeded: boolean;
 };
 
@@ -18,8 +21,12 @@ function store(): Store {
       members: new Map(),
       audit: [],
       kbAccess: new Map(),
+      kbMemberRoles: new Map(),
       seeded: false,
     };
+  } else {
+    // HMR migration: stores created before P4-2 lack the per-KB role map.
+    if (!g.__KAI_TEAM_STORE__.kbMemberRoles) g.__KAI_TEAM_STORE__.kbMemberRoles = new Map();
   }
   return g.__KAI_TEAM_STORE__;
 }
@@ -173,15 +180,55 @@ export function getKbAccess(kbId: string, kbName: string): KbAccess {
   return s.kbAccess.get(kbId) ?? DEFAULT_ACCESS_BY_NAME[kbName] ?? "view";
 }
 
-/** Can the user VIEW (read) this KB? Owner always; others if not private. */
+// ── P4-2: per-KB member roles ─────────────────────────────────────────────
+// Keys are member EMAILS (stable, known to both the team panel and the auth
+// layer; auth user ids are opaque to the team store).
+
+/** The member's per-KB role override, or null when not set (inherit KB access). */
+export function getKbMemberRole(kbId: string, email: string): KbMemberRole | null {
+  seed();
+  const roles = store().kbMemberRoles.get(kbId);
+  return roles?.[email] ?? null;
+}
+
+/** Set/clear a member's role on a KB (P4-2). `null` removes the override. */
+export function setKbMemberRole(kbId: string, email: string, role: KbMemberRole | null): void {
+  seed();
+  const s = store();
+  const roles = s.kbMemberRoles.get(kbId) ?? {};
+  if (role === null) {
+    delete roles[email];
+  } else {
+    roles[email] = role;
+  }
+  if (Object.keys(roles).length === 0) s.kbMemberRoles.delete(kbId);
+  else s.kbMemberRoles.set(kbId, roles);
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
+}
+
+/** All per-KB member role overrides for a KB (keyed by email, team panel). */
+export function listKbMemberRoles(kbId: string): Record<string, KbMemberRole> {
+  seed();
+  return { ...(store().kbMemberRoles.get(kbId) ?? {}) };
+}
+
+/** Can the user VIEW (read) this KB? Owner always; a per-KB role grants
+ *  viewer/editor; otherwise falls back to the shared access (P4-2). */
 export function canViewKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
   if (ownerId === userId) return true;
+  const user = getUserById(userId);
+  const role = user ? getKbMemberRole(kbId, user.email) : null;
+  if (role) return true; // viewer or editor override
   return getKbAccess(kbId, kbName) !== "private";
 }
 
-/** Can the user EDIT (upload/modify) this KB? Owner always; others only with "edit". */
+/** Can the user EDIT (upload/modify) this KB? Owner always; per-KB editor
+ *  role grants edit; otherwise only when the shared access is "edit". */
 export function canEditKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
   if (ownerId === userId) return true;
+  const user = getUserById(userId);
+  const role = user ? getKbMemberRole(kbId, user.email) : null;
+  if (role === "editor") return true;
   return getKbAccess(kbId, kbName) === "edit";
 }
 
