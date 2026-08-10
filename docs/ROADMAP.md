@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-10 - P4-2 知识库权限精细化完整验收通过（文档级权限继承链 + per-KB 成员角色 + 临时分享链接（过期/密码/次数/撤销）+ 权限审计；`scripts/smoke/test-kb-permissions.ts` 35 项断言全部通过）；此前 P4-1 实时协作验收通过、P3 安全加固全部验收通过、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P4-3 多租户隔离完整验收通过（Workspace 概念 + KB/会话/Agent 任务按租户隔离 + cookie 无缝切换 + 独立计费与配额；`scripts/smoke/test-workspaces.ts` 21 项断言全部通过）；至此 **P4 协作与多租户全部完成**（P4-1 实时协作 / P4-2 权限精细化 / P4-3 多租户），P3 安全加固、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -402,19 +402,21 @@
 
 ### P4-3 多租户隔离
 
-**现状**：所有用户共享同一数据空间，无组织级隔离。
+**现状**：✅ 已完成（2026-08-10）。**Workspace 概念**：`src/lib/workspace/store.ts`（Workspace = 团队实体扩展，默认 `ws_default`「KnowledgeAI 团队」含全部 seed 用户——现有行为零变化；DB 侧 Team 模型已备，文档注明映射）。**用户上下文**：`RequestUser.workspaceId` 从 cookie `kai-workspace` 解析（`getRequestUser` 校验成员资格，非法回退默认 ws——非破坏扩展，70 个路由调用点零改动）。**数据隔离**：`KnowledgeBase` / `Conversation` / `AgentTask` 全部挂 `workspaceId`（seed/创建/HMR backfill），KB 列表按 ws 过滤、KB 详情/设置/删除/上传跨 ws 403、会话列表/详情按 ws 过滤、Agent 任务列表按 ws 过滤 + 任务归属校验、chat 计量按 ws。**跨工作区切换**：AppShell 侧边栏顶部工作区切换器（下拉列表 + 当前高亮 + 新建入口；切换 = 设 cookie + reload）。**Workspace 级配置**：存储/问答/Agent 配额按 ws 统计（`/api/usage` 按当前 ws 返回 qaUsed/storage/agent + plan 配额）；模型配置保留 per-user、限流保持 user 级（文档注明）。**Workspace 计费**：`workspace.plan`（free/pro/enterprise）+ `usageByWorkspace`（QA/Agent 计量）+ checkout 支付成功后升级 ws plan + `/api/billing` 返回 ws plan/usage + `/api/workspaces` 列表/创建（审计 `workspace.create`）。
+
+> **2026-08-10 验收**：`scripts/smoke/test-workspaces.ts` 全部断言通过（21 项）——KB-B 在默认 ws 不可见、KB-A 在 ws-B 不可见、跨 ws 访问 403、ws-B 会话不泄漏到默认 ws；editor 属于 2 个 ws 且切换 cookie 后可见 ws-B 数据；QA 计量只计入当前 ws（默认 ws +1、ws-B 独立为 0）、ws-B plan 独立（新 ws = free）、/api/billing 返回 ws plan/usage；未知 ws cookie 回退默认、匿名正常 401。
 
 **计划**：
-- [ ] 引入 Organization / Workspace 概念
-- [ ] 数据隔离：KB / 对话 / Agent 任务按 Workspace 隔离
-- [ ] 跨工作区切换：用户可属于多个 Workspace
-- [ ] Workspace 级配置：独立模型配置 / 限流 / 存储配额
-- [ ] Workspace 计费：按组织维度订阅与用量统计
+- [x] 引入 Organization / Workspace 概念（团队实体扩展，默认 ws 兼容现状）✅
+- [x] 数据隔离：KB / 对话 / Agent 任务按 Workspace 隔离（workspaceId 字段 + 路由校验）✅
+- [x] 跨工作区切换：用户可属于多个 Workspace（cookie + AppShell 切换器）✅
+- [x] Workspace 级配置：存储 / 问答 / Agent 配额独立（模型配置保留 per-user、限流保持 user 级，文档注明）✅
+- [x] Workspace 计费：按组织维度订阅与用量统计（workspace.plan + usageByWorkspace + checkout 升级）✅
 
 **验收标准**：
-- 不同 Workspace 数据完全隔离
-- 用户可无缝切换 Workspace
-- 每个 Workspace 独立计费与配额
+- ✅ 不同 Workspace 数据完全隔离（KB/会话跨 ws 不可见、跨 ws 访问 403）
+- ✅ 用户可无缝切换 Workspace（cookie 切换 + 侧边栏切换器 + 多 ws 列表）
+- ✅ 每个 Workspace 独立计费与配额（plan 独立 + 用量独立计量）
 
 ---
 
