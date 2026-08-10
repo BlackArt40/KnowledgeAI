@@ -25,11 +25,13 @@ import { startCleanupTimer } from "@/lib/storage/cleanup";
 
 // Skip rate limiting for these (SSE streams, webhooks, high-frequency polls)
 const SKIP_PATHS = [
-  "/api/chat",        // SSE stream (user + KB tiers enforced in the route)
+  "/api/chat",        // SSE stream + conversation CRUD (user + KB tiers enforced in routes)
   "/api/agent/run",   // SSE stream
   "/api/billing/webhook",
   "/api/notifications",  // polled every 30s
   "/api/auth/me",        // called on every page load
+  "/api/kb",             // P4-1: realtime KB event streams (per-KB tier enforced in the route)
+  "/api/team/presence",  // P4-1: presence SSE stream + heartbeat (long-lived)
 ];
 
 interface Tier {

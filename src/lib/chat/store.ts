@@ -1,5 +1,6 @@
 import type { Citation } from "@/lib/rag/types";
 import { persistConversation, deleteConversationFromDb } from "@/lib/db/persist";
+import { publish } from "@/lib/realtime/bus";
 
 export interface ChatMessage {
   id: string;
@@ -17,6 +18,9 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   userId?: string;
+  /** P4-1: when true, the conversation is visible to team members (shared
+   *  collaborative Q&A view) and new messages are broadcast on `conv:<id>`. */
+  shared?: boolean;
 }
 
 type Store = { conversations: Map<string, Conversation> };
@@ -83,7 +87,33 @@ export function addMessage(
   }
   store().conversations.set(convId, conv);
   void persistConversation(conv);
+  // P4-1: broadcast new messages so team members viewing a shared
+  // conversation see it live (listeners only exist while a stream is open).
+  if (conv.shared) {
+    publish(`conv:${convId}`, {
+      type: "message",
+      conversationId: convId,
+      message: { id: message.id, role: message.role, content: message.content, citations: message.citations, createdAt: message.createdAt },
+    });
+  }
   return message;
+}
+
+/** Toggle team-sharing for a conversation (P4-1). */
+export function setConversationShared(id: string, shared: boolean): Conversation | undefined {
+  const conv = store().conversations.get(id);
+  if (!conv) return undefined;
+  conv.shared = shared;
+  store().conversations.set(id, conv);
+  void persistConversation(conv);
+  return conv;
+}
+
+/** Team-shared conversations across all KBs (collaborative Q&A view). */
+export function listSharedConversations(): Conversation[] {
+  return Array.from(store().conversations.values())
+    .filter((c) => c.shared)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function deleteConversation(id: string): boolean {

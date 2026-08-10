@@ -42,21 +42,30 @@ export async function GET(req: Request, { params }: Params) {
 }
 
 // PATCH /api/knowledge-base/[id] - update settings (owner or edit-level share)
+// P4-1 optimistic concurrency: the client sends `baseVersion` (the version it
+// last saw); a stale version returns 409 instead of silently overwriting.
 export async function PATCH(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadAccessible(req, id);
   if ("error" in r) return r.error;
   if (!canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
-  let body: Record<string, unknown>;
+  let body: { baseVersion?: number } & Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
-  const kb = updateKbSettings(id, body);
-  if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  return NextResponse.json({ kb });
+  const { baseVersion, ...settings } = body;
+  const result = updateKbSettings(id, settings, { baseVersion, actor: r.u.name });
+  if (!result) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
+  if (result.conflict) {
+    return NextResponse.json(
+      { error: "该知识库设置已被其他成员修改，请刷新后重试", currentVersion: result.kb.version },
+      { status: 409 }
+    );
+  }
+  return NextResponse.json({ kb: result.kb });
 }
 
 // DELETE /api/knowledge-base/[id] - owner only

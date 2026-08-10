@@ -40,6 +40,9 @@ export interface KnowledgeBase {
   createdAt: number;
   updatedAt: number;
   settings: KbSettings;
+  /** P4-1: optimistic-concurrency version - bumped on every settings update.
+   *  PATCH with a stale baseVersion gets a 409 instead of overwriting. */
+  version: number;
 }
 
 export const STATUS_LABEL: Record<DocStatus, string> = {

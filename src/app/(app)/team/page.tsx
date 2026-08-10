@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { InviteDialog } from "@/components/app/team/invite-dialog";
 import { TeamSettingsDialog } from "@/components/app/team/team-settings-dialog";
+import { usePresence } from "@/components/app/presence-context";
 import { formatRelative } from "@/lib/format";
 import { can, ROLE_ORDER } from "@/lib/team/rbac";
 import {
@@ -35,6 +36,8 @@ export default function TeamPage() {
   const [tab, setTab] = React.useState<Tab>("members");
   const [myEmail, setMyEmail] = React.useState<string | null>(null);
   const [myRole, setMyRole] = React.useState<Role | null>(null);
+  // P4-1: live online/offline state (AppShell keeps a presence stream open).
+  const { onlineUsers } = usePresence();
 
   const fetchTeam = React.useCallback(async () => {
     try {
@@ -146,6 +149,7 @@ export default function TeamPage() {
             {members.map((m) => {
               const isOwner = m.role === "owner";
               const isSelf = myEmail !== null && m.email.toLowerCase() === myEmail.toLowerCase();
+              const isOnline = onlineUsers.some((u) => u.email.toLowerCase() === m.email.toLowerCase());
               return (
                 <div key={m.id} className="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[1fr_140px_120px_120px_40px] md:items-center">
                   <div className="flex items-center gap-3">
@@ -154,6 +158,12 @@ export default function TeamPage() {
                       <p className="flex items-center gap-1.5 text-sm font-medium">
                         {m.name}
                         {isSelf && <span className="text-[10px] text-muted-foreground">(你)</span>}
+                        {isOnline && (
+                          <span
+                            className="inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
+                            title="在线"
+                          />
+                        )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     </div>
@@ -174,7 +184,12 @@ export default function TeamPage() {
                       <Badge variant="secondary">{ROLE_LABEL[m.role]}</Badge>
                     )}
                   </div>
-                  <div><StatusBadge status={m.status} /></div>
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={m.status} />
+                    {isOnline && (
+                      <Badge variant="success" className="px-1.5 text-[10px]">在线</Badge>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground">{formatRelative(m.lastActiveAt)}</div>
                   <div className="flex justify-end">
                     {canManage && (
