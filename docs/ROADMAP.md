@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-10 - P3-4 数据加密与审计完整验收通过（API Key/模型 Key AES-256-GCM 密文落库 + 密码 PBKDF2 迁移 + 全局审计哈希链（登录/删除/权限/导出 12 类操作）+ 按时间/操作者/类型检索 + 保留策略；`scripts/smoke/test-audit-encrypt.ts` 45 项断言全部通过）；此前 P3-3 分级限流验收通过、P3-1 真实 2FA 验收通过、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P4-1 实时协作完整验收通过（事件总线 + KB 实时变更 SSE + 在线状态 presence + 共享会话实时消息 + OCC 冲突检测 409；`scripts/smoke/test-realtime.ts` 19 项断言全部通过）；此前 P3 安全加固全部验收通过（2FA/限流/加密审计）、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -362,19 +362,21 @@
 
 ### P4-1 实时协作
 
-**现状**：团队管理为静态列表，无实时交互。
+**现状**：✅ 已完成（2026-08-10）。**实时事件总线**（`src/lib/realtime/bus.ts`，globalThis 防 HMR，channel 化 pub/sub，可扩展 Redis Pub/Sub 多实例）+ **在线状态**（`presence.ts`：SSE 连接即在线，断开即离线，60s TTL 惰性清理，变更广播全量在线列表）。**KB 实时变更**（`GET /api/kb/[id]/events` SSE：settings/docs/doc_status/doc_deleted/deleted 事件；kb/store 各 mutation 发布；KB 详情页订阅后实时刷新，文档处理进度实时推进）。**在线协同问答**（会话 `shared` 标记 + `PATCH /api/chat/conversations/[id]` 共享开关 + `GET /api/chat/conversations/shared` 团队列表 + `GET .../[id]/events` 共享会话消息实时流；chat 页「我的会话 / 团队共享」分组 + 共享按钮 + 实时消息追加）。**冲突解决**：乐观并发控制（OCC）——`KnowledgeBase.version` + PATCH `baseVersion`，版本不匹配返回 **409**（不静默覆盖，前端设置对话框提示刷新重试）；以 OCC 替代 CRDT/OT（对当前编辑场景足够且简单，文档注明）。所有 SSE 端点带 30s `: ping` 心跳帧；前端 `useSse` hook 统一消费（buffered 切帧 + 重连）。
+
+> **2026-08-10 验收**：`scripts/smoke/test-realtime.ts` 全部断言通过（19 项）——OCC（正确版本 200 / 过期版本 409 / 重试成功）、KB 设置与新增文档变更实时广播给另一成员、presence 在线/断开离线实时更新、共享会话团队可见（含 owner 名）+ 新消息实时流到成员、匿名/未共享会话订阅被拒。顺带：`/api/chat/conversations` 下所有子路径原被 proxy `/api/chat` 前缀 SKIP（限流盲区）已在路由内补 user/KB 维度。
 
 **计划**：
-- [ ] 知识库协同编辑：多人同时编辑 KB 设置 / 文档元数据
-- [ ] 在线协同问答：团队成员共享对话视图
-- [ ] 实时在线状态：显示团队成员在线 / 离线
-- [ ] 操作冲突解决（CRDT / OT）
-- [ ] WebSocket / Server-Sent Events 实时推送
+- [x] 知识库协同编辑：多人同时编辑 KB 设置 / 文档元数据（实时广播 + OCC 冲突检测）✅
+- [x] 在线协同问答：团队成员共享对话视图（共享会话 + 实时消息流）✅
+- [x] 实时在线状态：显示团队成员在线 / 离线（presence SSE + team 页绿点）✅
+- [x] 操作冲突解决（OCC 乐观并发控制，409 冲突检测替代 CRDT/OT）✅
+- [x] WebSocket / Server-Sent Events 实时推送（SSE + 心跳帧，无新依赖）✅
 
 **验收标准**：
-- 多人可同时查看同一知识库的实时变更
-- 团队成员在线状态实时更新
-- 并发编辑无数据冲突
+- ✅ 多人可同时查看同一知识库的实时变更（`/api/kb/[id]/events` SSE，settings/docs/进度实时推送）
+- ✅ 团队成员在线状态实时更新（presence SSE，连接即在线、断开即离线）
+- ✅ 并发编辑无数据冲突（OCC 版本号 + 409，不覆盖他人修改）
 
 ---
 
