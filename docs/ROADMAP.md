@@ -4,9 +4,9 @@
 >
 > **更新日期**：2026-08-10
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 已实施。
 >
-> **最新更新**：2026-08-10 - P4-3 多租户隔离完整验收通过（Workspace 概念 + KB/会话/Agent 任务按租户隔离 + cookie 无缝切换 + 独立计费与配额；`scripts/smoke/test-workspaces.ts` 21 项断言全部通过）；至此 **P4 协作与多租户全部完成**（P4-1 实时协作 / P4-2 权限精细化 / P4-3 多租户），P3 安全加固、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P5-1 移动端适配完整验收通过（AppShell 移动抽屉 + chat 会话/来源抽屉 + 触摸手势 + 相机上传 + PWA 可安装离线；`scripts/smoke/test-pwa.ts` 32 项 + `test-mobile-pwa.mjs` 布局 17 项 / PWA 5 项断言全部通过）；P4 协作与多租户全部完成（P4-1 / P4-2 / P4-3），P3 安全加固、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -426,18 +426,20 @@
 
 ### P5-1 移动端适配
 
-**现状**：工作台为桌面端布局，未做响应式优化。
+**现状**：✅ 已完成（2026-08-10）。**响应式布局**：AppShell 手写移动抽屉升级为 `src/components/ui/sheet.tsx`（Radix Dialog 底座，滚动锁定 / Escape / 焦点圈闭 / 入场出场动画），桌面侧栏 `w-64 lg:block` 不变；chat 页三栏布局补齐移动端入口——会话列表（`hidden md:flex` 时不可达的缺口）改为移动 Sheet 抽屉（header「会话」按钮）+ 引用来源 Sheet（桌面面板 `xl` 才显示，移动端「来源」按钮）+ KB 选择器 `w-[220px]` 改 `min-w-0 flex-1 sm:w-[220px]` + 容器高度加 `chat-height`（100dvh 回退，移动地址栏坍缩不裁切）；KB 卡片 meta 行 / 详情页头部加 `flex-wrap` 与 truncate 防挤压。**触摸手势**（`src/hooks/use-gestures.ts`，原生 touch 监听）：屏幕左缘右滑开抽屉、聊天消息区左右滑切换上一/下一会话（`|dx|>60px 且 >1.5×|dy|`，垂直滚动优先）、长按会话项弹出删除菜单（移动端 hover 失效的补充）。**移动端上传**：upload-zone accept 增补 `image/*`（走既有 OCR 管线）+ 独立「拍照上传」按钮（`capture="environment"`，桌面自动退化文件选择）+ `Permissions-Policy` 放开 `camera=(self)`。**PWA**（手写 SW，零新依赖）：`public/manifest.webmanifest`（standalone / 图标组 / shortcuts）+ `@napi-rs/canvas` 脚本生成品牌渐变图标（`scripts/generate-pwa-icons.ts`，192/512/maskable/apple-touch）+ `public/sw.js`（precache app shell + `/_next/static` stale-while-revalidate + navigation network-first 离线回退 + `/api` 一律不缓存）+ `SwRegister` 生产环境注册 + 根布局 viewport（viewport-fit=cover / theme-color）/ manifest link / apple-mobile-web-app-capable；AppShell 认证逻辑修正——仅 401 跳登录，网络失败（离线）保持外壳可看已加载内容。
+
+> **2026-08-10 验收**：`scripts/smoke/test-pwa.ts` 全部断言通过（32 项）——manifest 字段/图标组/SW 策略（precache、SWR、network-first、`/api` 不缓存、版本化清理）/ 根 HTML meta（manifest link、viewport、theme-color、apple-* 双变体）/ 四个核心页面 200。`scripts/smoke/test-mobile-pwa.mjs`（CDP 无头 Chrome，零依赖）布局模式 17/17——375×812 触屏模拟下登录页与 dashboard/KB 列表/chat/Agent 页无横向溢出、chat 会话/来源按钮可见且桌面侧栏与来源面板隐藏、会话/来源 Sheet 可开（含 Escape 关闭）、KB 详情拍照按钮 + `capture` input 可见；PWA 模式 5/5——manifest link、SW 注册并激活、**离线（Network 模拟断网）重载已加载页面成功渲染外壳**。另：`useMediaQuery` 用 `useSyncExternalStore` 实现（SSR 安全、无 hydration 闪烁）；PWA 图标为提交的 PNG + 可重生成脚本。
 
 **计划**：
-- [ ] AppShell 响应式重构：侧边栏 → 移动端抽屉式导航
-- [ ] 知识库 / 问答 / Agent 页面移动端布局优化
-- [ ] 触摸手势支持：滑动切换会话 / 长按操作
-- [ ] 移动端上传：支持相机拍照 / 文件选择
-- [ ] PWA 支持：可安装到主屏幕 + 离线缓存
+- [x] AppShell 响应式重构：侧边栏 → 移动端抽屉式导航 ✅（Sheet 原语：滚动锁 / Escape / 动画 / 焦点圈闭 + 左缘右滑手势）
+- [x] 知识库 / 问答 / Agent 页面移动端布局优化 ✅（chat 会话/来源抽屉 + KB 选择器响应式 + 100dvh + 各页防挤压微修）
+- [x] 触摸手势支持：滑动切换会话 / 长按操作 ✅（左缘滑开抽屉 + 消息区左右滑切会话 + 长按删除菜单）
+- [x] 移动端上传：支持相机拍照 / 文件选择 ✅（image/* + capture="environment" + camera=(self)）
+- [x] PWA 支持：可安装到主屏幕 + 离线缓存 ✅（manifest + 图标组 + 手写 SW + 生产注册 + 离线认证降级）
 
 **验收标准**：
-- 核心页面在 375px 宽度下可用
-- PWA 可安装并支持离线访问已加载内容
+- ✅ 核心页面在 375px 宽度下可用（CDP 无头 Chrome 375×812 实测无横向溢出 + 抽屉/相机入口可用，17/17）
+- ✅ PWA 可安装并支持离线访问已加载内容（manifest/图标/SW 32 项断言 + 真实浏览器注册激活 + 断网重载已加载页可用，5/5）
 
 ---
 
