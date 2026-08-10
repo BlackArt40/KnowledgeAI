@@ -21,6 +21,8 @@ export interface Conversation {
   /** P4-1: when true, the conversation is visible to team members (shared
    *  collaborative Q&A view) and new messages are broadcast on `conv:<id>`. */
   shared?: boolean;
+  /** P4-3: the workspace (tenant) this conversation belongs to. */
+  workspaceId: string;
 }
 
 type Store = { conversations: Map<string, Conversation> };
@@ -58,7 +60,12 @@ export function getConversation(id: string): Conversation | undefined {
   return store().conversations.get(id);
 }
 
-export function createConversation(kbId: string, title = "新会话", userId?: string): Conversation {
+export function createConversation(
+  kbId: string,
+  title = "新会话",
+  userId?: string,
+  workspaceId: string = "ws_default"
+): Conversation {
   const conv: Conversation = {
     id: uid("conv"),
     kbId,
@@ -67,6 +74,7 @@ export function createConversation(kbId: string, title = "新会话", userId?: s
     createdAt: Date.now(),
     updatedAt: Date.now(),
     userId,
+    workspaceId,
   };
   store().conversations.set(conv.id, conv);
   void persistConversation(conv);

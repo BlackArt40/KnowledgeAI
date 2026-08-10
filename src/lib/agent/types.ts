@@ -49,6 +49,8 @@ export interface AgentTask {
   topic: string;
   kbId?: string;
   kbName?: string;
+  /** P4-3: the workspace (tenant) this task belongs to. */
+  workspaceId: string;
   outputFormat: OutputFormat;
   agents: AgentRole[];
   maxSteps: number;

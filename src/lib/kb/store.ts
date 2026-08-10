@@ -10,6 +10,7 @@ import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-s
 import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
 import { canViewKb, canEditKb } from "@/lib/team/store";
+import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/store";
 import type { DocAccess } from "@/lib/team/types";
 import { promises as fs } from "fs";
 import path from "path";
@@ -33,10 +34,12 @@ function getStore(): Store {
   } else {
     // HMR migration: KBs created before per-user isolation lack ownerId;
     // assign them to the demo owner so access checks keep working. KBs
-    // created before P4-1 lack the OCC version - backfill to 1.
+    // created before P4-1 lack the OCC version - backfill to 1. KBs created
+    // before P4-3 lack a workspace - assign the default workspace.
     for (const kb of g.__KAI_KB_STORE__.kbs.values()) {
       if (!kb.ownerId) (kb as KnowledgeBase).ownerId = "usr_owner";
       if (typeof (kb as KnowledgeBase).version !== "number") (kb as KnowledgeBase).version = 1;
+      if (!(kb as KnowledgeBase).workspaceId) (kb as KnowledgeBase).workspaceId = DEFAULT_WORKSPACE_ID;
     }
   }
   return g.__KAI_KB_STORE__;
@@ -241,6 +244,7 @@ function seed() {
       updatedAt: now,
       settings: { ...DEFAULT_SETTINGS },
       version: 1,
+      workspaceId: DEFAULT_WORKSPACE_ID,
     };
     store.kbs.set(kb.id, kb);
     byName.set(kb.name, kb);
@@ -279,10 +283,13 @@ export function listKbs(ownerId?: string): KnowledgeBase[] {
   return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** List ALL knowledge bases regardless of owner (for team-level features). */
-export function listAllKbs(): KnowledgeBase[] {
+/** List ALL knowledge bases regardless of owner (for team-level features).
+ *  P4-3: pass a workspaceId to scope to one tenant. */
+export function listAllKbs(workspaceId?: string): KnowledgeBase[] {
   seed();
-  return Array.from(getStore().kbs.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+  const all = Array.from(getStore().kbs.values());
+  const filtered = workspaceId ? all.filter((kb) => kb.workspaceId === workspaceId) : all;
+  return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function getKb(id: string): KnowledgeBase | undefined {
@@ -290,7 +297,11 @@ export function getKb(id: string): KnowledgeBase | undefined {
   return getStore().kbs.get(id);
 }
 
-export function createKb(input: { name: string; desc: string; color?: string; initial?: string }, ownerId: string): KnowledgeBase {
+export function createKb(
+  input: { name: string; desc: string; color?: string; initial?: string },
+  ownerId: string,
+  workspaceId: string = DEFAULT_WORKSPACE_ID
+): KnowledgeBase {
   seed();
   const kb: KnowledgeBase = {
     id: uid("kb"),
@@ -303,6 +314,7 @@ export function createKb(input: { name: string; desc: string; color?: string; in
     updatedAt: Date.now(),
     settings: { ...DEFAULT_SETTINGS },
     version: 1,
+    workspaceId,
   };
   getStore().kbs.set(kb.id, kb);
   void persistKb(kb);

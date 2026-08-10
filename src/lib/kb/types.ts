@@ -48,6 +48,8 @@ export interface KnowledgeBase {
   /** P4-1: optimistic-concurrency version - bumped on every settings update.
    *  PATCH with a stale baseVersion gets a 409 instead of overwriting. */
   version: number;
+  /** P4-3: the workspace (tenant) this KB belongs to. */
+  workspaceId: string;
 }
 
 export const STATUS_LABEL: Record<DocStatus, string> = {

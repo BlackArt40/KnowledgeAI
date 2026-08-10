@@ -7,12 +7,12 @@ import { getUserById } from "@/lib/auth/store";
 export const dynamic = "force-dynamic";
 
 // GET /api/knowledge-base - list the user's own KBs PLUS KBs shared by
-// other team members (access != "private"). Each KB includes a `shared` flag
-// and `ownerName` so the UI can distinguish them.
+// other team members (access != "private"), scoped to the current workspace
+// (P4-3 tenant isolation). Each KB includes a `shared` flag and `ownerName`.
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  const kbs = listAllKbs()
+  const kbs = listAllKbs(u.workspaceId)
     .filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId))
     .map((kb) => {
       const docs = listDocuments(kb.id);
@@ -54,7 +54,8 @@ export async function POST(req: Request) {
       color: body.color,
       initial: body.initial,
     },
-    u.id
+    u.id,
+    u.workspaceId
   );
   return NextResponse.json({ kb }, { status: 201 });
 }

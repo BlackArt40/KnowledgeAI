@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth/session";
 import { validateApiKey } from "@/lib/apikeys/store";
 import { getUserById } from "@/lib/auth/store";
+import { resolveWorkspace } from "@/lib/workspace/store";
 import type { Role } from "@/lib/team/types";
 
 /** Authenticated user resolved from a request. */
@@ -14,19 +15,30 @@ export interface RequestUser {
   email: string;
   name: string;
   role: string;
+  /** P4-3: the tenant (workspace) this request operates in - resolved from
+   *  the `kai-workspace` cookie, validated against workspace membership. */
+  workspaceId: string;
+}
+
+function readCookie(req: Request, name: string): string | null {
+  return (
+    req.headers
+      .get("cookie")
+      ?.split(";")
+      .map((s) => s.trim())
+      .find((s) => s.startsWith(`${name}=`))
+      ?.split("=")[1] ?? null
+  );
 }
 
 /** Extract + verify the authenticated user from a Request (cookie or Bearer).
- *  Returns the user (id/email/name/role) or null if not authenticated. */
+ *  Returns the user (id/email/name/role/workspaceId) or null if not
+ *  authenticated. The workspace comes from the `kai-workspace` cookie; an
+ *  unknown / non-member workspace falls back to the default one. */
 export async function getRequestUser(
   req: Request
 ): Promise<RequestUser | null> {
-  const cookieToken = req.headers
-    .get("cookie")
-    ?.split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith("kai-token="))
-    ?.split("=")[1];
+  const cookieToken = readCookie(req, "kai-token");
   const authHeader = req.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
@@ -42,6 +54,7 @@ export async function getRequestUser(
       email: owner.email,
       name: owner.name,
       role: owner.role,
+      workspaceId: resolveWorkspace(owner.id, owner.email, readCookie(req, "kai-workspace")).id,
     };
   }
 
@@ -54,6 +67,7 @@ export async function getRequestUser(
     email: payload.email,
     name: payload.name,
     role: payload.role,
+    workspaceId: resolveWorkspace(payload.id, payload.email, readCookie(req, "kai-workspace")).id,
   };
 }
 
