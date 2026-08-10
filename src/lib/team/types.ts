@@ -1,6 +1,13 @@
 export type Role = "owner" | "admin" | "editor" | "viewer";
 export type MemberStatus = "active" | "invited" | "suspended";
 export type KbAccess = "view" | "edit" | "private";
+/** P4-2: per-KB member role override (KB Owner / Editor / Viewer).
+ *  Commenter is intentionally omitted - the system has no KB comment feature
+ *  yet, so it would be indistinguishable from Viewer (read-only). */
+export type KbMemberRole = "editor" | "viewer";
+
+/** Document-level access (P4-2). Undefined = inherit the KB-level access. */
+export type DocAccess = "view" | "edit" | "private";
 
 export interface Member {
   id: string;
@@ -36,6 +43,8 @@ export interface KbAccessEntry {
   docs: number;
   ownerName: string;
   isOwner: boolean;
+  /** P4-2: per-member roles on this KB (userId -> role). */
+  memberRoles?: Record<string, KbMemberRole>;
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -56,6 +65,12 @@ export const ACCESS_LABEL: Record<KbAccess, string> = {
   view: "全员可读",
   edit: "成员可编辑",
   private: "仅 Owner/Admin",
+};
+
+export const DOC_ACCESS_LABEL: Record<DocAccess, string> = {
+  view: "仅查看",
+  edit: "可编辑",
+  private: "私有",
 };
 
 // Capability catalogue

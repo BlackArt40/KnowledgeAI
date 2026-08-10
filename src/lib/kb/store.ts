@@ -9,6 +9,8 @@ import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
 import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
+import { canViewKb, canEditKb } from "@/lib/team/store";
+import type { DocAccess } from "@/lib/team/types";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -380,6 +382,50 @@ export function listDocuments(kbId: string): KbDocument[] {
 export function getDocument(docId: string): KbDocument | undefined {
   seed();
   return getStore().docs.get(docId);
+}
+
+// ── P4-2: document-level permission checks ────────────────────────────────
+// Inheritance chain: doc.access (override) -> KB access -> default by name.
+// Owner always has full access; a document set to "private" is visible only
+// to the owner (and, for editing, to the KB owner).
+
+/** Can the user VIEW a document? Owner always; private docs are owner-only;
+ *  otherwise inherits the KB-level view permission. */
+export function canViewDoc(
+  kb: KnowledgeBase,
+  doc: KbDocument,
+  userId: string
+): boolean {
+  if (kb.ownerId === userId) return true;
+  if (doc.access === "private") return false;
+  return canViewKb(kb.id, kb.name, userId, kb.ownerId);
+}
+
+/** Can the user EDIT a document? Owner always; private docs are owner-only;
+ *  a doc-level "edit" grants edit; otherwise inherits KB-level edit. */
+export function canEditDoc(
+  kb: KnowledgeBase,
+  doc: KbDocument,
+  userId: string
+): boolean {
+  if (kb.ownerId === userId) return true;
+  if (doc.access === "private") return false;
+  if (doc.access === "edit") return true;
+  return canEditKb(kb.id, kb.name, userId, kb.ownerId);
+}
+
+/** Set a document's access override (P4-2). `undefined` clears it (inherit). */
+export function setDocumentAccess(docId: string, access: DocAccess | null): KbDocument | undefined {
+  seed();
+  const store = getStore();
+  const doc = store.docs.get(docId);
+  if (!doc) return undefined;
+  if (access === null) delete doc.access;
+  else doc.access = access;
+  store.docs.set(docId, doc);
+  void persistDoc(doc);
+  publish(`kb:${doc.kbId}`, { type: "doc_access", kbId: doc.kbId, docId, access: doc.access ?? null });
+  return doc;
 }
 
 export function addDocument(input: {

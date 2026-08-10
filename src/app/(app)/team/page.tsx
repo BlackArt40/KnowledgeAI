@@ -78,6 +78,18 @@ export default function TeamPage() {
     await fetch("/api/team/kb-access", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kbId, access }) });
   }
 
+  // P4-2: per-member role override on a KB (owner only).
+  async function changeMemberRole(kbId: string, email: string, role: "editor" | "viewer" | null) {
+    setData((d) => d ? { ...d, sharedKbs: d.sharedKbs.map((k) => {
+      if (k.kbId !== kbId) return k;
+      const roles = { ...(k.memberRoles ?? {}) };
+      if (role === null) delete roles[email];
+      else roles[email] = role;
+      return { ...k, memberRoles: roles };
+    }) } : d);
+    await fetch("/api/team/kb-access", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kbId, email, role }) });
+  }
+
   if (loading || !data) {
     return (
       <div className="mx-auto max-w-5xl space-y-4">
@@ -219,34 +231,79 @@ export default function TeamPage() {
           </p>
           <div className="overflow-hidden rounded-2xl border border-border">
             <div className="divide-y divide-border">
-              {sharedKbs.map((k) => (
-                <div key={k.kbId} className="flex items-center gap-3 px-4 py-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Library className="h-[18px] w-[18px]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {k.kbName}
-                      {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">（我的）</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {k.ownerName} · {k.docs} 篇文档
-                    </p>
+              {sharedKbs.map((k) => {
+                const roles = k.memberRoles ?? {};
+                const roleEmails = Object.keys(roles);
+                const candidates = members.filter((m) => m.role !== "owner" && m.status === "active");
+                return (
+                  <div key={k.kbId} className="flex flex-col gap-2 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Library className="h-[18px] w-[18px]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {k.kbName}
+                          {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">（我的）</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {k.ownerName} · {k.docs} 篇文档
+                        </p>
+                      </div>
+                      {canManage ? (
+                        <Select value={k.access} onValueChange={(v) => changeAccess(k.kbId, v as KbAccess)}>
+                          <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="view">全员可读</SelectItem>
+                            <SelectItem value="edit">成员可编辑</SelectItem>
+                            <SelectItem value="private">仅 Owner/Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="secondary">{ACCESS_LABEL[k.access]}</Badge>
+                      )}
+                    </div>
+                    {/* P4-2: per-member role overrides (KB owner only) */}
+                    {k.isOwner && canManage && (
+                      <div className="flex flex-wrap items-center gap-1.5 pl-1">
+                        <span className="text-[11px] text-muted-foreground">成员权限：</span>
+                        {roleEmails.map((email) => {
+                          const m = members.find((x) => x.email === email);
+                          return (
+                            <span key={email} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px]">
+                              {m?.name ?? email}
+                              <span className="text-muted-foreground">· {roles[email] === "editor" ? "Editor" : "Viewer"}</span>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => changeMemberRole(k.kbId, email, null)}
+                                aria-label="移除成员权限"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                        {candidates.length > 0 && (
+                          <Select
+                            value=""
+                            onValueChange={(v) => changeMemberRole(k.kbId, v, "viewer")}
+                          >
+                            <SelectTrigger className="h-6 w-[130px] text-[11px]">
+                              <SelectValue placeholder="+ 添加成员" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {candidates.map((m) => (
+                                <SelectItem key={m.id} value={m.email}>{m.name}（{ROLE_LABEL[m.role]}）</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {canManage ? (
-                    <Select value={k.access} onValueChange={(v) => changeAccess(k.kbId, v as KbAccess)}>
-                      <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="view">全员可读</SelectItem>
-                        <SelectItem value="edit">成员可编辑</SelectItem>
-                        <SelectItem value="private">仅 Owner/Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge variant="secondary">{ACCESS_LABEL[k.access]}</Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

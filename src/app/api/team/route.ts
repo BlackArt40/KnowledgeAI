@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTeam, updateTeam, listMembers } from "@/lib/team/store";
-import { getKbAccess, listAudit } from "@/lib/team/store";
+import { getKbAccess, listAudit, listKbMemberRoles } from "@/lib/team/store";
 import { listAllKbs, listDocuments } from "@/lib/kb/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
@@ -40,6 +40,8 @@ export async function GET(req: Request) {
         docs: listDocuments(kb.id).length,
         ownerName: owner?.name ?? "未知",
         isOwner: kb.ownerId === u.id,
+        // P4-2: per-member role overrides (for the team permission panel).
+        memberRoles: listKbMemberRoles(kb.id),
       };
     });
   // Audit may contain sensitive activity; restrict to managers.

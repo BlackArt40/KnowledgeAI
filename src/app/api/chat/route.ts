@@ -1,4 +1,4 @@
-import { getKb } from "@/lib/kb/store";
+import { getKb, getDocument } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
 import { generateStream } from "@/lib/rag/generator";
 import { searchExternal } from "@/lib/external/provider";
@@ -66,6 +66,14 @@ export async function POST(req: Request) {
   // provider resolves THIS user's configured model.
   const doRag = async () => {
     let chunks: RetrievedChunk[] = await retrieve(kbId, query, kb.settings.topK);
+    // P4-2: document-level permissions - drop chunks from private documents
+    // (non-owner callers must not see their content through chat retrieval).
+    if (authUser.id !== kb.ownerId) {
+      chunks = chunks.filter((c) => {
+        const doc = getDocument(c.docId);
+        return !doc || doc.access !== "private";
+      });
+    }
     // 联网搜索：开启时同时检索外部 web 结果，合并进上下文，使回答可引用网络来源。
     if (body.webSearch) {
       const ext = await searchExternal(query, {

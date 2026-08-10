@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getKb, listDocuments, updateKbSettings, deleteKb } from "@/lib/kb/store";
+import { getKb, listDocuments, updateKbSettings, deleteKb, canViewDoc } from "@/lib/kb/store";
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
@@ -28,7 +28,10 @@ export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadAccessible(req, id);
   if ("error" in r) return r.error;
-  const docs = listDocuments(id);
+  // P4-2: document-level permissions - hide private docs from non-owners and
+  // carry each doc's access override so the UI can render per-doc controls.
+  const visible = listDocuments(id).filter((d) => canViewDoc(r.kb, d, r.u.id));
+  const docs = visible.map((d) => ({ ...d, access: d.access ?? null }));
   const stats = {
     total: docs.length,
     ready: docs.filter((d) => d.status === "ready").length,
