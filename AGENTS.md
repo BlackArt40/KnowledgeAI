@@ -74,7 +74,7 @@ Key files:
 Next.js 16 renamed the middleware file to `proxy.ts`. It does two things:
 
 1. Triggers `ensureHydrated()` (fire-and-forget) on first non-`/_next` request.
-2. Rate-limits `/api/*` with a sliding window (Redis if `REDIS_URL`, else in-memory).
+2. Rate-limits `/api/*` (Redis sliding window if `REDIS_URL`, else in-memory) with **tiered limits** (P3-3): one dimension per request — anonymous `ip:<ip>` (`RATE_LIMIT_ANON_PER_MIN`, default 20), JWT user `user:<userId>` (`RATE_LIMIT_PER_MIN`), API key `apikey:<keyId>` (`RATE_LIMIT_KEY_PER_MIN`, default 500). The per-KB tier (`kb:<kbId>`, `RATE_LIMIT_KB_PER_MIN`, default 60 — keep below the user limit) runs in route handlers because the proxy can't read bodies/path params: `/api/chat` (also covers the SSE skip) and `/api/knowledge-base/[id]` `loadAccessible`. 429s carry `dimension` in the body and an accurate `Retry-After` (Redis resetAt = earliest ZSET entry + window). Allowed responses intentionally carry no `X-RateLimit-*` headers (Next.js proxy header merge would override route-level 429 headers).
 
 `SKIP_PATHS` excludes SSE streams and high-frequency polls from rate limiting: `/api/chat`, `/api/agent/run`, `/api/billing/webhook`, `/api/notifications`, `/api/auth/me`. Add new SSE/poll endpoints here or they'll get 429'd.
 
