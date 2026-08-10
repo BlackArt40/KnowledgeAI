@@ -80,7 +80,7 @@ Next.js 16 renamed the middleware file to `proxy.ts`. It does two things:
 
 ## Provider fallback pattern
 
-Every external dependency has an env-gated real implementation plus a demo fallback. Gate checks live in each module's `provider.ts` and are aggregated by `src/lib/config.ts` (used by the `/admin` status panel). Modules: LLM (`src/lib/llm`), embedding (`src/lib/rag`), DB, storage (`src/lib/storage`), payment (`src/lib/billing`), rate-limit, queue (`src/lib/queue`).
+Every external dependency has an env-gated real implementation plus a demo fallback. Gate checks live in each module's `provider.ts` and are aggregated by `src/lib/config.ts` (used by the `/admin` status panel). Modules: LLM (`src/lib/llm`), embedding (`src/lib/rag`), external data sources (`src/lib/external`), DB, storage (`src/lib/storage`), payment (`src/lib/billing`), rate-limit, queue (`src/lib/queue`).
 
 When adding a new external integration, follow the same shape: env check -> real impl -> fallback -> register in `getProviderStatus()`.
 
@@ -96,7 +96,7 @@ When adding a new external integration, follow the same shape: env check -> real
 - **TypeScript strict**, path alias `@/*` -> `./src/*`. No `as any` / `@ts-ignore` in app code (the `as unknown as` casts in `persist.ts`/`hydrate.ts` are a known smell for models not in the generated client types - match the existing pattern there rather than introducing `as any`).
 - App Router under `src/app/`: route groups `(app)` (AppShell-wrapped workspace), `(auth)` (login/register/verify), plus top-level `api/`, `privacy/`, `terms/`, `maintenance/`.
 - RBAC roles: `OWNER` / `ADMIN` / `EDITOR` / `VIEWER`. Guard via `src/lib/auth/guard.ts`. Self-registration defaults to `EDITOR`.
-- SSE routes (`/api/chat`, `/api/agent/run`) emit `token` / `step` / `done` events; tests assert these event names - don't rename them.
+- SSE routes: `/api/chat` emits `sources` / `token` / `done` (`sources` carries `url`/`sourceType` when 联网搜索 is on); `/api/agent/run` emits `init` / `step` / `done` / `error` / `end`. Tests assert these event names - don't rename them.
 - Not a monorepo: `pnpm-workspace.yaml` is only an `allowBuilds` allowlist for native builds (prisma engines, esbuild, sharp, etc.). Single package.
 - Docker: `output: "standalone"` build copied into a minimal `node:22-alpine` runner. `docker compose up -d` brings up app + worker + Redis (port 6380).
 
@@ -117,6 +117,7 @@ All four share password `password123`:
 - `instrumentation.ts` + `instrumentation-node.ts` - server boot hook (starts queue worker)
 - `src/lib/config.ts` - provider status aggregator (admin panel source of truth)
 - `src/lib/queue/` - background job queue (doc-process, agent-run, index-cleanup)
+- `src/lib/external/` - external data sources (web search Tavily/SerpAPI/Brave + ArXiv + GitHub; used by agent research and the chat 联网搜索 toggle)
 - `src/lib/db/{client,hydrate,persist}.ts` - the DB adaptation triad
 - `src/lib/auth/guard.ts` - RBAC role guard for route handlers
 - `src/lib/rag/parser.ts` - multi-format document parser (PDF/Word/Excel/PPT/HTML/MD/TXT/CSV + image via OCR)

@@ -8,7 +8,7 @@
 | 模块 | 功能 | 技术 |
 | --- | --- | --- |
 | 知识库 | 文档上传 / 解析 / 切片 / 向量化 / 管理 | 多格式提取 + 处理管线 |
-| 智能问答 | RAG 检索 + 流式生成 + 引用溯源 | 异步 RAG + LLM Provider + SSE |
+| 智能问答 | RAG 检索 + 流式生成 + 引用溯源 + 联网搜索开关 | 异步 RAG + LLM Provider + SSE + 外部 Web 源 |
 | Agent 调研 | 多 Agent 编排（规划→检索→分析→撰写） | SSE 流式 + Markdown 报告 |
 | 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB | 4 角色 × 10 能力 |
 | AI 模型 | 导入外部 LLM / 连接测试 / 一键切换 | OpenAI·DeepSeek·Moonshot·硅基流动·Ollama |
@@ -113,6 +113,7 @@ src/
     ├── kb/              # 知识库 + 处理管线
     ├── chat/            # 会话存储
     ├── agent/           # 多 Agent 编排
+    ├── external/        # 外部数据源（Web 搜索 + ArXiv + GitHub，Agent/Chat 共用）
     ├── team/            # RBAC 权限
     ├── billing/         # 订阅计费 + Stripe Provider
     ├── apikeys/         # API 密钥
@@ -136,6 +137,7 @@ src/
 | 文件存储 | `S3_ENDPOINT` `S3_BUCKET` | S3 / MinIO / R2 | 本地文件系统 |
 | 支付 | `STRIPE_SECRET_KEY` | Stripe Checkout | 模拟支付 |
 | 限流 | `RATE_LIMIT_PER_MIN` | 中间件限流（可接 Redis） | 内存限流 |
+| 外部数据源 | `TAVILY_API_KEY` `SERPAPI_KEY` `BRAVE_SEARCH_KEY` `GITHUB_TOKEN` | Tavily / SerpAPI / Brave / ArXiv / GitHub | 模拟外部结果 |
 
 ```bash
 # 1. 复制环境变量模板

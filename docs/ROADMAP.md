@@ -240,6 +240,8 @@
 
 **现状**：✅ 已完成。外部数据源 provider（Web 搜索 Tavily/SerpAPI/Brave + 网页深度抓取 + ArXiv + GitHub）+ 统一搜索接口 + 去重 + 质量评分 + demo fallback。Agent searcher 节点同时检索内部 KB 和外部源，citations 携带 sourceType + URL 标注。config.ts 注册外部数据源 provider status。
 
+> **2026-08-10 扩展**：Chat 智能问答新增「联网搜索」开关——开启后每次提问经 `searchExternal()`（仅 Web 源）把外部结果合并进 RAG 上下文，`sources` 事件携带 `url` / `sourceType`，引用面板对 Web 来源展示可点击链接（🌐 图标 + 域名）。多轮对话提示词同步改为「来源内容」（`conversation-context.ts` 与 `generator.ts` 一致）。
+
 **计划**：
 - [x] Web 搜索集成（接入 Tavily / SerpAPI / Brave Search API）✅
 - [x] 网页深度抓取：从搜索结果自动抓取 Top-N 页面全文 ✅（`deepCrawl` + `crawlUrl`）
