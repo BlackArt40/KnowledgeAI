@@ -21,6 +21,7 @@ import {
   Download,
   Globe,
   Share2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-media-query";
+import { useHorizontalSwipe, useLongPress } from "@/hooks/use-gestures";
 import { cn } from "@/lib/utils";
 import { useSse } from "@/lib/use-sse";
 import type { Citation } from "@/lib/rag/types";
@@ -175,6 +179,11 @@ export default function ChatPage() {
   const [webSearch, setWebSearch] = React.useState(false); // 联网搜索开关：开启后每次提问同时检索 web
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
+  // P5-1: mobile-only sheets (conversation list / citation sources) and the
+  // is-mobile flag that enables the swipe gestures.
+  const isMobile = useIsMobile();
+  const [convSheetOpen, setConvSheetOpen] = React.useState(false);
+  const [sourcesOpen, setSourcesOpen] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
@@ -273,6 +282,8 @@ export default function ChatPage() {
   async function loadConversation(id: string) {
     if (abortStream()) refreshConversations();
     setActiveConv(id);
+    // Close the mobile conversation sheet once a conversation is picked.
+    setConvSheetOpen(false);
     const res = await fetch(`/api/chat/conversations/${id}`, { cache: "no-store" });
     const { conversation } = await res.json();
     setMessages(
@@ -558,96 +569,80 @@ export default function ChatPage() {
     c.title.toLowerCase().includes(convSearch.trim().toLowerCase())
   );
 
+  // P5-1: swipe left/right on the message area to switch to the previous /
+  // next conversation (mobile only; vertical scroll takes priority). Lives
+  // after `filteredConvs` is derived so the swipe targets the visible list.
+  useHorizontalSwipe(
+    scrollRef,
+    (dir) => {
+      if (filteredConvs.length === 0) return;
+      const idx = filteredConvs.findIndex((c) => c.id === activeConv);
+      if (dir === "right" && idx > 0) loadConversation(filteredConvs[idx - 1].id);
+      if (dir === "left" && idx >= 0 && idx < filteredConvs.length - 1) loadConversation(filteredConvs[idx + 1].id);
+    },
+    { enabled: isMobile }
+  );
+
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-0 overflow-hidden rounded-2xl border border-border bg-card lg:h-[calc(100vh-8.5rem)]">
-      {/* sessions */}
+    <div className="chat-height flex gap-0 overflow-hidden rounded-2xl border border-border bg-card">
+      {/* sessions - desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-muted/30 md:flex">
-        <div className="p-3">
-          <Button variant="gradient" className="w-full justify-start" onClick={newChat}>
-            <Plus className="h-4 w-4" /> 新建会话
-          </Button>
-        </div>
-        <div className="px-3 pb-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={convSearch}
-              onChange={(e) => setConvSearch(e.target.value)}
-              placeholder="搜索会话"
-              className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-        </div>
-        <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-3">
-          {filteredConvs.length === 0 && sharedConvs.length === 0 && (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-              {convSearch ? "未找到匹配的会话" : "暂无历史会话"}
-            </p>
-          )}
-          {filteredConvs.length > 0 && (
-            <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">我的会话</p>
-          )}
-          {filteredConvs.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => loadConversation(c.id)}
-              className={cn(
-                "group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors",
-                activeConv === c.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
-              <span className="line-clamp-1 flex-1 text-sm font-medium">{c.title}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmDeleteId(c.id);
-                }}
-                className={cn(
-                  "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive",
-                  activeConv === c.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                )}
-                aria-label="删除会话"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-          {sharedConvs.length > 0 && (
-            <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">团队共享</p>
-          )}
-          {sharedConvs.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => loadConversation(c.id)}
-              className={cn(
-                "group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors",
-                activeConv === c.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <Share2 className="h-3.5 w-3.5 shrink-0 text-sky-500" />
-              <span className="line-clamp-1 flex-1 text-sm font-medium">{c.title}</span>
-              <span className="shrink-0 text-[10px] text-muted-foreground">{c.ownerName}</span>
-            </div>
-          ))}
-        </div>
+        <ConversationList
+          conversations={conversations}
+          sharedConvs={sharedConvs}
+          convSearch={convSearch}
+          activeConv={activeConv}
+          onSearchChange={setConvSearch}
+          onNew={() => newChat()}
+          onSelect={(id) => loadConversation(id)}
+          onDelete={(id) => setConfirmDeleteId(id)}
+        />
       </aside>
+
+      {/* sessions - mobile sheet (P5-1: the sidebar is hidden below md, so
+          the drawer is the only way to switch conversations on phones) */}
+      <Sheet open={convSheetOpen} onOpenChange={setConvSheetOpen}>
+        <SheetContent side="left" className="p-0">
+          <SheetTitle className="sr-only">会话列表</SheetTitle>
+          <SheetClose
+            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+            aria-label="关闭会话列表"
+          >
+            <X className="h-4 w-4" />
+          </SheetClose>
+          <ConversationList
+            conversations={conversations}
+            sharedConvs={sharedConvs}
+            convSearch={convSearch}
+            activeConv={activeConv}
+            onSearchChange={setConvSearch}
+            onNew={() => { newChat(); setConvSheetOpen(false); }}
+            onSelect={(id) => loadConversation(id)}
+            onDelete={(id) => setConfirmDeleteId(id)}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* chat */}
       <section className="flex min-w-0 flex-1 flex-col">
         {/* header / kb selector */}
-        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
+        <div className="flex h-14 items-center gap-2 border-b border-border px-3 sm:px-4">
+          {/* P5-1: conversation drawer trigger (desktop has the sidebar) */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0 md:hidden"
+            onClick={() => setConvSheetOpen(true)}
+            aria-label="会话列表"
+          >
+            <MessageSquareText className="h-4 w-4" />
+          </Button>
           {kbs.length === 0 ? (
             <span className="text-sm text-muted-foreground">暂无知识库</span>
           ) : (
             <Select value={selectedKb} onValueChange={setSelectedKb}>
-              <SelectTrigger className="h-9 w-[220px] gap-2">
-                <Library className="h-4 w-4 text-primary" />
+              <SelectTrigger className="h-9 min-w-0 flex-1 gap-2 sm:w-[220px] sm:flex-none">
+                <Library className="h-4 w-4 shrink-0 text-primary" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -660,11 +655,23 @@ export default function ChatPage() {
             </Select>
           )}
           {selectedKbObj && (
-            <Badge variant="success" className="ml-auto">
+            <Badge variant="success" className="ml-auto hidden md:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-success" />
               {selectedKbObj.stats.ready} 篇可检索
             </Badge>
           )}
+          {/* P5-1: citation sources drawer trigger (desktop panel is xl-only).
+              Below md the readiness badge is hidden, so this keeps ml-auto to
+              sit right-aligned; from md up the badge takes the ml-auto slot. */}
+          <button
+            type="button"
+            onClick={() => setSourcesOpen(true)}
+            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:ml-0 xl:hidden"
+            aria-label="引用来源"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">来源</span>
+          </button>
           {activeConv && messages.length > 0 && (
             <Button
               variant="outline"
@@ -791,72 +798,32 @@ export default function ChatPage() {
         </div>
       </section>
 
-      {/* sources */}
+      {/* sources - desktop panel (xl+) */}
       <aside className="hidden w-72 shrink-0 flex-col border-l border-border bg-muted/30 xl:flex">
-        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <Search className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">引用来源</span>
-          <Badge variant="secondary" className="ml-auto">
-            {activeCitations.length}
-          </Badge>
-        </div>
-        <div className="flex-1 space-y-3 overflow-y-auto p-3">
-          {activeCitations.length === 0 ? (
-            <p className="px-3 py-10 text-center text-xs text-muted-foreground">
-              AI 回答的引用来源将显示在此处
-            </p>
-          ) : (
-            activeCitations.map((c) => {
-              const isWeb = !!c.url;
-              const host = isWeb ? hostOf(c.url!) : "";
-              return (
-              <div
-                key={c.n}
-                className={cn(
-                  "rounded-xl border bg-card p-3 transition-colors",
-                  highlightN === c.n ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/40"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/15 text-[11px] font-semibold text-primary">
-                    {c.n}
-                  </span>
-                  {isWeb ? (
-                    <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" />
-                  ) : (
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  )}
-                  {isWeb ? (
-                    <a
-                      href={c.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="line-clamp-1 text-xs font-medium text-primary hover:underline"
-                      title={c.url}
-                    >
-                      {c.docName}
-                    </a>
-                  ) : (
-                    <span className="line-clamp-1 text-xs font-medium">{c.docName}</span>
-                  )}
-                </div>
-                <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
-                  {c.snippet}
-                </p>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                    {isWeb ? `🌐 ${host}` : `片段 #${c.chunkIndex + 1}`}
-                  </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                    相似度 {(c.score * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-              );
-            })
-          )}
-        </div>
+        <SourcesPanel
+          citations={activeCitations}
+          highlightN={highlightN}
+          onCite={(n) => setHighlightN(n)}
+        />
       </aside>
+
+      {/* sources - mobile sheet (P5-1: the desktop panel is xl-only) */}
+      <Sheet open={sourcesOpen} onOpenChange={setSourcesOpen}>
+        <SheetContent side="right" className="p-0">
+          <SheetTitle className="sr-only">引用来源</SheetTitle>
+          <SheetClose
+            className="absolute left-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+            aria-label="关闭引用来源"
+          >
+            <X className="h-4 w-4" />
+          </SheetClose>
+          <SourcesPanel
+            citations={activeCitations}
+            highlightN={highlightN}
+            onCite={(n) => setHighlightN(n)}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* delete conversation confirmation */}
       <Dialog
@@ -1051,6 +1018,246 @@ function FollowUpSuggestions({
           {s}
         </button>
       ))}
+    </div>
+  );
+}
+
+// P5-1: conversation sidebar content, shared by the desktop sidebar and the
+// mobile sheet. Items open the conversation on tap; the hover delete button
+// (desktop) is complemented by a long-press menu (touch devices).
+function ConversationList({
+  conversations,
+  sharedConvs,
+  convSearch,
+  activeConv,
+  onSearchChange,
+  onNew,
+  onSelect,
+  onDelete,
+}: {
+  conversations: ConvLite[];
+  sharedConvs: SharedConv[];
+  convSearch: string;
+  activeConv: string | null;
+  onSearchChange: (v: string) => void;
+  onNew: () => void;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const filteredConvs = conversations.filter((c) =>
+    c.title.toLowerCase().includes(convSearch.trim().toLowerCase())
+  );
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="p-3">
+        <Button variant="gradient" className="w-full justify-start" onClick={onNew}>
+          <Plus className="h-4 w-4" /> 新建会话
+        </Button>
+      </div>
+      <div className="px-3 pb-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={convSearch}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="搜索会话"
+            className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+      </div>
+      <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-3">
+        {filteredConvs.length === 0 && sharedConvs.length === 0 && (
+          <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+            {convSearch ? "未找到匹配的会话" : "暂无历史会话"}
+          </p>
+        )}
+        {filteredConvs.length > 0 && (
+          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">我的会话</p>
+        )}
+        {filteredConvs.map((c) => (
+          <ConversationItem
+            key={c.id}
+            title={c.title}
+            icon={<MessageSquareText className="h-3.5 w-3.5 shrink-0" />}
+            meta={null}
+            active={activeConv === c.id}
+            onSelect={() => onSelect(c.id)}
+            onDelete={() => onDelete(c.id)}
+          />
+        ))}
+        {sharedConvs.length > 0 && (
+          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">团队共享</p>
+        )}
+        {sharedConvs.map((c) => (
+          <ConversationItem
+            key={c.id}
+            title={c.title}
+            icon={<Share2 className="h-3.5 w-3.5 shrink-0 text-sky-500" />}
+            meta={<span className="shrink-0 text-[10px] text-muted-foreground">{c.ownerName}</span>}
+            active={activeConv === c.id}
+            onSelect={() => onSelect(c.id)}
+            onDelete={() => onDelete(c.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// One conversation row. Desktop shows the delete button on hover; touch
+// devices get a long-press menu instead (hover doesn't exist on phones).
+function ConversationItem({
+  title,
+  icon,
+  meta,
+  active,
+  onSelect,
+  onDelete,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  meta: React.ReactNode;
+  active: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  useLongPress(ref, () => setMenuOpen(true));
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        onClick={onSelect}
+        className={cn(
+          "group flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors",
+          active
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        )}
+      >
+        {icon}
+        <span className="line-clamp-1 flex-1 text-sm font-medium">{title}</span>
+        {meta}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className={cn(
+            "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive",
+            active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
+          aria-label="删除会话"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {/* P5-1: long-press menu (touch devices). The fixed overlay closes it
+          on any tap outside. */}
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-2 top-full z-30 mt-1 w-28 rounded-lg border border-border bg-card p-1 shadow-xl">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onDelete();
+              }}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <Trash2 className="h-3 w-3" /> 删除会话
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// P5-1: citation sources panel, shared by the desktop xl sidebar and the
+// mobile sheet.
+function SourcesPanel({
+  citations,
+  highlightN,
+  onCite,
+}: {
+  citations: Citation[];
+  highlightN: number | null;
+  onCite: (n: number) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        <Search className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">引用来源</span>
+        <Badge variant="secondary" className="ml-auto">
+          {citations.length}
+        </Badge>
+      </div>
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {citations.length === 0 ? (
+          <p className="px-3 py-10 text-center text-xs text-muted-foreground">
+            AI 回答的引用来源将显示在此处
+          </p>
+        ) : (
+          citations.map((c) => {
+            const isWeb = !!c.url;
+            const host = isWeb ? hostOf(c.url!) : "";
+            return (
+              <button
+                key={c.n}
+                type="button"
+                onClick={() => onCite(c.n)}
+                className={cn(
+                  "w-full rounded-xl border bg-card p-3 text-left transition-colors",
+                  highlightN === c.n ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/40"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[11px] font-semibold text-primary">
+                    {c.n}
+                  </span>
+                  {isWeb ? (
+                    <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  {isWeb ? (
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="line-clamp-1 text-xs font-medium text-primary hover:underline"
+                      title={c.url}
+                    >
+                      {c.docName}
+                    </a>
+                  ) : (
+                    <span className="line-clamp-1 text-xs font-medium">{c.docName}</span>
+                  )}
+                </div>
+                <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
+                  {c.snippet}
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                    {isWeb ? `🌐 ${host}` : `片段 #${c.chunkIndex + 1}`}
+                  </span>
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    相似度 {(c.score * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

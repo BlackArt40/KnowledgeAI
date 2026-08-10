@@ -117,17 +117,18 @@ export default function KnowledgeBasePage() {
                       className={cn("h-11 w-11 bg-card text-base shadow-sm ring-1 ring-border", kb.color)}
                     />
 
-                    <h3 className="mt-3 flex items-center gap-2 text-base font-semibold">
-                      {kb.name}
+                    <h3 className="mt-3 flex min-w-0 items-center gap-2 text-base font-semibold">
+                      <span className="truncate">{kb.name}</span>
                       {kb.shared && (
-                        <Badge variant="secondary" className="text-[10px]">{kb.ownerName} 共享</Badge>
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">{kb.ownerName} 共享</Badge>
                       )}
                     </h3>
                     <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
                       {kb.desc || "暂无描述"}
                     </p>
 
-                    <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+                    {/* P5-1: wrap on narrow viewports so the badge never squeezes the meta */}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5" />
                         {kb.stats.total} 篇

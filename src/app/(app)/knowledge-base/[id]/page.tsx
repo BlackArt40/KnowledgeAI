@@ -119,17 +119,17 @@ export default function KbDetailPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* breadcrumb / back */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/knowledge-base" className="inline-flex items-center gap-1 hover:text-foreground">
+      <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/knowledge-base" className="inline-flex shrink-0 items-center gap-1 hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" /> 知识库
         </Link>
         <span>/</span>
-        <span className="text-foreground">{kb.name}</span>
+        <span className="truncate text-foreground">{kb.name}</span>
       </div>
 
       {/* header */}
       <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
+        <div className="flex min-w-0 items-start gap-4">
           <Avatar
             fallback={kb.initial}
             className={cn("h-12 w-12 bg-gradient-to-b to-transparent text-base shadow-sm ring-1 ring-border", kb.color)}

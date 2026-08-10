@@ -237,3 +237,17 @@
     border-radius: 9999px;
   }
 }
+
+/* P5-1: chat page viewport height. `dvh` tracks the mobile browser's
+   collapsing address bar; the `vh` line before it is the fallback for
+   browsers without dvh support. */
+.chat-height {
+  height: calc(100vh - 7rem);
+  height: calc(100dvh - 7rem);
+}
+@media (min-width: 1024px) {
+  .chat-height {
+    height: calc(100vh - 8.5rem);
+    height: calc(100dvh - 8.5rem);
+  }
+}
