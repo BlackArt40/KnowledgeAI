@@ -2,6 +2,7 @@ import { getKb } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
 import { generateStream } from "@/lib/rag/generator";
 import { searchExternal } from "@/lib/external/provider";
+import { rateLimit, kbRateLimit, rateLimitResponse, getRateLimitLimits } from "@/lib/security/rate-limit";
 import type { RetrievedChunk, Citation } from "@/lib/rag/types";
 import { suggestFollowUps } from "@/lib/rag/conversation-context";
 import type { ChatMessage } from "@/lib/rag/conversation-context";
@@ -43,6 +44,13 @@ export async function POST(req: Request) {
   if (!kb) return Response.json({ error: "知识库不存在" }, { status: 404 });
   if (!canViewKb(kb.id, kb.name, authUser.id, kb.ownerId))
     return Response.json({ error: "无权访问该知识库" }, { status: 403 });
+
+  // P3-3: /api/chat is skipped by the proxy (SSE), so enforce the user + KB
+  // tiers here. Checked after auth/permission so invalid requests don't burn quota.
+  const userRl = await rateLimit(`user:${authUser.id}`, getRateLimitLimits().base);
+  if (!userRl.allowed) return rateLimitResponse(userRl, "user");
+  const kbRl = await kbRateLimit(kbId);
+  if (!kbRl.allowed) return rateLimitResponse(kbRl, "kb");
 
   let conv = body.conversationId ? getConversation(body.conversationId) : undefined;
   if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id);

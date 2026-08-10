@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getKb, listDocuments, updateKbSettings, deleteKb } from "@/lib/kb/store";
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ async function loadAccessible(req: Request, id: string) {
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
   if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
+  // P3-3: per-KB tier (proxy can't see path params) - covers GET/PATCH/DELETE/upload.
+  const rl = await kbRateLimit(id);
+  if (!rl.allowed) return { error: rateLimitResponse(rl, "kb") };
   return { kb, u };
 }
 
