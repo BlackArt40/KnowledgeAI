@@ -2,11 +2,11 @@
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。
 >
-> **更新日期**：2026-08-05
+> **更新日期**：2026-08-10
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-05 - P3-1 真实 2FA（TOTP）完整验收通过（RFC 6238 测试向量 T=59->287082 + QR 码可扫描 + 恢复码一次性使用 + 登录流程集成 密码->2FA->会话 + 2FA 强制策略 管理员按角色强制开启 + 预授权令牌强制注册；smoke 59+18 断言通过）；此前 P1/P2 全部验收通过、P0 生产化、P3(分布式限流/AES加密)。
+> **最新更新**：2026-08-10 - P3-3 分级分布式限流完整验收通过（匿名/已认证/API Key 分级限额 + 按 KB 维度限流 + 管理后台限流仪表盘 + 准确 Retry-After；`scripts/smoke/test-rate-limit.ts` 全部断言通过）；此前 P3-1 真实 2FA 验收通过、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -319,18 +319,20 @@
 
 ### P3-3 分布式限流
 
-**现状**：`proxy.ts` 为单实例内存滑动窗口。
+**现状**：✅ 已完成（2026-08-10）。分级限流：匿名（`ip:<ip>`，`RATE_LIMIT_ANON_PER_MIN` 默认 20）/ 已认证（`user:<userId>`，`RATE_LIMIT_PER_MIN`）/ API Key（`apikey:<keyId>`，`RATE_LIMIT_KEY_PER_MIN` 默认 500）/ 按 KB（`kb:<kbId>`，`RATE_LIMIT_KB_PER_MIN` 默认 60）四维度；KB 维度在路由层执行（`/api/chat` + `/api/knowledge-base/[id]`，proxy 无法读取 body/路径参数），顺带补上 `/api/chat` 原不受限流的漏洞；准确 `Retry-After`（Redis Lua 取 ZSET 最早条目 score + window 作为 resetAt，内存窗口本就准确）；管理后台「限流仪表盘」（`/api/admin/ratelimit`：mode/limits/live 各维度实时用量 + Provider 状态面板顺带渲染）。`proxy.ts` 为 Node runtime，按请求解析 cookie/Bearer 选择维度；429 响应体携带 `dimension` 字段。
+
+> **2026-08-10 验收**：`scripts/smoke/test-rate-limit.ts` 全部断言通过——匿名/用户/API Key/KB 四维度各自触发 429 且 `dimension` 正确、分级生效（用户 > 匿名、API Key > 用户，相对断言不依赖绝对值）、`Retry-After` ∈ [1,60] 且 `X-RateLimit-Reset ≈ now + Retry-After×1000`（±2s）、仪表盘 API 返回各维度 live 统计且非 admin 403。另修复 dev 环境 Turbopack root 推断卡死（`next.config.ts` 增加 `turbopack.root`）。
 
 **计划**：
 - [x] 接入 Redis 滑动窗口限流（自实现 Lua EVAL 脚本, ZSET 原子操作）✅
-- [ ] 分级限流策略：匿名 / 已认证 / API Key 不同限额
-- [ ] 按 KB 维度限流
-- [ ] 限流仪表盘
+- [x] 分级限流策略：匿名 / 已认证 / API Key 不同限额 ✅
+- [x] 按 KB 维度限流 ✅
+- [x] 限流仪表盘 ✅
 
 **验收标准**：
-- 多实例部署时限流全局生效
-- 支持按用户 / IP / KB 多维度限流
-- 429 响应携带准确的 `Retry-After`
+- ✅ 多实例部署时限流全局生效（`REDIS_URL` 配置时 Redis 滑动窗口；`isDistributedRateLimit()`）
+- ✅ 支持按用户 / IP / KB 多维度限流（ip / user / apikey / kb 四维度，proxy 层单维度判定 + 路由层 KB 维度）
+- ✅ 429 响应携带准确的 `Retry-After`（resetAt = 窗口内最早请求的过期时间，smoke 断言 Reset 头与 Retry-After 一致）
 
 ---
 

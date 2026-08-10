@@ -136,7 +136,7 @@ src/
 | 数据库 | `DATABASE_URL` | PostgreSQL (Prisma) | 内存存储 |
 | 文件存储 | `S3_ENDPOINT` `S3_BUCKET` | S3 / MinIO / R2 | 本地文件系统 |
 | 支付 | `STRIPE_SECRET_KEY` | Stripe Checkout | 模拟支付 |
-| 限流 | `RATE_LIMIT_PER_MIN` | 中间件限流（可接 Redis） | 内存限流 |
+| 限流 | `RATE_LIMIT_PER_MIN` `RATE_LIMIT_ANON_PER_MIN` `RATE_LIMIT_KEY_PER_MIN` `RATE_LIMIT_KB_PER_MIN` | Redis 滑动窗口（分级：匿名/用户/API Key/KB） | 内存限流 |
 | 外部数据源 | `TAVILY_API_KEY` `SERPAPI_KEY` `BRAVE_SEARCH_KEY` `GITHUB_TOKEN` | Tavily / SerpAPI / Brave / ArXiv / GitHub | 模拟外部结果 |
 
 ```bash
