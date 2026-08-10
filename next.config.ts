@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Fix Turbopack workspace-root inference when a stray lockfile exists in a
+  // parent directory (e.g. ~/package-lock.json) - without this, dev can hang.
+  turbopack: {
+    root: __dirname,
+  },
   // Optional production dependencies - not bundled, resolved at runtime.
   // These are dynamically imported and gracefully fall back when not installed.
   serverExternalPackages: ["@prisma/client", "bullmq", "ioredis", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "pdf-parse", "mammoth", "xlsx", "tesseract.js", "pdfjs-dist", "@napi-rs/canvas", "qrcode"],

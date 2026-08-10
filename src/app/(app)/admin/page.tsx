@@ -2,7 +2,7 @@
 import * as React from "react";
 import {
   Users, Activity, DollarSign, Database, HardDrive, Bot, MessagesSquare,
-  ShieldBan, ShieldCheck, Search, Server, Cog, Loader2,
+  ShieldBan, ShieldCheck, Search, Server, Cog, Loader2, Gauge, ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelative } from "@/lib/format";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/lib/admin/types";
+import type { RateLimitStat } from "@/lib/security/rate-limit";
+import type { ProviderStatus } from "@/lib/config";
 
 import { cn } from "@/lib/utils";
 
@@ -24,23 +26,48 @@ const STATUS_VARIANT = {
 const STATUS_LABEL = { active: "正常", banned: "已封禁" } as const;
 const KB_STATUS = { ready: "就绪", processing: "处理中", error: "异常" } as const;
 
+interface RateLimitDashboard {
+  mode: "memory" | "redis";
+  limits: { base: number; anon: number; key: number; kb: number };
+  live: RateLimitStat[];
+  recent: RateLimitStat[];
+}
+
+// P3-3: dimension badges for the rate-limit dashboard
+const RL_KIND: Record<RateLimitStat["kind"], { label: string; variant: "default" | "secondary" | "outline" | "warning" | "success" | "destructive" }> = {
+  ip: { label: "IP", variant: "secondary" },
+  user: { label: "用户", variant: "default" },
+  apikey: { label: "API Key", variant: "outline" },
+  kb: { label: "知识库", variant: "warning" },
+  other: { label: "其他", variant: "outline" },
+};
+
+function rlResetIn(s: RateLimitStat): string {
+  const secs = Math.max(0, Math.ceil((s.resetAt - Date.now()) / 1000));
+  return secs <= 0 ? "已重置" : `${secs}s`;
+}
+
 export default function AdminPage() {
   const [overview, setOverview] = React.useState<AdminOverview | null>(null);
   const [users, setUsers] = React.useState<AdminUser[]>([]);
   const [kbs, setKbs] = React.useState<KbMonitor[]>([]);
   const [config, setConfig] = React.useState<SystemConfig | null>(null);
+  const [providers, setProviders] = React.useState<ProviderStatus[]>([]);
+  const [ratelimit, setRatelimit] = React.useState<RateLimitDashboard | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [savingCfg, setSavingCfg] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
-    const [o, u, k, c] = await Promise.all([
+    const [o, u, k, c, rl] = await Promise.all([
       fetch("/api/admin", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/users", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/kbs", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/config", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/admin/ratelimit", { cache: "no-store" }).then((r) => r.json()),
     ]);
     setOverview(o); setUsers(u.users ?? []); setKbs(k.kbs ?? []); setConfig(c);
+    setProviders(c.providers ?? []); setRatelimit(rl);
     setLoading(false);
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -312,6 +339,98 @@ export default function AdminPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><Gauge className="h-4 w-4" /> 限流仪表盘</span>
+              <Badge variant={ratelimit?.mode === "redis" ? "success" : "secondary"}>
+                {ratelimit?.mode === "redis" ? "Redis 分布式" : "内存单实例"}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {ratelimit && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  ["用户", ratelimit.limits.base],
+                  ["匿名/IP", ratelimit.limits.anon],
+                  ["API Key", ratelimit.limits.key],
+                  ["知识库", ratelimit.limits.kb],
+                ] as const).map(([label, v]) => (
+                  <div key={label} className="rounded-lg border border-border p-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">{label}</div>
+                    <div className="text-lg font-bold tabular-nums">{v}<span className="text-xs font-normal text-muted-foreground">/分</span></div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>维度</TableHead>
+                  <TableHead>Key</TableHead>
+                  <TableHead className="text-right">当前/限额</TableHead>
+                  <TableHead className="text-right">剩余</TableHead>
+                  <TableHead className="text-right">重置</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(ratelimit?.live ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground">
+                      暂无限流记录（API 请求产生流量后自动出现）
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (ratelimit?.live ?? []).slice(0, 12).map((s) => (
+                    <TableRow key={s.key}>
+                      <TableCell><Badge variant={RL_KIND[s.kind].variant}>{RL_KIND[s.kind].label}</Badge></TableCell>
+                      <TableCell className="max-w-[180px] truncate font-mono text-xs text-muted-foreground" title={s.key}>{s.key}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {s.count}<span className="text-muted-foreground">/{s.limit}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={s.remaining <= 0 ? "destructive" : s.remaining / s.limit < 0.2 ? "warning" : "secondary"}>
+                          {s.remaining}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-xs tabular-nums text-muted-foreground">{rlResetIn(s)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <Button size="sm" variant="outline" className="w-full" onClick={refresh}>
+              <Loader2 className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> 刷新
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Provider 状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {providers.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{p.label}</span>
+                      <Badge variant={p.enabled ? "success" : "secondary"}>
+                        {p.enabled ? "已启用" : "演示模式"}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={p.detail}>{p.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

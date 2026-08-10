@@ -8,6 +8,7 @@ import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
+import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/security/rate-limit";
 
 export interface ProviderStatus {
   id: string;
@@ -61,8 +62,11 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
       id: "ratelimit",
       label: "限流",
       enabled: true,
-      detail: `${process.env.RATE_LIMIT_PER_MIN || 200} 次/分钟`,
-      envVars: ["RATE_LIMIT_PER_MIN"],
+      detail: (() => {
+        const l = getRateLimitLimits();
+        return `分级 ${l.base}/${l.anon}/${l.key}/${l.kb} 次/分（用户/匿名/API Key/KB）· ${isDistributedRateLimit() ? "Redis 分布式" : "内存单实例"}`;
+      })(),
+      envVars: ["RATE_LIMIT_PER_MIN", "RATE_LIMIT_ANON_PER_MIN", "RATE_LIMIT_KEY_PER_MIN", "RATE_LIMIT_KB_PER_MIN"],
     },
     {
       id: "external",
