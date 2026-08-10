@@ -185,7 +185,7 @@ export function getUsage(userId: string): Usage {
   return u;
 }
 
-export function recordQa(userId: string): void {
+export function recordQa(userId: string, workspaceId?: string): void {
   const u = getUsage(userId);
   u.qaUsed += 1;
   u.apiCalls += 1;
@@ -198,6 +198,48 @@ export function recordQa(userId: string): void {
   }
   pt.qa += 1;
   pt.api += 1;
+  // P4-3: also meter per-workspace (tenant) usage.
+  if (workspaceId) {
+    const w = getWorkspaceUsage(workspaceId);
+    w.qaUsed += 1;
+  }
+}
+
+// ── P4-3: workspace (tenant) usage ─────────────────────────────────────────
+
+export interface WorkspaceUsage {
+  workspaceId: string;
+  qaUsed: number;
+  agentTasks: number;
+  storageBytes: number;
+}
+
+type WorkspaceUsageStore = Map<string, WorkspaceUsage>;
+const gWs = globalThis as unknown as { __KAI_WS_USAGE_STORE__?: WorkspaceUsageStore };
+
+function wsUsageStore(): WorkspaceUsageStore {
+  if (!gWs.__KAI_WS_USAGE_STORE__) gWs.__KAI_WS_USAGE_STORE__ = new Map();
+  return gWs.__KAI_WS_USAGE_STORE__;
+}
+
+export function getWorkspaceUsage(workspaceId: string): WorkspaceUsage {
+  const s = wsUsageStore();
+  let u = s.get(workspaceId);
+  if (!u) {
+    u = { workspaceId, qaUsed: 0, agentTasks: 0, storageBytes: 0 };
+    s.set(workspaceId, u);
+  }
+  return u;
+}
+
+/** Meter an agent task for a workspace (P4-3). */
+export function recordAgentTask(workspaceId: string): void {
+  getWorkspaceUsage(workspaceId).agentTasks += 1;
+}
+
+/** Meter storage for a workspace (P4-3). */
+export function recordWorkspaceStorage(workspaceId: string, bytes: number): void {
+  getWorkspaceUsage(workspaceId).storageBytes = Math.max(0, bytes);
 }
 
 // ── Orders + payment ─────────────────────────────────────────────────────

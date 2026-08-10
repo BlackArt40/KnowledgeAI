@@ -21,6 +21,9 @@ import {
   Mail,
   CheckCheck,
   ChevronRight,
+  ChevronDown,
+  Plus,
+  Check,
   Sparkles,
   ShieldCheck,
   LogOut,
@@ -71,6 +74,123 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+// ── P4-3: workspace switcher ──────────────────────────────────────────────
+// Shows the current workspace at the top of the sidebar; switching sets the
+// `kai-workspace` cookie (7 days) and reloads so every API call runs in the
+// selected tenant. Creating a workspace switches to it immediately.
+function setWorkspaceCookie(id: string) {
+  document.cookie = `kai-workspace=${id}; path=/; max-age=604800`;
+}
+
+function WorkspaceSwitcher() {
+  const [workspaces, setWorkspaces] = React.useState<
+    { id: string; name: string; plan: string; active: boolean }[]
+  >([]);
+  const [currentName, setCurrentName] = React.useState("");
+  const [open, setOpen] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [newName, setNewName] = React.useState("");
+
+  const load = React.useCallback(() => {
+    fetch("/api/workspaces", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        setWorkspaces(d.workspaces ?? []);
+        setCurrentName(d.currentName ?? "");
+      })
+      .catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  function switchTo(id: string) {
+    setWorkspaceCookie(id);
+    window.location.reload();
+  }
+
+  async function createWs() {
+    if (!newName.trim()) return;
+    const res = await fetch("/api/workspaces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    if (res.ok) {
+      const { workspace } = await res.json();
+      switchTo(workspace.id);
+    }
+  }
+
+  return (
+    <div className="relative px-3 pb-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent/50"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-[11px] font-bold text-white">
+          {(currentName || "W").charAt(0)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{currentName || "工作区"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute left-3 right-3 top-full z-50 mt-1 rounded-xl border border-border bg-card p-1.5 shadow-xl">
+          {workspaces.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              onClick={() => switchTo(w.id)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent",
+                w.active && "bg-primary/10 text-primary"
+              )}
+            >
+              <span className="min-w-0 flex-1 truncate">{w.name}</span>
+              {w.active && <Check className="h-3.5 w-3.5" />}
+              <span className="text-[10px] uppercase text-muted-foreground">{w.plan}</span>
+            </button>
+          ))}
+          <div className="mt-1 border-t border-border pt-1.5">
+            {creating ? (
+              <div className="flex gap-1.5 px-1">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void createWs(); }}
+                  placeholder="工作区名称"
+                  autoFocus
+                  className="h-7 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <button
+                  type="button"
+                  onClick={createWs}
+                  className="h-7 rounded-lg bg-brand-gradient px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  创建
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="h-3.5 w-3.5" /> 新建工作区
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; role?: string; plan?: string }) {
   const pathname = usePathname();
 
@@ -82,6 +202,8 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
       <div className="flex h-16 items-center px-5">
         <Logo />
       </div>
+
+      <WorkspaceSwitcher />
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {navGroups.map((group) => {

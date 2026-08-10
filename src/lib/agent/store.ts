@@ -13,9 +13,10 @@ function uid() {
   return `task_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function listTasks(userId?: string): AgentTask[] {
+export function listTasks(userId?: string, workspaceId?: string): AgentTask[] {
   const all = Array.from(store().tasks.values());
-  const filtered = userId ? all.filter((t) => t.userId === userId) : all;
+  let filtered = userId ? all.filter((t) => t.userId === userId) : all;
+  if (workspaceId) filtered = filtered.filter((t) => t.workspaceId === workspaceId);
   return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
@@ -31,13 +32,14 @@ export function createTask(input: {
   agents: AgentTask["agents"];
   maxSteps: number;
   template?: string;
-}, userId?: string): AgentTask {
+}, userId?: string, workspaceId: string = "ws_default"): AgentTask {
   const now = Date.now();
   const task: AgentTask = {
     id: uid(),
     topic: input.topic,
     kbId: input.kbId,
     kbName: input.kbName,
+    workspaceId,
     outputFormat: input.outputFormat,
     agents: input.agents,
     maxSteps: input.maxSteps,

@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   if (!kbRl.allowed) return rateLimitResponse(kbRl, "kb");
 
   let conv = body.conversationId ? getConversation(body.conversationId) : undefined;
-  if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id);
+  if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id, authUser.workspaceId);
   // Build conversation history for multi-turn context (exclude current query)
   const history: ChatMessage[] = (conv.messages ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")
@@ -140,8 +140,8 @@ export async function POST(req: Request) {
           if (result) citations = result.citations;
 
           const assistant = addMessage(conv!.id, { role: "assistant", content: fullText, citations });
-          // Count this answered question against the current user's meters.
-          recordQa(authUser.id);
+          // Count this answered question against the current user's + workspace's meters.
+          recordQa(authUser.id, authUser.workspaceId);
           // Generate follow-up question suggestions
           const followUps = await suggestFollowUps(query, fullText, chunks);
           send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });

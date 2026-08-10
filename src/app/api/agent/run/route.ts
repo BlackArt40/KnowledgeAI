@@ -1,4 +1,5 @@
 import { createTask, saveTask, getTask } from "@/lib/agent/store";
+import { recordAgentTask } from "@/lib/billing/store";
 import { getKb } from "@/lib/kb/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
@@ -40,8 +41,11 @@ export async function POST(req: Request) {
       maxSteps: body.maxSteps ?? 5,
       template: body.template ?? "default",
     },
-    authUser.id
+    authUser.id,
+    authUser.workspaceId
   );
+  // P4-3: meter the agent task against the workspace usage.
+  recordAgentTask(authUser.workspaceId);
 
   const enc = new TextEncoder();
 

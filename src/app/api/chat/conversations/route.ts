@@ -5,7 +5,7 @@ import { getRequestUser } from "@/lib/auth/guard";
 export const dynamic = "force-dynamic";
 
 // GET /api/chat/conversations?kbId=  (omit kbId to list all, most-recent first)
-// Conversations are scoped to the current user only.
+// Conversations are scoped to the current user + workspace (P4-3 tenant).
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
@@ -14,10 +14,13 @@ export async function GET(req: Request) {
   const limit = url.searchParams.get("limit");
   if (!kbId) {
     return NextResponse.json({
-      conversations: listAllConversations(limit ? parseInt(limit, 10) : undefined, u.id),
+      conversations: listAllConversations(limit ? parseInt(limit, 10) : undefined, u.id)
+        .filter((c) => c.workspaceId === u.workspaceId),
     });
   }
-  return NextResponse.json({ conversations: listConversations(kbId, u.id) });
+  return NextResponse.json({
+    conversations: listConversations(kbId, u.id).filter((c) => c.workspaceId === u.workspaceId),
+  });
 }
 
 // POST /api/chat/conversations  { kbId, title? }
@@ -31,6 +34,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
   if (!body.kbId) return NextResponse.json({ error: "kbId 必填" }, { status: 400 });
-  const conv = createConversation(body.kbId, body.title, u.id);
+  const conv = createConversation(body.kbId, body.title, u.id, u.workspaceId);
   return NextResponse.json({ conversation: conv }, { status: 201 });
 }

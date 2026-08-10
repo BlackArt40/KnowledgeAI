@@ -9,12 +9,15 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-// A KB is viewable by its owner OR by team members when shared (not private).
+// A KB is viewable by its owner OR by team members when shared (not private),
+// and only within the SAME workspace (P4-3 tenant isolation).
 async function loadAccessible(req: Request, id: string) {
   const u = await getRequestUser(req);
   if (!u) return { error: NextResponse.json({ error: "未登录" }, { status: 401 }) };
   const kb = getKb(id);
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
+  if (kb.workspaceId !== u.workspaceId)
+    return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   // P3-3: per-KB tier (proxy can't see path params) - covers GET/PATCH/DELETE/upload.
