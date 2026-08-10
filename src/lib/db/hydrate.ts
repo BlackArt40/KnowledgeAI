@@ -10,6 +10,8 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
+import { decryptFromString } from "@/lib/security/crypto";
+import { loadAuditEvents } from "@/lib/security/audit";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 
 let _hydrated = false;
@@ -68,10 +70,11 @@ export async function hydrateFromDb(): Promise<void> {
     const notifs = await hydrateNotifications();
     const team = await hydrateTeam();
     const admin = await hydrateSystemConfig();
+    const audit = await hydrateAudit();
 
     _hydrated = true;
     console.log(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}`
     );
   } catch (err) {
     console.error("[db] Hydration failed:", err);
@@ -239,7 +242,10 @@ async function hydrateModelConfigs(): Promise<number> {
         name: c.name,
         provider: c.provider,
         providerName: c.providerName,
-        apiKey: c.apiKey,
+        // P3-4: model keys are stored encrypted in the DB (persistModelConfig);
+        // decrypt back to plaintext in memory. Legacy plaintext rows pass
+        // through unchanged via decryptFromString's plaintext fallback.
+        apiKey: decryptFromString(c.apiKey),
         baseUrl: c.baseUrl,
         chatModel: c.chatModel,
         embeddingModel: c.embeddingModel,
@@ -254,6 +260,38 @@ async function hydrateModelConfigs(): Promise<number> {
     return count;
   } catch (err) {
     console.error("[db] hydrateModelConfigs error:", err);
+    return 0;
+  }
+}
+
+/** Hydrate the P3-4 security audit trail (newest first, chain verified). */
+async function hydrateAudit(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  try {
+    const rows = await (db as unknown as {
+      securityAudit: { findMany: (o?: unknown) => Promise<unknown[]> };
+    }).securityAudit.findMany({ orderBy: { createdAt: "desc" } });
+    const events = (rows as unknown as {
+      id: string; actorId: string | null; actor: string; action: string;
+      target: string; detail: string; ip: string | null;
+      prevHash: string; hash: string; createdAt: Date;
+    }[]).map((r) => ({
+      id: r.id,
+      actorId: r.actorId,
+      actor: r.actor,
+      action: r.action,
+      target: r.target,
+      detail: r.detail,
+      ip: r.ip,
+      prevHash: r.prevHash,
+      hash: r.hash,
+      createdAt: r.createdAt.getTime(),
+    }));
+    loadAuditEvents(events);
+    return events.length;
+  } catch (err) {
+    console.error("[db] hydrateAudit error:", err);
     return 0;
   }
 }

@@ -60,7 +60,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "没有需要更新的字段" }, { status: 400 });
   }
 
-  const result = updateUser(id, {
+  const result = await updateUser(id, {
     name: body.name,
     currentPassword: body.currentPassword,
     newPassword: body.newPassword,

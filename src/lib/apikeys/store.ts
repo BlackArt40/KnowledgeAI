@@ -1,5 +1,6 @@
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
+import { encryptToString, decryptFromString, isEncrypted } from "@/lib/security/crypto";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };
@@ -45,8 +46,11 @@ export function createKey(name: string, scopes: string[], userId: string): ApiKe
     lastUsed: null,
     calls: 0,
   };
-  store().keys.unshift(key);
-  void persistApiKey(key);
+  // P3-4: store the secret ENCRYPTED (in-memory + DB write-through via
+  // persistApiKey). The plaintext is only returned once, in this response.
+  const stored: ApiKey = { ...key, secret: encryptToString(secret) };
+  store().keys.unshift(stored);
+  void persistApiKey(stored);
   return key;
 }
 
@@ -78,9 +82,17 @@ export function listLogs(userId: string): CallLog[] {
 
 // ── API key validation + call logging ────────────────────────────────────
 
+/** Resolve a key's stored secret to plaintext. Encrypted values decrypt with
+ *  the current AUTH_SECRET; legacy plaintext (pre-P3-4) is used as-is; a
+ *  failed decryption (key rotated / data corrupt) yields "" -> invalid. */
+function storedSecretOf(k: ApiKey): string {
+  if (!isEncrypted(k.secret)) return k.secret;
+  try { return decryptFromString(k.secret); } catch { return ""; }
+}
+
 /** Validate an API key by its secret. Returns the key if active, or null. */
 export function validateApiKey(secret: string): ApiKey | null {
-  const k = store().keys.find((k) => k.secret === secret && k.status === "active");
+  const k = store().keys.find((k) => storedSecretOf(k) === secret && k.status === "active");
   return k ?? null;
 }
 

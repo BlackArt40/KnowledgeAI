@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { setKbAccess } from "@/lib/team/store";
+import { setKbAccess, getKbAccess } from "@/lib/team/store";
+import { getKb } from "@/lib/kb/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
+import { recordAudit } from "@/lib/security/audit";
 import type { KbAccess } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,15 @@ export async function PATCH(req: Request) {
   if (!body.kbId || !body.access) {
     return NextResponse.json({ error: "kbId 与 access 必填" }, { status: 400 });
   }
+  const kb = getKb(body.kbId);
+  const prev = getKbAccess(body.kbId, kb?.name ?? body.kbId);
   setKbAccess(body.kbId, body.access);
+  recordAudit({
+    actorId: u.id,
+    actor: u.name,
+    action: "kb.access_change",
+    target: kb?.name ?? body.kbId,
+    detail: `共享权限由 ${prev} 调整为 ${body.access}`,
+  });
   return NextResponse.json({ ok: true });
 }

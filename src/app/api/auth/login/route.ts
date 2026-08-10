@@ -4,6 +4,7 @@ import { createToken, createPreAuthToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
 import { addSession, recordLogin, is2FAEnabled, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
+import { recordAudit } from "@/lib/security/audit";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/login { email, password, totpCode? }
@@ -24,14 +25,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "邮箱和密码必填" }, { status: 400 });
   }
 
-  const user = verifyCredentials(email, password);
-  if (!user) {
-    return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
-  }
-
-  // Client info is needed for failed-2FA auditing below and for the successful
+  // Client info is needed for failed-login auditing and for the successful
   // login record, so resolve it once up front.
   const info = clientInfoFromRequest(req);
+
+  const user = await verifyCredentials(email, password);
+  if (!user) {
+    // P3-4: failed password attempts are sensitive - audit them (no user id
+    // exists yet, so the attempted email is recorded as the actor).
+    recordAudit({
+      actorId: null,
+      actor: email,
+      action: "auth.login_failed",
+      target: "登录",
+      detail: "密码错误",
+      ip: info.ip,
+    });
+    return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
+  }
 
   // ── 2FA check ──────────────────────────────────────────────────────────
   if (is2FAEnabled(user.id)) {
@@ -46,6 +57,14 @@ export async function POST(req: Request) {
     // record it so brute-force tries surface in the user's login history.
     if (!verify2FALogin(user.id, body.totpCode.trim())) {
       recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: false });
+      recordAudit({
+        actorId: user.id,
+        actor: user.name,
+        action: "auth.login_failed_2fa",
+        target: "两步验证",
+        detail: "TOTP/恢复码验证失败",
+        ip: info.ip,
+      });
       return NextResponse.json({ error: "两步验证码不正确" }, { status: 401 });
     }
   } else if (mustEnroll2FA(user.id, user.role)) {
@@ -68,6 +87,14 @@ export async function POST(req: Request) {
   // Record this real login: an active session + a login-history entry.
   addSession(user.id, info);
   recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: true });
+  recordAudit({
+    actorId: user.id,
+    actor: user.name,
+    action: "auth.login_success",
+    target: "登录",
+    detail: `${info.device} · ${info.ip}`,
+    ip: info.ip,
+  });
 
   // Security alert: notify on login (especially useful for detecting unauthorized access)
   notify(
