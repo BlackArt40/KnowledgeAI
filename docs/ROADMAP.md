@@ -4,9 +4,9 @@
 >
 > **更新日期**：2026-08-10
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 已实施。
 >
-> **最新更新**：2026-08-10 - P5-1 移动端适配完整验收通过（AppShell 移动抽屉 + chat 会话/来源抽屉 + 触摸手势 + 相机上传 + PWA 可安装离线；`scripts/smoke/test-pwa.ts` 32 项 + `test-mobile-pwa.mjs` 布局 17 项 / PWA 5 项断言全部通过）；P4 协作与多租户全部完成（P4-1 / P4-2 / P4-3），P3 安全加固、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P5-2 全局搜索完整验收通过（Cmd+K 面板 + 覆盖知识库/文档/对话/Agent 任务/设置五类实体 + <100ms 响应；`scripts/smoke/test-global-search.ts` 27 项 + `test-global-search-ui.mjs` 13 项断言全部通过）；P5-1 移动端适配、P4 协作与多租户全部完成，P3 安全加固、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -445,18 +445,20 @@
 
 ### P5-2 全局搜索
 
-**现状**：无全局搜索，需在各模块内分别查找。
+**现状**：✅ 已完成（2026-08-10）。**后端**：`GET /api/search?q=`（`src/app/api/search/route.ts`）一次返回全部分类——知识库（workspace 过滤 + `canViewKb` 团队可见性）/ 文档（遍历 ws 内 KB + `canViewDoc` 文档级权限）/ 对话（`listAllConversations` + ws 过滤）/ Agent 任务（`listTasks(u.id, u.workspaceId)` 正确租户用法）/ 设置项（静态清单：设置区块 `?tab=` 深链 + 页面入口，按角色过滤）。内存 Map O(n) 过滤亚毫秒级，前缀匹配优先 + updatedAt 倒序，每类 limit 5，响应携带 `elapsedMs`。**前端命令面板**：`src/components/app/global-search.tsx`（Radix Dialog 底座，顶部 15% 定位、移动端全宽）——250ms 防抖 + AbortController 取消过期请求、分类 Tab（全部/知识库/文档/对话/Agent/设置）客户端过滤不重复请求、`↑/↓/Enter` 键盘导航（容器级 keydown，焦点在任意元素均生效）、`Esc` 先清空输入再关闭、`HighlightMatch` 高亮（空格分词 + `<mark>`）、最近搜索（localStorage `kai-recent-search`，去重最多 8 条）、空态快捷操作（新建知识库/发起问答/发起调研）。**入口**：AppShell 顶部死搜索框 → 触发按钮（「搜索… ⌘K」）+ 移动端 header 搜索 icon 按钮 + `useGlobalHotkey`（Cmd/Ctrl+K，SSR-safe）。**深链补全**：agent 页新增 `?task=`（pendingTaskRef 模式）、设置页 Tabs 受控 + `?tab=` URL 同步、KB 页 `?new=1` 自动打开新建对话框（NewKbDialog 加受控 open）。**顺带修复 P4-3 缺口**：`/api/agent/tasks` 原未按 workspace 过滤（`listTasks(u.id)` 只按用户）→ 改为 `listTasks(u.id, u.workspaceId)`，跨租户泄漏修复。
+
+> **2026-08-10 验收**：`scripts/smoke/test-global-search.ts` 全部断言通过（27 项）——匿名 401；KB（「产品」→产品文档）/ 文档（「需求」）/ 会话（创建后按标题命中 + kbId 深链字段）/ Agent 任务（POST run 创建后按 topic 命中）逐类命中；设置项命中（owner 见管理后台、viewer 不可见——角色过滤；2FA 关键词 → `/settings?tab=security`）；workspace 隔离（ws-B KB/任务从默认 ws 搜不到、切 ws 后可见；`/api/agent/tasks` 修复验证）；**性能：预热后 `elapsedMs` 与端到端时长中位数均 < 100ms**。`scripts/smoke/test-global-search-ui.mjs`（CDP 无头 Chrome）全部通过（13 项）——Cmd+K 打开面板、输入渲染结果 + `<mark>` 高亮、分类 Tab 过滤、`↓+Enter` 深链跳转 `/knowledge-base/[id]`、`kai-recent-search` 持久化、空态最近搜索 + 快捷操作、375px 移动端 icon 入口 + 全宽面板。
 
 **计划**：
-- [ ] Cmd+K 全局搜索面板（知识库 / 文档 / 对话 / Agent 任务 / 设置）
-- [ ] 搜索结果分类 Tab + 高亮匹配
-- [ ] 最近搜索历史
-- [ ] 搜索快捷操作（直接从搜索创建 KB / 发起问答）
+- [x] Cmd+K 全局搜索面板（知识库 / 文档 / 对话 / Agent 任务 / 设置）✅（`/api/search` 单端点 + Radix Dialog 面板 + 键盘导航）
+- [x] 搜索结果分类 Tab + 高亮匹配 ✅（六分类 Tab 客户端过滤 + `HighlightMatch` `<mark>` 高亮）
+- [x] 最近搜索历史 ✅（localStorage `kai-recent-search`，去重最多 8 条 + 空态展示）
+- [x] 搜索快捷操作（直接从搜索创建 KB / 发起问答）✅（新建知识库 `?new=1` 一键开对话框 / 发起问答 / 发起调研）
 
 **验收标准**：
-- Cmd+K 唤起全局搜索
-- 搜索覆盖所有核心实体
-- 搜索响应 < 100ms
+- ✅ Cmd+K 唤起全局搜索（`useGlobalHotkey` + 桌面按钮/移动 icon 双入口，CDP 实测 13/13）
+- ✅ 搜索覆盖所有核心实体（KB/文档/会话/任务/设置五类，HTTP 27/27 逐类命中）
+- ✅ 搜索响应 < 100ms（内存过滤 + `elapsedMs` 字段 + 预热端到端中位数断言）
 
 ---
 
