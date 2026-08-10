@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SwRegister } from "@/components/pwa/sw-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,31 @@ export const metadata: Metadata = {
     type: "website",
     locale: "zh_CN",
   },
+  // P5-1 PWA: installable manifest + iOS home-screen integration.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "KnowledgeAI",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+// P5-1 PWA: mobile viewport without scaling restrictions + theme color that
+// follows the light/dark preference (matches the kai-theme toggle).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcfcfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+  ],
 };
 
 // Apply theme before hydration to avoid a flash of the wrong theme.
@@ -61,9 +87,13 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* iOS home-screen mode (Next 16 renders mobile-web-app-capable only;
+            Safari still honors the apple-* variant for fullscreen). */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
+        <SwRegister />
       </body>
     </html>
   );

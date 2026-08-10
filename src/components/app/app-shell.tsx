@@ -32,7 +32,9 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { PresenceProvider } from "@/components/app/presence-context";
+import { useEdgeSwipe } from "@/hooks/use-gestures";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/format";
 
@@ -299,6 +301,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const title = titleMap[pathname] ?? "工作台";
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  // P5-1: swipe right from the left screen edge to open the mobile drawer.
+  useEdgeSwipe(() => setMobileOpen(true));
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [userMenu, setUserMenu] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
@@ -362,15 +366,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return true;
   }, []);
 
-  // Fetch current user once on mount
+  // Fetch current user once on mount. Only a 401 (not signed in) redirects
+  // to /login; a network failure (P5-1 offline mode) keeps the shell mounted
+  // so already-loaded pages stay visible with the user as anonymous.
   React.useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.user) setUser(d.user);
-        else router.push("/login");
+      .then((r) => {
+        if (r.status === 401) {
+          router.push("/login");
+          return null;
+        }
+        return r.json();
       })
-      .catch(() => router.push("/login"));
+      .then((d) => {
+        if (d?.user) setUser(d.user);
+      })
+      .catch(() => {
+        /* offline: keep shell, data sections show their empty/error states */
+      });
   }, [router]);
 
   // Route guard: redirect unauthorized users when path or role changes
@@ -413,25 +426,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarContent role={user?.role} plan={user?.plan} />
       </aside>
 
-      {/* mobile drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 h-full w-72 border-r border-border bg-card shadow-xl">
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-              aria-label="关闭"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} role={user?.role} plan={user?.plan} />
-          </aside>
-        </div>
-      )}
+      {/* mobile drawer (P5-1: Sheet with scroll lock / Escape / focus trap /
+          enter-exit animations; edge-swipe opens it on touch devices) */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="p-0">
+          <SheetTitle className="sr-only">导航菜单</SheetTitle>
+          <SheetClose
+            className="absolute right-3 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </SheetClose>
+          <SidebarContent onNavigate={() => setMobileOpen(false)} role={user?.role} plan={user?.plan} />
+        </SheetContent>
+      </Sheet>
 
       {/* main */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -469,7 +477,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
+                <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
                     <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                       <span className="text-sm font-semibold">通知</span>
                       {unread > 0 && (

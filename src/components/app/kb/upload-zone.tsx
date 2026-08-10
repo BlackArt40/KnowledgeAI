@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UploadCloud, Link2, Loader2, X, Plus } from "lucide-react";
+import { UploadCloud, Link2, Loader2, X, Plus, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +23,7 @@ export function UploadZone({
   const [error, setError] = React.useState<string | null>(null);
   const [url, setUrl] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const cameraRef = React.useRef<HTMLInputElement>(null);
   const chunked = useChunkedUpload();
   const [chunkedFile, setChunkedFile] = React.useState<string | null>(null);
 
@@ -170,7 +171,18 @@ export function UploadZone({
             type="file"
             multiple
             className="hidden"
-            accept=".pdf,.doc,.docx,.md,.markdown,.txt,.csv"
+            accept=".pdf,.doc,.docx,.md,.markdown,.txt,.csv,image/*"
+            onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+          />
+          {/* P5-1: camera capture (mobile). The `capture` attribute opens the
+              camera app on phones; desktop browsers ignore it and fall back
+              to a plain file picker. Images go through the OCR pipeline. */}
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
             onChange={(e) => e.target.files && uploadFiles(e.target.files)}
           />
           {uploading ? (
@@ -206,10 +218,20 @@ export function UploadZone({
                 拖拽文件到此处，或<span className="text-primary">点击上传</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                支持 PDF / Word / Markdown / TXT / CSV · 大文件自动分片上传（≤ 500MB）
+                支持 PDF / Word / Markdown / TXT / CSV / 图片（OCR）· 大文件自动分片上传（≤ 500MB）
               </p>
             </>
           )}
+          {/* P5-1: camera upload entry (mobile only; desktop uses the drop
+              zone). `capture` opens the camera app on phones. */}
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => cameraRef.current?.click()}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-60 md:hidden"
+          >
+            <Camera className="h-3.5 w-3.5" /> 拍照上传（OCR 识别文字）
+          </button>
         </div>
       ) : (
         <div className="flex gap-2 rounded-xl border border-border bg-card p-3">
