@@ -120,6 +120,8 @@ All four share password `password123`:
 - `src/lib/external/` - external data sources (web search Tavily/SerpAPI/Brave + ArXiv + GitHub; used by agent research and the chat 联网搜索 toggle)
 - `src/lib/db/{client,hydrate,persist}.ts` - the DB adaptation triad
 - `src/lib/auth/guard.ts` - RBAC role guard for route handlers
+- `src/lib/security/crypto.ts` - AES-256-GCM + HKDF (keyed by `AUTH_SECRET`); `encryptToString`/`decryptFromString`/`isEncrypted`. API key secrets and model keys are stored ENCRYPTED in the DB (P3-4) - never write a plaintext secret to a new persist/hydrate path.
+- `src/lib/security/audit.ts` - global security audit trail (P3-4): `recordAudit` appends a HMAC-SHA256 hash-chained entry (tamper-evident), `listAudit` filters by action/actor/time, `verifyAuditChain` reports chain integrity, `trimAudit` enforces `AUDIT_RETENTION_DAYS`. Sensitive ops (login, deletes, permission changes, exports, config) call `recordAudit` - new sensitive routes should too. Query via `GET /api/admin/audit`.
 - `src/lib/rag/parser.ts` - multi-format document parser (PDF/Word/Excel/PPT/HTML/MD/TXT/CSV + image via OCR)
 - `src/lib/rag/ocr.ts` - OCR pipeline (tesseract.js + pdfjs-dist + @napi-rs/canvas; env: `OCR_ENABLED`/`OCR_LANG`/`OCR_MAX_PAGES`; `.tessdata/` caches language packs, gitignored)
 - `prisma/schema.prisma` + `prisma/migrations/` - DB schema (drift-checked in CI)

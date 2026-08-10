@@ -15,7 +15,7 @@
 | 订阅计费 | 套餐 / 订单 / 账单 / 用量计量 / 收银台 | 状态机 + 支付模拟 |
 | 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner/Admin 后台（RBAC 守卫） |
 | 通知中心 | 4 通道通知 / 偏好持久化 / 铃铛下拉 | 登录/KB/Agent 事件触发 |
-| 安全隐私 | 2FA / 会话管理 / 登录历史 / GDPR 导出 | 合规数据权利 |
+| 安全隐私 | 2FA / 会话管理 / 登录历史 / GDPR 导出 / 加密存储 / 审计链 | 合规数据权利 + AES-256-GCM + 哈希链审计 |
 
 ## 🛠 技术栈
 
@@ -138,6 +138,7 @@ src/
 | 支付 | `STRIPE_SECRET_KEY` | Stripe Checkout | 模拟支付 |
 | 限流 | `RATE_LIMIT_PER_MIN` `RATE_LIMIT_ANON_PER_MIN` `RATE_LIMIT_KEY_PER_MIN` `RATE_LIMIT_KB_PER_MIN` | Redis 滑动窗口（分级：匿名/用户/API Key/KB） | 内存限流 |
 | 外部数据源 | `TAVILY_API_KEY` `SERPAPI_KEY` `BRAVE_SEARCH_KEY` `GITHUB_TOKEN` | Tavily / SerpAPI / Brave / ArXiv / GitHub | 模拟外部结果 |
+| 密钥加密 | `AUTH_SECRET` | AES-256-GCM + HKDF（API Key / 模型 Key 密文落库，密码 PBKDF2） | 固定 dev key |
 
 ```bash
 # 1. 复制环境变量模板
