@@ -6,7 +6,7 @@
 >
 > **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 已实施。
 >
-> **最新更新**：2026-08-10 - P4-1 实时协作完整验收通过（事件总线 + KB 实时变更 SSE + 在线状态 presence + 共享会话实时消息 + OCC 冲突检测 409；`scripts/smoke/test-realtime.ts` 19 项断言全部通过）；此前 P3 安全加固全部验收通过（2FA/限流/加密审计）、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-10 - P4-2 知识库权限精细化完整验收通过（文档级权限继承链 + per-KB 成员角色 + 临时分享链接（过期/密码/次数/撤销）+ 权限审计；`scripts/smoke/test-kb-permissions.ts` 35 项断言全部通过）；此前 P4-1 实时协作验收通过、P3 安全加固全部验收通过、P1/P2 全部验收通过、P0 生产化。
 
 ---
 
@@ -382,19 +382,21 @@
 
 ### P4-2 知识库权限精细化
 
-**现状**：共享 KB 仅有查看 / 编辑两级权限。
+**现状**：✅ 已完成（2026-08-10）。**文档级权限**：`KbDocument.access`（view/edit/private，undefined=继承）——**继承链**：文档级覆盖 → KB 级 `kbAccess` → `DEFAULT_ACCESS_BY_NAME` → "view"；`canViewDoc`/`canEditDoc`（kb/store）接入文档 GET/DELETE/PATCH、KB 列表过滤（private 文档对非 owner 隐藏）、chat 检索过滤（private 文档 chunk 不入 RAG 上下文）。**权限角色扩展**：per-KB 成员角色（`kbMemberRoles`，key=成员 email）——KB Owner 可授予成员 `editor`/`viewer` 覆盖，`canViewKb`/`canEditKb` 内部先查覆盖再回退共享权限（签名不变，13 个调用点零改动）；Commenter 角色未实现（系统无 KB 评论功能，文档注明）。**临时访问链接**：单文档限时分享（`doc-share.ts`：expiresAt 过期 / SHA-256 密码 / maxViews 次数 / 撤销，仿 Agent 分享模式），`GET /api/share/doc/[token]` 公开访问（410/401/403/404 错误码，内容只暴露前 3000 字符预览），`/share-doc/[token]` 公开页（密码门 + 错误态）。**权限审计**：`doc.access_change` / `sharelink.create` / `sharelink.revoke` 入 P3-4 哈希链审计，admin 面板可按 action 检索。
+
+> **2026-08-10 验收**：`scripts/smoke/test-kb-permissions.ts` 全部断言通过（35 项）——文档 private 对成员 403 + KB 列表隐藏、edit 授予成员编辑权、非 owner 设权限 403；per-KB 角色（private KB 上授予 viewer editor 角色 → 可访问可编辑，清除角色 → 恢复 403，非 owner 不可授予）；`doc.access_change` 与 `kb.access_change`（成员角色）审计可查；分享链接匿名访问 200 → 过期 410、密码错误 401/正确 200、次数用尽 403、撤销后 404、`sharelink.create/revoke` 审计、非 owner 建链接 403。
 
 **计划**：
-- [ ] 文档级权限：单个文档可设置独立访问控制
-- [ ] 权限角色扩展：KB Owner / Editor / Commenter / Viewer
-- [ ] 临时访问链接：限时分享单个文档 / 对话
-- [ ] 权限继承与覆盖：KB 级 → 文档级权限继承链
-- [ ] 权限审计：谁在何时授予 / 撤销了什么权限
+- [x] 文档级权限：单个文档可设置独立访问控制（view/edit/private，继承链）✅
+- [x] 权限角色扩展：KB Owner / Editor / Viewer（per-KB 成员角色覆盖；Commenter 未实现——无评论功能，映射为 Viewer 语义）✅
+- [x] 临时访问链接：限时分享单个文档（过期/密码/次数/撤销 + 公开分享页）✅
+- [x] 权限继承与覆盖：KB 级 → 文档级权限继承链 ✅
+- [x] 权限审计：谁在何时授予 / 撤销了什么权限（doc.access_change / sharelink.*）✅
 
 **验收标准**：
-- 支持文档级独立权限
-- 权限变更可追溯
-- 临时链接过期自动失效
+- ✅ 支持文档级独立权限（private 文档隐藏、edit 授予编辑、非 owner 不可设）
+- ✅ 权限变更可追溯（doc.access_change / kb.access_change / sharelink.create / sharelink.revoke 入审计链）
+- ✅ 临时链接过期自动失效（410）+ 密码（401）+ 次数（403）+ 撤销（404）
 
 ---
 
