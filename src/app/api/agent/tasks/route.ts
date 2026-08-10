@@ -4,12 +4,13 @@ import { getRequestUser } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/agent/tasks  (?kbId= optional filter) - current user's tasks only
+// GET /api/agent/tasks  (?kbId= optional filter) - current user's tasks,
+// scoped to the request workspace (P4-3 tenant isolation).
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const kbId = new URL(req.url).searchParams.get("kbId");
-  const tasks = listTasks(u.id)
+  const tasks = listTasks(u.id, u.workspaceId)
     .filter((t) => (kbId ? t.kbId === kbId : true))
     .map((t) => ({
       ...t,

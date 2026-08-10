@@ -34,7 +34,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { PresenceProvider } from "@/components/app/presence-context";
+import { GlobalSearch } from "@/components/app/global-search";
 import { useEdgeSwipe } from "@/hooks/use-gestures";
+import { useGlobalHotkey } from "@/hooks/use-global-hotkey";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/format";
 
@@ -303,6 +305,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   // P5-1: swipe right from the left screen edge to open the mobile drawer.
   useEdgeSwipe(() => setMobileOpen(true));
+  // P5-2: Cmd/Ctrl+K opens the global search panel.
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  useGlobalHotkey("cmd-k", () => setSearchOpen(true));
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [userMenu, setUserMenu] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
@@ -421,6 +426,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PresenceProvider>
     <div className="flex min-h-screen bg-background">
+      {/* P5-2: global search panel (Cmd+K / header trigger) */}
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       {/* desktop sidebar */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-card/50 lg:block">
         <SidebarContent role={user?.role} plan={user?.plan} />
@@ -456,13 +463,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <h1 className="text-base font-semibold sm:text-lg">{title}</h1>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="搜索…"
-                className="h-9 w-44 rounded-lg border border-border bg-card pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-56"
-              />
-            </div>
+            {/* P5-2: global search trigger - desktop button (⌘K badge) */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="hidden h-9 w-44 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex lg:w-56"
+              aria-label="全局搜索"
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1 text-left">搜索…</span>
+              <kbd className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
+            {/* P5-2: mobile search icon (desktop button is sm+ only) */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:hidden"
+              aria-label="全局搜索"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen((v) => !v)}

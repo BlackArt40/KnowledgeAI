@@ -35,6 +35,8 @@ export default function KnowledgeBasePage() {
   const [settingsKb, setSettingsKb] = React.useState<KnowledgeBase | null>(null);
   const [deleteKb, setDeleteKb] = React.useState<KbWithStats | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  // P5-2: ?new=1 opens the create dialog (global search quick action).
+  const [newOpen, setNewOpen] = React.useState(false);
 
   const fetchList = React.useCallback(async () => {
     try {
@@ -53,6 +55,16 @@ export default function KnowledgeBasePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchList();
   }, [fetchList]);
+
+  // P5-2: ?new=1 (global search quick action) opens the create dialog once,
+  // then cleans the URL so a refresh doesn't re-open it.
+  React.useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL-driven open
+      setNewOpen(true);
+      window.history.replaceState(null, "", "/knowledge-base");
+    }
+  }, []);
 
   const hasProcessing = kbs.some((k) => k.stats.processing > 0);
   React.useEffect(() => {
@@ -84,7 +96,7 @@ export default function KnowledgeBasePage() {
             管理你的知识库与文档，共 {kbs.length} 个知识库。
           </p>
         </div>
-        <NewKbDialog />
+        <NewKbDialog open={newOpen} onOpenChange={setNewOpen} />
       </div>
 
       {loading ? (
