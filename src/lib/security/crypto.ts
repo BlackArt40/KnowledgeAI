@@ -65,15 +65,14 @@ export function encryptToString(plaintext: string): string {
   return JSON.stringify(enc);
 }
 
-/** Deserialize and decrypt from a string. */
+/** Deserialize and decrypt from a string. Legacy plaintext values are
+ *  returned as-is (pre-P3-4 rows); encrypted values that fail to decrypt
+ *  (e.g. AUTH_SECRET rotation) THROW so callers can treat them as invalid
+ *  instead of silently matching plaintext. */
 export function decryptFromString(serialized: string): string {
-  try {
-    const enc = JSON.parse(serialized) as EncryptedData;
-    return decrypt(enc);
-  } catch {
-    // If it's not encrypted (plaintext fallback), return as-is
-    return serialized;
-  }
+  if (!isEncrypted(serialized)) return serialized; // legacy plaintext
+  const enc = JSON.parse(serialized) as EncryptedData;
+  return decrypt(enc); // GCM auth-tag mismatch throws here
 }
 
 /** Check if a string looks like encrypted data (JSON with iv/data/tag). */

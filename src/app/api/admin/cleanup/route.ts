@@ -3,11 +3,13 @@ import { requireRole } from "@/lib/auth/guard";
 import { listAllKbs } from "@/lib/kb/store";
 import { getActiveUploadIds } from "@/lib/upload/store";
 import { runCleanup } from "@/lib/storage/cleanup";
+import { trimAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/cleanup
 // Triggers a manual cleanup of orphaned temp files. Admin/Owner only.
+// P3-4: also enforces the audit-log retention policy (AUDIT_RETENTION_DAYS).
 export async function POST(req: Request) {
   const guard = await requireRole(req, ["owner", "admin"]);
   if (guard.error) return guard.error;
@@ -16,9 +18,11 @@ export async function POST(req: Request) {
   const activeUploadIds = getActiveUploadIds();
 
   const stats = await runCleanup(activeKbIds, activeUploadIds);
+  const trimmedAudit = trimAudit();
 
   return NextResponse.json({
     ...stats,
     freedMB: +(stats.freedBytes / 1024 / 1024).toFixed(2),
+    trimmedAudit,
   });
 }

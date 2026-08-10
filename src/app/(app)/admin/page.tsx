@@ -3,6 +3,7 @@ import * as React from "react";
 import {
   Users, Activity, DollarSign, Database, HardDrive, Bot, MessagesSquare,
   ShieldBan, ShieldCheck, Search, Server, Cog, Loader2, Gauge, ShieldAlert,
+  ScrollText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { formatRelative } from "@/lib/format";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/lib/admin/types";
 import type { RateLimitStat } from "@/lib/security/rate-limit";
 import type { ProviderStatus } from "@/lib/config";
+import type { AuditEvent } from "@/lib/security/audit";
 
 import { cn } from "@/lib/utils";
 
@@ -54,20 +56,24 @@ export default function AdminPage() {
   const [config, setConfig] = React.useState<SystemConfig | null>(null);
   const [providers, setProviders] = React.useState<ProviderStatus[]>([]);
   const [ratelimit, setRatelimit] = React.useState<RateLimitDashboard | null>(null);
+  const [audit, setAudit] = React.useState<{ audit: AuditEvent[]; total: number; chainValid: boolean } | null>(null);
+  const [auditAction, setAuditAction] = React.useState("");
+  const [auditActor, setAuditActor] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [savingCfg, setSavingCfg] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
-    const [o, u, k, c, rl] = await Promise.all([
+    const [o, u, k, c, rl, au] = await Promise.all([
       fetch("/api/admin", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/users", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/kbs", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/config", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/admin/ratelimit", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/admin/audit", { cache: "no-store" }).then((r) => r.json()),
     ]);
     setOverview(o); setUsers(u.users ?? []); setKbs(k.kbs ?? []); setConfig(c);
-    setProviders(c.providers ?? []); setRatelimit(rl);
+    setProviders(c.providers ?? []); setRatelimit(rl); setAudit(au);
     setLoading(false);
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -110,6 +116,16 @@ export default function AdminPage() {
     const next = ROLE_OPTIONS.map((r) => r.role).filter((r) => current.has(r));
     setConfig({ ...config, required2FARoles: next });
     void patchConfig({ required2FARoles: next });
+  }
+
+  // P3-4: filtered audit query (action / actor substrings) - the tamper-evident
+  // hash chain status is reported by the API alongside the entries.
+  async function searchAudit() {
+    const qs = new URLSearchParams();
+    if (auditAction) qs.set("action", auditAction);
+    if (auditActor) qs.set("actor", auditActor);
+    const r = await fetch(`/api/admin/audit?${qs.toString()}`, { cache: "no-store" });
+    setAudit(await r.json());
   }
 
   if (loading || !overview || !config) {
@@ -431,6 +447,70 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2"><ScrollText className="h-4 w-4" /> 审计日志</span>
+            <div className="flex items-center gap-2">
+              <Badge variant={audit?.chainValid ? "success" : "destructive"}>
+                {audit?.chainValid ? "哈希链完整" : "链校验失败"}
+              </Badge>
+              <Badge variant="secondary">共 {audit?.total ?? 0} 条</Badge>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={auditAction}
+              onChange={(e) => setAuditAction(e.target.value)}
+              placeholder="操作类型过滤（如 kb.delete）"
+              className="h-8 w-56 text-xs"
+            />
+            <Input
+              value={auditActor}
+              onChange={(e) => setAuditActor(e.target.value)}
+              placeholder="操作者过滤"
+              className="h-8 w-44 text-xs"
+            />
+            <Button size="sm" variant="outline" onClick={searchAudit}>搜索</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAuditAction(""); setAuditActor(""); refresh(); }}>重置</Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>时间</TableHead>
+                <TableHead>操作者</TableHead>
+                <TableHead>操作类型</TableHead>
+                <TableHead>对象</TableHead>
+                <TableHead>详情</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(audit?.audit ?? []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground">
+                    暂无审计记录
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (audit?.audit ?? []).slice(0, 30).map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatRelative(e.createdAt)}</TableCell>
+                    <TableCell className="text-xs">{e.actor}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-mono text-[10px]">{e.action}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{e.target}</TableCell>
+                    <TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={e.detail}>{e.detail}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

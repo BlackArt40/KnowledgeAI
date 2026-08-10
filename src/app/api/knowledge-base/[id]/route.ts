@@ -3,6 +3,7 @@ import { getKb, listDocuments, updateKbSettings, deleteKb } from "@/lib/kb/store
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+import { recordAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -67,5 +68,12 @@ export async function DELETE(req: Request, { params }: Params) {
     return NextResponse.json({ error: "仅拥有者可删除" }, { status: 403 });
   const ok = await deleteKb(id);
   if (!ok) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
+  recordAudit({
+    actorId: r.u.id,
+    actor: r.u.name,
+    action: "kb.delete",
+    target: r.kb.name,
+    detail: `删除知识库（含全部文档）`,
+  });
   return NextResponse.json({ ok: true });
 }

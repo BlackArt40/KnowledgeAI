@@ -7,6 +7,7 @@
 import crypto from "crypto";
 import type { Role } from "@/lib/team/types";
 import { persistUser } from "@/lib/db/persist";
+import { hashPassword, verifyPassword } from "@/lib/auth/session";
 import { ROLE_LABEL, ROLE_DESC } from "@/lib/team/types";
 
 export interface User {
@@ -24,8 +25,18 @@ export interface User {
 // Demo password for all seed accounts
 export const DEMO_PASSWORD = "password123";
 
-function hashPwd(password: string): string {
+// Legacy password hash (pre-P3-4): unsalted SHA-256, kept ONLY for seed
+// accounts and compatibility verification. New hashes use PBKDF2-100k via
+// auth/session.ts (hashPassword / verifyPassword).
+function legacyHash(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+/** Check a password against a stored hash. Supports PBKDF2 (`pbkdf2$...`)
+ *  and legacy SHA-256 hex hashes (seed accounts / pre-P3-4 rows). */
+async function passwordMatches(password: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("pbkdf2$")) return verifyPassword(password, stored);
+  return stored === legacyHash(password);
 }
 
 function uid(p: string) {
@@ -54,7 +65,7 @@ export function seed() {
   if (s.seeded) return;
   s.seeded = true;
   const now = Date.now();
-  const pwdHash = hashPwd(DEMO_PASSWORD);
+  const pwdHash = legacyHash(DEMO_PASSWORD);
   for (const u of SEED_USERS) {
     const user: User = {
       ...u,
@@ -80,16 +91,21 @@ export function getUserById(id: string): User | null {
   return store().users.get(id) ?? null;
 }
 
-export function verifyCredentials(email: string, password: string): User | null {
+export async function verifyCredentials(email: string, password: string): Promise<User | null> {
   const user = findUserByEmail(email);
   if (!user) return null;
-  if (user.passwordHash !== hashPwd(password)) return null;
+  if (!(await passwordMatches(password, user.passwordHash))) return null;
+  // P3-4: migrate legacy SHA-256 hashes to PBKDF2 on successful login.
+  if (!user.passwordHash.startsWith("pbkdf2$")) {
+    user.passwordHash = await hashPassword(password);
+    void persistUser(user);
+  }
   // update last login
   user.lastLoginAt = Date.now();
   return user;
 }
 
-export function createUser(name: string, email: string, password: string, role: Role = "editor"): User | { error: string } {
+export async function createUser(name: string, email: string, password: string, role: Role = "editor"): Promise<User | { error: string }> {
   seed();
   const s = store();
   if (s.emailIndex.has(email.toLowerCase())) {
@@ -99,7 +115,7 @@ export function createUser(name: string, email: string, password: string, role: 
     id: uid("usr"),
     name,
     email,
-    passwordHash: hashPwd(password),
+    passwordHash: await hashPassword(password),
     role,
     plan: "free",
     status: "active",
@@ -126,10 +142,10 @@ export interface UpdateUserInput {
 
 /** Update a user's profile (name) and/or password.
  *  Password change requires verifying the current password. */
-export function updateUser(
+export async function updateUser(
   userId: string,
   input: UpdateUserInput
-): User | { error: string } {
+): Promise<User | { error: string }> {
   seed();
   const s = store();
   const user = s.users.get(userId);
@@ -143,11 +159,11 @@ export function updateUser(
 
   if (input.newPassword) {
     if (!input.currentPassword) return { error: "修改密码需提供当前密码" };
-    if (user.passwordHash !== hashPwd(input.currentPassword)) {
+    if (!(await passwordMatches(input.currentPassword, user.passwordHash))) {
       return { error: "当前密码不正确" };
     }
     if (input.newPassword.length < 8) return { error: "新密码至少 8 位" };
-    user.passwordHash = hashPwd(input.newPassword);
+    user.passwordHash = await hashPassword(input.newPassword);
   }
 
   s.users.set(user.id, user);

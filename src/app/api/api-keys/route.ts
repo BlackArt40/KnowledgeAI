@@ -3,11 +3,19 @@ import { listKeys, createKey } from "@/lib/apikeys/store";
 import { getRequestUser } from "@/lib/auth/guard";
 export const dynamic = "force-dynamic";
 
-// GET /api/api-keys - list the CURRENT user's keys only
+// GET /api/api-keys - list the CURRENT user's keys only.
+// P3-4: secrets are stored encrypted and must never leave the server again -
+// list responses return sanitized keys (prefix + mask), the full secret is
+// only visible once in the POST /api/api-keys creation response.
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  return NextResponse.json({ keys: listKeys(u.id) });
+  const keys = listKeys(u.id).map((k) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { secret, ...rest } = k;
+    return rest;
+  });
+  return NextResponse.json({ keys });
 }
 
 // POST /api/api-keys - create a new key for the current user

@@ -205,6 +205,8 @@ model ApiKey {
   id        String    @id @default(cuid())
   userId    String
   name      String
+  // P3-4: holds the AES-256-GCM ciphertext (encryptToString) of the secret -
+  // never the plaintext. Legacy plaintext rows pass through on validation.
   keyHash   String    @unique
   prefix    String
   scopes    String[]
@@ -216,6 +218,24 @@ model ApiKey {
 }
 
 // ── Security ──────────────────────────────────────────────
+// P3-4: append-only audit trail. Each row links to the previous one via
+// prevHash; hash = HMAC-SHA256(prevHash|fields|createdAt, AUTH_SECRET) so any
+// tampering breaks verifyAuditChain(). Rows are trimmed by AUDIT_RETENTION_DAYS.
+model SecurityAudit {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     String   @default("")
+  action    String
+  target    String   @default("")
+  detail    String
+  ip        String?
+  prevHash  String
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
 model Session {
   id         String   @id @default(cuid())
   userId     String

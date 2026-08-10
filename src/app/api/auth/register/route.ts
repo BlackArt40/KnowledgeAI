@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "邮箱格式不正确" }, { status: 400 });
   }
 
-  const result = createUser(name, email, password, "editor");
+  const result = await createUser(name, email, password, "editor");
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }

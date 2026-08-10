@@ -7,6 +7,7 @@ import {
 } from "@/lib/security/store";
 import { renderOtpAuthQR } from "@/lib/security/qr";
 import { getRequestUser } from "@/lib/auth/guard";
+import { recordAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,13 @@ export async function POST(req: Request) {
       if (!ok) {
         return NextResponse.json({ error: "验证码不正确，请重试" }, { status: 400 });
       }
+      recordAudit({
+        actorId: u.id,
+        actor: u.name,
+        action: "security.2fa_enable",
+        target: "两步验证",
+        detail: "启用 TOTP 两步验证",
+      });
       return NextResponse.json({
         action: "verify",
         enabled: true,
@@ -75,6 +83,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "验证码不正确" }, { status: 400 });
       }
       const tf = disable2FA(u.id);
+      recordAudit({
+        actorId: u.id,
+        actor: u.name,
+        action: "security.2fa_disable",
+        target: "两步验证",
+        detail: "关闭 TOTP 两步验证",
+      });
       return NextResponse.json({
         action: "disable",
         twoFactor: tf,

@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
+import { encryptToString } from "@/lib/security/crypto";
 
 /** Persist a user create/update to DB. */
 export async function persistUser(user: {
@@ -472,7 +473,10 @@ export async function persistModelConfig(config: {
       name: config.name,
       provider: config.provider,
       providerName: config.providerName,
-      apiKey: config.apiKey,
+      // P3-4: never store provider API keys in plaintext - encrypt at rest.
+      // hydrateModelConfigs() decrypts on load (legacy plaintext rows pass
+      // through decryptFromString's plaintext fallback).
+      apiKey: encryptToString(config.apiKey),
       baseUrl: config.baseUrl,
       chatModel: config.chatModel,
       embeddingModel: config.embeddingModel,
@@ -576,6 +580,43 @@ export async function persistAuditEntry(
       .catch(() => {});
   } catch (err) {
     console.error("[db] persistAuditEntry error:", err);
+  }
+}
+
+/** Append a SecurityAudit event (P3-4 global audit trail, hash-chained). */
+export async function persistAuditEvent(ev: {
+  id: string;
+  actorId: string | null;
+  actor: string;
+  action: string;
+  target: string;
+  detail: string;
+  ip: string | null;
+  prevHash: string;
+  hash: string;
+  createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const a = db as unknown as { securityAudit: { create: (o: unknown) => Promise<unknown> } };
+    await a.securityAudit.create({
+      data: {
+        id: ev.id,
+        actorId: ev.actorId,
+        actor: ev.actor,
+        action: ev.action,
+        target: ev.target,
+        detail: ev.detail,
+        ip: ev.ip,
+        prevHash: ev.prevHash,
+        hash: ev.hash,
+        createdAt: new Date(ev.createdAt),
+      },
+    });
+  } catch (err) {
+    console.error("[db] persistAuditEvent error:", err);
   }
 }
 
