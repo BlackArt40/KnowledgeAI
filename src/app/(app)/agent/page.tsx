@@ -85,9 +85,13 @@ const EXPORT_ITEMS: { value: ExportFormat; label: string; icon: typeof FileText 
 
 interface KbLite { id: string; name: string }
 
+// 公开检索的哨兵值。Radix Select 把 SelectItem 的 value="" 当作"未选中"而显示 placeholder，
+// 故用非空哨兵代表公开检索，提交 API 时再转回 undefined（后端据此走公开检索链路）。
+const PUBLIC_SEARCH = "public";
+
 export default function AgentPage() {
   const [kbs, setKbs] = React.useState<KbLite[]>([]);
-  const [kbId, setKbId] = React.useState<string>(""); // "" = 公开检索
+  const [kbId, setKbId] = React.useState<string>(PUBLIC_SEARCH); // PUBLIC_SEARCH = 公开检索
   const [topic, setTopic] = React.useState("2026 年 AI 工程师就业市场");
   const [format, setFormat] = React.useState<OutputFormat>("report");
   const [depth, setDepth] = React.useState(5);
@@ -146,7 +150,7 @@ export default function AgentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: topic.trim(),
-          kbId: kbId || undefined,
+          kbId: kbId === PUBLIC_SEARCH ? undefined : kbId,
           outputFormat: format,
           maxSteps: depth,
           template,
@@ -275,7 +279,7 @@ export default function AgentPage() {
                 <SelectValue placeholder="选择知识库" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">公开检索（模拟）</SelectItem>
+                <SelectItem value={PUBLIC_SEARCH}>公开检索（模拟）</SelectItem>
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>{kb.name}</SelectItem>
                 ))}

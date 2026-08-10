@@ -1,9 +1,15 @@
+import type { SourceType } from "@/lib/external/types";
+
 export interface RetrievedChunk {
   docId: string;
   docName: string;
   chunkIndex: number;
   text: string;
   score: number;
+  /** External/web source URL. Present when this chunk is from web search. */
+  url?: string;
+  /** External source type. Present when this chunk is from web search. */
+  sourceType?: SourceType;
 }
 
 export interface Citation {
@@ -13,6 +19,10 @@ export interface Citation {
   chunkIndex: number;
   snippet: string;
   score: number;
+  /** External/web source URL. Present when this citation is from web search. */
+  url?: string;
+  /** External source type. Present when this citation is from web search. */
+  sourceType?: SourceType;
 }
 
 export interface GenerationResult {
