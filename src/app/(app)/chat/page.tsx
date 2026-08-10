@@ -19,6 +19,7 @@ import {
   Trash2,
   Square,
   Download,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,12 @@ function brandFromHost(host: string): string {
   // Prefer a non-generic segment; fall back to the second-level domain.
   const brand = parts.find((p) => p.length > 2 && !STOPWORDS.has(p.toLowerCase()));
   return brand || (parts.length >= 2 ? parts[parts.length - 2] : parts[0]);
+}
+
+// Extract the hostname (minus www.) from a URL for citation source labels.
+function hostOf(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return url; }
 }
 
 // Words indicating a page failed to load (error / redirect / paywall).
@@ -153,6 +160,7 @@ export default function ChatPage() {
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
+  const [webSearch, setWebSearch] = React.useState(false); // 联网搜索开关：开启后每次提问同时检索 web
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
@@ -291,12 +299,12 @@ export default function ChatPage() {
     let acc = "";
     // Chunk metadata from the `sources` event; used to build real-time
     // citations as [n] markers appear in the token stream.
-    let sourceChunks: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[] = [];
+    let sourceChunks: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number; url?: string; sourceType?: string }[] = [];
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kbId: selectedKb, query: content, conversationId: activeConv ?? undefined }),
+        body: JSON.stringify({ kbId: selectedKb, query: content, conversationId: activeConv ?? undefined, webSearch }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error("请求失败");
@@ -374,7 +382,7 @@ export default function ChatPage() {
   /** Parse [n] markers from accumulated text and map to sourceChunks for
    *  real-time citation rendering during streaming. The `n` in [n] is 1-based
    *  and maps to the retrieval order (sourceChunks[n-1]). */
-  function extractLiveCitations(text: string, sources: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[]): Citation[] {
+  function extractLiveCitations(text: string, sources: { docId: string; docName: string; chunkIndex: number; snippet: string; score: number; url?: string; sourceType?: string }[]): Citation[] {
     if (sources.length === 0) return [];
     const seen = new Set<number>();
     const citations: Citation[] = [];
@@ -385,7 +393,7 @@ export default function ChatPage() {
       if (n < 1 || n > sources.length || seen.has(n)) continue;
       seen.add(n);
       const s = sources[n - 1];
-      citations.push({ n, docId: s.docId, docName: s.docName, chunkIndex: s.chunkIndex, snippet: s.snippet, score: s.score });
+      citations.push({ n, docId: s.docId, docName: s.docName, chunkIndex: s.chunkIndex, snippet: s.snippet, score: s.score, ...(s.url ? { url: s.url } : {}), ...(s.sourceType ? { sourceType: s.sourceType as Citation["sourceType"] } : {}) });
     }
     return citations;
   }
@@ -632,6 +640,26 @@ export default function ChatPage() {
 
         {/* input */}
         <div className="border-t border-border p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <button
+              type="button"
+              onClick={() => setWebSearch((v) => !v)}
+              aria-pressed={webSearch}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                webSearch
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+              title={webSearch ? "联网搜索已开启（点击关闭）" : "开启联网搜索"}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              联网搜索
+            </button>
+            {webSearch && (
+              <span className="text-[11px] text-muted-foreground">每次提问将同时检索互联网</span>
+            )}
+          </div>
           <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">
             <textarea
               ref={inputRef}
@@ -649,7 +677,7 @@ export default function ChatPage() {
                 }
               }}
               rows={1}
-              placeholder={selectedKbObj ? "基于知识库提问…  (Enter 发送)" : "请先选择知识库"}
+              placeholder={selectedKbObj ? `基于知识库${webSearch ? "+联网" : ""}提问…  (Enter 发送)` : "请先选择知识库"}
               className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none"
             />
             {sending ? (
@@ -693,7 +721,10 @@ export default function ChatPage() {
               AI 回答的引用来源将显示在此处
             </p>
           ) : (
-            activeCitations.map((c) => (
+            activeCitations.map((c) => {
+              const isWeb = !!c.url;
+              const host = isWeb ? hostOf(c.url!) : "";
+              return (
               <div
                 key={c.n}
                 className={cn(
@@ -705,20 +736,39 @@ export default function ChatPage() {
                   <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/15 text-[11px] font-semibold text-primary">
                     {c.n}
                   </span>
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="line-clamp-1 text-xs font-medium">{c.docName}</span>
+                  {isWeb ? (
+                    <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  {isWeb ? (
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="line-clamp-1 text-xs font-medium text-primary hover:underline"
+                      title={c.url}
+                    >
+                      {c.docName}
+                    </a>
+                  ) : (
+                    <span className="line-clamp-1 text-xs font-medium">{c.docName}</span>
+                  )}
                 </div>
                 <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
                   {c.snippet}
                 </p>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">片段 #{c.chunkIndex + 1}</span>
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                    {isWeb ? `🌐 ${host}` : `片段 #${c.chunkIndex + 1}`}
+                  </span>
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                     相似度 {(c.score * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </aside>

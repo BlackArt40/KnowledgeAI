@@ -1,6 +1,8 @@
 import { getKb } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
 import { generateStream } from "@/lib/rag/generator";
+import { searchExternal } from "@/lib/external/provider";
+import type { RetrievedChunk, Citation } from "@/lib/rag/types";
 import { suggestFollowUps } from "@/lib/rag/conversation-context";
 import type { ChatMessage } from "@/lib/rag/conversation-context";
 import {
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
   const authUser = await getRequestUser(req);
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
 
-  let body: { kbId?: string; query?: string; conversationId?: string };
+  let body: { kbId?: string; query?: string; conversationId?: string; webSearch?: boolean };
   try { body = await req.json(); } catch {
     return Response.json({ error: "无效的请求体" }, { status: 400 });
   }
@@ -55,7 +57,25 @@ export async function POST(req: Request) {
   // The entire RAG flow runs inside the user's model context so the LLM
   // provider resolves THIS user's configured model.
   const doRag = async () => {
-    const chunks = await retrieve(kbId, query, kb.settings.topK);
+    let chunks: RetrievedChunk[] = await retrieve(kbId, query, kb.settings.topK);
+    // 联网搜索：开启时同时检索外部 web 结果，合并进上下文，使回答可引用网络来源。
+    if (body.webSearch) {
+      const ext = await searchExternal(query, {
+        config: { web: true, arxiv: false, github: false },
+        maxPerSource: 5,
+        deepCrawlTopN: 0,
+      });
+      const webChunks: RetrievedChunk[] = ext.map((r) => ({
+        docId: r.id,
+        docName: r.title,
+        chunkIndex: 0,
+        text: r.fullText || r.snippet,
+        score: r.score,
+        url: r.url,
+        sourceType: r.sourceType,
+      }));
+      chunks = [...chunks, ...webChunks];
+    }
     const enc = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -79,10 +99,12 @@ export async function POST(req: Request) {
               chunkIndex: c.chunkIndex,
               snippet: c.text.slice(0, 180),
               score: c.score,
+              ...(c.url ? { url: c.url } : {}),
+              ...(c.sourceType ? { sourceType: c.sourceType } : {}),
             })),
           });
           let fullText = "";
-          let citations: { n: number; docId: string; docName: string; chunkIndex: number; snippet: string; score: number }[] = [];
+          let citations: Citation[] = [];
 
           const gen = generateStream(query, chunks, history);
           let result;

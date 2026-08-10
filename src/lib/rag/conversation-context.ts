@@ -74,7 +74,8 @@ export function buildContextualSystemPrompt(
 ): { role: "system" | "user" | "assistant"; content: string }[] {
   const intent = classifyIntent(query);
 
-  const basePrompt = `你是 KnowledgeAI 知识助手。请根据以下检索到的知识库内容回答用户问题。
+  // 与 generator.ts 的 buildRagPrompt 保持一致：来源可能来自知识库或外部 Web（联网搜索）。
+  const basePrompt = `你是 KnowledgeAI 知识助手。请根据以下检索到的来源内容回答用户问题。
 要求：
 1. 仅基于提供的来源内容回答，不要编造信息
 2. 在引用来源处标注 [n]，n 对应来源编号
