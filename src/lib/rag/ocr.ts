@@ -12,6 +12,8 @@
 //   OCR_MAX_PAGES (default 20)    - cap pages OCR'd per scanned PDF
 // ---------------------------------------------------------------------------
 
+import { log } from "@/lib/obs/log";
+
 const MIN_CHARS_PER_PAGE = 20;
 const MIN_CHARS_NO_PAGE_INFO = 50;
 
@@ -79,7 +81,7 @@ export async function ocrImage(buf: Buffer, lang?: string): Promise<string | nul
       await worker.terminate().catch(() => {});
     }
   } catch (err) {
-    console.warn("[ocr] tesseract.js unavailable or recognition failed:", err instanceof Error ? err.message : err);
+    log.warn({ err: err instanceof Error ? err.message : err }, "[ocr] tesseract.js unavailable or recognition failed");
     return null;
   }
 }
@@ -124,17 +126,17 @@ export async function ocrScannedPdf(
         if (pageText) parts.push(pageText);
         page.cleanup();
       } catch (err) {
-        console.warn(`[ocr] page ${i} extraction failed, skipping:`, err instanceof Error ? err.message : err);
+        log.warn({ err: err instanceof Error ? err.message : err }, `[ocr] page ${i} extraction failed, skipping`);
       }
     }
     if (total > limit) {
-      console.warn(`[ocr] PDF has ${total} pages, OCR'd first ${limit} (OCR_MAX_PAGES)`);
+      log.warn(`[ocr] PDF has ${total} pages, OCR'd first ${limit} (OCR_MAX_PAGES)`);
     }
     await pdf.destroy();
     const result = parts.join("\n\n").trim();
     return result.length > 0 ? result : null;
   } catch (err) {
-    console.warn("[ocr] scanned PDF OCR pipeline failed:", err instanceof Error ? err.message : err);
+    log.warn({ err: err instanceof Error ? err.message : err }, "[ocr] scanned PDF OCR pipeline failed");
     return null;
   }
 }

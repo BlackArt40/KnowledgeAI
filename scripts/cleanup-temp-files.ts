@@ -8,13 +8,14 @@
 
 import { promises as fs } from "fs";
 import path from "path";
+import { log } from "../src/lib/obs/log";
 
 async function main() {
-  console.log("[cleanup] Starting temp file cleanup...");
+  log.info("[cleanup] Starting temp file cleanup...");
 
   // Hydrate from DB if available (to know which KBs exist)
   if (process.env.DATABASE_URL) {
-    console.log("[cleanup] Hydrating from database...");
+    log.info("[cleanup] Hydrating from database...");
     const { ensureHydrated } = await import("../src/lib/db/hydrate");
     await ensureHydrated();
     await new Promise((r) => setTimeout(r, 500));
@@ -27,19 +28,19 @@ async function main() {
   const activeKbIds = new Set(listAllKbs().map((kb: any) => kb.id));
   const activeUploadIds = getActiveUploadIds();
 
-  console.log(`[cleanup] Active KBs: ${activeKbIds.size}, Active uploads: ${activeUploadIds.size}`);
+  log.info(`[cleanup] Active KBs: ${activeKbIds.size}, Active uploads: ${activeUploadIds.size}`);
 
   const stats = await runCleanup(activeKbIds, activeUploadIds);
 
-  console.log(`[cleanup] ✅ Done:`);
-  console.log(`  Orphaned chunk dirs: ${stats.orphanedChunkDirs}`);
-  console.log(`  Orphaned KB dirs:    ${stats.orphanedKbDirs}`);
-  console.log(`  Old files:           ${stats.oldFiles}`);
-  console.log(`  Freed:               ${(stats.freedBytes / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`  Errors:              ${stats.errors}`);
+  log.info(`[cleanup] ✅ Done:`);
+  log.info(`  Orphaned chunk dirs: ${stats.orphanedChunkDirs}`);
+  log.info(`  Orphaned KB dirs:    ${stats.orphanedKbDirs}`);
+  log.info(`  Old files:           ${stats.oldFiles}`);
+  log.info(`  Freed:               ${(stats.freedBytes / 1024 / 1024).toFixed(2)} MB`);
+  log.info(`  Errors:              ${stats.errors}`);
 }
 
 main().catch((err) => {
-  console.error("[cleanup] ❌ Error:", err);
+  log.error({ err }, "[cleanup] ❌ Error");
   process.exit(1);
 });

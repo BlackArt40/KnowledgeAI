@@ -18,6 +18,7 @@
 
 import crypto from "crypto";
 import { persistAuditEvent } from "@/lib/db/persist";
+import { log } from "@/lib/obs/log";
 
 const GENESIS_HASH = "genesis";
 const AUDIT_MAX_ENTRIES = parseInt(process.env.AUDIT_MAX_ENTRIES || "2000", 10);
@@ -148,5 +149,5 @@ export function trimAudit(): number {
 export function loadAuditEvents(events: AuditEvent[]): void {
   g.__KAI_AUDIT_STORE__ = events;
   const { valid } = verifyAuditChain();
-  if (!valid) console.warn("[audit] chain verification FAILED after hydration - entries may have been tampered with");
+  if (!valid) log.warn("[audit] chain verification FAILED after hydration - entries may have been tampered with");
 }

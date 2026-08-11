@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import type { AgentEvent } from "@/lib/agent/orchestrator";
+import { log } from "@/lib/obs/log";
 
 // Minimal ioredis surface we depend on (avoids importing types that may not
 // exist when ioredis isn't installed).
@@ -40,7 +41,7 @@ async function loadIORedis(): Promise<IORedisCtor | null> {
     const mod = await import("ioredis");
     return (mod.default ?? mod) as unknown as IORedisCtor;
   } catch {
-    console.warn("[agent-bus] ioredis not installed - agent pub/sub disabled");
+    log.warn("[agent-bus] ioredis not installed - agent pub/sub disabled");
     return null;
   }
 }
@@ -74,7 +75,7 @@ async function getSubscriber(): Promise<RedisLike | null> {
       try {
         cb(parsed.event);
       } catch (e) {
-        console.error("[agent-bus] subscriber callback error:", e);
+        log.error({ err: e }, "[agent-bus] subscriber callback error");
       }
     }
   });

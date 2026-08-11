@@ -15,6 +15,7 @@ import { ChromaVectorStore } from "./vector-store-chromadb";
 import { PineconeVectorStore } from "./vector-store-pinecone";
 import { clearBM25Doc, clearBM25Kb } from "./bm25";
 import type { VectorStore } from "./vector-store-interface";
+import { log } from "@/lib/obs/log";
 
 let _instance: VectorStore | null = null;
 
@@ -37,7 +38,7 @@ function getStore(): VectorStore {
       break;
   }
   if (backend !== "memory") {
-    console.log(`[rag] Vector store: ${backend}`);
+    log.info(`[rag] Vector store: ${backend}`);
   }
   return _instance;
 }

@@ -9,6 +9,7 @@ import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
 import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/security/rate-limit";
+import { getLogLevel, isLokiEnabled, lokiUrl } from "@/lib/obs/log";
 
 export interface ProviderStatus {
   id: string;
@@ -67,6 +68,15 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
         return `分级 ${l.base}/${l.anon}/${l.key}/${l.kb} 次/分（用户/匿名/API Key/KB）· ${isDistributedRateLimit() ? "Redis 分布式" : "内存单实例"}`;
       })(),
       envVars: ["RATE_LIMIT_PER_MIN", "RATE_LIMIT_ANON_PER_MIN", "RATE_LIMIT_KEY_PER_MIN", "RATE_LIMIT_KB_PER_MIN"],
+    },
+    {
+      id: "logging",
+      label: "结构化日志",
+      enabled: true,
+      detail: isLokiEnabled()
+        ? `pino ${getLogLevel()} · Loki ${lokiUrl()}`
+        : `pino ${getLogLevel()} · stdout（演示模式）`,
+      envVars: ["LOG_LEVEL", "LOG_LOKI_URL", "LOG_REDACT_KEYS"],
     },
     {
       id: "external",

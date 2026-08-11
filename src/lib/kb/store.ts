@@ -14,6 +14,7 @@ import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/store";
 import type { DocAccess } from "@/lib/team/types";
 import { promises as fs } from "fs";
 import path from "path";
+import { log } from "@/lib/obs/log";
 
 // ---------------------------------------------------------------------------
 // In-memory store (demo). Structured to be swapped for PostgreSQL/Prisma +
@@ -91,9 +92,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ---------------------------------------------------------------------------
 function startProcessing(docId: string) {
   void import("@/lib/queue")
-    .then(({ enqueue }) => enqueue("doc-process", { docId }))
+    // P6-1: forward the request's trace id (when the upload ran under a
+    // traced route) so the background doc-process stage continues the trace.
+    .then(async ({ enqueue }) => {
+      const { currentTraceCtx } = await import("@/lib/obs/context");
+      const traceId = currentTraceCtx()?.traceId;
+      await enqueue("doc-process", traceId ? { docId, traceId } : { docId });
+    })
     .catch((e) => {
-      console.error("[kb] failed to enqueue doc-process:", e);
+      log.error({ err: e }, "[kb] failed to enqueue doc-process");
       const doc = getStore().docs.get(docId);
       if (doc) {
         doc.status = "failed";
@@ -163,7 +170,7 @@ export async function processDocInQueue(docId: string): Promise<void> {
 
     if (kb) {
       await indexDocument(d, kb.settings).catch((e) =>
-        console.error("[kb] index error:", e)
+        log.error({ err: e }, "[kb] index error")
       );
     }
   } catch (err) {
@@ -268,7 +275,7 @@ function seed() {
       uploadedAt: now - 1000 * 60 * d.ageMin,
     };
     store.docs.set(doc.id, doc);
-    if (d.status === "ready") indexDocument(doc, kb.settings).catch((e) => console.error("[kb] seed index error:", e));
+    if (d.status === "ready") indexDocument(doc, kb.settings).catch((e) => log.error({ err: e }, "[kb] seed index error"));
     if (d.status === "vectorizing" || d.status === "parsing") startProcessing(doc.id);
   }
 }

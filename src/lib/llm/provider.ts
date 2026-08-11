@@ -10,6 +10,9 @@
 
 import { embed as localEmbed, cosine } from "@/lib/rag/embeddings";
 import { getCurrentUserId } from "@/lib/models/context";
+import { recordLlm } from "@/lib/obs/metrics";
+import { traceBegin, traceEnd } from "@/lib/obs/trace";
+import { log, redactText } from "@/lib/obs/log";
 import type { ChatMessage, ChatOptions } from "./types";
 
 interface ResolvedConfig {
@@ -97,71 +100,117 @@ export async function embedText(text: string): Promise<Float32Array> {
   const cfg = await resolveEmbeddingConfig();
   if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return localEmbed(text);
 
-  const res = await fetch(`${cfg.baseUrl}/embeddings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({ model: cfg.embeddingModel, input: text }),
-  });
-  if (!res.ok) {
-    console.error("[llm] embedding failed:", res.status, await res.text());
-    return localEmbed(text); // graceful fallback
+  const span = traceBegin("llm.embed", "llm", { model: cfg.embeddingModel });
+  const start = Date.now();
+  try {
+    const res = await fetch(`${cfg.baseUrl}/embeddings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({ model: cfg.embeddingModel, input: text }),
+    });
+    if (!res.ok) {
+      log.error({ status: res.status, body: redactText(await res.text()) }, "[llm] embedding failed");
+      recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length, error: true });
+      return localEmbed(text); // graceful fallback
+    }
+    const data = await res.json();
+    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length });
+    return new Float32Array(data.data[0].embedding);
+  } finally {
+    traceEnd(span);
   }
-  const data = await res.json();
-  return new Float32Array(data.data[0].embedding);
 }
 
 export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
   const cfg = await resolveEmbeddingConfig();
   if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return texts.map((t) => localEmbed(t));
 
-  const res = await fetch(`${cfg.baseUrl}/embeddings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({ model: cfg.embeddingModel, input: texts }),
-  });
-  if (!res.ok) {
-    console.error("[llm] batch embedding failed:", res.status);
-    return texts.map((t) => localEmbed(t));
+  const span = traceBegin("llm.embed.batch", "llm", { model: cfg.embeddingModel, n: texts.length });
+  const start = Date.now();
+  try {
+    const res = await fetch(`${cfg.baseUrl}/embeddings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({ model: cfg.embeddingModel, input: texts }),
+    });
+    if (!res.ok) {
+      log.error({ status: res.status }, "[llm] batch embedding failed");
+      recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length, error: true });
+      return texts.map((t) => localEmbed(t));
+    }
+    const data = await res.json();
+    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length });
+    return data.data.map((d: { embedding: number[] }) => new Float32Array(d.embedding));
+  } finally {
+    traceEnd(span);
   }
-  const data = await res.json();
-  return data.data.map((d: { embedding: number[] }) => new Float32Array(d.embedding));
 }
 
 // ── Chat Completion ─────────────────────────────────────────────────────
+
+interface LlmUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
 
 export async function chatComplete(
   messages: ChatMessage[],
   opts?: ChatOptions
 ): Promise<string> {
   const cfg = await resolveChatConfig();
-  if (!cfg) return "";
+  const model = cfg?.chatModel ?? "demo";
+  const span = traceBegin("llm.chat", "llm", { model });
+  const start = Date.now();
+  let error: unknown;
+  let usage: LlmUsage | undefined;
+  let chars = 0;
+  try {
+    if (!cfg) return ""; // demo mode (recorded below as a demo call)
 
-  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.chatModel,
-      messages,
-      temperature: opts?.temperature ?? 0.3,
-      max_tokens: opts?.maxTokens,
-      stream: false,
-    }),
-  });
-  if (!res.ok) {
-    console.error("[llm] chat failed:", res.status, await res.text());
-    return "";
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: cfg.chatModel,
+        messages,
+        temperature: opts?.temperature ?? 0.3,
+        max_tokens: opts?.maxTokens,
+        stream: false,
+      }),
+    });
+    if (!res.ok) {
+      log.error({ status: res.status, body: redactText(await res.text()) }, "[llm] chat failed");
+      error = new Error(`LLM HTTP ${res.status}`);
+      return "";
+    }
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content ?? "";
+    usage = data.usage as LlmUsage | undefined;
+    chars = text.length;
+    return text;
+  } catch (err) {
+    error = err;
+    throw err;
+  } finally {
+    recordLlm({
+      model,
+      durationMs: Date.now() - start,
+      promptTokens: usage?.prompt_tokens,
+      completionTokens: usage?.completion_tokens,
+      chars,
+      error: !!error,
+    });
+    traceEnd(span, error);
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
 }
 
 export async function* chatStream(
@@ -169,51 +218,78 @@ export async function* chatStream(
   opts?: ChatOptions
 ): AsyncGenerator<string> {
   const cfg = await resolveChatConfig();
-  if (!cfg) return;
+  const model = cfg?.chatModel ?? "demo";
+  const span = traceBegin("llm.chat.stream", "llm", { model });
+  const start = Date.now();
+  let error: unknown;
+  let usage: LlmUsage | undefined;
+  let chars = 0;
+  try {
+    if (!cfg) return;
 
-  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.chatModel,
-      messages,
-      temperature: opts?.temperature ?? 0.3,
-      max_tokens: opts?.maxTokens,
-      stream: true,
-    }),
-  });
-  if (!res.ok || !res.body) {
-    console.error("[llm] chat stream failed:", res.status);
-    return;
-  }
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: cfg.chatModel,
+        messages,
+        temperature: opts?.temperature ?? 0.3,
+        max_tokens: opts?.maxTokens,
+        stream: true,
+      }),
+    });
+    if (!res.ok || !res.body) {
+      log.error({ status: res.status }, "[llm] chat stream failed");
+      error = new Error(`LLM stream HTTP ${res.status}`);
+      return;
+    }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const payload = trimmed.slice(5).trim();
-      if (payload === "[DONE]") return;
-      try {
-        const json = JSON.parse(payload);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) yield delta as string;
-      } catch {
-        // skip malformed lines
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === "[DONE]") return;
+        try {
+          const json = JSON.parse(payload);
+          // P6-1: OpenAI sends `usage` in the last chunk before [DONE].
+          if (json.usage) usage = json.usage as LlmUsage;
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            chars += (delta as string).length;
+            yield delta as string;
+          }
+        } catch {
+          // skip malformed lines
+        }
       }
     }
+  } catch (err) {
+    error = err;
+    throw err;
+  } finally {
+    recordLlm({
+      model,
+      durationMs: Date.now() - start,
+      promptTokens: usage?.prompt_tokens,
+      completionTokens: usage?.completion_tokens,
+      chars,
+      error: !!error,
+    });
+    traceEnd(span, error);
   }
 }
 

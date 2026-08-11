@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from "crypto";
+import { log } from "@/lib/obs/log";
 
 export interface S3Config {
   endpoint: string;
@@ -88,7 +89,7 @@ async function loadS3(): Promise<{ client: S3Client; mod: S3Module; presigner: P
     });
     return { client: _s3Client, mod: _s3Module, presigner: _presignerModule };
   } catch {
-    console.warn("[storage] @aws-sdk/client-s3 not installed - S3 operations unavailable");
+    log.warn("[storage] @aws-sdk/client-s3 not installed - S3 operations unavailable");
     return null;
   }
 }

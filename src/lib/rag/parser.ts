@@ -17,6 +17,7 @@
 import zlib from "zlib";
 import type { DocType } from "@/lib/kb/types";
 import { isScannedPdf, ocrScannedPdf, ocrImage } from "./ocr";
+import { log } from "@/lib/obs/log";
 
 export interface ParsedDocument {
   text: string;
@@ -113,7 +114,7 @@ async function parsePdf(buf: Buffer): Promise<ParsedDocument | null> {
     pages = data.numpages;
     title = data.info?.Title?.trim() || null;
   } catch {
-    console.warn("[parser] pdf-parse not installed or failed - will try OCR fallback");
+    log.warn("[parser] pdf-parse not installed or failed - will try OCR fallback");
   }
   if (text && text.length >= 10 && !isScannedPdf(text, pages)) {
     return { text: text.slice(0, 500_000), title, pages };
@@ -138,12 +139,12 @@ async function parseWord(buf: Buffer, filename: string): Promise<ParsedDocument 
       if (!text || text.length < 10) return null;
       return { text: text.slice(0, 500_000), title: null };
     } catch {
-      console.warn("[parser] mammoth not installed or .docx parse failed");
+      log.warn("[parser] mammoth not installed or .docx parse failed");
       return null;
     }
   }
   // .doc (legacy binary) - not supported without antiword/textract
-  console.warn("[parser] .doc (legacy) not supported - convert to .docx");
+  log.warn("[parser] .doc (legacy) not supported - convert to .docx");
   return null;
 }
 
@@ -175,7 +176,7 @@ async function parseExcel(buf: Buffer): Promise<ParsedDocument | null> {
     if (text.length < 10) return null;
     return { text: text.slice(0, 500_000), title: null, sheets };
   } catch {
-    console.warn("[parser] xlsx not installed - Excel parsing unavailable");
+    log.warn("[parser] xlsx not installed - Excel parsing unavailable");
     return null;
   }
 }
@@ -191,7 +192,7 @@ async function parsePptx(buf: Buffer): Promise<ParsedDocument | null> {
     if (!text || text.length < 10) return null;
     return { text: text.slice(0, 500_000), title: null };
   } catch {
-    console.warn("[parser] PPTX extraction failed");
+    log.warn("[parser] PPTX extraction failed");
     return null;
   }
 }
