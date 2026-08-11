@@ -26,6 +26,8 @@ model User {
   lastLoginAt      DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+  // P5-4: preferred UI language ("zh-CN" | "en")
+  locale           String     @default("zh-CN")
 
   teamMemberships TeamMember[]
   apiKeys         ApiKey[]
@@ -86,6 +88,21 @@ model TeamInvite {
   createdAt DateTime @default(now())
 }
 
+// ── Workspaces (P4-3 tenants / P5-5 theme) ─────────────────
+// P5-5: persistence row for the in-memory workspace store (src/lib/workspace/
+// store.ts). `brandColor` drives the workspace-level theme (see
+// src/lib/theme/brand-colors.ts). Members stay memory-only for now - there is
+// no member relation on this table yet.
+model Workspace {
+  id         String   @id
+  name       String
+  plan       String   @default("free")
+  ownerId    String
+  brandColor String   @default("indigo")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   teamId    String
@@ -136,14 +153,19 @@ model KbDocument {
 
 // ── Chat ──────────────────────────────────────────────────
 model Conversation {
-  id        String    @id @default(cuid())
-  kbId      String
-  userId    String
-  title     String
-  messages  Message[]
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  kbId        String
+  userId      String
+  title       String
+  messages    Message[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // P5-3: persisted P4-1/P4-3 fields (were memory-only) + archive/tags
+  shared      Boolean   @default(false)
+  workspaceId String    @default("ws_default")
+  archived    Boolean   @default(false)
+  tags        String[]  @default([])
 }
 
 model Message {
@@ -154,6 +176,10 @@ model Message {
   citations      Json?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
+  // P5-3: like/dislike feedback (used to down-weight cited docs in later retrievals)
+  feedback       String?
+  feedbackNote   String?
+  feedbackAt     DateTime?
 }
 
 // ── Agent ─────────────────────────────────────────────────

@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import {
   Brain,
   FolderUp,
@@ -10,13 +14,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export function Features() {
+  const t = useT();
   return (
     <section id="features" className="scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
-          eyebrow="核心功能"
-          title="一个平台，覆盖知识全生命周期"
-          desc="从文档接入到智能问答，再到自动调研报告，KnowledgeAI 把散落的知识沉淀为团队的智能资产。"
+          eyebrow={t("page.features.s1")}
+          title={t("page.features.s2")}
+          desc={t("page.features.s3")}
         />
 
         <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-6">
@@ -24,9 +29,9 @@ export function Features() {
           <FeatureCard
             className="md:col-span-4"
             icon={Brain}
-            title="智能问答（RAG）"
-            desc="基于私有知识库的精准问答，回答附带可溯源的引用片段，点击即可跳转原文。流式输出，毫秒级响应。"
-            tags={["引用溯源", "流式输出", "多轮对话"]}
+            title={t("page.features.s4")}
+            desc={t("page.features.s5")}
+            tags={[t("page.features.s6"), t("page.features.s7"), t("page.features.s8")]}
           >
             <MiniChat />
           </FeatureCard>
@@ -35,9 +40,9 @@ export function Features() {
           <FeatureCard
             className="md:col-span-2 md:row-span-2"
             icon={Bot}
-            title="Agent 调研"
-            desc="多个 Agent 协作规划、检索、分析、撰写，自动产出结构化调研报告。"
-            tags={["LangGraph", "任务队列"]}
+            title={t("page.features.s9")}
+            desc={t("page.features.s10")}
+            tags={["LangGraph", t("page.features.s11")]}
           >
             <MiniTimeline />
           </FeatureCard>
@@ -46,40 +51,40 @@ export function Features() {
           <FeatureCard
             className="md:col-span-2"
             icon={FolderUp}
-            title="知识库管理"
-            desc="拖拽上传 PDF / Word / Markdown / 网页，自动切片与向量化。"
-            tags={["自动向量化"]}
+            title={t("page.features.s12")}
+            desc={t("page.features.s13")}
+            tags={[t("page.features.s14")]}
           />
 
           {/* Team */}
           <FeatureCard
             className="md:col-span-2"
             icon={Users}
-            title="团队协作"
-            desc="RBAC 权限模型，共享知识库与操作审计，多租户数据隔离。"
-            tags={["RBAC", "审计日志"]}
+            title={t("page.features.s15")}
+            desc={t("page.features.s16")}
+            tags={["RBAC", t("page.features.s17")]}
           />
 
           {/* row 3 */}
           <FeatureCard
             className="md:col-span-2"
             icon={BarChart3}
-            title="用量监控"
-            desc="问答、API、存储、Agent 任务用量一目了然，按天/周/月可视。"
-            tags={["数据看板"]}
+            title={t("page.features.s18")}
+            desc={t("page.features.s19")}
+            tags={[t("page.features.s20")]}
           />
           <FeatureCard
             className="md:col-span-2"
             icon={ShieldCheck}
-            title="安全合规"
-            desc="2FA、会话管理、数据导出，符合 GDPR 与个人信息保护法。"
+            title={t("page.features.s21")}
+            desc={t("page.features.s22")}
             tags={["GDPR"]}
           />
           <FeatureCard
             className="md:col-span-2"
             icon={ArrowUpRight}
-            title="订阅计费"
-            desc="免费 / 专业 / 企业三档套餐，支持微信、支付宝与信用卡。"
+            title={t("page.features.s23")}
+            desc={t("page.features.s24")}
             tags={["Stripe"]}
           />
         </div>
@@ -103,6 +108,7 @@ function FeatureCard({
   className?: string;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div
       className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 ${className ?? ""}`}
@@ -131,6 +137,7 @@ function FeatureCard({
 }
 
 function MiniChat() {
+  const t = useT();
   return (
     <div className="space-y-2.5 rounded-xl border border-border bg-muted/30 p-4">
       <div className="flex justify-end">
@@ -150,6 +157,7 @@ function MiniChat() {
 }
 
 function MiniTimeline() {
+  const t = useT();
   const steps = [
     { label: "Plan", done: true },
     { label: "Search", done: true },
@@ -171,7 +179,7 @@ function MiniTimeline() {
           </span>
           <span className="text-sm font-medium">{s.label}</span>
           {s.done && (
-            <span className="ml-auto text-[11px] text-success">已完成</span>
+            <span className="ml-auto text-[11px] text-success">{t("page.features.s0")}</span>
           )}
           {!s.done && i === 2 && (
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary">
@@ -194,6 +202,7 @@ export function SectionHeading({
   title: string;
   desc?: string;
 }) {
+  const t = useT();
   return (
     <div className="mx-auto max-w-2xl text-center">
       <Badge variant="default" className="mb-4">

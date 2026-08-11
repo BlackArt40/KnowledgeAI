@@ -6,6 +6,7 @@ import { deleteAllConversations } from "@/lib/chat/store";
 import { deleteAllTasks } from "@/lib/agent/store";
 import { deleteSecurityData } from "@/lib/security/store";
 import { deleteBillingData } from "@/lib/billing/store";
+import { withApiTrace } from "@/lib/obs/trace";
 export const dynamic = "force-dynamic";
 
 /** Extract the JWT from cookie (kai-token) or Authorization: Bearer header. */
@@ -30,7 +31,7 @@ async function authId(req: Request): Promise<string | null> {
 }
 
 // GET /api/auth/me - get current user from cookie or Authorization header
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
   const id = await authId(req);
   if (!id) return NextResponse.json({ user: null }, { status: 200 });
 
@@ -42,13 +43,13 @@ export async function GET(req: Request) {
 
 // PATCH /api/auth/me - update profile (name) and/or password
 // Body: { name?, currentPassword?, newPassword? }
-export async function PATCH(req: Request) {
+async function handlePATCH(req: Request) {
   const id = await authId(req);
   if (!id) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  let body: { name?: string; currentPassword?: string; newPassword?: string };
+  let body: { name?: string; currentPassword?: string; newPassword?: string; locale?: string };
   try {
     body = await req.json();
   } catch {
@@ -56,7 +57,7 @@ export async function PATCH(req: Request) {
   }
 
   // Nothing to update
-  if (body.name === undefined && !body.newPassword) {
+  if (body.name === undefined && !body.newPassword && body.locale === undefined) {
     return NextResponse.json({ error: "没有需要更新的字段" }, { status: 400 });
   }
 
@@ -64,6 +65,7 @@ export async function PATCH(req: Request) {
     name: body.name,
     currentPassword: body.currentPassword,
     newPassword: body.newPassword,
+    locale: body.locale,
   });
 
   if ("error" in result) {
@@ -92,7 +94,7 @@ export async function PATCH(req: Request) {
 
 // DELETE /api/auth/me - permanently delete the current user's account and all
 // associated data (KBs, conversations, agent tasks, security, billing).
-export async function DELETE(req: Request) {
+async function handleDELETE(req: Request) {
   const id = await authId(req);
   if (!id) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
@@ -123,4 +125,15 @@ export async function DELETE(req: Request) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set("kai-token", "", { httpOnly: true, maxAge: 0, path: "/" });
   return res;
+}
+
+// P6-1: request tracing + SLI metrics.
+export async function GET(req: Request) {
+  return withApiTrace(req, "api /api/auth/me GET", () => handleGET(req));
+}
+export async function PATCH(req: Request) {
+  return withApiTrace(req, "api /api/auth/me PATCH", () => handlePATCH(req));
+}
+export async function DELETE(req: Request) {
+  return withApiTrace(req, "api /api/auth/me DELETE", () => handleDELETE(req));
 }

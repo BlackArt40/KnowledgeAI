@@ -20,6 +20,8 @@ export interface User {
   status: "active" | "banned";
   createdAt: number;
   lastLoginAt: number | null;
+  /** P5-4: preferred UI language ("zh-CN" | "en"), persisted to the DB. */
+  locale?: string;
 }
 
 // Demo password for all seed accounts
@@ -138,6 +140,8 @@ export interface UpdateUserInput {
   name?: string;
   currentPassword?: string;
   newPassword?: string;
+  /** P5-4: preferred UI language ("zh-CN" | "en"). */
+  locale?: string;
 }
 
 /** Update a user's profile (name) and/or password.
@@ -164,6 +168,11 @@ export async function updateUser(
     }
     if (input.newPassword.length < 8) return { error: "新密码至少 8 位" };
     user.passwordHash = await hashPassword(input.newPassword);
+  }
+
+  if (input.locale !== undefined) {
+    if (input.locale !== "zh-CN" && input.locale !== "en") return { error: "不支持的语言" };
+    user.locale = input.locale;
   }
 
   s.users.set(user.id, user);

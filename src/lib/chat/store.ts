@@ -1,5 +1,5 @@
 import type { Citation } from "@/lib/rag/types";
-import { persistConversation, deleteConversationFromDb } from "@/lib/db/persist";
+import { persistConversation, persistMessageFeedback, deleteConversationFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
 
 export interface ChatMessage {
@@ -8,6 +8,11 @@ export interface ChatMessage {
   content: string;
   citations?: Citation[];
   createdAt: number;
+  /** P5-3: like/dislike feedback on an assistant answer, used to down-weight
+   *  its cited documents in later retrievals (negative-feedback loop). */
+  feedback?: "up" | "down";
+  feedbackNote?: string;
+  feedbackAt?: number;
 }
 
 export interface Conversation {
@@ -23,6 +28,11 @@ export interface Conversation {
   shared?: boolean;
   /** P4-3: the workspace (tenant) this conversation belongs to. */
   workspaceId: string;
+  /** P5-3: archived conversations are hidden from the default list
+   *  (they can be restored via ?archived=1). */
+  archived?: boolean;
+  /** P5-3: user-assigned tags for grouping / filtering conversations. */
+  tags?: string[];
 }
 
 type Store = { conversations: Map<string, Conversation> };
@@ -115,6 +125,83 @@ export function setConversationShared(id: string, shared: boolean): Conversation
   store().conversations.set(id, conv);
   void persistConversation(conv);
   return conv;
+}
+
+/** Archive / restore a conversation (P5-3). */
+export function setConversationArchived(id: string, archived: boolean): Conversation | undefined {
+  const conv = store().conversations.get(id);
+  if (!conv) return undefined;
+  conv.archived = archived;
+  store().conversations.set(id, conv);
+  void persistConversation(conv);
+  return conv;
+}
+
+/** Replace a conversation's tag list (P5-3). */
+export function setConversationTags(id: string, tags: string[]): Conversation | undefined {
+  const conv = store().conversations.get(id);
+  if (!conv) return undefined;
+  conv.tags = tags.filter((t) => t.trim()).map((t) => t.trim()).slice(0, 10);
+  store().conversations.set(id, conv);
+  void persistConversation(conv);
+  return conv;
+}
+
+/** Record or clear like/dislike feedback (with optional note) on a message
+ *  (P5-3). `feedback=null` clears it. Updating a single message bypasses
+ *  persistConversation's last-message-only write so historical answers keep
+ *  their feedback across restarts. */
+export function setMessageFeedback(
+  convId: string,
+  messageId: string,
+  feedback: "up" | "down" | null,
+  note?: string
+): ChatMessage | undefined {
+  const conv = store().conversations.get(convId);
+  if (!conv) return undefined;
+  const msg = conv.messages.find((m) => m.id === messageId);
+  if (!msg || msg.role !== "assistant") return undefined;
+  if (feedback === null) {
+    delete msg.feedback;
+    delete msg.feedbackNote;
+    delete msg.feedbackAt;
+  } else {
+    msg.feedback = feedback;
+    if (note !== undefined) msg.feedbackNote = note || undefined;
+    msg.feedbackAt = Date.now();
+  }
+  conv.updatedAt = Date.now();
+  store().conversations.set(convId, conv);
+  void persistMessageFeedback(convId, msg);
+  return msg;
+}
+
+/** All messages that carry feedback, newest first (P5-3; e.g. admin / RAG
+ *  optimization review). */
+export function listFeedbackMessages(): { conversationId: string; message: ChatMessage }[] {
+  const out: { conversationId: string; message: ChatMessage }[] = [];
+  for (const conv of store().conversations.values()) {
+    for (const m of conv.messages) {
+      if (m.feedback) out.push({ conversationId: conv.id, message: m });
+    }
+  }
+  return out.sort((a, b) => (b.message.feedbackAt ?? 0) - (a.message.feedbackAt ?? 0));
+}
+
+/** Remove the trailing assistant message (P5-3 regenerate): the replaced
+ *  answer must not stay in the conversation history for the new generation. */
+export function popLastAssistantMessage(convId: string): ChatMessage | undefined {
+  const conv = store().conversations.get(convId);
+  if (!conv) return undefined;
+  const removed = conv.messages.pop();
+  if (!removed || removed.role !== "assistant") {
+    if (removed) conv.messages.push(removed); // not an assistant message - restore
+    return undefined;
+  }
+  conv.updatedAt = Date.now();
+  store().conversations.set(convId, conv);
+  void persistConversation(conv);
+  return removed;
 }
 
 /** Team-shared conversations across all KBs (collaborative Q&A view). */

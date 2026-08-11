@@ -1,4 +1,6 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
 import {
   Bot, Plus, Trash2, Zap, Star, StarOff, Loader2, CheckCircle2,
@@ -43,6 +45,7 @@ const PROVIDER_ICON: Record<string, React.ComponentType<{ className?: string }>>
 };
 
 export function ModelSettings() {
+  const t = useT();
   const [models, setModels] = React.useState<ModelConfigSafe[]>([]);
   const [providers, setProviders] = React.useState<ProviderPreset[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -110,8 +113,8 @@ export function ModelSettings() {
                 <Bot className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium">尚未配置外部模型</p>
-                <p className="mt-1 text-xs text-muted-foreground">添加你的第一个 AI 模型以解锁完整的 RAG 与 Agent 能力</p>
+                <p className="text-sm font-medium">{t("page.model-settings.s0")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("page.model-settings.s1")}</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setShowAdd(true)}>
                 <Plus className="h-4 w-4" /> 添加模型
@@ -146,9 +149,9 @@ export function ModelSettings() {
                               </Badge>
                             )}
                             {m.enabled ? (
-                              <Badge variant="success" className="text-[10px]">已启用</Badge>
+                              <Badge variant="success" className="text-[10px]">{t("page.model-settings.s2")}</Badge>
                             ) : (
-                              <Badge variant="secondary" className="text-[10px]">已停用</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{t("page.model-settings.s3")}</Badge>
                             )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -161,7 +164,7 @@ export function ModelSettings() {
                           )}
                           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                             <KeyRound className="h-3 w-3" />
-                            {m.hasKey ? m.apiKeyMasked : "无 Key"}
+                            {m.hasKey ? m.apiKeyMasked : t("page.model-settings.s14")}
                             {" · "}
                             <Server className="h-3 w-3" />
                             {m.baseUrl}
@@ -172,7 +175,7 @@ export function ModelSettings() {
                               m.lastTestOk ? "text-success" : "text-destructive"
                             )}>
                               {m.lastTestOk ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                              {m.lastTestOk ? "连接正常" : "连接失败"} · {formatRelative(m.lastTestedAt)}
+                              {m.lastTestOk ? t("page.model-settings.s15") : t("page.model-settings.s16")} · {formatRelative(m.lastTestedAt)}
                             </p>
                           )}
                         </div>
@@ -234,6 +237,7 @@ function AddModelDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const [providerId, setProviderId] = React.useState("openai");
   const [name, setName] = React.useState("");
   const [apiKey, setApiKey] = React.useState("");
@@ -287,12 +291,12 @@ function AddModelDialog({
         if (d.chat?.length > 0 && !d.chat.includes(chatModel)) {
           setChatModel(d.chat[0]);
         }
-        setFetchInfo({ ok: true, msg: `拉取到 ${d.count} 个模型（${d.chat.length} 对话 / ${d.embedding.length} 嵌入），${d.latency}ms` });
+        setFetchInfo({ ok: true, msg: t("page.model-settings.s22", { count: d.count, chat: d.chat.length, emb: d.embedding.length, latency: d.latency }) });
       } else {
-        setFetchInfo({ ok: false, msg: d.error || "拉取失败" });
+        setFetchInfo({ ok: false, msg: d.error || t("page.model-settings.s17") });
       }
     } catch {
-      setFetchInfo({ ok: false, msg: "网络错误" });
+      setFetchInfo({ ok: false, msg: t("page.model-settings.s18") });
     }
     setFetching(false);
   }
@@ -308,12 +312,12 @@ function AddModelDialog({
       });
       const d = await res.json();
       if (d.ok) {
-        setTestResult({ ok: true, msg: `连接成功${d.reply ? `：${d.reply}` : ""}（${d.latency}ms）` });
+        setTestResult({ ok: true, msg: t("page.model-settings.s23", { reply: d.reply ? `：${d.reply}` : "", latency: d.latency }) });
       } else {
-        setTestResult({ ok: false, msg: d.error || "连接失败" });
+        setTestResult({ ok: false, msg: d.error || t("page.model-settings.s16") });
       }
     } catch {
-      setTestResult({ ok: false, msg: "网络错误" });
+      setTestResult({ ok: false, msg: t("page.model-settings.s18") });
     }
     setTesting(false);
   }
@@ -328,12 +332,12 @@ function AddModelDialog({
       });
       const d = await res.json();
       if (!res.ok) {
-        setError(d.error || "保存失败");
+        setError(d.error || t("page.model-settings.s19"));
       } else {
         onSaved();
       }
     } catch {
-      setError("网络错误");
+      setError(t("page.model-settings.s18"));
     }
     setSaving(false);
   }
@@ -350,7 +354,7 @@ function AddModelDialog({
         <div className="space-y-4 py-2">
           {/* Provider */}
           <div className="space-y-2">
-            <Label>提供商</Label>
+            <Label>{t("page.model-settings.s4")}</Label>
             <Select value={providerId} onValueChange={onProviderChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -369,9 +373,9 @@ function AddModelDialog({
 
           {/* Name */}
           <div className="space-y-2">
-            <Label>显示名称（可选）</Label>
+            <Label>{t("page.model-settings.s5")}</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)}
-                   placeholder={`如：${preset?.name} · ${chatModel || "模型"}`} />
+                   placeholder={t("page.model-settings.s25", { preset: preset?.name ?? "", model: chatModel || t("page.model-settings.s24") })} />
           </div>
 
           {/* API Key */}
@@ -400,7 +404,7 @@ function AddModelDialog({
               className="w-full"
             >
               {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {fetching ? "拉取中…" : "拉取可用模型列表"}
+              {fetching ? t("page.model-settings.s20") : t("page.model-settings.s21")}
             </Button>
             {fetchInfo && (
               <div className={cn(
@@ -416,17 +420,17 @@ function AddModelDialog({
           {/* Chat Model */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>对话模型 <span className="text-destructive">*</span></Label>
+              <Label>{t("page.model-settings.s0")}<span className="text-destructive">*</span></Label>
               {fetched && (
                 <button type="button" onClick={() => setManualChat((v) => !v)}
                         className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                  {manualChat ? <><RefreshCw className="h-3 w-3" /> 选择列表</> : <><Pencil className="h-3 w-3" /> 手动输入</>}
+                  {manualChat ? <><RefreshCw className="h-3 w-3" />{t("page.model-settings.s1")}</> : <><Pencil className="h-3 w-3" />{t("page.model-settings.s2")}</>}
                 </button>
               )}
             </div>
             {fetched && !manualChat && fetched.chat.length > 0 ? (
               <Select value={chatModel} onValueChange={setChatModel}>
-                <SelectTrigger><SelectValue placeholder="选择对话模型" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("page.model-settings.s22")} /></SelectTrigger>
                 <SelectContent className="max-h-60">
                   {fetched.chat.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
@@ -435,11 +439,11 @@ function AddModelDialog({
               </Select>
             ) : (
               <Input value={chatModel} onChange={(e) => setChatModel(e.target.value)}
-                     placeholder={preset?.chatModels[0] ? `如 ${preset.chatModels[0]}` : "输入或拉取模型"} />
+                     placeholder={preset?.chatModels[0] ? t("page.model-settings.s26", { m: preset.chatModels[0] }) : t("page.model-settings.s27")} />
             )}
             {preset && preset.chatModels.length > 0 && (!fetched || manualChat) && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">推荐：</span>
+                <span className="text-xs text-muted-foreground">{t("page.model-settings.s9")}</span>
                 {preset.chatModels.map((m) => (
                   <button key={m} type="button" onClick={() => setChatModel(m)}
                           className={cn(
@@ -458,19 +462,19 @@ function AddModelDialog({
           {/* Embedding Model */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>嵌入模型（可选）</Label>
+              <Label>{t("page.model-settings.s10")}</Label>
               {fetched && (
                 <button type="button" onClick={() => setManualEmb((v) => !v)}
                         className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                  {manualEmb ? <><RefreshCw className="h-3 w-3" /> 选择列表</> : <><Pencil className="h-3 w-3" /> 手动输入</>}
+                  {manualEmb ? <><RefreshCw className="h-3 w-3" />{t("page.model-settings.s1")}</> : <><Pencil className="h-3 w-3" />{t("page.model-settings.s2")}</>}
                 </button>
               )}
             </div>
             {fetched && !manualEmb && fetched.embedding.length > 0 ? (
               <Select value={embeddingModel || "__none__"} onValueChange={(v) => setEmbeddingModel(v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="选择嵌入模型" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("page.model-settings.s23")} /></SelectTrigger>
                 <SelectContent className="max-h-60">
-                  <SelectItem value="__none__">不使用（本地哈希嵌入）</SelectItem>
+                  <SelectItem value="__none__">{t("page.model-settings.s11")}</SelectItem>
                   {fetched.embedding.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
                   ))}
@@ -478,11 +482,11 @@ function AddModelDialog({
               </Select>
             ) : (
               <Input value={embeddingModel} onChange={(e) => setEmbeddingModel(e.target.value)}
-                     placeholder={preset?.embeddingModels[0] ? `如 ${preset.embeddingModels[0]}` : "留空则使用本地嵌入"} />
+                     placeholder={preset?.embeddingModels[0] ? t("page.model-settings.s26", { m: preset.embeddingModels[0] }) : t("page.model-settings.s28")} />
             )}
             {preset && preset.embeddingModels.length > 0 && (!fetched || manualEmb) && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">推荐：</span>
+                <span className="text-xs text-muted-foreground">{t("page.model-settings.s9")}</span>
                 <button type="button" onClick={() => setEmbeddingModel("")}
                         className={cn(
                           "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
@@ -505,7 +509,7 @@ function AddModelDialog({
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">用于文档向量化；留空时回退本地哈希嵌入</p>
+            <p className="text-xs text-muted-foreground">{t("page.model-settings.s12")}</p>
           </div>
 
           {/* Test result */}
@@ -526,7 +530,7 @@ function AddModelDialog({
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
             测试连接
           </Button>
-          <Button variant="ghost" onClick={onClose}>取消</Button>
+          <Button variant="ghost" onClick={onClose}>{t("page.model-settings.s13")}</Button>
           <Button variant="gradient" onClick={save} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             保存

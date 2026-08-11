@@ -137,6 +137,17 @@ export interface PrismaLoginEvent {
   createdAt: Date;
 }
 
+// P5-5: workspace row (tenant + brand color persistence).
+export interface PrismaWorkspace {
+  id: string;
+  name: string;
+  plan: string;
+  ownerId: string;
+  brandColor: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Prisma client shape (subset of methods we use)
 export interface PrismaClient {
   user: {
@@ -203,6 +214,12 @@ export interface PrismaClient {
   loginEvent: {
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaLoginEvent[]>;
     create(opts: { data: unknown }): Promise<PrismaLoginEvent>;
+  };
+  workspace: {
+    findUnique(opts: { where: { id: string } }): Promise<PrismaWorkspace | null>;
+    findMany(opts?: { orderBy?: unknown }): Promise<PrismaWorkspace[]>;
+    create(opts: { data: unknown }): Promise<PrismaWorkspace>;
+    update(opts: { where: { id: string }; data: unknown }): Promise<PrismaWorkspace>;
   };
   $queryRaw<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
   $executeRaw(sql: string, ...params: unknown[]): Promise<number>;

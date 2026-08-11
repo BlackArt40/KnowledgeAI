@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { Share2, Copy, Check, Loader2, Trash2 } from "lucide-react";
 import {
@@ -34,6 +36,7 @@ export function DocShareDialog({
   onOpenChange: (v: boolean) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [share, setShare] = React.useState<ShareState | null>(null);
   const [days, setDays] = React.useState(7);
   const [password, setPassword] = React.useState("");
@@ -105,16 +108,16 @@ export function DocShareDialog({
         {share ? (
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">分享链接（无需登录即可访问）</p>
+              <p className="text-xs text-muted-foreground">{t("page.doc-share-dialog.s0")}</p>
               <div className="mt-1.5 flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2 py-1 text-xs">{link}</code>
                 <Button variant="outline" size="sm" className="h-7 shrink-0" onClick={copy}>
                   {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "已复制" : "复制"}
+                  {copied ? t("page.doc-share-dialog.s6") : t("page.doc-share-dialog.s7")}
                 </Button>
               </div>
               <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                <span>{share.expiresAt ? `有效期至 ${new Date(share.expiresAt).toLocaleDateString()}` : "永久有效"}</span>
+                <span>{share.expiresAt ? `${t("page.doc-share-dialog.s16", { date: new Date(share.expiresAt).toLocaleDateString() })}` : t("page.doc-share-dialog.s17")}</span>
                 {share.maxViews !== null && <span>已访问 {share.views} / {share.maxViews} 次</span>}
               </div>
             </div>
@@ -126,18 +129,18 @@ export function DocShareDialog({
           <div className="space-y-4 py-1">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs">有效期（天）</Label>
+                <Label className="text-xs">{t("page.doc-share-dialog.s1")}</Label>
                 <Input type="number" min={0} value={days} onChange={(e) => setDays(+e.target.value || 0)} className="h-8 text-sm" />
-                <p className="text-[11px] text-muted-foreground">0 = 永久</p>
+                <p className="text-[11px] text-muted-foreground">{t("page.doc-share-dialog.s2")}</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">访问上限</Label>
-                <Input type="number" min={1} value={maxViews} onChange={(e) => setMaxViews(e.target.value)} placeholder="不限" className="h-8 text-sm" />
+                <Label className="text-xs">{t("page.doc-share-dialog.s3")}</Label>
+                <Input type="number" min={1} value={maxViews} onChange={(e) => setMaxViews(e.target.value)} placeholder={t("page.doc-share-dialog.s8")} className="h-8 text-sm" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">访问密码（可选）</Label>
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="留空 = 无密码" className="h-8 text-sm" />
+              <Label className="text-xs">{t("page.doc-share-dialog.s4")}</Label>
+              <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("page.doc-share-dialog.s9")} className="h-8 text-sm" />
             </div>
           </div>
         )}
@@ -149,7 +152,7 @@ export function DocShareDialog({
               生成分享链接
             </Button>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("page.doc-share-dialog.s5")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

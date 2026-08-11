@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import {
@@ -12,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Role } from "@/lib/team/types";
 
 export function InviteDialog({ onInvited }: { onInvited: () => void }) {
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -31,7 +34,7 @@ export function InviteDialog({ onInvited }: { onInvited: () => void }) {
       });
       if (!res.ok) {
         const m = await res.json().catch(() => ({}));
-        throw new Error(m.error ?? "邀请失败");
+        throw new Error(m.error ?? t("page.invite-dialog.s9"));
       }
       setOpen(false);
       setName("");
@@ -39,7 +42,7 @@ export function InviteDialog({ onInvited }: { onInvited: () => void }) {
       setRole("viewer");
       onInvited();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "邀请失败");
+      setError(e instanceof Error ? e.message : t("page.invite-dialog.s9"));
     } finally {
       setSaving(false);
     }
@@ -54,33 +57,33 @@ export function InviteDialog({ onInvited }: { onInvited: () => void }) {
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>邀请成员</DialogTitle>
-          <DialogDescription>通过邮箱邀请新成员加入团队，并分配角色。</DialogDescription>
+          <DialogTitle>{t("page.invite-dialog.s0")}</DialogTitle>
+          <DialogDescription>{t("page.invite-dialog.s1")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="i-name">姓名（可选）</Label>
-            <Input id="i-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="新成员姓名" />
+            <Label htmlFor="i-name">{t("page.invite-dialog.s2")}</Label>
+            <Input id="i-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("page.invite-dialog.s10")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="i-email">邮箱</Label>
+            <Label htmlFor="i-email">{t("page.invite-dialog.s3")}</Label>
             <Input id="i-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="member@company.com" />
           </div>
           <div className="space-y-2">
-            <Label>角色</Label>
+            <Label>{t("page.invite-dialog.s4")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as Role)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin · 管理知识库与成员</SelectItem>
-                <SelectItem value="editor">Editor · 编辑知识库与问答</SelectItem>
-                <SelectItem value="viewer">Viewer · 只读问答</SelectItem>
+                <SelectItem value="admin">{t("page.invite-dialog.s5")}</SelectItem>
+                <SelectItem value="editor">{t("page.invite-dialog.s6")}</SelectItem>
+                <SelectItem value="viewer">{t("page.invite-dialog.s7")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>{t("page.invite-dialog.s8")}</Button>
           <Button variant="gradient" onClick={submit} disabled={saving || !email.trim()}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
             发送邀请

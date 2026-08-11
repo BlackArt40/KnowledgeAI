@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
@@ -8,14 +10,17 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { label: "功能", href: "/#features" },
-  { label: "工作流", href: "/#workflow" },
-  { label: "定价", href: "/#pricing" },
-  { label: "文档", href: "/#docs" },
+function navLinks(t: (k: string) => string) {
+  return [
+  { label: t("page.navbar.s2"), href: "/#features" },
+  { label: t("page.navbar.s3"), href: "/#workflow" },
+  { label: t("page.navbar.s4"), href: "/#pricing" },
+  { label: t("page.navbar.s5"), href: "/#docs" },
 ];
+};
 
 export function Navbar() {
+  const t = useT();
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -38,7 +43,7 @@ export function Navbar() {
         <Logo />
 
         <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((l) => (
+          {navLinks(t).map((l) => (
             <Link
               key={l.href}
               href={l.href}
@@ -52,10 +57,10 @@ export function Navbar() {
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/login">登录</Link>
+            <Link href="/login">{t("page.navbar.s0")}</Link>
           </Button>
           <Button variant="gradient" size="sm" asChild>
-            <Link href="/register">免费开始</Link>
+            <Link href="/register">{t("page.navbar.s1")}</Link>
           </Button>
         </div>
 
@@ -63,7 +68,7 @@ export function Navbar() {
           <ThemeToggle />
           <button
             type="button"
-            aria-label="菜单"
+            aria-label={t("page.navbar.s6")}
             onClick={() => setOpen((v) => !v)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card"
           >
@@ -75,7 +80,7 @@ export function Navbar() {
       {open && (
         <div className="mx-4 mt-2 rounded-2xl border border-border bg-card/95 p-3 shadow-xl backdrop-blur-xl md:hidden">
           <nav className="flex flex-col">
-            {navLinks.map((l) => (
+            {navLinks(t).map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

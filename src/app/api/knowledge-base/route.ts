@@ -3,13 +3,14 @@ import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
+import { withApiTrace } from "@/lib/obs/trace";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/knowledge-base - list the user's own KBs PLUS KBs shared by
 // other team members (access != "private"), scoped to the current workspace
 // (P4-3 tenant isolation). Each KB includes a `shared` flag and `ownerName`.
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const kbs = listAllKbs(u.workspaceId)
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
 }
 
 // POST /api/knowledge-base - create a knowledge base owned by the current user
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   let body: { name?: string; desc?: string; color?: string; initial?: string };
@@ -58,4 +59,12 @@ export async function POST(req: Request) {
     u.workspaceId
   );
   return NextResponse.json({ kb }, { status: 201 });
+}
+
+// P6-1: request tracing + SLI metrics.
+export async function GET(req: Request) {
+  return withApiTrace(req, "api /api/knowledge-base GET", () => handleGET(req));
+}
+export async function POST(req: Request) {
+  return withApiTrace(req, "api /api/knowledge-base POST", () => handlePOST(req));
 }

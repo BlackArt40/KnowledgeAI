@@ -1,10 +1,13 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { MailCheck, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function VerifyEmailPage() {
+  const t = useT();
   const [countdown, setCountdown] = React.useState(0);
 
   React.useEffect(() => {
@@ -19,7 +22,7 @@ export default function VerifyEmailPage() {
         <MailCheck className="h-8 w-8" />
       </div>
 
-      <h1 className="mt-6 text-2xl font-bold tracking-tight">验证你的邮箱</h1>
+      <h1 className="mt-6 text-2xl font-bold tracking-tight">{t("page.verify-email.s0")}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         我们已向 <span className="font-medium text-foreground">you@company.com</span>{" "}
         发送了一封验证邮件。
@@ -38,7 +41,7 @@ export default function VerifyEmailPage() {
           onClick={() => setCountdown(60)}
         >
           <RefreshCw className={countdown > 0 ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          {countdown > 0 ? `重新发送（${countdown}s）` : "重新发送邮件"}
+          {countdown > 0 ? `{t("page.verify-email.s1", { s: countdown })}` : "重新发送邮件"}
         </Button>
       </div>
 

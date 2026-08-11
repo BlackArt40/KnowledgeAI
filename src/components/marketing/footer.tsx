@@ -1,46 +1,53 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { GithubIcon as Github, XIcon as Twitter, LinkedinIcon as Linkedin } from "@/components/icons/brand-icons";
 
-const columns = [
+function columns(t: (k: string) => string) {
+  return [
   {
-    title: "产品",
+    title: t("page.footer.s0"),
     links: [
-      { label: "功能特性", href: "/#features" },
-      { label: "定价方案", href: "/#pricing" },
-      { label: "Agent 调研", href: "/#features" },
-      { label: "更新日志", href: "/#docs" },
+      { label: t("page.footer.s1"), href: "/#features" },
+      { label: t("page.footer.s2"), href: "/#pricing" },
+      { label: t("page.footer.s3"), href: "/#features" },
+      { label: t("page.footer.s4"), href: "/#docs" },
     ],
   },
   {
-    title: "资源",
+    title: t("page.footer.s5"),
     links: [
-      { label: "使用教程", href: "/#docs" },
-      { label: "API 文档", href: "/#docs" },
-      { label: "博客", href: "/#docs" },
-      { label: "状态页", href: "/#" },
+      { label: t("page.footer.s6"), href: "/#docs" },
+      { label: t("page.footer.s7"), href: "/#docs" },
+      { label: t("page.footer.s8"), href: "/#docs" },
+      { label: t("page.footer.s9"), href: "/#" },
     ],
   },
   {
-    title: "公司",
+    title: t("page.footer.s10"),
     links: [
-      { label: "关于我们", href: "/#" },
-      { label: "联系我们", href: "/#" },
-      { label: "招贤纳士", href: "/#" },
+      { label: t("page.footer.s11"), href: "/#" },
+      { label: t("page.footer.s12"), href: "/#" },
+      { label: t("page.footer.s13"), href: "/#" },
     ],
   },
   {
-    title: "法律",
+    title: t("page.footer.s14"),
     links: [
-      { label: "隐私政策", href: "/privacy" },
-      { label: "服务条款", href: "/terms" },
-      { label: "GDPR 声明", href: "/privacy" },
-      { label: "Cookie 政策", href: "/privacy" },
+      { label: t("page.footer.s15"), href: "/privacy" },
+      { label: t("page.footer.s16"), href: "/terms" },
+      { label: t("page.footer.s17"), href: "/privacy" },
+      { label: t("page.footer.s18"), href: "/privacy" },
     ],
   },
 ];
+};
 
 export function Footer() {
+  const t = useT();
   return (
     <footer className="border-t border-border bg-background">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
@@ -65,7 +72,7 @@ export function Footer() {
             </div>
           </div>
 
-          {columns.map((col) => (
+          {columns(t).map((col) => (
             <div key={col.title}>
               <h4 className="text-sm font-semibold text-foreground">
                 {col.title}

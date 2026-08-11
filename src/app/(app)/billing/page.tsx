@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +23,7 @@ interface BillingData {
 }
 
 export default function BillingPage() {
+  const t = useT();
   const router = useRouter();
   const [data, setData] = React.useState<BillingData | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -46,7 +49,7 @@ export default function BillingPage() {
 
   function downloadInvoices() {
     if (!data) return;
-    const rows = [["账单号", "日期", "金额(¥)", "套餐", "状态", "支付方式"]];
+    const rows = [[t("page.billing.s6"), t("page.billing.s7"), t("page.billing.s8"), t("page.billing.s9"), t("page.billing.s10"), t("page.billing.s11")]];
     data.invoices.forEach((i) => rows.push([i.id, new Date(i.date).toLocaleDateString("zh-CN"), String(i.amount), i.plan, i.status, METHOD_LABEL[i.method]]));
     const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -84,7 +87,7 @@ export default function BillingPage() {
                   <Badge variant={subscription.status === "active" ? "success" : "warning"}>
                     {STATUS_LABEL[subscription.status]}
                   </Badge>
-                  {subscription.cancelAtPeriodEnd && <Badge variant="warning">周期末失效</Badge>}
+                  {subscription.cancelAtPeriodEnd && <Badge variant="warning">{t("page.billing.s0")}</Badge>}
                 </div>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {currentPlan.price === null ? "定制报价" : `¥${currentPlan.price}/${currentPlan.period}`} ·
@@ -118,18 +121,18 @@ export default function BillingPage() {
 
       {/* comparison */}
       <div>
-        <h3 className="mb-3 text-base font-semibold">套餐对比</h3>
+        <h3 className="mb-3 text-base font-semibold">{t("page.billing.s1")}</h3>
         <div className="overflow-hidden rounded-2xl border border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">功能</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("page.billing.s2")}</th>
                   {plans.map((p) => (
                     <th key={p.id} className="px-4 py-3 text-center">
                       <div className={cn("font-semibold", p.id === subscription.plan && "text-primary")}>
                         {p.name}
-                        {p.id === subscription.plan && <Badge variant="default" className="ml-1.5 text-[10px]">当前</Badge>}
+                        {p.id === subscription.plan && <Badge variant="default" className="ml-1.5 text-[10px]">{t("page.billing.s3")}</Badge>}
                       </div>
                       <div className="mt-0.5 text-xs font-normal text-muted-foreground">
                         {p.price === null ? "定制" : p.price === 0 ? "免费" : `¥${p.price}/${p.period}`}
@@ -158,12 +161,12 @@ export default function BillingPage() {
                   {plans.map((p) => (
                     <td key={p.id} className="px-4 py-3 text-center">
                       {p.id === subscription.plan ? (
-                        <span className="text-xs text-muted-foreground">当前套餐</span>
+                        <span className="text-xs text-muted-foreground">{t("page.billing.s4")}</span>
                       ) : p.price === null ? (
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/checkout?plan=${p.id}`)}>联系销售</Button>
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/checkout?plan=${p.id}`)}>{t("page.billing.s5")}</Button>
                       ) : (
                         <Button variant={p.highlight ? "gradient" : "outline"} size="sm" onClick={() => router.push(`/checkout?plan=${p.id}`)}>
-                          {p.price === 0 ? "降级免费版" : "切换套餐"}
+                          {p.price === 0 ? t("page.billing.s15") : t("page.billing.s16")}
                         </Button>
                       )}
                     </td>
@@ -196,7 +199,7 @@ export default function BillingPage() {
                 <p className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleDateString("zh-CN")} · {METHOD_LABEL[inv.method]}</p>
               </div>
               <Badge variant={inv.status === "paid" ? "success" : inv.status === "pending" ? "warning" : "destructive"}>
-                {inv.status === "paid" ? "已支付" : inv.status === "pending" ? "待支付" : "已退款"}
+                {inv.status === "paid" ? t("page.billing.s17") : inv.status === "pending" ? t("page.billing.s18") : t("page.billing.s19")}
               </Badge>
               <span className="w-20 text-right text-sm font-semibold tabular-nums">¥{inv.amount}</span>
             </div>

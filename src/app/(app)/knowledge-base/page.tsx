@@ -1,5 +1,8 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
+
 import * as React from "react";
 import Link from "next/link";
 import { Plus, FileText, Layers, MoreHorizontal, Settings, Trash2, Loader2 } from "lucide-react";
@@ -30,6 +33,7 @@ type KbWithStats = KnowledgeBase & {
 };
 
 export default function KnowledgeBasePage() {
+  const t = useT();
   const [kbs, setKbs] = React.useState<KbWithStats[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [settingsKb, setSettingsKb] = React.useState<KnowledgeBase | null>(null);
@@ -91,9 +95,9 @@ export default function KnowledgeBasePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">知识库</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("page.kb.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            管理你的知识库与文档，共 {kbs.length} 个知识库。
+            {t("page.kb.subtitle", { count: kbs.length })}
           </p>
         </div>
         <NewKbDialog open={newOpen} onOpenChange={setNewOpen} />
@@ -113,7 +117,7 @@ export default function KnowledgeBasePage() {
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <Plus className="h-6 w-6" />
                 </span>
-                <span className="text-sm font-medium">新建知识库</span>
+                <span className="text-sm font-medium">{t("page.kb.newKb")}</span>
               </button>
             }
           />
@@ -136,7 +140,7 @@ export default function KnowledgeBasePage() {
                       )}
                     </h3>
                     <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                      {kb.desc || "暂无描述"}
+                      {kb.desc || t("page.kb.noDesc")}
                     </p>
 
                     {/* P5-1: wrap on narrow viewports so the badge never squeezes the meta */}
@@ -172,7 +176,7 @@ export default function KnowledgeBasePage() {
                   trigger={
                     <button
                       type="button"
-                      aria-label="更多操作"
+                      aria-label={t("page.kb.moreActions")}
                       className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus:opacity-100 group-hover:opacity-100"
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -213,7 +217,7 @@ export default function KnowledgeBasePage() {
       <Dialog open={deleteKb !== null} onOpenChange={(v) => !v && setDeleteKb(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>删除知识库</DialogTitle>
+            <DialogTitle>{t("page.kb.deleteKb")}</DialogTitle>
             <DialogDescription>
               确定删除「{deleteKb?.name}」？该知识库的所有文档与向量索引将被永久删除，且无法恢复。
             </DialogDescription>

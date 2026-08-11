@@ -1,44 +1,51 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import { Upload, Database, MessageSquareText, FileBarChart } from "lucide-react";
 import { SectionHeading } from "./features";
 
-const steps = [
+function steps(t: (k: string) => string) {
+  return [
   {
     icon: Upload,
-    title: "上传文档",
-    desc: "拖拽 PDF / Word / Markdown / 网页链接，批量导入团队资料。",
+    title: t("page.workflow.s0"),
+    desc: t("page.workflow.s1"),
   },
   {
     icon: Database,
-    title: "AI 构建知识库",
-    desc: "自动解析、切片、向量化，秒级完成知识库构建与索引。",
+    title: t("page.workflow.s2"),
+    desc: t("page.workflow.s3"),
   },
   {
     icon: MessageSquareText,
-    title: "团队智能问答",
-    desc: "基于知识库精准问答，回答附带可溯源引用，支持多轮对话。",
+    title: t("page.workflow.s4"),
+    desc: t("page.workflow.s5"),
   },
   {
     icon: FileBarChart,
-    title: "生成调研报告",
-    desc: "多 Agent 协作，自动产出结构化报告，一键导出 PDF / Markdown。",
+    title: t("page.workflow.s6"),
+    desc: t("page.workflow.s7"),
   },
 ];
+};
 
 export function Workflow() {
+  const t = useT();
   return (
     <section id="workflow" className="scroll-mt-20 border-y border-border bg-muted/30 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
-          eyebrow="工作流"
-          title="四步，把资料变成生产力"
-          desc="从原始文档到可执行的调研报告，全流程自动化。"
+          eyebrow={t("page.workflow.s8")}
+          title={t("page.workflow.s9")}
+          desc={t("page.workflow.s10")}
         />
 
         <div className="relative mt-14">
           {/* connecting line */}
           <div className="absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" />
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4 md:gap-6">
-            {steps.map((s, i) => (
+            {steps(t).map((s, i) => (
               <div key={s.title} className="relative flex flex-col items-center text-center md:items-start md:text-left">
                 <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card shadow-sm">
                   <s.icon className="h-6 w-6 text-primary" />

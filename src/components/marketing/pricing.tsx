@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,68 +9,71 @@ import { Badge } from "@/components/ui/badge";
 import { SectionHeading } from "./features";
 import { cn } from "@/lib/utils";
 
-const plans = [
+function plans(t: (k: string) => string) {
+  return [
   {
-    name: "免费版",
+    name: t("page.pricing.s0"),
     price: "¥0",
-    period: "/月",
-    desc: "适合个人体验与小型项目",
-    cta: "免费开始",
+    period: t("page.pricing.s1"),
+    desc: t("page.pricing.s2"),
+    cta: t("page.pricing.s3"),
     href: "/register",
     featured: false,
     features: [
-      "每月 100 次智能问答",
-      "1 个知识库",
-      "最多 50 篇文档",
-      "社区支持",
+      t("page.pricing.s4"),
+      t("page.pricing.s5"),
+      t("page.pricing.s6"),
+      t("page.pricing.s7"),
     ],
   },
   {
-    name: "专业版",
+    name: t("page.pricing.s8"),
     price: "¥49",
-    period: "/月",
-    desc: "为高效团队打造的进阶方案",
-    cta: "升级专业版",
+    period: t("page.pricing.s1"),
+    desc: t("page.pricing.s9"),
+    cta: t("page.pricing.s10"),
     href: "/register",
     featured: true,
     features: [
-      "无限智能问答",
-      "Agent 调研功能",
-      "10 个知识库",
-      "API 密钥与调用",
-      "优先邮件支持",
+      t("page.pricing.s11"),
+      t("page.pricing.s12"),
+      t("page.pricing.s13"),
+      t("page.pricing.s14"),
+      t("page.pricing.s15"),
     ],
   },
   {
-    name: "企业版",
-    price: "定制",
+    name: t("page.pricing.s16"),
+    price: t("page.pricing.s17"),
     period: "",
-    desc: "面向组织的私有化与合规",
-    cta: "联系销售",
+    desc: t("page.pricing.s18"),
+    cta: t("page.pricing.s19"),
     href: "/#",
     featured: false,
     features: [
-      "支持私有部署",
-      "SSO 单点登录",
-      "SLA 服务保障",
-      "专属客户成功经理",
-      "定制模型与限流",
+      t("page.pricing.s20"),
+      t("page.pricing.s21"),
+      t("page.pricing.s22"),
+      t("page.pricing.s23"),
+      t("page.pricing.s24"),
     ],
   },
 ];
+};
 
 export function Pricing() {
+  const t = useT();
   return (
     <section id="pricing" className="scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
-          eyebrow="定价"
-          title="简单透明的价格"
-          desc="从免费开始，随团队成长随时升级。所有套餐均含数据隔离与 GDPR 合规。"
+          eyebrow={t("page.pricing.s25")}
+          title={t("page.pricing.s26")}
+          desc={t("page.pricing.s27")}
         />
 
         <div className="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {plans.map((p) => (
+          {plans(t).map((p) => (
             <div
               key={p.name}
               className={cn(

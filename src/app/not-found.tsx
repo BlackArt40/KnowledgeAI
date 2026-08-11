@@ -1,9 +1,14 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import Link from "next/link";
 import { Home, Search, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
 export default function NotFound() {
+  const t = useT();
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-30" />
@@ -17,7 +22,7 @@ export default function NotFound() {
         </p>
         <div className="mt-4 flex items-center justify-center gap-2">
           <Compass className="h-5 w-5 animate-spin text-primary" style={{ animationDuration: "3s" }} />
-          <h1 className="text-xl font-semibold">页面走丢了</h1>
+          <h1 className="text-xl font-semibold">{t("page.not-found.s0")}</h1>
         </div>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
           您访问的页面不存在或已被移动。请检查链接是否正确，或返回首页继续探索。
@@ -26,10 +31,10 @@ export default function NotFound() {
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button variant="gradient" asChild>
-          <Link href="/"><Home className="h-4 w-4" /> 返回首页</Link>
+          <Link href="/"><Home className="h-4 w-4" />{t("page.not-found.s1")}</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/knowledge-base"><Search className="h-4 w-4" /> 前往知识库</Link>
+          <Link href="/knowledge-base"><Search className="h-4 w-4" />{t("page.not-found.s2")}</Link>
         </Button>
       </div>
     </div>

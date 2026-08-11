@@ -14,6 +14,8 @@
 // ---------------------------------------------------------------------------
 
 import { recordAudit } from "@/lib/security/audit";
+import { DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
+import { persistWorkspace } from "@/lib/db/persist";
 
 export type WorkspacePlan = "free" | "pro" | "enterprise";
 
@@ -24,6 +26,8 @@ export interface Workspace {
   ownerId: string;
   members: string[]; // member emails
   createdAt: number;
+  /** P5-5: workspace-level brand color (see src/lib/theme/brand-colors.ts). */
+  brandColor: string;
 }
 
 export const DEFAULT_WORKSPACE_ID = "ws_default";
@@ -46,6 +50,7 @@ function store(): Store {
         "viewer@knowledgeai.dev",
       ],
       createdAt: Date.now() - 90 * 86_400_000,
+      brandColor: DEFAULT_BRAND_COLOR,
     };
     g.__KAI_WORKSPACE_STORE__ = new Map([[ws.id, ws]]);
   }
@@ -103,8 +108,10 @@ export function createWorkspace(input: {
     ownerId: input.ownerId,
     members: [...new Set([input.ownerEmail, ...(input.memberEmails ?? [])])],
     createdAt: Date.now(),
+    brandColor: DEFAULT_BRAND_COLOR,
   };
   store().set(ws.id, ws);
+  void persistWorkspace(ws);
   recordAudit({
     actorId: input.ownerId,
     actor: input.ownerName,
@@ -120,5 +127,18 @@ export function setWorkspacePlan(id: string, plan: WorkspacePlan): Workspace | u
   const ws = store().get(id);
   if (!ws) return undefined;
   ws.plan = plan;
+  void persistWorkspace(ws);
+  return ws;
+}
+
+/**
+ * Patch workspace fields (P5-5: brandColor). Persisted write-through; audit
+ * is recorded by the API route (it knows the actor + old value).
+ */
+export function updateWorkspace(id: string, patch: { brandColor?: string }): Workspace | undefined {
+  const ws = store().get(id);
+  if (!ws) return undefined;
+  if (patch.brandColor !== undefined) ws.brandColor = patch.brandColor;
+  void persistWorkspace(ws);
   return ws;
 }

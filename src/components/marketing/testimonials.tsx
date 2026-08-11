@@ -1,43 +1,50 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import { Star } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SectionHeading } from "./features";
 
-const reviews = [
+function reviews(t: (k: string) => string) {
+  return [
   {
     quote:
-      "把公司几千份技术文档接入知识库后，新人 onboarding 时间缩短了一半。问答带引用来源，可信度很高。",
-    name: "李明轩",
-    role: "技术负责人 · Acme",
-    initials: "李",
+      t("page.testimonials.s0"),
+    name: t("page.testimonials.s1"),
+    role: t("page.testimonials.s2"),
+    initials: t("page.testimonials.s3"),
   },
   {
     quote:
-      "Agent 调研功能惊艳，输入一个课题就能产出结构化报告，团队周会准备效率提升巨大。",
-    name: "陈思雨",
-    role: "产品经理 · Globex",
-    initials: "陈",
+      t("page.testimonials.s4"),
+    name: t("page.testimonials.s5"),
+    role: t("page.testimonials.s6"),
+    initials: t("page.testimonials.s7"),
   },
   {
     quote:
-      "多租户隔离和审计日志让我们安全团队很放心，私有部署选项也满足了合规要求。",
-    name: "王浩然",
+      t("page.testimonials.s8"),
+    name: t("page.testimonials.s9"),
     role: "CTO · Initech",
-    initials: "王",
+    initials: t("page.testimonials.s10"),
   },
 ];
+};
 
 export function Testimonials() {
+  const t = useT();
   return (
     <section className="border-y border-border bg-muted/30 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
-          eyebrow="用户评价"
-          title="团队信赖的知识伙伴"
-          desc="来自不同行业团队的真实反馈。"
+          eyebrow={t("page.testimonials.s11")}
+          title={t("page.testimonials.s12")}
+          desc={t("page.testimonials.s13")}
         />
 
         <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {reviews.map((r) => (
+          {reviews(t).map((r) => (
             <figure
               key={r.name}
               className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm"

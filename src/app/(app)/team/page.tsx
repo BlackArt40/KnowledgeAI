@@ -1,5 +1,8 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
+
 import * as React from "react";
 import {
   Users, ShieldCheck, ScrollText, Library, Check, X, Trash2, Crown,
@@ -31,6 +34,7 @@ interface TeamData {
 }
 
 export default function TeamPage() {
+  const t = useT();
   const [data, setData] = React.useState<TeamData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>("members");
@@ -105,10 +109,10 @@ export default function TeamPage() {
   const canInvite = myRole ? can(myRole, "member.invite") : false;
   const canSettings = myRole ? can(myRole, "team.settings") : false;
   const allTabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: "members", label: "成员管理", icon: Users },
-    { id: "shared", label: "共享知识库", icon: Library },
-    { id: "matrix", label: "权限矩阵", icon: ShieldCheck },
-    { id: "audit", label: "操作日志", icon: ScrollText },
+    { id: "members", label: t("page.team.tabMembers"), icon: Users },
+    { id: "shared", label: t("page.team.tabShared"), icon: Library },
+    { id: "matrix", label: t("page.team.tabMatrix"), icon: ShieldCheck },
+    { id: "audit", label: t("page.team.tabAudit"), icon: ScrollText },
   ];
   // Audit log is restricted to managers; hide the tab for everyone else.
   const tabs = canManage ? allTabs : allTabs.filter((t) => t.id !== "audit");
@@ -155,7 +159,7 @@ export default function TeamPage() {
       {tab === "members" && (
         <div className="overflow-hidden rounded-2xl border border-border">
           <div className="hidden grid-cols-[1fr_140px_120px_120px_40px] gap-3 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground md:grid">
-            <span>成员</span><span>角色</span><span>状态</span><span>最近活跃</span><span />
+            <span>{t("page.team.member")}</span><span>{t("page.team.role")}</span><span>{t("page.team.status")}</span><span>{t("page.team.recentActive")}</span><span />
           </div>
           <div className="divide-y divide-border">
             {members.map((m) => {
@@ -169,11 +173,11 @@ export default function TeamPage() {
                     <div className="min-w-0">
                       <p className="flex items-center gap-1.5 text-sm font-medium">
                         {m.name}
-                        {isSelf && <span className="text-[10px] text-muted-foreground">(你)</span>}
+                        {isSelf && <span className="text-[10px] text-muted-foreground">{t("page.team.selfMarker")}</span>}
                         {isOnline && (
                           <span
                             className="inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
-                            title="在线"
+                            title={t("page.team.online")}
                           />
                         )}
                       </p>
@@ -199,7 +203,7 @@ export default function TeamPage() {
                   <div className="flex items-center gap-1.5">
                     <StatusBadge status={m.status} />
                     {isOnline && (
-                      <Badge variant="success" className="px-1.5 text-[10px]">在线</Badge>
+                      <Badge variant="success" className="px-1.5 text-[10px]">{t("page.team.online")}</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">{formatRelative(m.lastActiveAt)}</div>
@@ -210,7 +214,7 @@ export default function TeamPage() {
                         className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
                         disabled={isOwner || isSelf}
                         onClick={() => removeMember(m.id)}
-                        aria-label="移除成员"
+                        aria-label={t("page.team.removeMember")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -227,7 +231,7 @@ export default function TeamPage() {
       {tab === "shared" && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {canManage ? "设置团队共享知识库的访问权限。" : "团队共享知识库的访问权限。"}
+            {canManage ? t("page.team.setSharedAccess") : t("page.team.sharedAccessInfo")}
           </p>
           <div className="overflow-hidden rounded-2xl border border-border">
             <div className="divide-y divide-border">
@@ -244,7 +248,7 @@ export default function TeamPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
                           {k.kbName}
-                          {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">（我的）</span>}
+                          {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">{t("page.team.mineMarker")}</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {k.ownerName} · {k.docs} 篇文档
@@ -254,9 +258,9 @@ export default function TeamPage() {
                         <Select value={k.access} onValueChange={(v) => changeAccess(k.kbId, v as KbAccess)}>
                           <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="view">全员可读</SelectItem>
-                            <SelectItem value="edit">成员可编辑</SelectItem>
-                            <SelectItem value="private">仅 Owner/Admin</SelectItem>
+                            <SelectItem value="view">{t("page.team.everyoneRead")}</SelectItem>
+                            <SelectItem value="edit">{t("page.team.memberEditable")}</SelectItem>
+                            <SelectItem value="private">{t("page.team.onlyOwnerAdmin")}</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
@@ -266,7 +270,7 @@ export default function TeamPage() {
                     {/* P4-2: per-member role overrides (KB owner only) */}
                     {k.isOwner && canManage && (
                       <div className="flex flex-wrap items-center gap-1.5 pl-1">
-                        <span className="text-[11px] text-muted-foreground">成员权限：</span>
+                        <span className="text-[11px] text-muted-foreground">{t("page.team.memberPermLabel")}</span>
                         {roleEmails.map((email) => {
                           const m = members.find((x) => x.email === email);
                           return (
@@ -277,7 +281,7 @@ export default function TeamPage() {
                                 type="button"
                                 className="text-muted-foreground hover:text-destructive"
                                 onClick={() => changeMemberRole(k.kbId, email, null)}
-                                aria-label="移除成员权限"
+                                aria-label={t("page.team.s24")}
                               >
                                 ×
                               </button>
@@ -290,7 +294,7 @@ export default function TeamPage() {
                             onValueChange={(v) => changeMemberRole(k.kbId, v, "viewer")}
                           >
                             <SelectTrigger className="h-6 w-[130px] text-[11px]">
-                              <SelectValue placeholder="+ 添加成员" />
+                              <SelectValue placeholder={t("page.team.addMemberPh")} />
                             </SelectTrigger>
                             <SelectContent>
                               {candidates.map((m) => (
@@ -316,7 +320,7 @@ export default function TeamPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">能力</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("page.team.capability")}</th>
                   {ROLE_ORDER.map((r) => (
                     <th key={r} className="px-4 py-3 text-center font-medium text-muted-foreground">{ROLE_LABEL[r]}</th>
                   ))}
@@ -350,7 +354,7 @@ export default function TeamPage() {
       {tab === "audit" && (
         <div className="rounded-2xl border border-border bg-card p-2">
           {audit.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">暂无操作记录</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">{t("page.team.noAudit")}</p>
           ) : (
             <div className="space-y-0">
               {audit.map((a, i) => (
@@ -379,7 +383,8 @@ export default function TeamPage() {
 }
 
 function StatusBadge({ status }: { status: Member["status"] }) {
-  if (status === "active") return <Badge variant="success">在线</Badge>;
-  if (status === "invited") return <Badge variant="warning">已邀请</Badge>;
-  return <Badge variant="destructive">已停用</Badge>;
+  const t = useT();
+  if (status === "active") return <Badge variant="success">{t("page.team.online")}</Badge>;
+  if (status === "invited") return <Badge variant="warning">{t("page.team.invited")}</Badge>;
+  return <Badge variant="destructive">{t("page.team.banned")}</Badge>;
 }

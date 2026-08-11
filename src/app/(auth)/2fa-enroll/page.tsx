@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Loader2, Copy, Check, AlertTriangle } from "lucide-react";
@@ -11,6 +13,7 @@ import { Label } from "@/components/ui/label";
 // role but they haven't enrolled yet. A short-lived pre-auth token (stored in
 // sessionStorage by the login page) authorizes enrollment without a session.
 export default function TwoFactorEnrollPage() {
+  const t = useT();
   const router = useRouter();
   const [preAuthToken] = React.useState<string | null>(() =>
     typeof window !== "undefined" ? sessionStorage.getItem("kai-2fa-preauth") : null
@@ -39,7 +42,7 @@ export default function TwoFactorEnrollPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "无法启动两步验证绑定");
+        setError(data.error || t("page.2fa-enroll.s3"));
         return;
       }
       setEnrollData({
@@ -48,7 +51,7 @@ export default function TwoFactorEnrollPage() {
         backupCodes: data.backupCodes,
       });
     } catch {
-      setError("网络错误，请重试");
+      setError(t("page.2fa-enroll.s4"));
     } finally {
       setLoading(false);
     }
@@ -61,7 +64,7 @@ export default function TwoFactorEnrollPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(code.trim())) {
-      setError("请输入 6 位验证码");
+      setError(t("page.2fa-enroll.s5"));
       return;
     }
     if (!preAuthToken) return;
@@ -74,7 +77,7 @@ export default function TwoFactorEnrollPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "验证码不正确");
+        setError(data.error || t("page.2fa-enroll.s6"));
         return;
       }
       if (data.token) {
@@ -84,7 +87,7 @@ export default function TwoFactorEnrollPage() {
         router.push("/dashboard");
       }
     } catch {
-      setError("网络错误，请重试");
+      setError(t("page.2fa-enroll.s4"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +103,7 @@ export default function TwoFactorEnrollPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">绑定两步验证</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.2fa-enroll.s0")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           管理员已为你的账号角色开启两步验证强制策略，请先完成绑定才能登录。
           {email && <span className="block">当前账号：{email}</span>}
@@ -128,7 +131,7 @@ export default function TwoFactorEnrollPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={enrollData.qrCodeDataUrl}
-                  alt="两步验证二维码"
+                  alt={t("page.2fa-enroll.s7")}
                   width={200}
                   height={200}
                   className="rounded-lg border border-border bg-white p-1"
@@ -143,10 +146,10 @@ export default function TwoFactorEnrollPage() {
 
               <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-warning">备用恢复码（请妥善保存，每枚仅可使用一次）</p>
+                  <p className="text-xs font-medium text-warning">{t("page.2fa-enroll.s1")}</p>
                   <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={copyCodes}>
                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    {copied ? "已复制" : "复制"}
+                    {copied ? t("page.2fa-enroll.s8") : t("page.2fa-enroll.s9")}
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -167,7 +170,7 @@ export default function TwoFactorEnrollPage() {
       {phase === "verify" && (
         <form className="space-y-4" onSubmit={handleVerify}>
           <div className="space-y-2">
-            <Label htmlFor="code">输入验证器显示的 6 位验证码</Label>
+            <Label htmlFor="code">{t("page.2fa-enroll.s2")}</Label>
             <Input
               id="code"
               inputMode="numeric"
@@ -182,7 +185,7 @@ export default function TwoFactorEnrollPage() {
           </div>
           <Button variant="gradient" size="lg" className="w-full" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "验证中…" : "完成绑定并登录"}
+            {loading ? t("page.2fa-enroll.s10") : t("page.2fa-enroll.s11")}
           </Button>
           <button
             type="button"

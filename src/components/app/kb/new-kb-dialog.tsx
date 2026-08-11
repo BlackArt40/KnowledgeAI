@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2 } from "lucide-react";
@@ -37,6 +39,7 @@ export function NewKbDialog({
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
 }) {
+  const t = useT();
   const router = useRouter();
   const [internal, setInternal] = React.useState(false);
   const isOpen = open ?? internal;
@@ -55,7 +58,7 @@ export function NewKbDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, desc, color }),
       });
-      if (!res.ok) throw new Error("创建失败");
+      if (!res.ok) throw new Error(t("page.new-kb-dialog.s4"));
       const { kb } = await res.json();
       setOpen(false);
       setName("");
@@ -77,7 +80,7 @@ export function NewKbDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>新建知识库</DialogTitle>
+          <DialogTitle>{t("page.new-kb-dialog.s0")}</DialogTitle>
           <DialogDescription>
             创建一个知识库，随后上传文档即可开始向量化。
           </DialogDescription>
@@ -85,26 +88,26 @@ export function NewKbDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="kb-name">名称</Label>
+            <Label htmlFor="kb-name">{t("page.new-kb-dialog.s1")}</Label>
             <Input
               id="kb-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="例如：产品文档"
+              placeholder={t("page.new-kb-dialog.s5")}
               onKeyDown={(e) => e.key === "Enter" && create()}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="kb-desc">描述（可选）</Label>
+            <Label htmlFor="kb-desc">{t("page.new-kb-dialog.s2")}</Label>
             <Input
               id="kb-desc"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="一句话描述这个知识库的用途"
+              placeholder={t("page.new-kb-dialog.s6")}
             />
           </div>
           <div className="space-y-2">
-            <Label>主题色</Label>
+            <Label>{t("page.new-kb-dialog.s3")}</Label>
             <div className="flex gap-2">
               {COLORS.map((c) => (
                 <button
@@ -116,7 +119,7 @@ export function NewKbDialog({
                     color === c.value &&
                       "ring-2 ring-foreground ring-offset-2 ring-offset-background"
                   )}
-                  aria-label="选择颜色"
+                  aria-label={t("page.new-kb-dialog.s7")}
                 />
               ))}
             </div>

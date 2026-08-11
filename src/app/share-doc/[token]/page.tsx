@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -22,15 +24,18 @@ interface SharedDoc {
 
 type ErrorCode = "needPassword" | "expired" | "exhausted" | "notFound";
 
-const ERROR_UI: Record<ErrorCode, { icon: React.ComponentType<{ className?: string }>; title: string; desc: string }> = {
-  needPassword: { icon: Lock, title: "需要访问密码", desc: "该文档分享链接受密码保护" },
-  expired: { icon: Clock, title: "链接已过期", desc: "分享链接已超过有效期，请联系文档所有者重新分享" },
-  exhausted: { icon: EyeOff, title: "访问次数已用尽", desc: "该分享链接已达到访问次数上限" },
-  notFound: { icon: Link2Off, title: "链接无效", desc: "分享链接不存在或已被撤销" },
-};
+function errorUi(t: (k: string) => string): Record<ErrorCode, { icon: React.ComponentType<{ className?: string }>; title: string; desc: string }> {
+  return {
+    needPassword: { icon: Lock, title: t("page.share-doc.s1"), desc: t("page.share-doc.s6") },
+    expired: { icon: Clock, title: t("page.share-doc.s7"), desc: t("page.share-doc.s8") },
+    exhausted: { icon: EyeOff, title: t("page.share-doc.s9"), desc: t("page.share-doc.s10") },
+    notFound: { icon: Link2Off, title: t("page.share-doc.s11"), desc: t("page.share-doc.s12") },
+  };
+}
 
 // P4-2: public page for a shared document (no login required).
 export default function ShareDocPage() {
+  const t = useT();
   const params = useParams<{ token: string }>();
   const token = params.token;
 
@@ -87,7 +92,7 @@ export default function ShareDocPage() {
   }
 
   if (errorCode && errorCode !== "needPassword") {
-    const E = ERROR_UI[errorCode];
+    const E = errorUi(t)[errorCode];
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-gradient text-white">
@@ -96,7 +101,7 @@ export default function ShareDocPage() {
         <h1 className="text-2xl font-bold tracking-tight">{E.title}</h1>
         <p className="max-w-md text-sm text-muted-foreground">{E.desc}</p>
         <Button variant="outline" asChild>
-          <Link href="/"><ArrowLeft className="h-4 w-4" /> 返回首页</Link>
+          <Link href="/"><ArrowLeft className="h-4 w-4" />{t("page.share-doc.s0")}</Link>
         </Button>
       </div>
     );
@@ -108,7 +113,7 @@ export default function ShareDocPage() {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-gradient text-white">
           <Lock className="h-7 w-7" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">需要访问密码</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.share-doc.s1")}</h1>
         <p className="max-w-md text-sm text-muted-foreground">
           该文档分享链接受密码保护，请输入密码查看内容
         </p>
@@ -117,12 +122,12 @@ export default function ShareDocPage() {
             type="password"
             value={pwd}
             onChange={(e) => setPwd(e.target.value)}
-            placeholder="访问密码"
+            placeholder={t("page.share-doc.s13")}
             className="text-center"
             autoFocus
           />
-          {pwdError && <p className="text-xs text-destructive">密码不正确，请重试</p>}
-          <Button type="submit">查看文档</Button>
+          {pwdError && <p className="text-xs text-destructive">{t("page.share-doc.s2")}</p>}
+          <Button type="submit">{t("page.share-doc.s3")}</Button>
         </form>
       </div>
     );
@@ -133,7 +138,7 @@ export default function ShareDocPage() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <FileText className="h-4 w-4" />
-          <span>KnowledgeAI 文档分享</span>
+          <span>{t("page.share-doc.s4")}</span>
           <Badge variant="secondary" className="ml-auto font-normal">
             {data.views} 次访问{data.maxViews ? ` / ${data.maxViews}` : ""}
           </Badge>
@@ -142,16 +147,16 @@ export default function ShareDocPage() {
         <div className="mt-4 rounded-2xl border border-border bg-card p-6">
           <h1 className="break-all text-2xl font-bold tracking-tight">{data.name}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {data.type === "web" ? "网页链接" : formatSize(data.size)} · 上传于 {formatRelative(data.uploadedAt)}
-            {data.expiresAt && ` · 有效期至 ${new Date(data.expiresAt).toLocaleDateString()}`}
+            {data.type === "web" ? t("page.share-doc.s14") : formatSize(data.size)} · 上传于 {formatRelative(data.uploadedAt)}
+            {data.expiresAt && ` · ${t("page.share-doc.s16", { date: new Date(data.expiresAt).toLocaleDateString() })}`}
           </p>
           <pre className="mt-5 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl bg-muted/40 p-4 font-mono text-sm leading-relaxed">
-            {data.content || "（该文档暂无文本内容预览）"}
+            {data.content || t("page.share-doc.s15")}
           </pre>
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          由 KnowledgeAI 团队共享 · <Link href="/" className="underline">了解 KnowledgeAI</Link>
+          由 KnowledgeAI 团队共享 · <Link href="/" className="underline">{t("page.share-doc.s5")}</Link>
         </p>
       </div>
     </div>

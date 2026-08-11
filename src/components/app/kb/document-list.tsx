@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { Trash2, Loader2, CheckCircle2, AlertCircle, Share2 } from "lucide-react";
 import { DocTypeIcon } from "./doc-type-icon";
@@ -64,6 +66,7 @@ export function DocumentList({
   /** P4-2: open the share-link dialog for a document. */
   onShare: (doc: KbDocument) => void;
 }) {
+  const t = useT();
   const hasInFlight = docs.some((d) => IN_FLIGHT.includes(d.status));
 
   React.useEffect(() => {
@@ -88,7 +91,7 @@ export function DocumentList({
         <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <AlertCircle className="h-6 w-6" />
         </span>
-        <p className="mt-3 text-sm font-medium">还没有文档</p>
+        <p className="mt-3 text-sm font-medium">{t("page.document-list.s0")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           上传文件或添加网页链接，AI 将自动解析与向量化
         </p>
@@ -100,10 +103,10 @@ export function DocumentList({
     <div className="overflow-hidden rounded-xl border border-border">
       {/* header row */}
       <div className="hidden grid-cols-[1fr_120px_140px_120px_40px] gap-3 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground md:grid">
-        <span>文档</span>
-        <span>大小 / 切片</span>
-        <span>处理状态</span>
-        <span>上传时间</span>
+        <span>{t("page.document-list.s1")}</span>
+        <span>{t("page.document-list.s2")}</span>
+        <span>{t("page.document-list.s3")}</span>
+        <span>{t("page.document-list.s4")}</span>
         <span />
       </div>
 
@@ -133,7 +136,7 @@ export function DocumentList({
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground md:hidden">
-                      {doc.type === "web" ? "网页链接" : formatSize(doc.size)}
+                      {doc.type === "web" ? t("page.document-list.s7") : formatSize(doc.size)}
                     </p>
                   )}
                   {/* P4-2: document-level access override (inherit / view / edit / private) */}
@@ -146,7 +149,7 @@ export function DocumentList({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="inherit">继承 KB 权限</SelectItem>
+                        <SelectItem value="inherit">{t("page.document-list.s5")}</SelectItem>
                         {(Object.keys(DOC_ACCESS_LABEL) as DocAccess[]).map((a) => (
                           <SelectItem key={a} value={a}>{DOC_ACCESS_LABEL[a]}</SelectItem>
                         ))}
@@ -158,8 +161,8 @@ export function DocumentList({
 
               {/* size / chunks */}
               <div className="text-xs text-muted-foreground">
-                <span className="md:hidden">大小: </span>
-                {doc.type === "web" ? "网页链接" : formatSize(doc.size)}
+                <span className="md:hidden">{t("page.document-list.s5")} </span>
+                {doc.type === "web" ? t("page.document-list.s7") : formatSize(doc.size)}
                 {doc.chunks > 0 && (
                   <span className="mt-0.5 block text-[11px]">{doc.chunks} 个切片</span>
                 )}
@@ -182,8 +185,8 @@ export function DocumentList({
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                   onClick={() => onShare(doc)}
-                  aria-label="分享文档"
-                  title="创建分享链接"
+                  aria-label={t("page.document-list.s8")}
+                  title={t("page.document-list.s9")}
                 >
                   <Share2 className="h-3.5 w-3.5" />
                 </Button>
@@ -192,7 +195,7 @@ export function DocumentList({
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => onDelete(doc.id)}
-                  aria-label="删除文档"
+                  aria-label={t("page.document-list.s10")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

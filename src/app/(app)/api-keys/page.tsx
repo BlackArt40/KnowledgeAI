@@ -1,4 +1,6 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
 import {
   KeyRound, Plus, Copy, Check, Trash2, Power, CheckCircle2, XCircle,
@@ -18,6 +20,7 @@ import { SCOPES, type ApiKey, type CallLog, type KeyStatus } from "@/lib/apikeys
 import { cn } from "@/lib/utils";
 
 export default function ApiKeysPage() {
+  const t = useT();
   const [keys, setKeys] = React.useState<ApiKey[]>([]);
   const [logs, setLogs] = React.useState<CallLog[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -93,26 +96,26 @@ export default function ApiKeysPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">API 密钥</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page.api-keys.s0")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             创建密钥以通过 API 访问知识库、问答与 Agent 服务。共 {keys.length} 个密钥，累计调用 {totalCalls.toLocaleString()} 次。
           </p>
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="gradient"><Plus className="h-4 w-4" /> 创建密钥</Button>
+            <Button variant="gradient"><Plus className="h-4 w-4" />{t("page.api-keys.s0")}</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>创建 API 密钥</DialogTitle>
+              <DialogTitle>{t("page.api-keys.s2")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label>密钥名称</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：生产环境密钥" />
+                <Label>{t("page.api-keys.s3")}</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("page.api-keys.s16")} />
               </div>
               <div className="space-y-2">
-                <Label>权限范围</Label>
+                <Label>{t("page.api-keys.s4")}</Label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {SCOPES.map((s) => (
                     <label key={s.id} className={cn(
@@ -128,7 +131,7 @@ export default function ApiKeysPage() {
             </div>
             <DialogFooter>
               <Button onClick={create} disabled={creating}>
-                {creating ? "创建中…" : "创建密钥"}
+                {creating ? t("page.api-keys.s17") : t("page.api-keys.s1")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -151,31 +154,31 @@ export default function ApiKeysPage() {
               <code className="flex-1 break-all font-mono text-xs">{newKey?.secret}</code>
               <Button size="sm" variant="outline" onClick={copySecret}>
                 {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "已复制" : "复制"}
+                {copied ? t("page.api-keys.s18") : t("page.api-keys.s19")}
               </Button>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setNewKey(null)}>我已保存</Button>
+            <Button onClick={() => setNewKey(null)}>{t("page.api-keys.s5")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> 密钥列表</CardTitle>
+          <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" />{t("page.api-keys.s1")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>密钥</TableHead>
-                <TableHead>权限</TableHead>
-                <TableHead>调用次数</TableHead>
-                <TableHead>最近使用</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t("page.api-keys.s7")}</TableHead>
+                <TableHead>{t("page.api-keys.s8")}</TableHead>
+                <TableHead>{t("page.api-keys.s9")}</TableHead>
+                <TableHead>{t("page.api-keys.s10")}</TableHead>
+                <TableHead>{t("page.api-keys.s11")}</TableHead>
+                <TableHead>{t("page.api-keys.s12")}</TableHead>
+                <TableHead className="text-right">{t("page.api-keys.s13")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,15 +197,15 @@ export default function ApiKeysPage() {
                   <TableCell className="text-muted-foreground">{k.lastUsed ? formatRelative(k.lastUsed) : "—"}</TableCell>
                   <TableCell>
                     <Badge variant={k.status === "active" ? "success" : "destructive"}>
-                      {k.status === "active" ? "启用" : "已禁用"}
+                      {k.status === "active" ? t("page.api-keys.s20") : t("page.api-keys.s21")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggle(k.id, k.status === "active" ? "disabled" : "active")} title={k.status === "active" ? "禁用" : "启用"}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggle(k.id, k.status === "active" ? "disabled" : "active")} title={k.status === "active" ? t("page.api-keys.s22") : t("page.api-keys.s20")}>
                         <Power className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => remove(k.id)} title="删除">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => remove(k.id)} title={t("page.api-keys.s23")}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -217,7 +220,7 @@ export default function ApiKeysPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Terminal className="h-4 w-4" /> 调用示例</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Terminal className="h-4 w-4" />{t("page.api-keys.s2")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="curl">
@@ -238,7 +241,7 @@ export default function ApiKeysPage() {
 resp = requests.post(
     "https://api.knowledgeai.dev/api/chat",
     headers={"Authorization": "Bearer kai_sk_..."},
-    json={"kb": "kb_1", "query": "产品有哪些功能？"},
+    json={"kb": "kb_1", "query": t("page.api-keys.s24")},
 )
 print(resp.json())`}</code></pre>
               </TabsContent>
@@ -249,7 +252,7 @@ print(resp.json())`}</code></pre>
     "Authorization": "Bearer kai_sk_...",
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ kb: "kb_1", query: "产品有哪些功能？" }),
+  body: JSON.stringify({ kb: "kb_1", query: t("page.api-keys.s24") }),
 });
 const data = await res.json();`}</code></pre>
               </TabsContent>
@@ -259,7 +262,7 @@ const data = await res.json();`}</code></pre>
 
         <Card>
           <CardHeader>
-            <CardTitle>最近调用日志</CardTitle>
+            <CardTitle>{t("page.api-keys.s15")}</CardTitle>
           </CardHeader>
           <CardContent className="max-h-72 overflow-y-auto">
             <div className="space-y-1.5">

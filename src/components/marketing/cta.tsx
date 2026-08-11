@@ -1,8 +1,13 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function CTA() {
+  const t = useT();
   return (
     <section className="py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -12,7 +17,7 @@ export function CTA() {
 
           <h2 className="mx-auto max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             现在就开始构建你的
-            <span className="text-gradient">团队知识库</span>
+            <span className="text-gradient">{t("page.cta.s0")}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-pretty text-muted-foreground">
             免费开始，无需信用卡。几分钟内完成第一个知识库的搭建。
@@ -25,7 +30,7 @@ export function CTA() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/login">登录工作台</Link>
+              <Link href="/login">{t("page.cta.s1")}</Link>
             </Button>
           </div>
         </div>

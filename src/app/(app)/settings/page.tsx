@@ -1,9 +1,11 @@
 "use client";
+
+import { useT, useI18n } from "@/lib/i18n/provider";
 import * as React from "react";
 import {
   Shield, Smartphone, Monitor, LogOut, History, Download, Trash2,
   ShieldCheck, User, Bell, Cookie, AlertTriangle, Loader2, CheckCircle2, Bot,
-  Copy, Check,
+  Copy, Check, Palette,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,12 +22,15 @@ import { formatRelative } from "@/lib/format";
 import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
 import { ModelSettings } from "@/components/app/model-settings";
+import { ThemeSettings } from "@/components/app/theme-settings";
 
 const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
 };
 
 export default function SettingsPage() {
+  const t = useT();
+  const { locale, setLocale } = useI18n();
   const [data, setData] = React.useState<(SecurityState & { twoFactorRequired?: boolean }) | null>(null);
   const [loading, setLoading] = React.useState(true);
   // P5-2: active tab, initialized from ?tab= (global search deep-link) and
@@ -105,7 +110,7 @@ export default function SettingsPage() {
     if (!me) return;
     setProfileMsg(null);
     if (newPwd && newPwd !== confirmPwd) {
-      setProfileMsg({ ok: false, text: "两次输入的新密码不一致" });
+      setProfileMsg({ ok: false, text: t("page.settings.s39") });
       return;
     }
     setSavingProfile(true);
@@ -121,16 +126,16 @@ export default function SettingsPage() {
       });
       const d = await res.json();
       if (!res.ok) {
-        setProfileMsg({ ok: false, text: d.error || "保存失败" });
+        setProfileMsg({ ok: false, text: d.error || t("page.settings.s40") });
       } else {
         setMe(d.user);
         setProfileName(d.user.name);
         if (d.token) localStorage.setItem("kai-token", d.token);
         setCurPwd(""); setNewPwd(""); setConfirmPwd("");
-        setProfileMsg({ ok: true, text: "保存成功" });
+        setProfileMsg({ ok: true, text: t("page.settings.s41") });
       }
     } catch {
-      setProfileMsg({ ok: false, text: "网络错误，请重试" });
+      setProfileMsg({ ok: false, text: t("page.settings.s42") });
     }
     setSavingProfile(false);
   }
@@ -147,17 +152,17 @@ export default function SettingsPage() {
         body: JSON.stringify({ action: "enroll" }),
       });
       const d = await res.json();
-      if (!res.ok) { setEnrollError(d.error || "无法启动绑定"); return; }
+      if (!res.ok) { setEnrollError(d.error || t("page.settings.s43")); return; }
       setEnrollData({ secret: d.secret, qrCodeDataUrl: d.qrCodeDataUrl, backupCodes: d.backupCodes });
     } catch {
-      setEnrollError("网络错误，请重试");
+      setEnrollError(t("page.settings.s42"));
     }
   }
 
   async function confirmEnroll(e: React.FormEvent) {
     e.preventDefault();
     setEnrollError(null);
-    if (!/^\d{6}$/.test(enrollCode.trim())) { setEnrollError("请输入 6 位验证码"); return; }
+    if (!/^\d{6}$/.test(enrollCode.trim())) { setEnrollError(t("page.settings.s44")); return; }
     setEnrollBusy(true);
     try {
       const res = await fetch("/api/security/2fa", {
@@ -165,11 +170,11 @@ export default function SettingsPage() {
         body: JSON.stringify({ action: "verify", code: enrollCode.trim() }),
       });
       const d = await res.json();
-      if (!res.ok) { setEnrollError(d.error || "验证码不正确"); return; }
+      if (!res.ok) { setEnrollError(d.error || t("page.settings.s45")); return; }
       setEnrollOpen(false);
       await refresh();
     } catch {
-      setEnrollError("网络错误，请重试");
+      setEnrollError(t("page.settings.s42"));
     } finally {
       setEnrollBusy(false);
     }
@@ -178,7 +183,7 @@ export default function SettingsPage() {
   async function confirmDisable(e: React.FormEvent) {
     e.preventDefault();
     setDisableError(null);
-    if (!disableCode.trim()) { setDisableError("请输入验证码"); return; }
+    if (!disableCode.trim()) { setDisableError(t("page.settings.s46")); return; }
     setDisableBusy(true);
     try {
       const res = await fetch("/api/security/2fa", {
@@ -186,12 +191,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ action: "disable", code: disableCode.trim() }),
       });
       const d = await res.json();
-      if (!res.ok) { setDisableError(d.error || "验证码不正确"); return; }
+      if (!res.ok) { setDisableError(d.error || t("page.settings.s45")); return; }
       setDisableOpen(false);
       setDisableCode("");
       await refresh();
     } catch {
-      setDisableError("网络错误，请重试");
+      setDisableError(t("page.settings.s42"));
     } finally {
       setDisableBusy(false);
     }
@@ -231,13 +236,13 @@ export default function SettingsPage() {
       const res = await fetch("/api/auth/me", { method: "DELETE" });
       if (!res.ok) {
         const d = await res.json();
-        setProfileMsg({ ok: false, text: d.error || "删除失败" });
+        setProfileMsg({ ok: false, text: d.error || t("page.settings.s47") });
         setDeleting(false);
         return;
       }
       window.location.href = "/login";
     } catch {
-      setProfileMsg({ ok: false, text: "网络错误，请重试" });
+      setProfileMsg({ ok: false, text: t("page.settings.s42") });
       setDeleting(false);
     }
   }
@@ -256,12 +261,13 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">设置</h1>
-        <p className="mt-1 text-sm text-muted-foreground">管理个人信息、安全设置与数据隐私。</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.settings.s0")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("page.settings.s1")}</p>
       </div>
 
-      {/* P5-2: tab is URL-synced (?tab=security|profile|privacy|models) so
-          global search results can deep-link to a settings section */}
+      {/* P5-2: tab is URL-synced (?tab=security|profile|privacy|models|
+          appearance) so global search results can deep-link to a settings
+          section */}
       <Tabs
         value={tab}
         onValueChange={(v) => {
@@ -272,10 +278,12 @@ export default function SettingsPage() {
         }}
       >
         <TabsList>
-          <TabsTrigger value="security"><Shield className="h-4 w-4" /> 安全</TabsTrigger>
-          <TabsTrigger value="profile"><User className="h-4 w-4" /> 个人信息</TabsTrigger>
-          <TabsTrigger value="privacy"><Cookie className="h-4 w-4" /> 数据隐私</TabsTrigger>
-          <TabsTrigger value="models"><Bot className="h-4 w-4" /> AI 模型</TabsTrigger>
+          <TabsTrigger value="security"><Shield className="h-4 w-4" />{t("page.settings.s0")}</TabsTrigger>
+          <TabsTrigger value="profile"><User className="h-4 w-4" />{t("page.settings.s1")}</TabsTrigger>
+          <TabsTrigger value="privacy"><Cookie className="h-4 w-4" />{t("page.settings.s2")}</TabsTrigger>
+          <TabsTrigger value="models"><Bot className="h-4 w-4" />{t("page.settings.s3")}</TabsTrigger>
+          {/* P5-5: appearance (theme) tab */}
+          <TabsTrigger value="appearance"><Palette className="h-4 w-4" />{t("page.settings.s72")}</TabsTrigger>
         </TabsList>
 
         {/* Security */}
@@ -284,9 +292,9 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> 两步验证（2FA）</span>
+                <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" />{t("page.settings.s4")}</span>
                 <Badge variant={twoFactor.enabled ? "success" : "warning"}>
-                  {twoFactor.enabled ? "已开启" : "未开启"}
+                  {twoFactor.enabled ? t("page.settings.s48") : t("page.settings.s49")}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -317,7 +325,7 @@ export default function SettingsPage() {
                   {data.twoFactorRequired && (
                     <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                      <span>管理员已为你的角色开启两步验证强制策略，请尽快开启。下次登录时将强制要求绑定。</span>
+                      <span>{t("page.settings.s7")}</span>
                     </div>
                   )}
                   <Button variant="gradient" onClick={startEnroll}>
@@ -330,7 +338,7 @@ export default function SettingsPage() {
               <Dialog open={enrollOpen} onOpenChange={(v) => { setEnrollOpen(v); if (!v) setEnrollError(null); }}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>绑定两步验证</DialogTitle>
+                    <DialogTitle>{t("page.settings.s8")}</DialogTitle>
                   </DialogHeader>
                   {enrollError && (
                     <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -340,18 +348,18 @@ export default function SettingsPage() {
                   {enrollData ? (
                     <div className="space-y-4">
                       <div className="flex flex-col items-center">
-                        <p className="mb-2 text-center text-xs text-muted-foreground">使用验证器 App 扫描二维码</p>
+                        <p className="mb-2 text-center text-xs text-muted-foreground">{t("page.settings.s9")}</p>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={enrollData.qrCodeDataUrl} alt="2FA 二维码" width={180} height={180} className="rounded-lg border border-border bg-white p-1" />
-                        <p className="mt-2 text-center text-xs text-muted-foreground">或手动输入密钥：</p>
+                        <img src={enrollData.qrCodeDataUrl} alt={t("page.settings.s50")} width={180} height={180} className="rounded-lg border border-border bg-white p-1" />
+                        <p className="mt-2 text-center text-xs text-muted-foreground">{t("page.settings.s10")}</p>
                         <code className="mt-1 max-w-full break-all rounded bg-muted px-2 py-1 text-center font-mono text-xs">{enrollData.secret}</code>
                       </div>
                       <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
                         <div className="mb-2 flex items-center justify-between">
-                          <p className="text-xs font-medium text-warning">备用恢复码（仅显示一次）</p>
+                          <p className="text-xs font-medium text-warning">{t("page.settings.s11")}</p>
                           <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={copyBackupCodes}>
                             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            {copied ? "已复制" : "复制"}
+                            {copied ? t("page.settings.s51") : t("page.settings.s52")}
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-1.5">
@@ -361,7 +369,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <form className="space-y-2" onSubmit={confirmEnroll}>
-                        <Label htmlFor="enroll-code" className="text-xs">输入验证器显示的 6 位验证码</Label>
+                        <Label htmlFor="enroll-code" className="text-xs">{t("page.settings.s12")}</Label>
                         <Input id="enroll-code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={enrollCode} onChange={(e) => setEnrollCode(e.target.value)} className="text-center tracking-[0.3em]" required />
                         <Button type="submit" variant="gradient" className="w-full" disabled={enrollBusy}>
                           {enrollBusy && <Loader2 className="h-4 w-4 animate-spin" />} 完成绑定
@@ -380,7 +388,7 @@ export default function SettingsPage() {
               <Dialog open={disableOpen} onOpenChange={(v) => { setDisableOpen(v); if (!v) setDisableError(null); }}>
                 <DialogContent className="max-w-sm">
                   <DialogHeader>
-                    <DialogTitle>关闭两步验证</DialogTitle>
+                    <DialogTitle>{t("page.settings.s13")}</DialogTitle>
                   </DialogHeader>
                   {disableError && (
                     <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -388,8 +396,8 @@ export default function SettingsPage() {
                     </p>
                   )}
                   <form className="space-y-3" onSubmit={confirmDisable}>
-                    <p className="text-sm text-muted-foreground">为防止误操作，请输入当前验证码或恢复码以确认关闭。</p>
-                    <Input inputMode="numeric" autoComplete="one-time-code" placeholder="验证码 / 恢复码" value={disableCode} onChange={(e) => setDisableCode(e.target.value)} autoFocus required />
+                    <p className="text-sm text-muted-foreground">{t("page.settings.s14")}</p>
+                    <Input inputMode="numeric" autoComplete="one-time-code" placeholder={t("page.settings.s53")} value={disableCode} onChange={(e) => setDisableCode(e.target.value)} autoFocus required />
                     <Button type="submit" variant="destructive" className="w-full" disabled={disableBusy}>
                       {disableBusy && <Loader2 className="h-4 w-4 animate-spin" />} 确认关闭
                     </Button>
@@ -403,8 +411,8 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2"><Monitor className="h-4 w-4" /> 登录设备管理</span>
-                <Button size="sm" variant="ghost" onClick={revokeAll}>退出其他设备</Button>
+                <span className="flex items-center gap-2"><Monitor className="h-4 w-4" />{t("page.settings.s5")}</span>
+                <Button size="sm" variant="ghost" onClick={revokeAll}>{t("page.settings.s16")}</Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -418,7 +426,7 @@ export default function SettingsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{s.device}</span>
-                      {s.current && <Badge variant="success" className="text-[10px]">当前设备</Badge>}
+                      {s.current && <Badge variant="success" className="text-[10px]">{t("page.settings.s17")}</Badge>}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
                       {s.browser} · {s.ip} · {s.location} · {formatRelative(s.lastActive)}
@@ -437,7 +445,7 @@ export default function SettingsPage() {
           {/* Login history */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><History className="h-4 w-4" /> 登录历史</CardTitle>
+              <CardTitle className="flex items-center gap-2"><History className="h-4 w-4" />{t("page.settings.s6")}</CardTitle>
             </CardHeader>
             <CardContent className="max-h-64 overflow-y-auto">
               <div className="space-y-1">
@@ -459,36 +467,60 @@ export default function SettingsPage() {
         {/* Profile */}
         <TabsContent value="profile" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle>个人信息</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("page.settings.s3")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>姓名</Label>
-                  <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="你的姓名" />
+                  <Label>{t("page.settings.s19")}</Label>
+                  <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder={t("page.settings.s54")} />
                 </div>
                 <div className="space-y-2">
-                  <Label>邮箱</Label>
+                  <Label>{t("page.settings.s20")}</Label>
                   <Input value={me?.email ?? ""} type="email" disabled />
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{me ? (ROLE_BADGE[me.role] ?? me.role) : "—"}</Badge>
                 <Badge variant="secondary" className="capitalize">{me?.plan ?? "—"}</Badge>
-                <span className="text-xs text-muted-foreground">角色与套餐由管理员分配，邮箱不可修改</span>
+                <span className="text-xs text-muted-foreground">{t("page.settings.s21")}</span>
+              </div>
+              {/* P5-4: UI language preference, persisted to the user profile */}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label>{t("common.language")}</Label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t("page.settings.langHint")}</p>
+                </div>
+                <Select
+                  value={locale}
+                  onValueChange={async (v) => {
+                    setLocale(v as "zh-CN" | "en");
+                    await fetch("/api/auth/me", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ locale: v }),
+                    }).catch(() => {});
+                  }}
+                >
+                  <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zh-CN">{t("page.settings.s7")}</SelectItem>
+                    <SelectItem value="en">{t("common.english")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label>当前密码</Label>
-                <Input type="password" value={curPwd} onChange={(e) => setCurPwd(e.target.value)} placeholder="修改密码时需填写" />
+                <Label>{t("page.settings.s22")}</Label>
+                <Input type="password" value={curPwd} onChange={(e) => setCurPwd(e.target.value)} placeholder={t("page.settings.s55")} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>新密码</Label>
-                  <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} placeholder="留空则不修改" />
+                  <Label>{t("page.settings.s23")}</Label>
+                  <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} placeholder={t("page.settings.s56")} />
                 </div>
                 <div className="space-y-2">
-                  <Label>确认新密码</Label>
-                  <Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} placeholder="再次输入新密码" />
+                  <Label>{t("page.settings.s24")}</Label>
+                  <Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} placeholder={t("page.settings.s57")} />
                 </div>
               </div>
               {profileMsg && (
@@ -511,10 +543,10 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { k: "emailDigest" as const, label: "每周用量摘要邮件", desc: "每周一收到上周的使用统计" },
-                { k: "kbReady" as const, label: "知识库处理完成通知", desc: "文档向量化完成时邮件提醒" },
-                { k: "agentDone" as const, label: "Agent 报告完成通知", desc: "调研报告生成完成时提醒" },
-                { k: "securityAlert" as const, label: "安全告警", desc: "异常登录或权限变更时立即通知" },
+                { k: "emailDigest" as const, label: t("page.settings.s58"), desc: t("page.settings.s59") },
+                { k: "kbReady" as const, label: t("page.settings.s60"), desc: t("page.settings.s61") },
+                { k: "agentDone" as const, label: t("page.settings.s62"), desc: t("page.settings.s63") },
+                { k: "securityAlert" as const, label: t("page.settings.s64"), desc: t("page.settings.s65") },
               ].map((n) => (
                 <div key={n.k} className="flex items-center justify-between">
                   <div>
@@ -538,12 +570,12 @@ export default function SettingsPage() {
         {/* Privacy / GDPR */}
         <TabsContent value="privacy" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Cookie className="h-4 w-4" /> 数据与隐私设置</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Cookie className="h-4 w-4" />{t("page.settings.s8")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {[
-                { key: "analytics" as const, label: "使用分析", desc: "允许收集匿名使用数据以改进产品", val: privacy.analytics },
-                { key: "crashReports" as const, label: "崩溃报告", desc: "自动上报错误以帮助修复问题", val: privacy.crashReports },
-                { key: "trainingOptIn" as const, label: "数据用于模型训练", desc: "允许将脱敏数据用于改进 AI 模型", val: privacy.trainingOptIn },
+                { key: "analytics" as const, label: t("page.settings.s66"), desc: t("page.settings.s67"), val: privacy.analytics },
+                { key: "crashReports" as const, label: t("page.settings.s68"), desc: t("page.settings.s69"), val: privacy.crashReports },
+                { key: "trainingOptIn" as const, label: t("page.settings.s70"), desc: t("page.settings.s71"), val: privacy.trainingOptIn },
               ].map((p) => (
                 <div key={p.key} className="flex items-center justify-between">
                   <div>
@@ -559,8 +591,8 @@ export default function SettingsPage() {
               <Separator />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">数据保留期限</p>
-                  <p className="text-xs text-muted-foreground">超过此期限的会话与日志将自动清理</p>
+                  <p className="text-sm font-medium">{t("page.settings.s26")}</p>
+                  <p className="text-xs text-muted-foreground">{t("page.settings.s27")}</p>
                 </div>
                 <Select
                   value={String(privacy.dataRetentionDays)}
@@ -570,11 +602,11 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30">30 天</SelectItem>
-                    <SelectItem value="60">60 天</SelectItem>
-                    <SelectItem value="90">90 天</SelectItem>
-                    <SelectItem value="180">180 天</SelectItem>
-                    <SelectItem value="365">365 天</SelectItem>
+                    <SelectItem value="30">{t("page.settings.s28")}</SelectItem>
+                    <SelectItem value="60">{t("page.settings.s29")}</SelectItem>
+                    <SelectItem value="90">{t("page.settings.s30")}</SelectItem>
+                    <SelectItem value="180">{t("page.settings.s31")}</SelectItem>
+                    <SelectItem value="365">{t("page.settings.s32")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -582,7 +614,7 @@ export default function SettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>GDPR 数据权利</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("page.settings.s33")}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 根据 GDPR（通用数据保护条例）与《个人信息保护法》，您有权访问、导出和删除您的个人数据。
@@ -598,16 +630,16 @@ export default function SettingsPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
-                    <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" /> 确认删除账户</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{t("page.settings.s9")}</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                       <p className="text-sm text-muted-foreground">
-                        此操作将永久删除您的账户、知识库、会话历史及所有相关数据，且<strong className="text-foreground">不可恢复</strong>。
+                        此操作将永久删除您的账户、知识库、会话历史及所有相关数据，且<strong className="text-foreground">{t("page.settings.s35")}</strong>。
                       </p>
                       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
                         ⚠️ 删除后您将无法登录，所有 API 密钥将立即失效。
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs">请输入 <strong>DELETE</strong> 以确认</Label>
+                        <Label className="text-xs">{t("page.settings.s10")}<strong>DELETE</strong>{t("page.settings.s11")}</Label>
                         <Input
                           value={deleteConfirm}
                           onChange={(e) => setDeleteConfirm(e.target.value)}
@@ -621,7 +653,7 @@ export default function SettingsPage() {
                     </div>
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button variant="outline">取消</Button>
+                        <Button variant="outline">{t("page.settings.s38")}</Button>
                       </DialogClose>
                       <Button
                         variant="destructive"
@@ -641,6 +673,10 @@ export default function SettingsPage() {
         {/* AI Models */}
         <TabsContent value="models" className="space-y-4">
           <ModelSettings />
+        </TabsContent>
+        {/* P5-5: Appearance (theme mode / high contrast / brand color) */}
+        <TabsContent value="appearance" className="space-y-4">
+          <ThemeSettings />
         </TabsContent>
       </Tabs>
     </div>

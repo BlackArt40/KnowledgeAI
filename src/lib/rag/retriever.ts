@@ -14,6 +14,8 @@ import { hybridSearch } from "./hybrid-search";
 import { rewriteQuery } from "./query-rewrite";
 import { rerank } from "./reranker";
 import { getParentText } from "./indexer";
+import { recordRag } from "@/lib/obs/metrics";
+import { withSpan } from "@/lib/obs/trace";
 import type { RetrievedChunk } from "./types";
 
 const MULTI_QUERY_RRF_K = 60;
@@ -95,9 +97,20 @@ export async function retrieve(
   query: string,
   topK: number
 ): Promise<RetrievedChunk[]> {
-  const queries = await rewriteQuery(query);
-  const candidateK = Math.max(candidatePoolSize(), topK);
-  const candidates = await multiQueryRetrieve(kbId, queries, candidateK);
-  const reranked = await rerank(query, candidates, topK);
-  return expandWithParent(reranked, kbId);
+  const start = Date.now();
+  let failed = false;
+  try {
+    return await withSpan("rag.retrieve", "rag", { kbId, queryLen: query.length, topK }, async () => {
+      const queries = await rewriteQuery(query);
+      const candidateK = Math.max(candidatePoolSize(), topK);
+      const candidates = await multiQueryRetrieve(kbId, queries, candidateK);
+      const reranked = await rerank(query, candidates, topK);
+      return expandWithParent(reranked, kbId);
+    });
+  } catch (err) {
+    failed = true;
+    throw err;
+  } finally {
+    recordRag(Date.now() - start, failed);
+  }
 }

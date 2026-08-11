@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { Settings2, Loader2 } from "lucide-react";
 import {
@@ -17,6 +19,7 @@ export function TeamSettingsDialog({
   team: Team;
   onSaved: (t: Team) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [name, setName] = React.useState(team.name);
@@ -50,23 +53,23 @@ export function TeamSettingsDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>团队设置</DialogTitle>
-          <DialogDescription>修改团队名称等基本信息。</DialogDescription>
+          <DialogTitle>{t("page.team-settings-dialog.s0")}</DialogTitle>
+          <DialogDescription>{t("page.team-settings-dialog.s1")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="t-name">团队名称</Label>
+            <Label htmlFor="t-name">{t("page.team-settings-dialog.s2")}</Label>
             <Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>当前套餐</Label>
+            <Label>{t("page.team-settings-dialog.s3")}</Label>
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
               {team.plan} · 前往「订阅计费」管理
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>{t("page.team-settings-dialog.s4")}</Button>
           <Button variant="gradient" onClick={save} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />} 保存
           </Button>

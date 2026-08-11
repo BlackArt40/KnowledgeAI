@@ -10,6 +10,9 @@
 :root {
   --radius: 0.75rem;
 
+  /* P5-5: native form controls / scrollbars follow the theme. */
+  color-scheme: light;
+
   --background: 240 20% 99%;
   --foreground: 240 10% 8%;
 
@@ -51,6 +54,9 @@
 }
 
 .dark {
+  /* P5-5: native form controls / scrollbars follow the theme. */
+  color-scheme: dark;
+
   --background: 240 12% 4%;
   --foreground: 0 0% 98%;
 
@@ -249,5 +255,138 @@
   .chat-height {
     height: calc(100vh - 8.5rem);
     height: calc(100dvh - 8.5rem);
+  }
+}
+
+/* P5-3: chat markdown syntax-highlight tokens (lightweight, zero deps) */
+.tok-kw { color: #8b5cf6; }
+.tok-str { color: #16a34a; }
+.tok-com { color: #8a8f98; font-style: italic; }
+.tok-num { color: #d97706; }
+.tok-fn { color: #2563eb; }
+.dark .tok-kw { color: #c4b5fd; }
+.dark .tok-str { color: #4ade80; }
+.dark .tok-com { color: #6b7280; }
+.dark .tok-num { color: #fbbf24; }
+.dark .tok-fn { color: #93c5fd; }
+
+/* ============================================================
+   P5-5 · High contrast mode (WCAG AA)
+   Applied via `html.high-contrast` (settings toggle, `kai-hc`)
+   and automatically via the OS "increase contrast" preference.
+   - body / normal text >= 4.5:1, muted text >= 4.5:1
+   - UI boundaries (border/input) >= 3:1
+   - primary stays as-is (white-on-primary already clears AA)
+   ============================================================ */
+
+.high-contrast {
+  --background: 240 20% 100%;
+  --foreground: 240 10% 4%;
+  --secondary: 240 5% 92%;
+  --secondary-foreground: 240 10% 8%;
+  --muted: 240 5% 92%;
+  --muted-foreground: 240 5% 30%;
+  --accent: 243 80% 94%;
+  --accent-foreground: 243 75% 30%;
+  --border: 240 6% 55%;
+  --input: 240 6% 55%;
+  --success: 152 60% 30%;
+  --warning: 35 92% 38%;
+}
+.high-contrast.dark {
+  --background: 240 12% 0%;
+  --foreground: 0 0% 100%;
+  --card: 240 10% 10%;
+  --popover: 240 10% 11%;
+  --secondary: 240 6% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 240 6% 20%;
+  --muted-foreground: 240 6% 82%;
+  --accent: 243 40% 26%;
+  --accent-foreground: 243 80% 90%;
+  --border: 240 6% 42%;
+  --input: 240 6% 46%;
+  --success: 152 55% 60%;
+  --warning: 35 92% 66%;
+}
+
+/* 500-grade tag colors (doc icons, search category chips) don't clear AA on
+   white in their default shade - darken in light HC, brighten in dark HC. */
+.high-contrast .text-sky-500 { color: #0369a1; }
+.high-contrast .text-emerald-500 { color: #047857; }
+.high-contrast .text-violet-500 { color: #6d28d9; }
+.high-contrast .text-amber-500 { color: #b45309; }
+.high-contrast .text-pink-500 { color: #be185d; }
+.high-contrast.dark .text-sky-500 { color: #7dd3fc; }
+.high-contrast.dark .text-emerald-500 { color: #6ee7b7; }
+.high-contrast.dark .text-violet-500 { color: #c4b5fd; }
+.high-contrast.dark .text-amber-500 { color: #fcd34d; }
+.high-contrast.dark .text-pink-500 { color: #f9a8d4; }
+
+/* Same palette when the OS asks for more contrast (no manual toggle). */
+@media (prefers-contrast: more) {
+  :root {
+    --background: 240 20% 100%;
+    --foreground: 240 10% 4%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 10% 8%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 5% 30%;
+    --accent: 243 80% 94%;
+    --accent-foreground: 243 75% 30%;
+    --border: 240 6% 55%;
+    --input: 240 6% 55%;
+    --success: 152 60% 30%;
+    --warning: 35 92% 38%;
+  }
+  .dark {
+    --background: 240 12% 0%;
+    --foreground: 0 0% 100%;
+    --card: 240 10% 10%;
+    --popover: 240 10% 11%;
+    --secondary: 240 6% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 6% 20%;
+    --muted-foreground: 240 6% 82%;
+    --accent: 243 40% 26%;
+    --accent-foreground: 243 80% 90%;
+    --border: 240 6% 42%;
+    --input: 240 6% 46%;
+    --success: 152 55% 60%;
+    --warning: 35 92% 66%;
+  }
+  .text-sky-500 { color: #0369a1; }
+  .text-emerald-500 { color: #047857; }
+  .text-violet-500 { color: #6d28d9; }
+  .text-amber-500 { color: #b45309; }
+  .text-pink-500 { color: #be185d; }
+  .dark .text-sky-500 { color: #7dd3fc; }
+  .dark .text-emerald-500 { color: #6ee7b7; }
+  .dark .text-violet-500 { color: #c4b5fd; }
+  .dark .text-amber-500 { color: #fcd34d; }
+  .dark .text-pink-500 { color: #f9a8d4; }
+}
+
+/* P5-5: theme switch cross-fade. The `theme-transition` class is added by
+   the theme engine only around an explicit switch (never on first paint),
+   and is disabled for users who prefer reduced motion. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    fill 0.3s ease,
+    stroke 0.3s ease,
+    box-shadow 0.3s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition: none !important;
   }
 }

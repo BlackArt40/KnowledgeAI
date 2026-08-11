@@ -1,5 +1,7 @@
 import { embed, cosine } from "./embeddings";
 import { chatComplete, chatStream, isLLMEnabled } from "@/lib/llm/provider";
+import { recordLlm } from "@/lib/obs/metrics";
+import { traceBegin, traceEnd } from "@/lib/obs/trace";
 import type { RetrievedChunk, Citation, GenerationResult } from "./types";
 import type { ChatMessage } from "./conversation-context";
 import { buildContextualSystemPrompt } from "./conversation-context";
@@ -143,7 +145,8 @@ function parseCitations(text: string, chunks: RetrievedChunk[]): Citation[] {
 export async function generateAsync(
   query: string,
   chunks: RetrievedChunk[],
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  temperature = 0.3
 ): Promise<GenerationResult> {
   if (chunks.length === 0) {
     return {
@@ -154,7 +157,7 @@ export async function generateAsync(
 
   if (await isLLMEnabled()) {
     const messages = buildRagPrompt(query, chunks, history);
-    const text = await chatComplete(messages, { temperature: 0.3, maxTokens: 800 });
+    const text = await chatComplete(messages, { temperature, maxTokens: 800 });
     if (text) {
       return { text, citations: parseCitations(text, chunks) };
     }
@@ -187,7 +190,8 @@ export interface StreamResult {
 export async function* generateStream(
   query: string,
   chunks: RetrievedChunk[],
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  temperature = 0.3
 ): AsyncGenerator<StreamEvent, StreamResult> {
   if (chunks.length === 0) {
     const text = "未在当前知识库中检索到相关内容。可以尝试换一种问法，或为该知识库上传更多文档。";
@@ -198,20 +202,31 @@ export async function* generateStream(
   if (await isLLMEnabled()) {
     const messages = buildRagPrompt(query, chunks, history);
     let full = "";
-    for await (const delta of chatStream(messages, { temperature: 0.3, maxTokens: 800 })) {
+    for await (const delta of chatStream(messages, { temperature, maxTokens: 800 })) {
       full += delta;
       yield { type: "token", text: delta };
     }
     return { text: full, citations: parseCitations(full, chunks) };
   }
 
-  // Extractive fallback: generate full text, then stream in chunks
-  const result = generate(query, chunks);
-  const tokens = streamableTokens(result.text);
-  for (const tok of tokens) {
-    yield { type: "token", text: tok };
+  // Extractive fallback: generate full text, then stream in chunks.
+  // P6-1: recorded as an llm-kind stage (model "demo") so the trace chain
+  // api -> rag -> llm holds in demo mode too, and the LLM dashboard shows
+  // generation activity without a configured provider.
+  const genStart = Date.now();
+  const genSpan = traceBegin("llm.generate", "llm", { model: "demo", mode: "extractive" });
+  let genResult: GenerationResult | undefined;
+  try {
+    genResult = generate(query, chunks);
+    const tokens = streamableTokens(genResult.text);
+    for (const tok of tokens) {
+      yield { type: "token", text: tok };
+    }
+    return { text: genResult.text, citations: genResult.citations };
+  } finally {
+    recordLlm({ model: "demo", durationMs: Date.now() - genStart, chars: genResult?.text?.length ?? 0 });
+    traceEnd(genSpan);
   }
-  return { text: result.text, citations: result.citations };
 }
 
 // Split text into streamable tokens: citation markers stay atomic.

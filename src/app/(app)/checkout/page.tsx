@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,15 +14,18 @@ import { cn } from "@/lib/utils";
 import { getPlan, PLANS } from "@/lib/billing/plans";
 import type { PayMethod, PlanId } from "@/lib/billing/types";
 
-const METHODS: { id: PayMethod; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] = [
-  { id: "wechat", label: "微信支付", icon: QrCode, hint: "扫码支付" },
-  { id: "alipay", label: "支付宝", icon: Wallet, hint: "快捷支付" },
-  { id: "card", label: "信用卡", icon: CreditCard, hint: "Visa / Mastercard" },
-];
+function methods(t: (k: string) => string): { id: PayMethod; label: string; icon: React.ComponentType<{ className?: string }>; hint: string }[] {
+  return [
+    { id: "wechat", label: t("page.checkout.s6"), icon: QrCode, hint: t("page.checkout.s7") },
+    { id: "alipay", label: t("page.checkout.s8"), icon: Wallet, hint: t("page.checkout.s9") },
+    { id: "card", label: t("page.checkout.s10"), icon: CreditCard, hint: "Visa / Mastercard" },
+  ];
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function CheckoutPage() {
+  const t = useT();
   const router = useRouter();
   const [planId, setPlanId] = React.useState<PlanId>("pro");
   const [method, setMethod] = React.useState<PayMethod>("wechat");
@@ -52,7 +57,7 @@ export default function CheckoutPage() {
       if (!res.success) throw new Error();
       setPhase("success");
     } catch {
-      setError("支付失败，请重试");
+      setError(t("page.checkout.s11"));
       setPhase("form");
     }
   }
@@ -66,7 +71,7 @@ export default function CheckoutPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         {/* order summary */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">订单摘要</h2>
+          <h2 className="text-lg font-semibold">{t("page.checkout.s0")}</h2>
           <Badge variant="default">{plan.name}</Badge>
         </div>
         <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/40 p-4">
@@ -91,9 +96,9 @@ export default function CheckoutPage() {
         ) : (
           <>
             {/* payment method */}
-            <p className="mt-6 mb-2 text-sm font-medium">选择支付方式</p>
+            <p className="mt-6 mb-2 text-sm font-medium">{t("page.checkout.s1")}</p>
             <div className="space-y-2">
-              {METHODS.map((m) => (
+              {methods(t).map((m) => (
                 <button
                   key={m.id}
                   onClick={() => setMethod(m.id)}
@@ -129,7 +134,7 @@ export default function CheckoutPage() {
               确认支付 ¥{plan.price}
             </Button>
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              支付即表示同意 <Link href="/terms" className="text-primary hover:underline">服务条款</Link> · 安全加密
+              支付即表示同意 <Link href="/terms" className="text-primary hover:underline">{t("page.checkout.s2")}</Link> · 安全加密
             </p>
           </>
         )}
@@ -139,14 +144,15 @@ export default function CheckoutPage() {
 }
 
 function ProcessingView({ method, amount }: { method: PayMethod; amount: number }) {
-  const label = method === "wechat" ? "微信" : method === "alipay" ? "支付宝" : "信用卡";
+  const t = useT();
+  const label = method === "wechat" ? t("page.checkout.s14") : method === "alipay" ? t("page.checkout.s8") : t("page.checkout.s10");
   return (
     <div className="mt-6 flex flex-col items-center py-6 text-center">
       <div className="relative">
         <div className="flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/30">
           <QrCode className="h-20 w-20 text-muted-foreground/60" />
         </div>
-        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground">演示二维码</span>
+        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground">{t("page.checkout.s3")}</span>
       </div>
       <p className="mt-5 flex items-center gap-2 text-sm font-medium">
         <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -158,12 +164,13 @@ function ProcessingView({ method, amount }: { method: PayMethod; amount: number 
 }
 
 function SuccessView({ planName, onDone }: { planName: string; onDone: () => void }) {
+  const t = useT();
   return (
     <div className="mt-6 flex flex-col items-center py-6 text-center">
       <span className="flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-success">
         <Check className="h-8 w-8" />
       </span>
-      <h3 className="mt-4 text-lg font-semibold">支付成功</h3>
+      <h3 className="mt-4 text-lg font-semibold">{t("page.checkout.s4")}</h3>
       <p className="mt-1 text-sm text-muted-foreground">
         已升级至 <span className="font-medium text-foreground">{planName}</span>，订阅立即生效。
       </p>
@@ -175,21 +182,22 @@ function SuccessView({ planName, onDone }: { planName: string; onDone: () => voi
 }
 
 function NoPaymentView({ plan }: { plan: ReturnType<typeof getPlan> }) {
+  const t = useT();
   return (
     <div className="mt-6 flex flex-col items-center py-6 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Sparkles className="h-7 w-7" />
       </span>
       <h3 className="mt-4 text-lg font-semibold">
-        {plan.price === 0 ? "免费版无需支付" : "企业版定制报价"}
+        {plan.price === 0 ? t("page.checkout.s15") : t("page.checkout.s16")}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
         {plan.price === 0
-          ? "切换至免费版将在当前周期末生效。"
-          : "请联系销售团队获取定制方案与报价。"}
+          ? t("page.checkout.s17")
+          : t("page.checkout.s18")}
       </p>
       <Button variant="gradient" className="mt-5" asChild>
-        <Link href="/billing">返回计费</Link>
+        <Link href="/billing">{t("page.checkout.s5")}</Link>
       </Button>
     </div>
   );

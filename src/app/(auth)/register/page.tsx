@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 export default function RegisterPage() {
+  const t = useT();
   const router = useRouter();
   const [showPwd, setShowPwd] = React.useState(false);
   const [agree, setAgree] = React.useState(false);
@@ -33,13 +36,13 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "注册失败");
+        setError(data.error || t("page.register.s5"));
         return;
       }
       if (data.token) localStorage.setItem("kai-token", data.token);
       router.push("/dashboard");
     } catch {
-      setError("网络错误，请重试");
+      setError(t("page.register.s6"));
     } finally {
       setLoading(false);
     }
@@ -48,7 +51,7 @@ export default function RegisterPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">创建账户</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.register.s0")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           几分钟内开始构建你的第一个知识库
         </p>
@@ -67,23 +70,23 @@ export default function RegisterPage() {
 
       <div className="my-6 flex items-center gap-3">
         <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">或使用邮箱注册</span>
+        <span className="text-xs text-muted-foreground">{t("page.register.s1")}</span>
         <Separator className="flex-1" />
       </div>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="name">昵称</Label>
+          <Label htmlFor="name">{t("page.register.s2")}</Label>
           <Input
             id="name"
-            placeholder="你的名字"
+            placeholder={t("page.register.s7")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">邮箱</Label>
+          <Label htmlFor="email">{t("page.register.s3")}</Label>
           <Input
             id="email"
             type="email"
@@ -95,13 +98,13 @@ export default function RegisterPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">密码</Label>
+          <Label htmlFor="password">{t("page.register.s4")}</Label>
           <div className="relative">
             <Input
               id="password"
               type={showPwd ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="至少 8 位"
+              placeholder={t("page.register.s8")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -111,7 +114,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setShowPwd((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showPwd ? "隐藏密码" : "显示密码"}
+              aria-label={showPwd ? t("page.register.s9") : t("page.register.s10")}
             >
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -150,7 +153,7 @@ export default function RegisterPage() {
           disabled={!agree || loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {loading ? "创建中…" : "创建账户"}
+          {loading ? t("page.register.s11") : t("page.register.s0")}
         </Button>
       </form>
 

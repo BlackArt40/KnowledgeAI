@@ -1,4 +1,6 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -51,14 +53,17 @@ interface AgentTask {
   updatedAt: number;
 }
 
-const AGENT_STEP_LABEL: Record<string, string> = {
-  planner: "规划",
-  searcher: "检索",
-  analyzer: "分析",
-  writer: "撰写",
-};
+function agentStepLabel(t: (k: string) => string): Record<string, string> {
+  return {
+    planner: t("page.dashboard.s4"),
+    searcher: t("page.dashboard.s5"),
+    analyzer: t("page.dashboard.s6"),
+    writer: t("page.dashboard.s7"),
+  };
+}
 
 export default function DashboardPage() {
+  const t = useT();
   const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [kbs, setKbs] = React.useState<KbItem[]>([]);
   const [convs, setConvs] = React.useState<Conversation[]>([]);
@@ -105,34 +110,34 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: "本月问答",
+      label: t("page.dashboard.s8"),
       value: qaUsed.toLocaleString(),
-      sub: "次",
-      trend: qaLimit ? "用量正常" : "无限",
+      sub: t("page.dashboard.s9"),
+      trend: qaLimit ? t("page.dashboard.s10") : t("page.dashboard.s11"),
       icon: MessagesSquare,
       muted: false,
     },
     {
-      label: "剩余额度",
+      label: t("page.dashboard.s12"),
       value: qaLimit === null ? "∞" : (qaLimit - qaUsed).toLocaleString(),
-      sub: "次",
-      trend: user?.plan ? user.plan : "免费版",
+      sub: t("page.dashboard.s9"),
+      trend: user?.plan ? user.plan : t("page.dashboard.s13"),
       icon: Coins,
       muted: true,
     },
     {
-      label: "知识库",
+      label: t("page.dashboard.s14"),
       value: String(kbs.length),
-      sub: "个",
-      trend: kbs.length > 0 ? "已创建" : "暂无",
+      sub: t("page.dashboard.s15"),
+      trend: kbs.length > 0 ? t("page.dashboard.s16") : t("page.dashboard.s17"),
       icon: Library,
       muted: false,
     },
     {
-      label: "文档总数",
+      label: t("page.dashboard.s18"),
       value: totalDocs.toLocaleString(),
-      sub: "篇",
-      trend: totalDocs > 0 ? "已索引" : "暂无",
+      sub: t("page.dashboard.s19"),
+      trend: totalDocs > 0 ? t("page.dashboard.s20") : t("page.dashboard.s17"),
       icon: FileText,
       muted: false,
     },
@@ -144,7 +149,7 @@ export default function DashboardPage() {
       id: c.id,
       kbId: c.kbId,
       q: lastUser?.content ?? c.title,
-      kb: kbMap.get(c.kbId) ?? "未知知识库",
+      kb: kbMap.get(c.kbId) ?? t("page.dashboard.s21"),
       time: formatRelative(c.updatedAt),
     };
   });
@@ -155,12 +160,12 @@ export default function DashboardPage() {
     const done = t.steps.filter((s) => s.status === "done").length;
     return t.steps.length > 0 ? Math.round((done / t.steps.length) * 100) : 0;
   }
-  function taskStepLabel(t: AgentTask): string {
-    if (t.status === "done") return "完成";
-    if (t.status === "failed") return "失败";
-    if (t.status === "queued") return "排队中";
-    const running = t.steps.find((s) => s.status === "running");
-    return running ? AGENT_STEP_LABEL[running.role] ?? running.role : "进行中";
+  function taskStepLabel(task: AgentTask): string {
+    if (task.status === "done") return t("page.dashboard.s22");
+    if (task.status === "failed") return t("page.dashboard.s23");
+    if (task.status === "queued") return t("page.dashboard.s24");
+    const running = task.steps.find((s) => s.status === "running");
+    return running ? agentStepLabel(t)[running.role] ?? running.role : t("page.dashboard.s25");
   }
 
   return (
@@ -172,7 +177,7 @@ export default function DashboardPage() {
             {loading ? (
               <Skeleton className="inline-block h-7 w-48" />
             ) : (
-              <>欢迎回来，{user?.name ?? "用户"} 👋</>
+              <>欢迎回来，{user?.name ?? t("page.dashboard.s26")} 👋</>
             )}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -233,7 +238,7 @@ export default function DashboardPage() {
         {/* usage chart */}
         <Card className={user && AGENT_ROLES.includes(user.role) ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">用量趋势</CardTitle>
+            <CardTitle className="text-base">{t("page.dashboard.s0")}</CardTitle>
             <div className="flex items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <span className="h-2 w-2 rounded-full bg-primary" /> 每日问答
@@ -279,7 +284,7 @@ export default function DashboardPage() {
             ) : tasks.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
                 <Inbox className="h-8 w-8 opacity-40" />
-                <p className="text-sm">暂无 Agent 任务</p>
+                <p className="text-sm">{t("page.dashboard.s1")}</p>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/agent">
                     <Bot className="h-4 w-4" /> 发起调研
@@ -333,7 +338,7 @@ export default function DashboardPage() {
       {/* recent qa */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">最近问答</CardTitle>
+          <CardTitle className="text-base">{t("page.dashboard.s2")}</CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/chat">
               查看全部 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -350,7 +355,7 @@ export default function DashboardPage() {
           ) : recentQA.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
               <Inbox className="h-8 w-8 opacity-40" />
-              <p className="text-sm">还没有问答记录</p>
+              <p className="text-sm">{t("page.dashboard.s3")}</p>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/chat">
                   <MessagesSquare className="h-4 w-4" /> 开始问答
