@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "test:unit": "vitest run --coverage",
+    "test:integration": "node tests/functional/functional-test.mjs && node tests/api/api-test.mjs && node tests/performance/performance-test.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.65",
@@ -26,6 +30,7 @@
     "next": "16.2.10",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^4.8.69",
+    "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -35,16 +40,19 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.0.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.7.0",
   "prisma": {

@@ -23,6 +23,26 @@ async function fetchPage(path) {
   return { status: res.status, html, size: html.length };
 }
 
+// P6-3: API routes require auth (getRequestUser -> 401 without a session).
+// All suites log in first with a demo account and attach kai-token.
+let AUTH = null;
+async function login(email = "owner@knowledgeai.dev", password = "password123") {
+  const res = await fetch(`${BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (data.token) AUTH = { Cookie: `kai-token=${data.token}` };
+  return !!data.token;
+}
+
+/** Authenticated API helper: merges the session cookie into every call. */
+function api(path, opts = {}) {
+  const headers = { ...(AUTH || {}), ...(opts.headers || {}) };
+  return fetch(`${BASE}${path}`, { ...opts, headers });
+}
+
 function checkContent(html, needles) {
   return needles.every((n) => html.includes(n));
 }
@@ -31,6 +51,11 @@ async function main() {
   console.log("\n╔══════════════════════════════════════════════╗");
   console.log("║   KnowledgeAI · 功能测试 (Functional Tests)  ║");
   console.log("╚══════════════════════════════════════════════╝\n");
+
+  // ── 0. 登录（demo 账号，API 流程需要会话） ──
+  console.log("── 登录 ──");
+  const loggedIn = await login();
+  console.log(`${loggedIn ? "✅" : "❌"} 登录 owner@knowledgeai.dev ${loggedIn ? "" : "| 后续 API 流程将 401"}`);
 
   // ── 1. 公开页面 ──
   console.log("── 公开页面 ──");
@@ -49,7 +74,7 @@ async function main() {
   // ── 2. 工作台页面 ──
   console.log("\n── 工作台页面 ──");
   const appPages = [
-    { path: "/dashboard", name: "仪表盘", needles: ["仪表盘", "统计"] },
+    { path: "/dashboard", name: "仪表盘", needles: ["仪表盘", "概览"] },
     { path: "/knowledge-base", name: "知识库列表", needles: ["知识库"] },
     { path: "/chat", name: "智能问答", needles: ["问答", "知识库"] },
     { path: "/agent", name: "Agent调研", needles: ["Agent", "调研"] },
@@ -70,7 +95,7 @@ async function main() {
 
   // ── 3. 知识库详情页 ──
   console.log("\n── 动态页面 ──");
-  const kbRes = await fetch(`${BASE}/api/knowledge-base`).then(r => r.json());
+  const kbRes = await api("/api/knowledge-base").then(r => r.json());
   const kbId = kbRes.kbs?.[0]?.id;
   if (kbId) {
     p = await fetchPage(`/knowledge-base/${kbId}`);
@@ -97,9 +122,9 @@ async function main() {
   console.log("\n── 用户流程测试 ──");
 
   // Flow 1: 知识库 -> 问答
-  const kbData = await fetch(`${BASE}/api/knowledge-base`).then(r => r.json());
+  const kbData = await api("/api/knowledge-base").then(r => r.json());
   const flowKbId = kbData.kbs?.[0]?.id;
-  const chatSse = await fetch(`${BASE}/api/chat`, {
+  const chatSse = await api("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kbId: flowKbId, query: "产品功能" }),
   });
@@ -107,52 +132,54 @@ async function main() {
   log("流程: KB->问答", "chat SSE", chatSse.status, chatSse.status === 200 && chatText.includes("token"), "完整问答流");
 
   // Flow 2: 计费 -> 创建订单 -> 支付
-  const orderRes = await fetch(`${BASE}/api/billing/checkout`, {
+  const orderRes = await api("/api/billing/checkout", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ plan: "pro", method: "alipay" }),
   }).then(r => r.json());
   const orderId = orderRes.order?.id;
   let flow2Ok = false;
   if (orderId) {
-    const payRes = await fetch(`${BASE}/api/billing/checkout/${orderId}`, { method: "POST" }).then(r => r.json());
+    const payRes = await api(`/api/billing/checkout/${orderId}`, { method: "POST" }).then(r => r.json());
     flow2Ok = payRes.success === true && payRes.subscription?.plan === "pro";
   }
   log("流程: 计费->支付", "billing flow", 200, flow2Ok, "创建订单->支付->升级");
 
   // Flow 3: API密钥 -> 创建 -> 删除
-  const keyRes = await fetch(`${BASE}/api/api-keys`, {
+  const keyRes = await api("/api/api-keys", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "功能测试", scopes: ["kb:read"] }),
   }).then(r => r.json());
   const keyId = keyRes.key?.id;
   let flow3Ok = false;
   if (keyId) {
-    const delRes = await fetch(`${BASE}/api/api-keys/${keyId}`, { method: "DELETE" }).then(r => r.json());
+    const delRes = await api(`/api/api-keys/${keyId}`, { method: "DELETE" }).then(r => r.json());
     flow3Ok = delRes.ok === true;
   }
   log("流程: 密钥->删除", "apikey flow", 200, flow3Ok, "创建->删除");
 
-  // Flow 4: 安全 -> 2FA开关
-  const disable2fa = await fetch(`${BASE}/api/security/2fa`, {
+  // Flow 4: 安全 -> 2FA 开启（enroll） + 关闭需验证码（安全门）
+  const enroll2fa = await api("/api/security/2fa", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "enroll" }),
+  }).then(r => r.json());
+  const enrolled = !!enroll2fa.secret && !!enroll2fa.qrCodeDataUrl && enroll2fa.qrCodeDataUrl.startsWith("data:image/");
+  const disable2fa = await api("/api/security/2fa", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enable: false }),
   }).then(r => r.json());
-  const enable2fa = await fetch(`${BASE}/api/security/2fa`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enable: true, method: "app" }),
-  }).then(r => r.json());
-  log("流程: 2FA开关", "security flow", 200, disable2fa.twoFactor?.enabled === false && enable2fa.twoFactor?.enabled === true, "关闭->开启");
+  const disableGuarded = !!disable2fa.error; // P3-1: 关闭两步验证需要验证码
+  log("流程: 2FA开关", "security flow", 200, enrolled && disableGuarded, "enroll 开启 + 无码关闭被拦截");
 
   // Flow 5: 管理后台 -> 封禁用户 -> 解封
-  const usersRes = await fetch(`${BASE}/api/admin/users`).then(r => r.json());
+  const usersRes = await api("/api/admin/users").then(r => r.json());
   const banId = usersRes.users?.[2]?.id;
   let flow5Ok = false;
   if (banId) {
-    const banRes = await fetch(`${BASE}/api/admin/users/${banId}`, {
+    const banRes = await api(`/api/admin/users/${banId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "banned" }),
     }).then(r => r.json());
-    const unbanRes = await fetch(`${BASE}/api/admin/users/${banId}`, {
+    const unbanRes = await api(`/api/admin/users/${banId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "active" }),
     }).then(r => r.json());
