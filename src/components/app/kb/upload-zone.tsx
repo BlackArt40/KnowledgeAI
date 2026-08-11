@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { UploadCloud, Link2, Loader2, X, Plus, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ export function UploadZone({
   kbId: string;
   onUploaded: () => void;
 }) {
+  const t = useT();
   const [dragging, setDragging] = React.useState(false);
   const [mode, setMode] = React.useState<"file" | "link">("file");
   const [uploading, setUploading] = React.useState(false);
@@ -44,7 +47,7 @@ export function UploadZone({
       const result = await chunked.upload(file, kbId);
       if (result === null) {
         if (chunked.state.status === "error") {
-          setError(chunked.state.error ?? `${file.name} 上传失败`);
+          setError(chunked.state.error ?? `${file.name} ${t("page.upload-zone.s7")}`);
         }
         setUploading(false);
         setChunkedFile(null);
@@ -73,18 +76,18 @@ export function UploadZone({
             else {
               try {
                 const m = JSON.parse(xhr.responseText);
-                reject(new Error(m.error ?? "上传失败"));
+                reject(new Error(m.error ?? t("page.upload-zone.s0")));
               } catch {
-                reject(new Error("上传失败"));
+                reject(new Error(t("page.upload-zone.s0")));
               }
             }
           };
-          xhr.onerror = () => reject(new Error("网络错误"));
+          xhr.onerror = () => reject(new Error(t("page.upload-zone.s1")));
           xhr.open("POST", `/api/knowledge-base/${kbId}/upload`);
           xhr.send(form);
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "上传失败");
+        setError(e instanceof Error ? e.message : t("page.upload-zone.s0"));
       } finally {
         setUploading(false);
         setProgress(0);
@@ -110,12 +113,12 @@ export function UploadZone({
       });
       if (!res.ok) {
         const m = await res.json().catch(() => ({}));
-        throw new Error(m.error ?? "添加失败");
+        throw new Error(m.error ?? t("page.upload-zone.s2"));
       }
       setUrl("");
       onUploaded();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "添加失败");
+      setError(e instanceof Error ? e.message : t("page.upload-zone.s2"));
     } finally {
       setUploading(false);
     }

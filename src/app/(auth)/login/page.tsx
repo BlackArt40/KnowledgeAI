@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,14 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
-const DEMO_ACCOUNTS = [
-  { email: "owner@knowledgeai.dev", role: "Owner", desc: "全部权限" },
-  { email: "admin@knowledgeai.dev", role: "Admin", desc: "管理成员+KB" },
-  { email: "editor@knowledgeai.dev", role: "Editor", desc: "编辑+问答+Agent" },
-  { email: "viewer@knowledgeai.dev", role: "Viewer", desc: "只读+问答" },
+function demoAccounts(t: (k: string) => string) {
+  return [
+  { email: "owner@knowledgeai.dev", role: "Owner", desc: t("page.login.s6") },
+  { email: "admin@knowledgeai.dev", role: "Admin", desc: t("page.login.s7") },
+  { email: "editor@knowledgeai.dev", role: "Editor", desc: t("page.login.s8") },
+  { email: "viewer@knowledgeai.dev", role: "Viewer", desc: t("page.login.s9") },
 ];
+};
 
 export default function LoginPage() {
+  const t = useT();
   const router = useRouter();
   const [showPwd, setShowPwd] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -43,7 +48,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "登录失败");
+        setError(data.error || t("page.login.s10"));
         return;
       }
       if (data.mustEnroll2FA) {
@@ -62,7 +67,7 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch {
-      setError("网络错误，请重试");
+      setError(t("page.login.s11"));
     } finally {
       setLoading(false);
     }
@@ -73,7 +78,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(totpCode.trim()) && !totpCode.trim().includes("-")) {
-      setError("请输入 6 位验证码或恢复码");
+      setError(t("page.login.s12"));
       return;
     }
     setLoading(true);
@@ -85,17 +90,17 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "验证失败");
+        setError(data.error || t("page.login.s13"));
         return;
       }
       if (data.token) {
         localStorage.setItem("kai-token", data.token);
         router.push("/dashboard");
       } else {
-        setError("验证失败，请重试");
+        setError(t("page.login.s14"));
       }
     } catch {
-      setError("网络错误，请重试");
+      setError(t("page.login.s11"));
     } finally {
       setLoading(false);
     }
@@ -110,14 +115,14 @@ export default function LoginPage() {
     return (
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">两步验证</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page.login.s0")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             请输入验证器 App 生成的 6 位动态验证码，或使用备用恢复码。
           </p>
         </div>
         <form className="space-y-4" onSubmit={handle2FA}>
           <div className="space-y-2">
-            <Label htmlFor="totp">验证码</Label>
+            <Label htmlFor="totp">{t("page.login.s1")}</Label>
             <Input
               id="totp"
               inputMode="numeric"
@@ -140,7 +145,7 @@ export default function LoginPage() {
           )}
           <Button variant="gradient" size="lg" className="w-full" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {loading ? "验证中…" : "验证并登录"}
+            {loading ? t("page.login.s15") : t("page.login.s16")}
           </Button>
           <button
             type="button"
@@ -157,7 +162,7 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">欢迎回来</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.login.s2")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           登录你的 KnowledgeAI 工作台
         </p>
@@ -169,7 +174,7 @@ export default function LoginPage() {
           <Info className="h-3.5 w-3.5" /> 演示账号（密码均为 password123）
         </div>
         <div className="grid grid-cols-2 gap-1.5">
-          {DEMO_ACCOUNTS.map((a) => (
+          {demoAccounts(t).map((a) => (
             <button
               key={a.email}
               type="button"
@@ -196,13 +201,13 @@ export default function LoginPage() {
 
       <div className="my-6 flex items-center gap-3">
         <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">或使用邮箱</span>
+        <span className="text-xs text-muted-foreground">{t("page.login.s3")}</span>
         <Separator className="flex-1" />
       </div>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="email">邮箱</Label>
+          <Label htmlFor="email">{t("page.login.s4")}</Label>
           <Input
             id="email"
             type="email"
@@ -215,7 +220,7 @@ export default function LoginPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">密码</Label>
+            <Label htmlFor="password">{t("page.login.s5")}</Label>
             <Link
               href="/verify-email"
               className="text-xs font-medium text-primary hover:underline"
@@ -238,7 +243,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setShowPwd((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showPwd ? "隐藏密码" : "显示密码"}
+              aria-label={showPwd ? t("page.login.s17") : t("page.login.s18")}
             >
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -253,7 +258,7 @@ export default function LoginPage() {
 
         <Button variant="gradient" size="lg" className="w-full" disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-          {loading ? "登录中…" : "登录"}
+          {loading ? t("page.login.s19") : t("page.login.s20")}
         </Button>
       </form>
 

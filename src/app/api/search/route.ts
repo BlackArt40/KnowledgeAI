@@ -5,6 +5,7 @@ import { listAllConversations } from "@/lib/chat/store";
 import { listTasks } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
+import { withApiTrace } from "@/lib/obs/trace";
 import type { Role } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ const SETTING_ITEMS: SettingItem[] = [
   { id: "privacy-data", label: "数据与隐私设置", keywords: "隐私 数据 保留期 存储", href: "/settings?tab=privacy" },
   { id: "privacy-gdpr", label: "GDPR 数据权利", keywords: "GDPR 导出 删除 数据权利 隐私", href: "/settings?tab=privacy" },
   { id: "model-llm", label: "AI 模型设置", keywords: "模型 LLM OpenAI DeepSeek Moonshot Ollama 硅基流动", href: "/settings?tab=model" },
+  // P5-5: appearance / theme deep-link.
+  { id: "appearance-theme", label: "外观与主题", keywords: "外观 主题 暗色 亮色 高对比度 品牌色 无障碍", href: "/settings?tab=appearance" },
   { id: "page-team", label: "团队管理", keywords: "团队 成员 邀请 协作", href: "/team" },
   { id: "page-usage", label: "用量统计", keywords: "用量 统计 配额 存储", href: "/usage", roles: ["owner", "admin", "editor"] },
   { id: "page-apikeys", label: "API 密钥", keywords: "API 密钥 key token 密钥", href: "/api-keys", roles: ["owner", "admin", "editor"] },
@@ -65,7 +68,7 @@ function rankOf(q: string, text: string): number {
   return t.startsWith(qq) ? 0 : 1;
 }
 
-export async function GET(req: Request) {
+async function handleSearch(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
@@ -151,4 +154,9 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ query: q, elapsedMs: Date.now() - start, results });
+}
+
+// P6-1: request tracing + SLI metrics (api span + status-aware record).
+export async function GET(req: Request) {
+  return withApiTrace(req, "api /api/search", () => handleSearch(req));
 }

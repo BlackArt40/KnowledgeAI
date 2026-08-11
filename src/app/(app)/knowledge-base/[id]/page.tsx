@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -32,6 +34,7 @@ type Detail = {
 };
 
 export default function KbDetailPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const id = params.id;
 
@@ -45,14 +48,14 @@ export default function KbDetailPage() {
     try {
       const res = await fetch(`/api/knowledge-base/${id}`, { cache: "no-store" });
       if (res.status === 404) {
-        setError("知识库不存在");
+        setError(t("page.knowledge-base-[id].s1"));
         return;
       }
       if (!res.ok) throw new Error();
       const json = await res.json();
       setData(json);
     } catch {
-      setError("加载失败");
+      setError(t("page.knowledge-base-[id].s2"));
     } finally {
       setLoading(false);
     }
@@ -82,7 +85,7 @@ export default function KbDetailPage() {
           : d
       );
     } else if (event.type === "deleted") {
-      setError("该知识库已被删除");
+      setError(t("page.knowledge-base-[id].s3"));
     } else {
       // settings / docs / doc_deleted -> full refresh
       fetchDetail();
@@ -136,7 +139,7 @@ export default function KbDetailPage() {
           />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">{kb.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{kb.desc || "暂无描述"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{kb.desc || t("page.knowledge-base-[id].s4")}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge variant="secondary" className="font-normal">
                 切片 {kb.settings.chunkSize}
@@ -165,15 +168,15 @@ export default function KbDetailPage() {
 
       {/* stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={FileText} label="文档总数" value={stats.total} />
-        <StatTile icon={CheckCircle2} label="已就绪" value={stats.ready} accent="text-success" />
-        <StatTile icon={Layers} label="切片数量" value={stats.chunks} />
-        <StatTile icon={HardDrive} label="占用空间" value={formatSize(stats.size)} />
+        <StatTile icon={FileText} label={t("page.knowledge-base-[id].s5")} value={stats.total} />
+        <StatTile icon={CheckCircle2} label={t("page.knowledge-base-[id].s6")} value={stats.ready} accent="text-success" />
+        <StatTile icon={Layers} label={t("page.knowledge-base-[id].s7")} value={stats.chunks} />
+        <StatTile icon={HardDrive} label={t("page.knowledge-base-[id].s8")} value={formatSize(stats.size)} />
       </div>
 
       {/* upload */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">添加文档</h2>
+        <h2 className="text-sm font-semibold">{t("page.knowledge-base-[id].s0")}</h2>
         <UploadZone kbId={kb.id} onUploaded={fetchDetail} />
       </section>
 

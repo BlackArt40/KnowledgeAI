@@ -1,4 +1,6 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
 import { use } from "react";
 import {
@@ -36,6 +38,7 @@ interface SharedReport {
 }
 
 export default function SharedReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useT();
   const { id } = use(params);
   const [data, setData] = React.useState<SharedReport | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -64,7 +67,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
         setPwdError(false);
       }
     } catch {
-      setError("加载失败");
+      setError(t("page.report-share.s9"));
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
           setErrorCode(null);
         }
       } catch {
-        if (!cancelled) setError("加载失败");
+        if (!cancelled) setError(t("page.report-share.s9"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -131,9 +134,9 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Lock className="h-7 w-7" />
         </span>
-        <h1 className="text-xl font-bold">该报告已加密</h1>
-        <p className="text-sm text-muted-foreground">请输入访问密码以查看报告</p>
-        {pwdError && <p className="text-xs text-red-500">密码错误，请重试</p>}
+        <h1 className="text-xl font-bold">{t("page.report-share.s0")}</h1>
+        <p className="text-sm text-muted-foreground">{t("page.report-share.s1")}</p>
+        {pwdError && <p className="text-xs text-red-500">{t("page.report-share.s2")}</p>}
         <form
           className="flex w-full max-w-xs gap-2"
           onSubmit={(e) => {
@@ -145,12 +148,12 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="访问密码"
+            placeholder={t("page.report-share.s10")}
             autoFocus
           />
-          <Button type="submit" variant="gradient">解锁</Button>
+          <Button type="submit" variant="gradient">{t("page.report-share.s3")}</Button>
         </form>
-        <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" /> 返回首页</Button></Link>
+        <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" />{t("page.report-share.s4")}</Button></Link>
       </div>
     );
   }
@@ -162,11 +165,11 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
         <span className="text-4xl">{icon}</span>
         <h1 className="text-xl font-bold">{error}</h1>
         <p className="text-sm text-muted-foreground">
-          {errorCode === "expired" ? "分享链接已过期，请联系报告作者" :
-            errorCode === "exhausted" ? "访问次数已达上限" :
-            errorCode === "disabled" ? "分享链接已被关闭" : "该报告可能已被删除或链接无效"}
+          {errorCode === "expired" ? t("page.report-share.s11") :
+            errorCode === "exhausted" ? t("page.report-share.s12") :
+            errorCode === "disabled" ? t("page.report-share.s13") : t("page.report-share.s14")}
         </p>
-        <Link href="/"><Button variant="outline"><ArrowLeft className="h-4 w-4" /> 返回首页</Button></Link>
+        <Link href="/"><Button variant="outline"><ArrowLeft className="h-4 w-4" />{t("page.report-share.s4")}</Button></Link>
       </div>
     );
   }
@@ -174,12 +177,12 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" /> 返回</Button></Link>
+        <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" />{t("page.report-share.s5")}</Button></Link>
         <div className="flex items-center gap-2">
           {data!.protected && (
-            <Badge variant="secondary"><Lock className="h-3 w-3" /> 受保护</Badge>
+            <Badge variant="secondary"><Lock className="h-3 w-3" />{t("page.report-share.s6")}</Badge>
           )}
-          <Badge variant="secondary"><Sparkles className="h-3 w-3" /> KnowledgeAI 共享报告</Badge>
+          <Badge variant="secondary"><Sparkles className="h-3 w-3" />{t("page.report-share.s7")}</Badge>
         </div>
       </div>
 
@@ -194,7 +197,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
 
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" /> 调研报告</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" />{t("page.report-share.s8")}</h2>
           <div className="flex gap-1.5">
             <Button variant="outline" size="sm" onClick={copyReport}>
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} 复制

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import {
   ListChecks,
@@ -70,18 +72,22 @@ import { TEMPLATES } from "@/lib/agent/templates";
 import type { TemplateId } from "@/lib/agent/templates";
 
 const ROLE_ICON = { planner: ListChecks, searcher: Search, analyzer: Brain, writer: PenLine } as const;
-const FORMAT_OPTS: { value: OutputFormat; label: string }[] = [
-  { value: "report", label: "调研报告" },
-  { value: "ppt", label: "PPT 大纲" },
-  { value: "mindmap", label: "思维导图" },
-];
+function formatOpts(t: (k: string) => string): { value: OutputFormat; label: string }[] {
+  return [
+    { value: "report", label: t("page.agent.s29") },
+    { value: "ppt", label: t("page.agent.s30") },
+    { value: "mindmap", label: t("page.agent.s31") },
+  ];
+}
 
-const EXPORT_ITEMS: { value: ExportFormat; label: string; icon: typeof FileText }[] = [
-  { value: "md", label: "Markdown (.md)", icon: FileText },
-  { value: "pdf", label: "PDF (打印另存)", icon: FileDown },
-  { value: "pptx", label: "PPTX 幻灯片", icon: Presentation },
-  { value: "mindmap", label: "思维导图 (.opml)", icon: Network },
-];
+function exportItems(t: (k: string) => string): { value: ExportFormat; label: string; icon: typeof FileText }[] {
+  return [
+    { value: "md", label: "Markdown (.md)", icon: FileText },
+    { value: "pdf", label: t("page.agent.s32"), icon: FileDown },
+    { value: "pptx", label: t("page.agent.s33"), icon: Presentation },
+    { value: "mindmap", label: t("page.agent.s34"), icon: Network },
+  ];
+}
 
 interface KbLite { id: string; name: string }
 
@@ -90,9 +96,10 @@ interface KbLite { id: string; name: string }
 const PUBLIC_SEARCH = "public";
 
 export default function AgentPage() {
+  const t = useT();
   const [kbs, setKbs] = React.useState<KbLite[]>([]);
   const [kbId, setKbId] = React.useState<string>(PUBLIC_SEARCH); // PUBLIC_SEARCH = 公开检索
-  const [topic, setTopic] = React.useState("2026 年 AI 工程师就业市场");
+  const [topic, setTopic] = React.useState(t("page.agent.s35"));
   const [format, setFormat] = React.useState<OutputFormat>("report");
   const [depth, setDepth] = React.useState(5);
   const [template, setTemplate] = React.useState<TemplateId>("default");
@@ -281,20 +288,20 @@ export default function AgentPage() {
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           rows={2}
-          placeholder="输入调研主题，例如：帮我调研 2026 年 AI 就业市场"
+          placeholder={t("page.agent.s36")}
           className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
 
         <div className="mt-4 flex flex-wrap items-end gap-4">
           {/* KB */}
           <div className="min-w-[180px] flex-1">
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">数据来源</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("page.agent.s0")}</label>
             <Select value={kbId} onValueChange={setKbId}>
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="选择知识库" />
+                <SelectValue placeholder={t("page.agent.s37")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={PUBLIC_SEARCH}>公开检索（模拟）</SelectItem>
+                <SelectItem value={PUBLIC_SEARCH}>{t("page.agent.s1")}</SelectItem>
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>{kb.name}</SelectItem>
                 ))}
@@ -304,9 +311,9 @@ export default function AgentPage() {
 
           {/* format */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">输出格式</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("page.agent.s2")}</label>
             <div className="flex rounded-lg border border-border bg-background p-0.5">
-              {FORMAT_OPTS.map((f) => (
+              {formatOpts(t).map((f) => (
                 <button
                   key={f.value}
                   onClick={() => setFormat(f.value)}
@@ -331,14 +338,14 @@ export default function AgentPage() {
 
           <Button variant="gradient" onClick={run} disabled={running || !topic.trim()} className="h-9">
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {running ? "调研中…" : "开始调研"}
+            {running ? t("page.agent.s38") : t("page.agent.s39")}
           </Button>
         </div>
 
         {/* template selector + agent combo */}
         <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">调研模板</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("page.agent.s3")}</label>
             <div className="flex flex-wrap gap-1.5">
               {TEMPLATES.map((t) => (
                 <button
@@ -363,7 +370,7 @@ export default function AgentPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Agent 组合（可启用/禁用）</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("page.agent.s4")}</label>
             <div className="flex flex-wrap items-center gap-1.5">
               {Object.entries(ROLE_ICON).map(([role, Icon]) => {
                 const enabled = enabledAgents.includes(role);
@@ -383,7 +390,7 @@ export default function AgentPage() {
                     )}
                   >
                     <Icon className="h-3 w-3" />
-                    {role === "planner" ? "规划" : role === "searcher" ? "检索" : role === "analyzer" ? "分析" : "写作"}
+                    {role === "planner" ? t("page.agent.s40") : role === "searcher" ? t("page.agent.s41") : role === "analyzer" ? t("page.agent.s42") : t("page.agent.s43")}
                     {enabled && <Check className="h-2.5 w-2.5" />}
                   </button>
                 );
@@ -416,9 +423,9 @@ export default function AgentPage() {
                   </Badge>
                 )}
               </h3>
-              {(task?.dagNodes ?? (steps.length > 0 ? inferDagFromSteps(steps, enabledAgents) : null)) && (
+              {(task?.dagNodes ?? (steps.length > 0 ? inferDagFromSteps(steps, enabledAgents, t) : null)) && (
                 <WorkflowDag
-                  nodes={task?.dagNodes ?? inferDagFromSteps(steps, enabledAgents)!}
+                  nodes={task?.dagNodes ?? inferDagFromSteps(steps, enabledAgents, t)!}
                   edges={task?.dagEdges ?? inferDagEdges(template)}
                 />
               )}
@@ -458,11 +465,11 @@ export default function AgentPage() {
                       <DropdownMenu
                         trigger={
                           <Button variant="gradient" size="sm">
-                            <Download className="h-3.5 w-3.5" /> 导出 <ChevronDown className="h-3 w-3" />
+                            <Download className="h-3.5 w-3.5" />{t("page.agent.s0")}<ChevronDown className="h-3 w-3" />
                           </Button>
                         }
                       >
-                        {EXPORT_ITEMS.map((it) => (
+                        {exportItems(t).map((it) => (
                           <DropdownMenuItem key={it.value} onClick={() => doExport(it.value)}>
                             <it.icon className="h-3.5 w-3.5" /> {it.label}
                           </DropdownMenuItem>
@@ -476,7 +483,7 @@ export default function AgentPage() {
               {!editing && (task!.versions?.length ?? 0) > 0 && (
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-2">
                   <TabsList>
-                    <TabsTrigger value="report"><FileText className="h-3.5 w-3.5" /> 报告</TabsTrigger>
+                    <TabsTrigger value="report"><FileText className="h-3.5 w-3.5" />{t("page.agent.s1")}</TabsTrigger>
                     <TabsTrigger value="versions"><GitBranch className="h-3.5 w-3.5" /> 版本 ({task!.versions!.length})</TabsTrigger>
                     <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> 评论 ({task!.comments?.length ?? 0})</TabsTrigger>
                   </TabsList>
@@ -504,8 +511,8 @@ export default function AgentPage() {
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Sparkles className="h-6 w-6" />
                 </span>
-                <p className="mt-3 text-sm font-medium">输入主题，开始一次自动化调研</p>
-                <p className="mt-1 text-xs text-muted-foreground">多 Agent 将协作规划、检索、分析并撰写报告</p>
+                <p className="mt-3 text-sm font-medium">{t("page.agent.s7")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("page.agent.s8")}</p>
               </div>
             )
           )}
@@ -518,7 +525,7 @@ export default function AgentPage() {
               <History className="h-4 w-4 text-muted-foreground" /> 历史任务
             </h3>
             {history.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">暂无历史任务</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">{t("page.agent.s9")}</p>
             ) : (
               <div className="space-y-1">
                 {history.map((t) => (
@@ -544,7 +551,7 @@ export default function AgentPage() {
               {task && <Badge variant="secondary" className="ml-auto">{task.citations.length}</Badge>}
             </h3>
             {!task || task.citations.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">调研引用将显示在此处</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">{t("page.agent.s10")}</p>
             ) : (
               <div className="space-y-2">
                 {task.citations.map((c) => (
@@ -570,7 +577,7 @@ export default function AgentPage() {
 
           {task?.durationMs && (
             <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" /> 耗时 {(task.durationMs / 1000).toFixed(1)}s · {task.outputFormat === "ppt" ? "PPT 大纲" : task.outputFormat === "mindmap" ? "思维导图" : "调研报告"}
+              <Clock className="h-3.5 w-3.5" /> {t("page.agent.s58", { s: (task.durationMs / 1000).toFixed(1) })} · {task.outputFormat === "ppt" ? t("page.agent.s59") : task.outputFormat === "mindmap" ? t("page.agent.s60") : t("page.agent.s61")}
             </div>
           )}
         </div>
@@ -584,6 +591,7 @@ export default function AgentPage() {
 }
 
 function Timeline({ steps }: { steps: AgentStep[] }) {
+  const t = useT();
   const order = ["planner", "searcher", "analyzer", "writer"];
   const sorted = [...steps].sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role));
   return (
@@ -610,8 +618,8 @@ function Timeline({ steps }: { steps: AgentStep[] }) {
               <div className="flex items-center gap-2">
                 <span className={cn("text-sm font-medium", skipped && "line-through opacity-50")}>{step.name}</span>
                 {active && <span className="text-xs text-primary">{step.progress}%</span>}
-                {done && <span className="text-xs text-success">已完成</span>}
-                {skipped && <span className="text-xs text-muted-foreground">已跳过</span>}
+                {done && <span className="text-xs text-success">{t("page.agent.s11")}</span>}
+                {skipped && <span className="text-xs text-muted-foreground">{t("page.agent.s12")}</span>}
               </div>
               {active && (
                 <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-secondary">
@@ -634,13 +642,13 @@ function Timeline({ steps }: { steps: AgentStep[] }) {
 
 // Infer DAG nodes from step state when task.dagNodes is not yet available
 // (during streaming before done event).
-function inferDagFromSteps(steps: AgentStep[], enabledAgents: string[]): DagNode[] {
+function inferDagFromSteps(steps: AgentStep[], enabledAgents: string[], t: (k: string) => string): DagNode[] {
   const order = ["planner", "searcher", "analyzer", "writer"];
   return order.map((r, i) => {
     const step = steps.find((s) => s.role === r);
     return {
       id: r,
-      name: r === "planner" ? "规划" : r === "searcher" ? "检索" : r === "analyzer" ? "分析" : "写作",
+      name: r === "planner" ? t("page.agent.s40") : r === "searcher" ? t("page.agent.s41") : r === "analyzer" ? t("page.agent.s42") : t("page.agent.s43"),
       role: r as DagNode["role"],
       status: step ? (step.status as DagNode["status"]) : "pending",
       enabled: enabledAgents.includes(r),
@@ -665,6 +673,7 @@ function inferDagEdges(template: TemplateId): DagEdge[] {
 
 // DAG workflow visualization component (criterion #1: Agent 工作流可视化展示).
 function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
+  const t = useT();
   return (
     <div className="mb-4 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-muted/20 p-3">
       <span className="mr-1 text-[10px] font-medium text-muted-foreground">DAG</span>
@@ -684,7 +693,7 @@ function WorkflowDag({ nodes, edges }: { nodes: DagNode[]; edges: DagEdge[] }) {
                 isSkipped ? "border-dashed border-border bg-card text-muted-foreground opacity-40" :
                 "border-border bg-card text-muted-foreground"
               )}
-              title={node.enabled ? undefined : "已禁用"}
+              title={node.enabled ? undefined : t("page.agent.s44")}
             >
               <Icon className="h-3 w-3" />
               {node.name}
@@ -718,6 +727,7 @@ function VersionsPanel({
   current: string;
   onRestore: () => Promise<void>;
 }) {
+  const t = useT();
   const [diffVid, setDiffVid] = React.useState<string | null>(null);
   const [diff, setDiff] = React.useState<DiffLine[]>([]);
   const [busy, setBusy] = React.useState(false);
@@ -730,7 +740,7 @@ function VersionsPanel({
   }
 
   async function restore(v: ReportVersion) {
-    if (!confirm(`恢复到「${v.label}」？当前内容会先自动保存为一个版本。`)) return;
+    if (!confirm(t("page.agent.s55", { label: v.label }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/agent/tasks/${taskId}/versions/${v.id}`, { method: "POST" });
@@ -744,7 +754,7 @@ function VersionsPanel({
   }
 
   if (versions.length === 0) {
-    return <p className="py-8 text-center text-xs text-muted-foreground">暂无修订历史</p>;
+    return <p className="py-8 text-center text-xs text-muted-foreground">{t("page.agent.s13")}</p>;
   }
 
   return (
@@ -794,8 +804,9 @@ function VersionsPanel({
 }
 
 function DiffView({ diff }: { diff: DiffLine[] }) {
+  const t = useT();
   if (diff.every((d) => d.op === "equal")) {
-    return <p className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">两个版本内容完全相同。</p>;
+    return <p className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">{t("page.agent.s14")}</p>;
   }
   const added = diff.filter((d) => d.op === "add").length;
   const removed = diff.filter((d) => d.op === "remove").length;
@@ -829,6 +840,7 @@ function DiffView({ diff }: { diff: DiffLine[] }) {
 // ── P2-3: Comments panel (collaboration) ─────────────────────────────────
 
 function CommentsPanel({ taskId, citations }: { taskId: string; citations: AgentCitation[] }) {
+  const t = useT();
   const [comments, setComments] = React.useState<Comment[]>([]);
   const [text, setText] = React.useState("");
   const [citeN, setCiteN] = React.useState<string>("general");
@@ -892,7 +904,7 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
         </span>
         <span className="text-xs font-medium">{c.userName}</span>
         <span className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
-        <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => remove(c.id)} title="删除">
+        <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => remove(c.id)} title={t("page.agent.s45")}>
           <Trash2 className="h-3 w-3" />
         </button>
       </div>
@@ -905,8 +917,8 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
       </button>
       {replyTo === c.id && (
         <div className="mt-2 flex gap-1.5">
-          <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="回复…" className="h-8 text-xs" />
-          <Button size="sm" className="h-8" onClick={() => submitReply(c.id)}>回复</Button>
+          <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={t("page.agent.s46")} className="h-8 text-xs" />
+          <Button size="sm" className="h-8" onClick={() => submitReply(c.id)}>{t("page.agent.s15")}</Button>
         </div>
       )}
       {childrenOf(c.id).length > 0 && (
@@ -923,13 +935,13 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
       <div className="rounded-lg border border-border bg-muted/20 p-3">
         <div className="mb-2 flex items-center gap-2">
           <Plus className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium">添加评论</span>
+          <span className="text-xs font-medium">{t("page.agent.s16")}</span>
           <Select value={citeN} onValueChange={setCiteN}>
             <SelectTrigger className="ml-auto h-7 w-[160px] text-[11px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="general">通用评论</SelectItem>
+              <SelectItem value="general">{t("page.agent.s17")}</SelectItem>
               {citations.map((c) => (
                 <SelectItem key={c.n} value={String(c.n)}>引用 [{c.n}]</SelectItem>
               ))}
@@ -940,16 +952,16 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          placeholder="写下你的批注或讨论…"
+          placeholder={t("page.agent.s47")}
           className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <div className="mt-2 flex justify-end">
-          <Button size="sm" onClick={submit} disabled={!text.trim()}>发表</Button>
+          <Button size="sm" onClick={submit} disabled={!text.trim()}>{t("page.agent.s18")}</Button>
         </div>
       </div>
 
       {comments.length === 0 ? (
-        <p className="py-6 text-center text-xs text-muted-foreground">暂无评论，添加第一条批注吧</p>
+        <p className="py-6 text-center text-xs text-muted-foreground">{t("page.agent.s19")}</p>
       ) : (
         <>
           {general.filter((c) => !c.parentId).map(renderComment)}
@@ -981,6 +993,7 @@ function ShareDialog({
   onOpenChange: (v: boolean) => void;
   taskId: string;
 }) {
+  const t = useT();
   const [cfg, setCfg] = React.useState<ShareConfig | null>(null);
   const [enabled, setEnabled] = React.useState(false);
   const [days, setDays] = React.useState("");
@@ -1030,7 +1043,7 @@ function ShareDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogTitle className="flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" /> 分享设置</DialogTitle>
+        <DialogTitle className="flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" />{t("page.agent.s2")}</DialogTitle>
         <DialogDescription className="text-xs">
           控制公开分享链接的访问权限：有效期、密码、访问次数。
         </DialogDescription>
@@ -1038,7 +1051,7 @@ function ShareDialog({
         <div className="space-y-3">
           {/* share link */}
           <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-            <div className="mb-1 text-[11px] font-medium text-muted-foreground">分享链接</div>
+            <div className="mb-1 text-[11px] font-medium text-muted-foreground">{t("page.agent.s21")}</div>
             <div className="flex items-center gap-1.5">
               <code className="flex-1 truncate rounded bg-background px-2 py-1 text-[11px]">{shareUrl}</code>
               <Button
@@ -1054,14 +1067,14 @@ function ShareDialog({
                 {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
             </div>
-            {cfg && <div className="mt-1.5 text-[10px] text-muted-foreground">已访问 {cfg.views} 次{cfg.maxViews ? ` / 上限 ${cfg.maxViews}` : ""}</div>}
+            {cfg && <div className="mt-1.5 text-[10px] text-muted-foreground">{t("page.agent.s57", { n: cfg.views })}{cfg.maxViews ? t("page.agent.s56", { n: cfg.maxViews }) : ""}</div>}
           </div>
 
           {/* enable protection */}
           <div className="flex items-center justify-between rounded-lg border border-border p-2.5">
             <div>
-              <div className="text-xs font-medium">启用访问保护</div>
-              <div className="text-[10px] text-muted-foreground">关闭后任何人持链接可访问</div>
+              <div className="text-xs font-medium">{t("page.agent.s22")}</div>
+              <div className="text-[10px] text-muted-foreground">{t("page.agent.s23")}</div>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
@@ -1069,24 +1082,24 @@ function ShareDialog({
           {enabled && (
             <div className="space-y-2.5 rounded-lg border border-border p-2.5">
               <div>
-                <Label className="mb-1 block text-[11px]">有效期（天，留空=永久）</Label>
-                <Input value={days} onChange={(e) => setDays(e.target.value)} type="number" min={1} placeholder="如 7" className="h-8 text-xs" />
+                <Label className="mb-1 block text-[11px]">{t("page.agent.s24")}</Label>
+                <Input value={days} onChange={(e) => setDays(e.target.value)} type="number" min={1} placeholder={t("page.agent.s48")} className="h-8 text-xs" />
               </div>
               <div>
-                <Label className="mb-1 block text-[11px]">访问密码（留空=无密码）</Label>
-                <Input value={password} onChange={(e) => setPassword(e.target.value)} type="text" placeholder="设置密码" className="h-8 text-xs" />
-                {cfg?.passwordHash && !password && <span className="mt-0.5 block text-[10px] text-muted-foreground">已设置密码（输入新密码可替换）</span>}
+                <Label className="mb-1 block text-[11px]">{t("page.agent.s25")}</Label>
+                <Input value={password} onChange={(e) => setPassword(e.target.value)} type="text" placeholder={t("page.agent.s49")} className="h-8 text-xs" />
+                {cfg?.passwordHash && !password && <span className="mt-0.5 block text-[10px] text-muted-foreground">{t("page.agent.s26")}</span>}
               </div>
               <div>
-                <Label className="mb-1 block text-[11px]">最大访问次数（留空=不限）</Label>
-                <Input value={maxViews} onChange={(e) => setMaxViews(e.target.value)} type="number" min={1} placeholder="如 100" className="h-8 text-xs" />
+                <Label className="mb-1 block text-[11px]">{t("page.agent.s27")}</Label>
+                <Input value={maxViews} onChange={(e) => setMaxViews(e.target.value)} type="number" min={1} placeholder={t("page.agent.s50")} className="h-8 text-xs" />
               </div>
             </div>
           )}
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>关闭</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t("page.agent.s28")}</Button>
           <Button size="sm" onClick={save} disabled={saving}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} 保存
           </Button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n/provider";
+
 import * as React from "react";
 import { Settings2, Loader2 } from "lucide-react";
 import {
@@ -26,12 +28,14 @@ import {
 import { type KnowledgeBase, type KbSettings } from "@/lib/kb/types";
 
 // Built-in preset embedding models (always available, no config needed).
-const PRESET_MODELS = [
-  { value: "text-embedding-3-small", label: "OpenAI · text-embedding-3-small" },
-  { value: "text-embedding-3-large", label: "OpenAI · text-embedding-3-large" },
-  { value: "bge-large-zh", label: "BAAI · bge-large-zh (中文)" },
-  { value: "m3e-base", label: "Moka · m3e-base" },
-];
+function presetModels(t: (k: string) => string): { value: string; label: string }[] {
+  return [
+    { value: "text-embedding-3-small", label: "OpenAI · text-embedding-3-small" },
+    { value: "text-embedding-3-large", label: "OpenAI · text-embedding-3-large" },
+    { value: "bge-large-zh", label: t("page.kb-settings-dialog.s7") },
+    { value: "m3e-base", label: "Moka · m3e-base" },
+  ];
+}
 
 export function KbSettingsDialog({
   kb,
@@ -46,6 +50,7 @@ export function KbSettingsDialog({
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
 }) {
+  const t = useT();
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = openProp !== undefined;
   const open = isControlled ? (openProp as boolean) : internalOpen;
@@ -62,7 +67,7 @@ export function KbSettingsDialog({
     fetch("/api/models", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        const presetValues = new Set(PRESET_MODELS.map((m) => m.value));
+        const presetValues = new Set(presetModels(t).map((m) => m.value));
         const seen = new Set<string>();
         const userModels: { value: string; label: string }[] = [];
         for (const m of d.models ?? []) {
@@ -72,7 +77,7 @@ export function KbSettingsDialog({
           seen.add(m.embeddingModel);
           userModels.push({
             value: m.embeddingModel,
-            label: `${m.providerName} · ${m.embeddingModel}${m.enabled ? "" : "（未启用）"}`,
+            label: `${m.providerName} · ${m.embeddingModel}${m.enabled ? "" : t("page.kb-settings-dialog.s12")}`,
           });
         }
         setUserEmbModels(userModels);
@@ -104,7 +109,7 @@ export function KbSettingsDialog({
         setConflict(true);
         return;
       }
-      if (!res.ok) throw new Error("保存失败");
+      if (!res.ok) throw new Error(t("page.kb-settings-dialog.s8"));
       const { kb: updated } = await res.json();
       onSaved(updated);
       setOpen(false);
@@ -118,7 +123,7 @@ export function KbSettingsDialog({
   // Fallback: keep the current value selectable if it's missing from both groups.
   const selectedMissing =
     !!form.embeddingModel &&
-    !PRESET_MODELS.some((m) => m.value === form.embeddingModel) &&
+    !presetModels(t).some((m) => m.value === form.embeddingModel) &&
     !userEmbModels.some((m) => m.value === form.embeddingModel);
 
   return (
@@ -132,7 +137,7 @@ export function KbSettingsDialog({
       )}
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>知识库设置</DialogTitle>
+          <DialogTitle>{t("page.kb-settings-dialog.s0")}</DialogTitle>
           <DialogDescription>
             调整切片与检索参数。修改后新文档将按新参数处理。
           </DialogDescription>
@@ -141,7 +146,7 @@ export function KbSettingsDialog({
         <div className="space-y-5 py-2">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>切片大小</Label>
+              <Label>{t("page.kb-settings-dialog.s1")}</Label>
               <span className="text-sm font-medium tabular-nums text-primary">
                 {form.chunkSize} tokens
               </span>
@@ -157,7 +162,7 @@ export function KbSettingsDialog({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>切片重叠</Label>
+              <Label>{t("page.kb-settings-dialog.s2")}</Label>
               <span className="text-sm font-medium tabular-nums text-primary">
                 {form.chunkOverlap} tokens
               </span>
@@ -173,9 +178,9 @@ export function KbSettingsDialog({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Embedding 模型</Label>
+              <Label>{t("page.kb-settings-dialog.s3")}</Label>
               <span className="text-xs text-muted-foreground">
-                {selectedIsUser ? "用户配置" : selectedMissing ? "其他" : "自带预设"}
+                {selectedIsUser ? t("page.kb-settings-dialog.s9") : selectedMissing ? t("page.kb-settings-dialog.s10") : t("page.kb-settings-dialog.s4")}
               </span>
             </div>
             <Select
@@ -187,8 +192,8 @@ export function KbSettingsDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel>自带预设</SelectLabel>
-                  {PRESET_MODELS.map((m) => (
+                  <SelectLabel>{t("page.kb-settings-dialog.s4")}</SelectLabel>
+                  {presetModels(t).map((m) => (
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
                     </SelectItem>
@@ -196,7 +201,7 @@ export function KbSettingsDialog({
                 </SelectGroup>
                 {userEmbModels.length > 0 && (
                   <SelectGroup>
-                    <SelectLabel>用户配置（设置 → AI 模型）</SelectLabel>
+                    <SelectLabel>{t("page.kb-settings-dialog.s5")}</SelectLabel>
                     {userEmbModels.map((m) => (
                       <SelectItem key={m.value} value={m.value}>
                         {m.label}
@@ -212,13 +217,13 @@ export function KbSettingsDialog({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              自带预设 {PRESET_MODELS.length} 个 · 用户配置 {userEmbModels.length} 个（来自 设置 → AI 模型）
+              自带预设 {presetModels(t).length} 个 · 用户配置 {userEmbModels.length} 个（来自 设置 → AI 模型）
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>检索数量 Top-K</Label>
+              <Label>{t("page.kb-settings-dialog.s6")}</Label>
               <span className="text-sm font-medium tabular-nums text-primary">
                 {form.topK}
               </span>

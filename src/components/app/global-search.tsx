@@ -1,4 +1,6 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 // P5-2: Cmd+K global search panel. Queries GET /api/search once (all
 // categories in one response), then the tabs filter client-side. Features:
 // debounced input, keyboard navigation (↑/↓/Enter/Esc), query highlighting,
@@ -32,18 +34,22 @@ interface SearchResults {
 
 type TabKey = "all" | "kbs" | "docs" | "conversations" | "tasks" | "settings";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "all", label: "全部" },
-  { key: "kbs", label: "知识库" },
-  { key: "docs", label: "文档" },
-  { key: "conversations", label: "对话" },
-  { key: "tasks", label: "Agent" },
-  { key: "settings", label: "设置" },
-];
+function tabs(t: (k: string) => string): { key: TabKey; label: string }[] {
+  return [
+    { key: "all", label: t("page.global-search.s2") },
+    { key: "kbs", label: t("page.global-search.s3") },
+    { key: "docs", label: t("page.global-search.s4") },
+    { key: "conversations", label: t("page.global-search.s5") },
+    { key: "tasks", label: "Agent" },
+    { key: "settings", label: t("page.global-search.s6") },
+  ];
+}
 
-const TASK_STATUS_LABEL: Record<string, string> = {
-  queued: "排队中", running: "进行中", done: "已完成", failed: "失败",
-};
+function taskStatusLabel(t: (k: string) => string): Record<string, string> {
+  return {
+    queued: t("page.global-search.s7"), running: t("page.global-search.s8"), done: t("page.global-search.s9"), failed: t("page.global-search.s10"),
+  };
+}
 
 const TYPE_TO_TAB: Record<"kb" | "doc" | "conv" | "task" | "setting", TabKey> = {
   kb: "kbs", doc: "docs", conv: "conversations", task: "tasks", setting: "settings",
@@ -77,6 +83,7 @@ function saveRecent(terms: string[]) {
 }
 
 export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const t = useT();
   const router = useRouter();
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResults | null>(null);
@@ -146,7 +153,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         id: kb.id,
         type: "kb" as const,
         title: kb.name,
-        subtitle: kb.desc || (kb.shared ? `${kb.ownerName} 共享` : "知识库"),
+        subtitle: kb.desc || (kb.shared ? t("page.global-search.s11", { name: kb.ownerName }) : t("page.global-search.s12")),
         href: `/knowledge-base/${kb.id}`,
         icon: Library,
       })),
@@ -154,7 +161,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         id: d.id,
         type: "doc" as const,
         title: d.name,
-        subtitle: `${d.kbName} · ${d.status === "ready" ? "已就绪" : d.status === "failed" ? "解析失败" : "处理中"}`,
+        subtitle: `${d.kbName} · ${d.status === "ready" ? t("page.global-search.s13") : d.status === "failed" ? t("page.global-search.s14") : t("page.global-search.s15")}`,
         href: `/knowledge-base/${d.kbId}`,
         icon: FileText,
       })),
@@ -162,29 +169,29 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         id: c.id,
         type: "conv" as const,
         title: c.title,
-        subtitle: c.shared ? "团队共享对话" : "对话",
+        subtitle: c.shared ? t("page.global-search.s11") : t("page.global-search.s5"),
         href: `/chat?kb=${c.kbId}&conv=${c.id}`,
         icon: MessageSquareText,
       })),
-      ...results.tasks.map((t) => ({
-        id: t.id,
+      ...results.tasks.map((tk) => ({
+        id: tk.id,
         type: "task" as const,
-        title: t.topic,
-        subtitle: (t.kbName ? `${t.kbName} · ` : "") + (TASK_STATUS_LABEL[t.status] ?? t.status),
-        href: `/agent?task=${t.id}`,
+        title: tk.topic,
+        subtitle: (tk.kbName ? `${tk.kbName} · ` : "") + (taskStatusLabel(t)[tk.status] ?? tk.status),
+        href: `/agent?task=${tk.id}`,
         icon: Bot,
       })),
       ...results.settings.map((s) => ({
         id: s.id,
         type: "setting" as const,
         title: s.label,
-        subtitle: "设置",
+        subtitle: t("page.global-search.s6"),
         href: s.href,
         icon: Settings,
       })),
     ];
     return tab === "all" ? all : all.filter((i) => TYPE_TO_TAB[i.type] === tab);
-  }, [results, tab]);
+  }, [results, tab, t]);
 
   function go(item: FlatItem) {
     onOpenChange(false);
@@ -227,7 +234,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         className="top-[10%] max-w-xl translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 sm:top-[15%]"
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">全局搜索</DialogTitle>
+        <DialogTitle className="sr-only">{t("page.global-search.s0")}</DialogTitle>
 
         {/* input */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -236,7 +243,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索知识库、文档、对话、Agent 任务、设置…"
+            placeholder={t("page.global-search.s12")}
             className="h-9 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none"
           />
           {loading && (
@@ -251,7 +258,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
         <Tabs value={tab} onValueChange={(v) => { setTab(v as TabKey); setActiveIdx(0); }}>
           <div className="border-b border-border px-3 py-2">
             <TabsList>
-              {TABS.map((t) => (
+              {tabs(t).map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="px-2.5 py-1 text-xs">
                   {t.label}
                 </TabsTrigger>
@@ -287,13 +294,13 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
                 <p className="flex items-center gap-1 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <Sparkles className="h-3 w-3" /> 快捷操作
                 </p>
-                <QuickAction icon={Plus} label="新建知识库" hint="创建后上传文档" href="/knowledge-base?new=1" onGo={() => { onOpenChange(false); router.push("/knowledge-base?new=1"); }} />
-                <QuickAction icon={MessageSquareText} label="发起问答" hint="基于知识库智能问答" href="/chat" onGo={() => { onOpenChange(false); router.push("/chat"); }} />
-                <QuickAction icon={Bot} label="发起 Agent 调研" hint="多 Agent 生成调研报告" href="/agent" onGo={() => { onOpenChange(false); router.push("/agent"); }} />
+                <QuickAction icon={Plus} label={t("page.global-search.s19")} hint={t("page.global-search.s20")} href="/knowledge-base?new=1" onGo={() => { onOpenChange(false); router.push("/knowledge-base?new=1"); }} />
+                <QuickAction icon={MessageSquareText} label={t("page.global-search.s21")} hint={t("page.global-search.s16")} href="/chat" onGo={() => { onOpenChange(false); router.push("/chat"); }} />
+                <QuickAction icon={Bot} label={t("page.global-search.s17")} hint={t("page.global-search.s18")} href="/agent" onGo={() => { onOpenChange(false); router.push("/agent"); }} />
               </div>
             </>
           ) : loading && !results ? (
-            <p className="py-10 text-center text-xs text-muted-foreground">搜索中…</p>
+            <p className="py-10 text-center text-xs text-muted-foreground">{t("page.global-search.s1")}</p>
           ) : flat.length === 0 ? (
             <p className="py-10 text-center text-xs text-muted-foreground">未找到「{query.trim()}」相关结果</p>
           ) : (

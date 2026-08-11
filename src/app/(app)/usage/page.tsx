@@ -9,13 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { UsageChart } from "@/components/app/usage-chart";
-import { formatSize } from "@/lib/format";
+import { useT } from "@/lib/i18n/provider";
+import { useFormat } from "@/lib/i18n/use-format";
 import { cn } from "@/lib/utils";
 import type { Usage } from "@/lib/billing/types";
 
 interface UsageData { usage: Usage; plan: string }
 
 export default function UsagePage() {
+  const t = useT();
+  const { formatSize, formatNumber } = useFormat();
   const [data, setData] = React.useState<UsageData | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -42,20 +45,20 @@ export default function UsagePage() {
 
   const meters = [
     {
-      icon: MessagesSquare, label: "智能问答", used: usage.qaUsed,
-      limit: usage.qaLimit, unit: "次", accent: "text-primary",
+      icon: MessagesSquare, label: t("page.usage.meterQa"), used: usage.qaUsed,
+      limit: usage.qaLimit, unit: t("page.usage.unitTimes"), accent: "text-primary",
     },
     {
-      icon: KeyRound, label: "API 调用", used: usage.apiCalls,
-      limit: null, unit: "次", accent: "text-emerald-500",
+      icon: KeyRound, label: t("page.usage.meterApi"), used: usage.apiCalls,
+      limit: null, unit: t("page.usage.unitTimes"), accent: "text-emerald-500",
     },
     {
-      icon: HardDrive, label: "存储用量", used: usage.storageUsed,
+      icon: HardDrive, label: t("page.usage.meterStorage"), used: usage.storageUsed,
       limit: usage.storageLimit, unit: "", fmt: true, accent: "text-amber-500",
     },
     {
-      icon: Bot, label: "Agent 任务", used: usage.agentTasks,
-      limit: usage.agentLimit, unit: "次", accent: "text-violet-500",
+      icon: Bot, label: t("page.usage.meterAgent"), used: usage.agentTasks,
+      limit: usage.agentLimit, unit: t("page.usage.unitTimes"), accent: "text-violet-500",
     },
   ];
 
@@ -63,18 +66,18 @@ export default function UsagePage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">用量统计</h2>
-          <p className="mt-1 text-sm text-muted-foreground">本周期资源使用情况</p>
+          <h2 className="text-xl font-semibold tracking-tight">{t("page.usage.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("page.usage.subtitle")}</p>
         </div>
-        <Badge variant="default">{plan === "pro" ? "专业版" : plan === "enterprise" ? "企业版" : "免费版"}</Badge>
+        <Badge variant="default">{plan === "pro" ? t("page.usage.planPro") : plan === "enterprise" ? t("page.usage.planEnt") : t("page.usage.planFree")}</Badge>
       </div>
 
       {/* meter cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {meters.map((m) => {
           const pct = m.limit ? Math.min(100, Math.round((m.used / m.limit) * 100)) : 0;
-          const usedStr = m.fmt ? formatSize(m.used) : m.used.toLocaleString();
-          const limitStr = m.limit === null ? "无限" : m.fmt ? formatSize(m.limit) : m.limit.toLocaleString();
+          const usedStr = m.fmt ? formatSize(m.used) : formatNumber(m.used);
+          const limitStr = m.limit === null ? t("page.usage.limitInfinite") : m.fmt ? formatSize(m.limit) : formatNumber(m.limit);
           return (
             <Card key={m.label}>
               <CardContent className="p-5">
@@ -82,7 +85,7 @@ export default function UsagePage() {
                   <span className={cn("inline-flex h-9 w-9 items-center justify-center rounded-lg bg-muted", m.accent)}>
                     <m.icon className="h-[18px] w-[18px]" />
                   </span>
-                  {m.limit !== null && pct > 80 && <Badge variant="warning" className="text-[10px]">即将达限</Badge>}
+                  {m.limit !== null && pct > 80 && <Badge variant="warning" className="text-[10px]">{t("page.usage.nearLimit")}</Badge>}
                 </div>
                 <div className="mt-4 flex items-baseline gap-1">
                   <span className="text-2xl font-bold tracking-tight tabular-nums">{usedStr}</span>
@@ -108,7 +111,7 @@ export default function UsagePage() {
             <span className="inline-flex items-center gap-1.5 text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-primary" /> 每日问答
             </span>
-            <Badge variant="secondary" className="text-[11px]">近 14 天</Badge>
+            <Badge variant="secondary" className="text-[11px]">{t("page.usage.last14Days")}</Badge>
           </div>
         </CardHeader>
         <CardContent>

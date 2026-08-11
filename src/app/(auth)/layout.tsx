@@ -1,14 +1,16 @@
 import Link from "next/link";
+import { serverT } from "@/lib/i18n/server";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = await serverT();
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       {/* Brand panel */}
       <div className="relative hidden overflow-hidden bg-card lg:block">
         <div className="absolute inset-0 bg-brand-gradient" />
@@ -56,7 +58,7 @@ export default function AuthLayout({
             href="/"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
           >
-            ← 返回首页
+            {t("page.auth-layout.s0")}
           </Link>
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />

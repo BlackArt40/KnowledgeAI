@@ -27,6 +27,8 @@ import {
   Sparkles,
   ShieldCheck,
   LogOut,
+  Globe,
+  Activity,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -37,43 +39,47 @@ import { PresenceProvider } from "@/components/app/presence-context";
 import { GlobalSearch } from "@/components/app/global-search";
 import { useEdgeSwipe } from "@/hooks/use-gestures";
 import { useGlobalHotkey } from "@/hooks/use-global-hotkey";
+import { useI18n, useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/format";
 
 type Role = "owner" | "admin" | "editor" | "viewer";
 
 type NavItem = {
-  label: string;
+  /** i18n key (P5-4): rendered via t(item.labelKey). */
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: Role[]; // undefined = all roles
 };
 
 // Role-based navigation access (aligned with RBAC permission matrix)
-const navGroups: { title: string; items: NavItem[] }[] = [
+const navGroups: { titleKey: string; items: NavItem[] }[] = [
   {
-    title: "工作区",
+    titleKey: "page.app-shell.s5",
     items: [
-      { label: "仪表盘", href: "/dashboard", icon: LayoutDashboard },
-      { label: "知识库", href: "/knowledge-base", icon: Library },
-      { label: "智能问答", href: "/chat", icon: MessagesSquare },
-      { label: "Agent 调研", href: "/agent", icon: Bot, roles: ["owner", "admin", "editor"] },
+      { labelKey: "page.app-shell.s6", href: "/dashboard", icon: LayoutDashboard },
+      { labelKey: "page.app-shell.s7", href: "/knowledge-base", icon: Library },
+      { labelKey: "page.app-shell.s8", href: "/chat", icon: MessagesSquare },
+      { labelKey: "page.app-shell.s9", href: "/agent", icon: Bot, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
-    title: "协作与计费",
+    titleKey: "page.app-shell.s10",
     items: [
-      { label: "团队", href: "/team", icon: Users },
-      { label: "订阅计费", href: "/billing", icon: CreditCard, roles: ["owner", "admin"] },
-      { label: "用量统计", href: "/usage", icon: Gauge, roles: ["owner", "admin", "editor"] },
+      { labelKey: "page.app-shell.s11", href: "/team", icon: Users },
+      { labelKey: "page.app-shell.s12", href: "/billing", icon: CreditCard, roles: ["owner", "admin"] },
+      { labelKey: "page.app-shell.s13", href: "/usage", icon: Gauge, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
-    title: "系统",
+    titleKey: "page.app-shell.s14",
     items: [
-      { label: "API 密钥", href: "/api-keys", icon: KeyRound, roles: ["owner", "admin", "editor"] },
-      { label: "设置", href: "/settings", icon: Settings },
-      { label: "管理后台", href: "/admin", icon: ShieldCheck, roles: ["owner", "admin"] },
+      { labelKey: "page.app-shell.s15", href: "/api-keys", icon: KeyRound, roles: ["owner", "admin", "editor"] },
+      { labelKey: "page.app-shell.s16", href: "/settings", icon: Settings },
+      { labelKey: "page.app-shell.s17", href: "/admin", icon: ShieldCheck, roles: ["owner", "admin"] },
+      // P6-1: observability dashboard (owner/admin).
+      { labelKey: "page.app-shell.s27", href: "/admin/monitoring", icon: Activity, roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -87,6 +93,7 @@ function setWorkspaceCookie(id: string) {
 }
 
 function WorkspaceSwitcher() {
+  const t = useT();
   const [workspaces, setWorkspaces] = React.useState<
     { id: string; name: string; plan: string; active: boolean }[]
   >([]);
@@ -139,7 +146,7 @@ function WorkspaceSwitcher() {
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-[11px] font-bold text-white">
           {(currentName || "W").charAt(0)}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{currentName || "工作区"}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{currentName || t("page.app-shell.s5")}</span>
         <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
 
@@ -167,7 +174,7 @@ function WorkspaceSwitcher() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") void createWs(); }}
-                  placeholder="工作区名称"
+                  placeholder={t("page.app-shell.s18")}
                   autoFocus
                   className="h-7 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -197,6 +204,7 @@ function WorkspaceSwitcher() {
 
 function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; role?: string; plan?: string }) {
   const pathname = usePathname();
+  const t = useT();
 
   // Filter nav items by role; items without `roles` are visible to everyone
   const canSee = (item: NavItem) => !item.roles || (role && item.roles.includes(role as Role));
@@ -214,9 +222,9 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
           const items = group.items.filter(canSee);
           if (items.length === 0) return null;
           return (
-          <div key={group.title}>
+          <div key={t(group.titleKey)}>
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.title}
+              {t(group.titleKey)}
             </p>
             <div className="space-y-1">
               {items.map((item) => {
@@ -234,10 +242,10 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
                     )}
                   >
                     <item.icon className="h-[18px] w-[18px]" />
-                    {item.label}
-                    {item.label === "Agent 调研" && (
+                    {t(item.labelKey)}
+                    {item.labelKey === "page.app-shell.s9" && (
                       <Badge variant="default" className="ml-auto px-1.5 py-0 text-[10px]">
-                        新
+                        {t("page.app-shell.s26")}
                       </Badge>
                     )}
                   </Link>
@@ -254,7 +262,7 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
       <div className="m-3 rounded-xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">升级专业版</span>
+          <span className="text-sm font-semibold">{t("page.app-shell.s0")}</span>
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
           解锁 Agent 调研与无限问答
@@ -273,17 +281,18 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
 
 
 const titleMap: Record<string, string> = {
-  "/dashboard": "仪表盘",
-  "/knowledge-base": "知识库",
-  "/chat": "智能问答",
-  "/agent": "Agent 调研",
-  "/team": "团队",
-  "/billing": "订阅计费",
-  "/usage": "用量统计",
-  "/api-keys": "API 密钥",
-  "/settings": "设置",
-  "/admin": "管理后台",
-  "/checkout": "收银台",
+  "/dashboard": "page.app-shell.s6",
+  "/knowledge-base": "page.app-shell.s7",
+  "/chat": "page.app-shell.s8",
+  "/agent": "page.app-shell.s9",
+  "/team": "page.app-shell.s11",
+  "/billing": "page.app-shell.s12",
+  "/usage": "page.app-shell.s13",
+  "/api-keys": "page.app-shell.s15",
+  "/settings": "page.app-shell.s16",
+  "/admin": "page.app-shell.s17",
+  "/admin/monitoring": "page.app-shell.s27",
+  "/checkout": "page.app-shell.s19",
 };
 
 interface CurrentUser {
@@ -301,7 +310,10 @@ const ROLE_BADGE: Record<string, string> = {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const title = titleMap[pathname] ?? "工作台";
+  const { locale, setLocale, t } = useI18n();
+  const title = (titleMap[pathname] ? t(titleMap[pathname]) : t("page.app-shell.s20"));
+  const [langOpen, setLangOpen] = React.useState(false);
+  const langRef = React.useRef<HTMLDivElement>(null);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   // P5-1: swipe right from the left screen edge to open the mobile drawer.
   useEdgeSwipe(() => setMobileOpen(true));
@@ -341,6 +353,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [notifOpen]);
+
+  // Close language dropdown when clicking outside
+  React.useEffect(() => {
+    if (!langOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [langOpen]);
 
   // Close user menu when clicking outside
   React.useEffect(() => {
@@ -437,10 +461,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           enter-exit animations; edge-swipe opens it on touch devices) */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0">
-          <SheetTitle className="sr-only">导航菜单</SheetTitle>
+          <SheetTitle className="sr-only">{t("page.app-shell.s1")}</SheetTitle>
           <SheetClose
             className="absolute right-3 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-            aria-label="关闭"
+            aria-label={t("page.app-shell.s21")}
           >
             <X className="h-4 w-4" />
           </SheetClose>
@@ -455,7 +479,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setMobileOpen(true)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border lg:hidden"
-            aria-label="打开菜单"
+            aria-label={t("page.app-shell.s22")}
           >
             <Menu className="h-4 w-4" />
           </button>
@@ -468,10 +492,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setSearchOpen(true)}
               className="hidden h-9 w-44 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex lg:w-56"
-              aria-label="全局搜索"
+              aria-label={t("page.app-shell.s23")}
             >
               <Search className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 flex-1 text-left">搜索…</span>
+              <span className="min-w-0 flex-1 text-left">{t("page.app-shell.s2")}</span>
               <kbd className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </button>
             {/* P5-2: mobile search icon (desktop button is sm+ only) */}
@@ -479,7 +503,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setSearchOpen(true)}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:hidden"
-              aria-label="全局搜索"
+              aria-label={t("page.app-shell.s23")}
             >
               <Search className="h-4 w-4" />
             </button>
@@ -487,7 +511,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
-                aria-label="通知"
+                aria-label={t("page.app-shell.s3")}
               >
                 <Bell className="h-4 w-4" />
                 {unread > 0 && (
@@ -499,7 +523,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {notifOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:w-96">
                     <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-                      <span className="text-sm font-semibold">通知</span>
+                      <span className="text-sm font-semibold">{t("page.app-shell.s3")}</span>
                       {unread > 0 && (
                         <button onClick={markAllRead} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           <CheckCheck className="h-3 w-3" /> 全部已读
@@ -508,7 +532,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifs.length === 0 ? (
-                        <div className="py-8 text-center text-sm text-muted-foreground">暂无通知</div>
+                        <div className="py-8 text-center text-sm text-muted-foreground">{t("page.app-shell.s4")}</div>
                       ) : (
                         notifs.map((n) => {
                           const Icon = NOTIF_ICON[n.type] ?? Bell;
@@ -543,6 +567,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
               )}
             </div>
+            {/* P5-4: language switcher (zh / en) */}
+            <div className="relative" ref={langRef}>
+              <button
+                type="button"
+                onClick={() => setLangOpen((v) => !v)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
+                aria-label={t("page.app-shell.s24")}
+              >
+                <Globe className="h-4 w-4" />
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-32 rounded-xl border border-border bg-card p-1 shadow-xl">
+                  {(["zh-CN", "en"] as const).map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => {
+                        setLocale(l);
+                        setLangOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-accent",
+                        locale === l && "bg-primary/10 text-primary"
+                      )}
+                    >
+                      <span className="flex-1 text-left">
+                        {l === "zh-CN" ? t("common.chinese") : t("common.english")}
+                      </span>
+                      {locale === l && <Check className="h-3.5 w-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <ThemeToggle />
             <div className="relative ml-1" ref={userMenuRef}>
               <button
@@ -551,7 +609,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <Avatar fallback={user?.name?.[0] ?? "U"} />
                 <div className="hidden text-left sm:block">
-                  <div className="text-xs font-medium leading-tight">{user?.name ?? "加载中…"}</div>
+                  <div className="text-xs font-medium leading-tight">{user?.name ?? t("page.app-shell.s25")}</div>
                   <div className="text-[11px] leading-tight text-muted-foreground">
                     {user ? ROLE_BADGE[user.role] ?? user.role : ""}
                   </div>

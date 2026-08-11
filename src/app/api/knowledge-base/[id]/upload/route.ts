@@ -9,6 +9,8 @@ import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
 import { parseDocument } from "@/lib/rag/parser";
+import { withApiTrace } from "@/lib/obs/trace";
+import { recordDoc } from "@/lib/obs/metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ async function ensureDir(p: string) {
 
 // POST /api/knowledge-base/[id]/upload
 // multipart/form-data "files" (one or more) OR JSON { url, name } for a web link.
-export async function POST(req: Request, { params }: Params) {
+async function handleUpload(req: Request, { params }: Params) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await params;
@@ -115,8 +117,15 @@ export async function POST(req: Request, { params }: Params) {
     if (isTextLike(dtype)) {
       content = buf.toString("utf-8").slice(0, MAX_TEXT);
     } else {
-      // Parse PDF/Word/Excel/PPT using the multi-format parser
-      const parsed = await parseDocument(buf, file.name, dtype);
+      // P6-1: document-parse duration is one of the key SLIs - time it.
+      const parseStart = Date.now();
+      let parsed: Awaited<ReturnType<typeof parseDocument>> = null;
+      try {
+        // Parse PDF/Word/Excel/PPT using the multi-format parser
+        parsed = await parseDocument(buf, file.name, dtype);
+      } finally {
+        recordDoc(Date.now() - parseStart, !!parsed);
+      }
       if (parsed) {
         content = parsed.text.slice(0, MAX_TEXT);
       }
@@ -135,4 +144,9 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
   return NextResponse.json({ docs: created, errors }, { status: 201 });
+}
+
+// P6-1: request tracing + SLI metrics for the upload route.
+export async function POST(req: Request, ctx: Params) {
+  return withApiTrace(req, "api /api/knowledge-base/[id]/upload", () => handleUpload(req, ctx));
 }

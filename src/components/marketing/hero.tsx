@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/lib/i18n/provider";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function Hero() {
+  const t = useT();
   return (
     <section className="relative overflow-hidden">
       {/* background layers */}
@@ -31,7 +36,7 @@ export function Hero() {
           <h1 className="mt-6 text-balance text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             把文档变成团队的
             <br className="hidden sm:block" />
-            <span className="text-gradient">第二大脑</span>
+            <span className="text-gradient">{t("page.hero.s0")}</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
@@ -47,12 +52,12 @@ export function Hero() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/#features">查看演示</Link>
+              <Link href="/#features">{t("page.hero.s1")}</Link>
             </Button>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-            {["无需信用卡", "每月 100 次免费问答", "支持私有部署"].map((t) => (
+            {[t("page.hero.s2"), t("page.hero.s3"), t("page.hero.s4")].map((t) => (
               <span key={t} className="inline-flex items-center gap-1.5">
                 <Check className="h-3.5 w-3.5 text-success" />
                 {t}
@@ -72,6 +77,7 @@ export function Hero() {
 }
 
 function ProductPreview() {
+  const t = useT();
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 ring-1 ring-black/[0.02]">
       {/* window bar */}
@@ -137,9 +143,9 @@ function ProductPreview() {
             <Search className="h-3.5 w-3.5 text-primary" /> 引用来源
           </div>
           {[
-            { t: "2026 AI 人才报告", p: "第 12 页" },
-            { t: "行业招聘趋势白皮书", p: "第 3 页" },
-            { t: "技术岗位薪酬调研", p: "第 8 页" },
+            { t: t("page.hero.s5"), p: t("page.hero.s6") },
+            { t: t("page.hero.s7"), p: t("page.hero.s8") },
+            { t: t("page.hero.s9"), p: t("page.hero.s10") },
           ].map((s) => (
             <div
               key={s.t}
@@ -163,6 +169,7 @@ function ProductPreview() {
 }
 
 function Cite({ n }: { n: number }) {
+  const t = useT();
   return (
     <span className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary align-baseline">
       {n}

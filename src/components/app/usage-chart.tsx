@@ -1,9 +1,14 @@
 import * as React from "react";
+import { useT } from "@/lib/i18n/provider";
 
 const DEFAULT_DATA = [18, 24, 16, 31, 28, 42, 35, 38, 30, 52, 46, 40, 58, 49];
-const DEFAULT_LABELS = ["", "一", "", "三", "", "五", "", "日", "", "二", "", "四", "", "六"];
+function defaultLabels(t: (k: string) => string): string[] {
+  return ["", t("page.usage-chart.s0"), "", t("page.usage-chart.s1"), "", t("page.usage-chart.s2"), "", t("page.usage-chart.s3"), "", t("page.usage-chart.s4"), "", t("page.usage-chart.s5"), "", t("page.usage-chart.s6")];
+}
 
-export function UsageChart({ data = DEFAULT_DATA, labels = DEFAULT_LABELS }: { data?: number[]; labels?: string[] }) {
+export function UsageChart({ data = DEFAULT_DATA, labels }: { data?: number[]; labels?: string[] }) {
+  const t = useT();
+  const resolvedLabels = labels ?? defaultLabels(t);
   const w = 640;
   const h = 220;
   const pad = { top: 16, right: 12, bottom: 24, left: 12 };
@@ -72,7 +77,7 @@ export function UsageChart({ data = DEFAULT_DATA, labels = DEFAULT_LABELS }: { d
         ))}
       </svg>
       <div className="mt-1 flex justify-between px-2 text-[11px] text-muted-foreground">
-        {labels.map((l, i) => (
+        {resolvedLabels.map((l, i) => (
           <span key={i}>{l}</span>
         ))}
       </div>

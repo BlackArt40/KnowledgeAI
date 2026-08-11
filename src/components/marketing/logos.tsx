@@ -1,3 +1,6 @@
+"use client";
+
+
 const companies = [
   "Acme Corp",
   "Globex",
