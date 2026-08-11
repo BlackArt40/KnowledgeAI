@@ -1,5 +1,6 @@
 "use client";
 
+import { useT, useI18n } from "@/lib/i18n/provider";
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -21,6 +22,9 @@ import {
   Download,
   Globe,
   Share2,
+  MoreHorizontal,
+  Archive,
+  Tag,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +45,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { ChatMarkdown } from "@/components/app/chat-markdown";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useHorizontalSwipe, useLongPress } from "@/hooks/use-gestures";
 import { cn } from "@/lib/utils";
@@ -53,6 +58,8 @@ interface KbLite {
   shared?: boolean;
   ownerName?: string;
   stats: { total: number; ready: number };
+  /** P5-3: retrieval settings, used to widen topK when regenerating. */
+  settings?: { topK: number };
 }
 interface ConvLite {
   id: string;
@@ -60,6 +67,9 @@ interface ConvLite {
   updatedAt: number;
   /** P4-1: shared conversations also appear in the team-shared group. */
   shared?: boolean;
+  /** P5-3: archive state + tags for grouping. */
+  archived?: boolean;
+  tags?: string[];
 }
 interface SharedConv {
   id: string;
@@ -69,11 +79,16 @@ interface SharedConv {
 }
 interface Msg {
   id: string;
+  /** Server-side message id (assigned on `done`), used by the feedback API. */
+  serverId?: string;
   role: "user" | "assistant";
   content: string;
   citations?: Citation[];
   streaming?: boolean;
+  /** P5-3: like/dislike feedback, persisted server-side and consumed by the
+   *  retrieval loop (down-weighting disliked citations). */
   feedback?: "up" | "down";
+  feedbackNote?: string;
   followUps?: string[];
 }
 
@@ -134,11 +149,12 @@ function docTopic(doc: { name: string; type: string; url?: string }): string {
   );
 }
 
+type TFunc = (k: string, vars?: Record<string, string | number>) => string;
 const SUGGESTION_TEMPLATES = [
-  (t: string) => `${t} 的主要内容是什么？`,
-  (t: string) => `${t} 有哪些关键要点？`,
-  (t: string) => `请帮我总结 ${t}`,
-  (t: string) => `${t} 适合什么使用场景？`,
+  (t: TFunc, x: string) => t("page.chat.s50", { topic: x }),
+  (t: TFunc, x: string) => t("page.chat.s51", { topic: x }),
+  (t: TFunc, x: string) => t("page.chat.s52", { topic: x }),
+  (t: TFunc, x: string) => t("page.chat.s53", { topic: x }),
 ];
 
 // derive-example-questions
@@ -146,7 +162,8 @@ const SUGGESTION_TEMPLATES = [
 // the selected knowledge base instead of being hardcoded.
 function kbSuggestions(
   docs: { name: string; type: string; url?: string; status: string }[],
-  kbName: string
+  kbName: string,
+  t: TFunc
 ): string[] {
   const ready = docs.filter((d) => d.status === "ready");
   if (ready.length === 0) return [];
@@ -158,20 +175,27 @@ function kbSuggestions(
     const topic = docTopic(d);
     if (!topic || seen.has(topic.toLowerCase())) continue;
     seen.add(topic.toLowerCase());
-    out.push(SUGGESTION_TEMPLATES[i % SUGGESTION_TEMPLATES.length](topic));
+    out.push(SUGGESTION_TEMPLATES[i % SUGGESTION_TEMPLATES.length](t, topic));
     i++;
   }
-  if (out.length === 0) out.push(`「${kbName}」知识库包含哪些内容？`);
+  if (out.length === 0) out.push(t("page.chat.s54", { name: kbName }));
   return out;
 }
 
 export default function ChatPage() {
+  const t = useT();
+  const { locale } = useI18n();
   const [kbs, setKbs] = React.useState<KbLite[]>([]);
   const [selectedKb, setSelectedKb] = React.useState<string>("");
   const [conversations, setConversations] = React.useState<ConvLite[]>([]);
   // P4-1: team-shared conversations (collaborative Q&A view).
   const [sharedConvs, setSharedConvs] = React.useState<SharedConv[]>([]);
   const [convSearch, setConvSearch] = React.useState("");
+  // P5-3: archive view toggle - shows archived conversations instead of the
+  // active ones (archived are hidden from the default list API-side).
+  const [archivedView, setArchivedView] = React.useState(false);
+  // P5-3: tag editing target (conversation being tagged).
+  const [tagTarget, setTagTarget] = React.useState<{ id: string; title: string; tags: string[] } | null>(null);
   const [activeConv, setActiveConv] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
@@ -184,6 +208,11 @@ export default function ChatPage() {
   const isMobile = useIsMobile();
   const [convSheetOpen, setConvSheetOpen] = React.useState(false);
   const [sourcesOpen, setSourcesOpen] = React.useState(false);
+  // P5-3: knowledge-base recommendations for the current conversation
+  // (computed server-side from the last question's keyword overlap).
+  const [recommendations, setRecommendations] = React.useState<
+    { id: string; name: string; desc: string; matched: string[] }[]
+  >([]);
   const [suggestions, setSuggestions] = React.useState<string[]>([]);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
@@ -241,7 +270,7 @@ export default function ChatPage() {
     if (!selectedKb) { setSuggestions([]); return; }
     fetch(`/api/knowledge-base/${selectedKb}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setSuggestions(kbSuggestions(d.docs ?? [], d.kb?.name ?? "")))
+      .then((d) => setSuggestions(kbSuggestions(d.docs ?? [], d.kb?.name ?? "", t)))
       .catch(() => setSuggestions([]));
   }, [selectedKb]);
 
@@ -287,7 +316,12 @@ export default function ChatPage() {
     const res = await fetch(`/api/chat/conversations/${id}`, { cache: "no-store" });
     const { conversation } = await res.json();
     setMessages(
-      conversation.messages.map((m: Msg) => ({ ...m, streaming: false }))
+      conversation.messages.map((m: Msg) => ({
+        ...m,
+        streaming: false,
+        // Historical messages carry the server-side id directly.
+        serverId: m.id,
+      }))
     );
   }
 
@@ -306,9 +340,50 @@ export default function ChatPage() {
 
   function refreshConversations() {
     if (!selectedKb) return;
-    fetch(`/api/chat/conversations?kbId=${selectedKb}`, { cache: "no-store" })
+    fetch(`/api/chat/conversations?kbId=${selectedKb}${archivedView ? "&archived=1" : ""}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(({ conversations }) => setConversations(conversations));
+  }
+
+  // P5-3: archive / restore + tags, then refresh the list.
+  async function setArchive(id: string, archived: boolean) {
+    await fetch(`/api/chat/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived }),
+    });
+    refreshConversations();
+    if (activeConv === id && archived) {
+      // Archiving the active conversation leaves the chat view.
+      setActiveConv(null);
+      setMessages([]);
+    }
+  }
+
+  async function saveTags(id: string, tags: string[]) {
+    await fetch(`/api/chat/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags }),
+    });
+    setTagTarget(null);
+    refreshConversations();
+  }
+
+  // P5-3: recommend related knowledge bases after each question is answered,
+  // based on keyword overlap between the question and other KBs.
+  async function loadRecommendations(query: string) {
+    if (!selectedKb) return;
+    try {
+      const res = await fetch(
+        `/api/knowledge-base/recommend?q=${encodeURIComponent(query)}&excludeKbId=${selectedKb}`,
+        { cache: "no-store" }
+      );
+      const d = await res.json();
+      setRecommendations(d.recommendations ?? []);
+    } catch {
+      setRecommendations([]);
+    }
   }
 
   function newChat() {
@@ -354,7 +429,7 @@ export default function ChatPage() {
     );
   }
 
-  async function streamAnswer(content: string, aiMsgId: string, epoch: number) {
+  async function streamAnswer(content: string, aiMsgId: string, epoch: number, opts?: { regenerate?: boolean }) {
     const controller = new AbortController();
     abortRef.current = controller;
     let acc = "";
@@ -365,10 +440,20 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kbId: selectedKb, query: content, conversationId: activeConv ?? undefined, webSearch }),
+        body: JSON.stringify({
+          kbId: selectedKb,
+          query: content,
+          conversationId: activeConv ?? undefined,
+          webSearch,
+          // P5-3: regenerate with different parameters (higher temperature +
+          // wider retrieval) so the retry explores new ground server-side.
+          ...(opts?.regenerate
+            ? { regenerate: true, temperature: 0.7, topK: (selectedKbObj?.settings?.topK ?? 5) + 3 }
+            : {}),
+        }),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) throw new Error("请求失败");
+      if (!res.ok || !res.body) throw new Error(t("page.chat.s12"));
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -407,7 +492,7 @@ export default function ChatPage() {
             setMessages((m) =>
               m.map((x) =>
                 x.id === aiMsgId
-                  ? { ...x, content: acc, citations: data.citations, followUps: data.followUps, streaming: false }
+                  ? { ...x, content: acc, citations: data.citations, followUps: data.followUps, streaming: false, ...(data.messageId ? { serverId: data.messageId } : {}) }
                   : x
               )
             );
@@ -430,7 +515,7 @@ export default function ChatPage() {
         setMessages((m) =>
           m.map((x) =>
             x.id === aiMsgId
-              ? { ...x, content: acc || "生成失败，请重试。", streaming: false }
+              ? { ...x, content: acc || t("page.chat.s13"), streaming: false }
               : x
           )
         );
@@ -476,7 +561,9 @@ export default function ChatPage() {
   }
 
   // Regenerate the last answer: reuse the last user question, drop the
-  // trailing assistant message, and stream a fresh answer.
+  // trailing assistant message, and stream a fresh answer with different
+  // generation parameters (P5-3: temperature 0.7 + wider topK, sent via the
+  // `regenerate` flag so the server also replaces the old answer in history).
   async function regenerate() {
     if (sending || !selectedKb) return;
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -491,55 +578,73 @@ export default function ChatPage() {
     const epoch = ++sendEpoch.current;
     setSending(true);
     try {
-      await streamAnswer(lastUser.content, aiId, epoch);
+      await streamAnswer(lastUser.content, aiId, epoch, { regenerate: true });
+      if (epoch === sendEpoch.current) loadRecommendations(lastUser.content);
     } finally {
       if (epoch === sendEpoch.current) setSending(false);
     }
   }
 
-  // Toggle like/dislike feedback on a message (client-side).
-  const setFeedback = (id: string, v: "up" | "down") =>
+  // P5-3: like/dislike feedback persisted per-message (POST feedback API) and
+  // read back when the conversation is loaded. Toggling off sends value=null.
+  // The API targets the SERVER message id (serverId, assigned on `done`) -
+  // the local id is a client-generated placeholder.
+  async function submitFeedback(id: string, v: "up" | "down", note?: string) {
     setMessages((m) =>
       m.map((x) =>
-        x.id === id ? { ...x, feedback: x.feedback === v ? undefined : v } : x
+        x.id === id
+          ? x.feedback === v
+            ? { ...x, feedback: undefined, feedbackNote: undefined }
+            : { ...x, feedback: v, feedbackNote: note || undefined }
+          : x
       )
     );
+    const msg = messages.find((x) => x.id === id);
+    const serverId = msg?.serverId;
+    if (!serverId || !activeConv) return;
+    const toggleOff = msg.feedback === v;
+    await fetch(`/api/chat/conversations/${activeConv}/messages/${serverId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: toggleOff ? null : v, ...(note ? { note } : {}) }),
+    }).catch(() => {});
+  }
 
   // Export the current conversation as a Markdown file download. Includes
   // user/assistant messages, inline citations, and a reference list.
-  function exportConversation(convId: string, msgs: Msg[]) {
+  function exportConversation(convId: string, msgs: Msg[], t: TFunc, locale: string) {
     const lines: string[] = [];
-    lines.push(`# 对话导出`);
+    lines.push(t("page.chat.s59"));
     lines.push("");
-    lines.push(`> 导出时间：${new Date().toLocaleString("zh-CN")}`);
-    lines.push(`> 会话 ID：${convId}`);
+    lines.push(t("page.chat.s60", { time: new Date().toLocaleString(locale === "en" ? "en-US" : "zh-CN") }));
+    lines.push(t("page.chat.s61", { id: convId }));
     lines.push("");
     lines.push("---");
     lines.push("");
     for (const m of msgs) {
       if (m.role === "user") {
-        lines.push(`### 👤 用户`);
+        lines.push(t("page.chat.s62"));
         lines.push("");
         lines.push(m.content);
         lines.push("");
       } else {
-        lines.push(`### 🤖 助手`);
+        lines.push(t("page.chat.s63"));
         lines.push("");
         // Strip [n] markers for cleaner prose, but keep citation references.
         const cleanText = m.content.replace(/\[(\d+)\]/g, (_, n) => `[[${n}]](#ref-${n})`);
         lines.push(cleanText);
         lines.push("");
         if (m.citations && m.citations.length > 0) {
-          lines.push("**引用来源：**");
+          lines.push(t("page.chat.s14"));
           lines.push("");
           for (const c of m.citations) {
-            lines.push(`- <a id="ref-${c.n}"></a>[${c.n}] 《${c.docName}》片段 #${c.chunkIndex + 1}（相似度 ${(c.score * 100).toFixed(0)}%）`);
+            lines.push(t("page.chat.s66", { n: c.n, doc: c.docName, idx: c.chunkIndex + 1, pct: (c.score * 100).toFixed(0) }));
             lines.push(`  > ${c.snippet.replace(/\n/g, " ")}`);
           }
           lines.push("");
         }
         if (m.followUps && m.followUps.length > 0) {
-          lines.push("**追问建议：**");
+          lines.push(t("page.chat.s15"));
           lines.push("");
           for (const f of m.followUps) {
             lines.push(`- ${f}`);
@@ -592,10 +697,21 @@ export default function ChatPage() {
           sharedConvs={sharedConvs}
           convSearch={convSearch}
           activeConv={activeConv}
+          archivedView={archivedView}
+          onToggleArchived={() => {
+            setArchivedView((v) => !v);
+            setActiveConv(null);
+            setMessages([]);
+          }}
           onSearchChange={setConvSearch}
           onNew={() => newChat()}
           onSelect={(id) => loadConversation(id)}
           onDelete={(id) => setConfirmDeleteId(id)}
+          onArchive={(id, archived) => setArchive(id, archived)}
+          onTags={(id) => {
+            const c = conversations.find((x) => x.id === id);
+            setTagTarget({ id, title: c?.title ?? t("page.chat.s16"), tags: c?.tags ?? [] });
+          }}
         />
       </aside>
 
@@ -603,10 +719,10 @@ export default function ChatPage() {
           the drawer is the only way to switch conversations on phones) */}
       <Sheet open={convSheetOpen} onOpenChange={setConvSheetOpen}>
         <SheetContent side="left" className="p-0">
-          <SheetTitle className="sr-only">会话列表</SheetTitle>
+          <SheetTitle className="sr-only">{t("page.chat.s0")}</SheetTitle>
           <SheetClose
             className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-            aria-label="关闭会话列表"
+            aria-label={t("page.chat.s17")}
           >
             <X className="h-4 w-4" />
           </SheetClose>
@@ -615,10 +731,21 @@ export default function ChatPage() {
             sharedConvs={sharedConvs}
             convSearch={convSearch}
             activeConv={activeConv}
+            archivedView={archivedView}
+            onToggleArchived={() => {
+              setArchivedView((v) => !v);
+              setActiveConv(null);
+              setMessages([]);
+            }}
             onSearchChange={setConvSearch}
             onNew={() => { newChat(); setConvSheetOpen(false); }}
             onSelect={(id) => loadConversation(id)}
             onDelete={(id) => setConfirmDeleteId(id)}
+            onArchive={(id, archived) => setArchive(id, archived)}
+            onTags={(id) => {
+              const c = conversations.find((x) => x.id === id);
+              setTagTarget({ id, title: c?.title ?? t("page.chat.s16"), tags: c?.tags ?? [] });
+            }}
           />
         </SheetContent>
       </Sheet>
@@ -633,12 +760,12 @@ export default function ChatPage() {
             size="icon"
             className="h-9 w-9 shrink-0 md:hidden"
             onClick={() => setConvSheetOpen(true)}
-            aria-label="会话列表"
+            aria-label={t("page.chat.s0")}
           >
             <MessageSquareText className="h-4 w-4" />
           </Button>
           {kbs.length === 0 ? (
-            <span className="text-sm text-muted-foreground">暂无知识库</span>
+            <span className="text-sm text-muted-foreground">{t("page.chat.s1")}</span>
           ) : (
             <Select value={selectedKb} onValueChange={setSelectedKb}>
               <SelectTrigger className="h-9 min-w-0 flex-1 gap-2 sm:w-[220px] sm:flex-none">
@@ -648,7 +775,7 @@ export default function ChatPage() {
               <SelectContent>
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>
-                    {kb.name} · {kb.stats.ready} 篇就绪{kb.shared ? ` · ${kb.ownerName} 共享` : ""}
+                    {kb.name} · {kb.stats.ready} 篇就绪{kb.shared ? t("page.chat.s57", { name: kb.ownerName ?? "" }) : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -667,21 +794,21 @@ export default function ChatPage() {
             type="button"
             onClick={() => setSourcesOpen(true)}
             className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:ml-0 xl:hidden"
-            aria-label="引用来源"
+            aria-label={t("page.chat.s5")}
           >
             <Search className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">来源</span>
+            <span className="hidden sm:inline">{t("page.chat.s2")}</span>
           </button>
           {activeConv && messages.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               className="ml-2 h-8 gap-1.5"
-              onClick={() => exportConversation(activeConv, messages)}
-              aria-label="导出对话"
+              onClick={() => exportConversation(activeConv, messages, t, locale)}
+              aria-label={t("page.chat.s18")}
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">导出</span>
+              <span className="hidden sm:inline">{t("page.chat.s3")}</span>
             </Button>
           )}
           {activeIsMine && (
@@ -690,11 +817,11 @@ export default function ChatPage() {
               size="sm"
               className={cn("ml-2 h-8 gap-1.5", activeIsShared && "border-sky-500/40 text-sky-600")}
               onClick={toggleShare}
-              aria-label={activeIsShared ? "取消共享会话" : "共享给团队"}
-              title={activeIsShared ? "已共享给团队，成员可实时查看（点击取消）" : "共享给团队，成员可实时查看新消息"}
+              aria-label={activeIsShared ? t("page.chat.s19") : t("page.chat.s20")}
+              title={activeIsShared ? t("page.chat.s21") : t("page.chat.s22")}
             >
               <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{activeIsShared ? "已共享" : "共享"}</span>
+              <span className="hidden sm:inline">{activeIsShared ? t("page.chat.s23") : t("page.chat.s24")}</span>
             </Button>
           )}
         </div>
@@ -716,7 +843,7 @@ export default function ChatPage() {
                     msg={m}
                     onCite={(n) => setHighlightN(n)}
                     onRegenerate={regenerate}
-                    onFeedback={(v) => setFeedback(m.id, v)}
+                    onFeedback={(v, note) => submitFeedback(m.id, v, note)}
                   />
                   {isLastAssistant && (
                     <FollowUpSuggestions
@@ -727,6 +854,40 @@ export default function ChatPage() {
                 </React.Fragment>
               );
             })
+          )}
+          {/* P5-3: related knowledge-base recommendations for this conversation */}
+          {messages.length > 0 && recommendations.length > 0 && (
+            <div className="pl-1 sm:pl-11">
+              <div className="rounded-xl border border-border bg-card/60 p-3">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> 相关知识库推荐
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {recommendations.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedKb(r.id);
+                        setRecommendations([]);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:border-primary/40"
+                    >
+                      <Library className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-medium">{r.name}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {r.desc || t("page.chat.s25")}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {r.matched.join("、")}匹配
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -743,13 +904,13 @@ export default function ChatPage() {
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground"
               )}
-              title={webSearch ? "联网搜索已开启（点击关闭）" : "开启联网搜索"}
+              title={webSearch ? t("page.chat.s26") : t("page.chat.s27")}
             >
               <Globe className="h-3.5 w-3.5" />
               联网搜索
             </button>
             {webSearch && (
-              <span className="text-[11px] text-muted-foreground">每次提问将同时检索互联网</span>
+              <span className="text-[11px] text-muted-foreground">{t("page.chat.s4")}</span>
             )}
           </div>
           <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">
@@ -769,7 +930,7 @@ export default function ChatPage() {
                 }
               }}
               rows={1}
-              placeholder={selectedKbObj ? `基于知识库${webSearch ? "+联网" : ""}提问…  (Enter 发送)` : "请先选择知识库"}
+              placeholder={selectedKbObj ? t("page.chat.s55", { extra: webSearch ? t("page.chat.s25") : "" }) : t("page.chat.s56")}
               className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none"
             />
             {sending ? (
@@ -778,7 +939,7 @@ export default function ChatPage() {
                 size="icon"
                 className="h-9 w-9 shrink-0"
                 onClick={stopGeneration}
-                aria-label="停止生成"
+                aria-label={t("page.chat.s30")}
               >
                 <Square className="h-4 w-4 fill-current" />
               </Button>
@@ -789,7 +950,7 @@ export default function ChatPage() {
                 className="h-9 w-9 shrink-0"
                 onClick={() => send()}
                 disabled={!input.trim() || !selectedKb}
-                aria-label="发送"
+                aria-label={t("page.chat.s31")}
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -810,10 +971,10 @@ export default function ChatPage() {
       {/* sources - mobile sheet (P5-1: the desktop panel is xl-only) */}
       <Sheet open={sourcesOpen} onOpenChange={setSourcesOpen}>
         <SheetContent side="right" className="p-0">
-          <SheetTitle className="sr-only">引用来源</SheetTitle>
+          <SheetTitle className="sr-only">{t("page.chat.s5")}</SheetTitle>
           <SheetClose
             className="absolute left-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-            aria-label="关闭引用来源"
+            aria-label={t("page.chat.s32")}
           >
             <X className="h-4 w-4" />
           </SheetClose>
@@ -825,6 +986,28 @@ export default function ChatPage() {
         </SheetContent>
       </Sheet>
 
+      {/* P5-3: conversation tag editor */}
+      <Dialog
+        open={tagTarget !== null}
+        onOpenChange={(o) => { if (!o) setTagTarget(null); }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("page.chat.s6")}</DialogTitle>
+            <DialogDescription>
+              为会话「{tagTarget?.title ?? ""}」添加标签，便于分类查找。
+            </DialogDescription>
+          </DialogHeader>
+          {tagTarget && (
+            <TagEditor
+              tags={tagTarget.tags}
+              onSave={(tags) => saveTags(tagTarget.id, tags)}
+              onCancel={() => setTagTarget(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* delete conversation confirmation */}
       <Dialog
         open={confirmDeleteId !== null}
@@ -832,7 +1015,7 @@ export default function ChatPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>删除会话</DialogTitle>
+            <DialogTitle>{t("page.chat.s7")}</DialogTitle>
             <DialogDescription>
               确定删除此会话？该会话的所有消息将被永久删除，且无法恢复。
             </DialogDescription>
@@ -858,16 +1041,17 @@ export default function ChatPage() {
 }
 
 function EmptyState({ onPick, kbReady, suggestions }: { onPick: (q: string) => void; kbReady: boolean; suggestions: string[] }) {
+  const t = useT();
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-lg shadow-primary/30">
         <Sparkles className="h-7 w-7" />
       </span>
-      <h3 className="mt-5 text-lg font-semibold">基于知识库智能问答</h3>
+      <h3 className="mt-5 text-lg font-semibold">{t("page.chat.s8")}</h3>
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">
         {kbReady
-          ? "输入问题，AI 将从知识库检索相关文档并生成带引用的回答。"
-          : "当前知识库还没有就绪的文档，先去上传一些文档吧。"}
+          ? t("page.chat.s33")
+          : t("page.chat.s34")}
       </p>
       {kbReady && (
         <div className="mt-6 flex max-w-lg flex-wrap justify-center gap-2">
@@ -884,7 +1068,7 @@ function EmptyState({ onPick, kbReady, suggestions }: { onPick: (q: string) => v
       )}
       {!kbReady && (
         <Button variant="outline" className="mt-6" asChild>
-          <Link href="/knowledge-base">前往知识库上传文档</Link>
+          <Link href="/knowledge-base">{t("page.chat.s9")}</Link>
         </Button>
       )}
     </div>
@@ -900,9 +1084,16 @@ function MessageBubble({
   msg: Msg;
   onCite: (n: number) => void;
   onRegenerate?: () => void;
-  onFeedback?: (v: "up" | "down") => void;
+  onFeedback?: (v: "up" | "down", note?: string) => void;
 }) {
+  const t = useT();
   const [copied, setCopied] = React.useState(false);
+  // P5-3: dislike opens an inline note field (persisted alongside the vote).
+  // A ref mirrors the input so the submit handler always reads the latest
+  // value even if React hasn't flushed the controlled-state update yet.
+  const [noteOpen, setNoteOpen] = React.useState(false);
+  const [note, setNote] = React.useState("");
+  const noteRef = React.useRef("");
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -919,25 +1110,76 @@ function MessageBubble({
       </span>
       <div className="min-w-0 max-w-[85%]">
         <div className="rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed">
-          <RichText text={msg.content} onCite={onCite} />
+          {/* P5-3: full Markdown rendering (code blocks with highlight + copy,
+              tables, mermaid chip flows) on top of the [n] citation chips. */}
+          <ChatMarkdown text={msg.content} onCite={onCite} />
           {msg.streaming && (
             <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-middle" />
           )}
         </div>
         {!msg.streaming && msg.content && (
-          <div className="mt-1.5 flex items-center gap-1 px-1">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1 px-1">
             <ActionBtn
               icon={copied ? Check : Copy}
-              label={copied ? "已复制" : "复制"}
+              label={copied ? t("page.chat.s35") : t("page.chat.s36")}
               onClick={() => {
                 navigator.clipboard?.writeText(msg.content.replace(/\[\d+\]/g, ""));
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
               }}
             />
-            <ActionBtn icon={RefreshCw} label="重新生成" onClick={onRegenerate} />
-            <ActionBtn icon={ThumbsUp} label="赞" active={msg.feedback === "up"} onClick={() => onFeedback?.("up")} />
-            <ActionBtn icon={ThumbsDown} label="踩" active={msg.feedback === "down"} onClick={() => onFeedback?.("down")} />
+            <ActionBtn icon={RefreshCw} label={t("page.chat.s37")} onClick={onRegenerate} />
+            <ActionBtn icon={ThumbsUp} label={t("page.chat.s38")} active={msg.feedback === "up"} onClick={() => onFeedback?.("up")} />
+            <ActionBtn
+              icon={ThumbsDown}
+              label={t("page.chat.s39")}
+              active={msg.feedback === "down"}
+              onClick={() => {
+                if (msg.feedback === "down") { onFeedback?.("down"); return; }
+                setNoteOpen(true);
+              }}
+            />
+            {noteOpen && (
+              <div className="flex w-full items-center gap-1.5 pt-0.5">
+                <input
+                  autoFocus
+                  value={note}
+                  onChange={(e) => {
+                    setNote(e.target.value);
+                    noteRef.current = e.target.value;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      onFeedback?.("down", noteRef.current.trim());
+                      setNoteOpen(false);
+                      setNote("");
+                      noteRef.current = "";
+                    }
+                  }}
+                  placeholder={t("page.chat.s40")}
+                  className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onFeedback?.("down", noteRef.current.trim());
+                    setNoteOpen(false);
+                    setNote("");
+                    noteRef.current = "";
+                  }}
+                  className="h-8 rounded-lg bg-brand-gradient px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  提交
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNoteOpen(false); setNote(""); noteRef.current = ""; }}
+                  className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  取消
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1004,6 +1246,7 @@ function FollowUpSuggestions({
   suggestions: string[];
   onPick: (q: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-2 pl-11">
       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -1022,28 +1265,37 @@ function FollowUpSuggestions({
   );
 }
 
-// P5-1: conversation sidebar content, shared by the desktop sidebar and the
-// mobile sheet. Items open the conversation on tap; the hover delete button
-// (desktop) is complemented by a long-press menu (touch devices).
+// P5-3: conversation sidebar content, shared by the desktop sidebar and the
+// mobile sheet. Items open the conversation on tap; the ⋯ menu (desktop
+// hover / touch long-press) offers archive / tags / delete.
 function ConversationList({
   conversations,
   sharedConvs,
   convSearch,
   activeConv,
+  archivedView,
+  onToggleArchived,
   onSearchChange,
   onNew,
   onSelect,
   onDelete,
+  onArchive,
+  onTags,
 }: {
   conversations: ConvLite[];
   sharedConvs: SharedConv[];
   convSearch: string;
   activeConv: string | null;
+  archivedView: boolean;
+  onToggleArchived: () => void;
   onSearchChange: (v: string) => void;
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string, archived: boolean) => void;
+  onTags: (id: string) => void;
 }) {
+  const t = useT();
   const filteredConvs = conversations.filter((c) =>
     c.title.toLowerCase().includes(convSearch.trim().toLowerCase())
   );
@@ -1060,19 +1312,42 @@ function ConversationList({
           <input
             value={convSearch}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="搜索会话"
+            placeholder={t("page.chat.s41")}
             className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
+        </div>
+        {/* P5-3: active / archived view toggle */}
+        <div className="mt-2 flex items-center gap-1 rounded-lg bg-muted/70 p-0.5 text-[11px] font-medium">
+          <button
+            type="button"
+            onClick={() => archivedView && onToggleArchived()}
+            className={cn(
+              "flex-1 rounded-md px-2 py-1 transition-colors",
+              !archivedView ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            我的会话
+          </button>
+          <button
+            type="button"
+            onClick={() => !archivedView && onToggleArchived()}
+            className={cn(
+              "flex-1 rounded-md px-2 py-1 transition-colors",
+              archivedView ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            已归档
+          </button>
         </div>
       </div>
       <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-3">
         {filteredConvs.length === 0 && sharedConvs.length === 0 && (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-            {convSearch ? "未找到匹配的会话" : "暂无历史会话"}
+            {convSearch ? t("page.chat.s42") : archivedView ? t("page.chat.s43") : t("page.chat.s44")}
           </p>
         )}
-        {filteredConvs.length > 0 && (
-          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">我的会话</p>
+        {!archivedView && filteredConvs.length > 0 && (
+          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("page.chat.s10")}</p>
         )}
         {filteredConvs.map((c) => (
           <ConversationItem
@@ -1080,15 +1355,19 @@ function ConversationList({
             title={c.title}
             icon={<MessageSquareText className="h-3.5 w-3.5 shrink-0" />}
             meta={null}
+            tags={c.tags}
+            archived={c.archived}
             active={activeConv === c.id}
             onSelect={() => onSelect(c.id)}
             onDelete={() => onDelete(c.id)}
+            onArchive={(a) => onArchive(c.id, a)}
+            onTags={() => onTags(c.id)}
           />
         ))}
-        {sharedConvs.length > 0 && (
-          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">团队共享</p>
+        {!archivedView && sharedConvs.length > 0 && (
+          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("page.chat.s11")}</p>
         )}
-        {sharedConvs.map((c) => (
+        {!archivedView && sharedConvs.map((c) => (
           <ConversationItem
             key={c.id}
             title={c.title}
@@ -1097,6 +1376,8 @@ function ConversationList({
             active={activeConv === c.id}
             onSelect={() => onSelect(c.id)}
             onDelete={() => onDelete(c.id)}
+            onArchive={(a) => onArchive(c.id, a)}
+            onTags={() => onTags(c.id)}
           />
         ))}
       </div>
@@ -1104,23 +1385,33 @@ function ConversationList({
   );
 }
 
-// One conversation row. Desktop shows the delete button on hover; touch
-// devices get a long-press menu instead (hover doesn't exist on phones).
+// One conversation row. Desktop shows the ⋯ menu on hover; touch devices get
+// it via long-press (hover doesn't exist on phones). Menu: archive/restore,
+// edit tags, delete.
 function ConversationItem({
   title,
   icon,
   meta,
+  tags,
+  archived,
   active,
   onSelect,
   onDelete,
+  onArchive,
+  onTags,
 }: {
   title: string;
   icon: React.ReactNode;
   meta: React.ReactNode;
+  tags?: string[];
+  archived?: boolean;
   active: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onArchive: (archived: boolean) => void;
+  onTags: () => void;
 }) {
+  const t = useT();
   const ref = React.useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   useLongPress(ref, () => setMenuOpen(true));
@@ -1138,29 +1429,62 @@ function ConversationItem({
         )}
       >
         {icon}
-        <span className="line-clamp-1 flex-1 text-sm font-medium">{title}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{title}</span>
+          {tags && tags.length > 0 && (
+            <span className="mt-0.5 flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">
+                  #{tag}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
         {meta}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            setMenuOpen((v) => !v);
           }}
           className={cn(
-            "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive",
-            active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-accent",
+            active || menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
-          aria-label="删除会话"
+          aria-label={t("page.chat.s45")}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </div>
-      {/* P5-1: long-press menu (touch devices). The fixed overlay closes it
-          on any tap outside. */}
+      {/* P5-3: ⋯ menu (touch long-press + desktop hover). The fixed overlay
+          closes it on any tap outside. */}
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-2 top-full z-30 mt-1 w-28 rounded-lg border border-border bg-card p-1 shadow-xl">
+          <div className="absolute right-2 top-full z-30 mt-1 w-32 rounded-lg border border-border bg-card p-1 shadow-xl">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onArchive(!archived);
+              }}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-accent"
+            >
+              <Archive className="h-3 w-3" /> {archived ? t("page.chat.s46") : t("page.chat.s47")}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onTags();
+              }}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-accent"
+            >
+              <Tag className="h-3 w-3" /> 编辑标签
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -1179,6 +1503,73 @@ function ConversationItem({
   );
 }
 
+// P5-3: tag editor for a conversation - chips + input (Enter / comma adds,
+// × removes). Saved via PATCH /api/chat/conversations/[id] { tags }.
+function TagEditor({
+  tags,
+  onSave,
+  onCancel,
+}: {
+  tags: string[];
+  onSave: (tags: string[]) => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const [draft, setDraft] = React.useState<string[]>(tags);
+  const [input, setInput] = React.useState("");
+
+  function addTag() {
+    const t = input.trim().replace(/^#/, "");
+    if (t && !draft.includes(t) && draft.length < 10) {
+      setDraft((d) => [...d, t]);
+    }
+    setInput("");
+  }
+
+  return (
+    <div>
+      <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background p-2">
+        {draft.map((tag) => (
+          <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            #{tag}
+            <button
+              type="button"
+              onClick={() => setDraft((d) => d.filter((x) => x !== tag))}
+              className="text-primary/60 transition-colors hover:text-destructive"
+              aria-label={t("page.chat.s58", { tag })}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addTag();
+            }
+            if (e.key === "Backspace" && !input && draft.length > 0) {
+              setDraft((d) => d.slice(0, -1));
+            }
+          }}
+          placeholder={t("page.chat.s48")}
+          className="h-6 min-w-24 flex-1 bg-transparent text-xs placeholder:text-muted-foreground focus-visible:outline-none"
+        />
+      </div>
+      <DialogFooter className="mt-3">
+        <Button variant="outline" onClick={onCancel}>
+          取消
+        </Button>
+        <Button variant="gradient" onClick={() => onSave(draft)}>
+          保存标签
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
 // P5-1: citation sources panel, shared by the desktop xl sidebar and the
 // mobile sheet.
 function SourcesPanel({
@@ -1190,11 +1581,12 @@ function SourcesPanel({
   highlightN: number | null;
   onCite: (n: number) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
         <Search className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold">引用来源</span>
+        <span className="text-sm font-semibold">{t("page.chat.s5")}</span>
         <Badge variant="secondary" className="ml-auto">
           {citations.length}
         </Badge>
@@ -1247,7 +1639,7 @@ function SourcesPanel({
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                    {isWeb ? `🌐 ${host}` : `片段 #${c.chunkIndex + 1}`}
+                    {isWeb ? `🌐 ${host}` : t("page.chat.s67", { idx: c.chunkIndex + 1 })}
                   </span>
                   <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                     相似度 {(c.score * 100).toFixed(0)}%
