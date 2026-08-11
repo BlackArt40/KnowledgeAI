@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 import type { VectorStore, SearchResult } from "./vector-store-interface";
+import { log } from "@/lib/obs/log";
 
 // ── Configuration ────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ async function getHost(): Promise<string> {
   const host: string = data.host;
   if (!host) throw new Error(`Pinecone index "${indexName}" has no host field`);
   _resolvedHost = `https://${host}`;
-  console.log(`[rag] Pinecone index host resolved: ${_resolvedHost}`);
+  log.info(`[rag] Pinecone index host resolved: ${_resolvedHost}`);
   return _resolvedHost;
 }
 

@@ -5,6 +5,7 @@ import { rateLimit, getRateLimitLimits } from "@/lib/security/rate-limit";
 import { validateApiKey } from "@/lib/apikeys/store";
 import { verifyToken } from "@/lib/auth/session";
 import { startCleanupTimer } from "@/lib/storage/cleanup";
+import { logEdge } from "@/lib/obs/log-edge";
 
 // ---------------------------------------------------------------------------
 // Rate Limiting Proxy
@@ -90,13 +91,33 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // P6-1: trace id - propagate an incoming one or mint a fresh id, and make it
+  // visible to the downstream route (request headers) + the client (response
+  // header). Route-level `withApiTrace` records the spans + SLIs under it.
+  const traceId = req.headers.get("x-trace-id") ?? crypto.randomUUID();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-trace-id", traceId);
+
   // Skip SSE streams and webhooks
   if (SKIP_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders }, headers: { "x-trace-id": traceId } });
   }
 
   const tier = await tierOf(req);
   const result = await rateLimit(tier.key, tier.limit);
+
+  // P6-2: one structured request line per rate-limited API call (Edge-safe
+  // JSON over console - see log-edge.ts). SSE/webhook/poll paths (SKIP_PATHS)
+  // skip this; their route-level http.response lines cover request tracking.
+  // requestId == the X-Trace-Id minted/propagated above.
+  logEdge.info("http.request", {
+    method: req.method,
+    path: pathname,
+    requestId: traceId,
+    dimension: tier.dimension,
+    rateLimited: !result.allowed,
+    status: result.allowed ? undefined : 429,
+  });
 
   if (!result.allowed) {
     const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
@@ -109,6 +130,7 @@ export async function proxy(req: NextRequest) {
           "X-RateLimit-Limit": String(result.limit),
           "X-RateLimit-Remaining": "0",
           "X-RateLimit-Reset": String(result.resetAt),
+          "x-trace-id": traceId,
         },
       }
     );
@@ -118,7 +140,7 @@ export async function proxy(req: NextRequest) {
   // headers onto the route's final response, which would override the accurate
   // per-dimension headers set by route-level 429s (rateLimitResponse). 429s
   // returned by THIS proxy still carry the full X-RateLimit-* set.
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders }, headers: { "x-trace-id": traceId } });
 }
 
 export const config = {

@@ -10,62 +10,110 @@ import {
   createConversation,
   getConversation,
   addMessage,
+  popLastAssistantMessage,
 } from "@/lib/chat/store";
+import { deleteMessageFromDb } from "@/lib/db/persist";
 import { recordQa } from "@/lib/billing/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
 import { validateApiKey, logCall } from "@/lib/apikeys/store";
+import { withApiTrace, type ApiTraceHandle } from "@/lib/obs/trace";
+import { reportError } from "@/lib/obs/errors";
+import { log } from "@/lib/obs/log";
 
 export const dynamic = "force-dynamic";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // POST /api/chat  ->  text/event-stream
-export async function POST(req: Request) {
+async function handlePost(req: Request, trace: ApiTraceHandle) {
+  // P6-1: finalize the trace on early-exit paths (SSE autoEnd is disabled -
+  // the stream's finally below finalizes instead).
+  const early = (res: Response): Response => {
+    trace.end(res.status);
+    return res;
+  };
   const startTime = Date.now();
   const authHeader = req.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
   const apiKey = bearerToken?.startsWith("kai_sk_") ? validateApiKey(bearerToken) : null;
 
   const authUser = await getRequestUser(req);
-  if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
+  if (!authUser) return early(Response.json({ error: "未登录" }, { status: 401 }));
 
-  let body: { kbId?: string; query?: string; conversationId?: string; webSearch?: boolean };
+  let body: {
+    kbId?: string; query?: string; conversationId?: string; webSearch?: boolean;
+    /** P5-3: regenerate=true replaces the previous assistant answer server-side
+     *  (it is popped from history) and may carry a different temperature / topK
+     *  so the retry explores new ground instead of repeating itself. */
+    regenerate?: boolean;
+    temperature?: number;
+    topK?: number;
+  };
   try { body = await req.json(); } catch {
-    return Response.json({ error: "无效的请求体" }, { status: 400 });
+    return early(Response.json({ error: "无效的请求体" }, { status: 400 }));
   }
 
   const kbId = body.kbId;
   const query = body.query?.trim();
-  if (!kbId || !query) return Response.json({ error: "kbId 与 query 必填" }, { status: 400 });
+  if (!kbId || !query) return early(Response.json({ error: "kbId 与 query 必填" }, { status: 400 }));
 
   const kb = getKb(kbId);
-  if (!kb) return Response.json({ error: "知识库不存在" }, { status: 404 });
+  if (!kb) return early(Response.json({ error: "知识库不存在" }, { status: 404 }));
   if (!canViewKb(kb.id, kb.name, authUser.id, kb.ownerId))
-    return Response.json({ error: "无权访问该知识库" }, { status: 403 });
+    return early(Response.json({ error: "无权访问该知识库" }, { status: 403 }));
 
   // P3-3: /api/chat is skipped by the proxy (SSE), so enforce the user + KB
   // tiers here. Checked after auth/permission so invalid requests don't burn quota.
   const userRl = await rateLimit(`user:${authUser.id}`, getRateLimitLimits().base);
-  if (!userRl.allowed) return rateLimitResponse(userRl, "user");
+  if (!userRl.allowed) return early(rateLimitResponse(userRl, "user"));
   const kbRl = await kbRateLimit(kbId);
-  if (!kbRl.allowed) return rateLimitResponse(kbRl, "kb");
+  if (!kbRl.allowed) return early(rateLimitResponse(kbRl, "kb"));
 
   let conv = body.conversationId ? getConversation(body.conversationId) : undefined;
   if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id, authUser.workspaceId);
+  // P5-3: regenerate - drop the previous assistant answer (memory + DB) so it
+  // does not leak into the new generation's history, and skip adding another
+  // user message (the question is already in history - adding it again would
+  // duplicate it).
+  let regenReplaced = false;
+  if (body.regenerate) {
+    const removed = popLastAssistantMessage(conv.id);
+    if (removed) {
+      void deleteMessageFromDb(removed.id);
+      regenReplaced = true;
+    }
+  }
   // Build conversation history for multi-turn context (exclude current query)
   const history: ChatMessage[] = (conv.messages ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")
     .slice(-6) // last 3 turns
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-  addMessage(conv.id, { role: "user", content: query });
+  if (!regenReplaced) {
+    addMessage(conv.id, { role: "user", content: query });
+  }
 
   // The entire RAG flow runs inside the user's model context so the LLM
   // provider resolves THIS user's configured model.
   const doRag = async () => {
-    let chunks: RetrievedChunk[] = await retrieve(kbId, query, kb.settings.topK);
+    const topK = Math.min(Math.max(body.topK ?? kb.settings.topK, 1), 20);
+    let chunks: RetrievedChunk[] = await retrieve(kbId, query, topK);
+    // P5-3: negative-feedback loop - down-weight chunks cited by an answer
+    // the user disliked in THIS conversation, so later retrievals rank the
+    // poor sources lower.
+    const downvoted = new Set<string>();
+    for (const m of conv!.messages) {
+      if (m.role === "assistant" && m.feedback === "down") {
+        for (const c of m.citations ?? []) downvoted.add(c.docId);
+      }
+    }
+    if (downvoted.size > 0) {
+      chunks = chunks
+        .map((c) => (downvoted.has(c.docId) ? { ...c, score: c.score * 0.4 } : c))
+        .sort((a, b) => b.score - a.score);
+    }
     // P4-2: document-level permissions - drop chunks from private documents
     // (non-owner callers must not see their content through chat retrieval).
     if (authUser.id !== kb.ownerId) {
@@ -122,7 +170,7 @@ export async function POST(req: Request) {
           let fullText = "";
           let citations: Citation[] = [];
 
-          const gen = generateStream(query, chunks, history);
+          const gen = generateStream(query, chunks, history, body.temperature ?? 0.3);
           let result;
           while (true) {
             // Stop generating as soon as the client disconnects / aborts.
@@ -146,9 +194,14 @@ export async function POST(req: Request) {
           const followUps = await suggestFollowUps(query, fullText, chunks);
           send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });
         } catch (err) {
-          console.error("[chat] stream error:", err);
+          log.error({ err }, "[chat] stream error");
+          // P6-1: error reporting + trace finalization (status 500).
+          reportError(err, { source: "/api/chat", context: `conv ${conv!.id}` });
+          trace.end(500, err);
           send({ type: "error", message: "生成回答时出错，请重试。" });
         } finally {
+          // P6-1: the trace covers the full SSE lifetime - finalize here.
+          trace.end(200);
           controller.close();
         }
       },
@@ -164,4 +217,11 @@ export async function POST(req: Request) {
     logCall(apiKey.id, "/api/chat", "POST", 200, Date.now() - startTime);
   }
   return runWithUser(authUser.id, doRag);
+}
+
+// P6-1: request tracing + SLI metrics. autoEnd is disabled because the SSE
+// stream outlives the returned Response - handlePost finalizes the trace in
+// the stream's finally (or on early-exit paths via `early`).
+export async function POST(req: Request) {
+  return withApiTrace(req, "api /api/chat", (trace) => handlePost(req, trace), { autoEnd: false });
 }

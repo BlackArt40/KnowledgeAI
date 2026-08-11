@@ -17,6 +17,7 @@
 
 import { promises as fs } from "fs";
 import path from "path";
+import { log } from "@/lib/obs/log";
 
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads");
 const CHUNKS_DIR = path.join(UPLOAD_DIR, ".chunks");
@@ -238,14 +239,14 @@ export function startCleanupTimer(): void {
     try {
       const stats = await runCleanup();
       if (stats.orphanedChunkDirs + stats.orphanedKbDirs + stats.oldFiles > 0) {
-        console.log(
+        log.info(
           `[cleanup] Removed ${stats.orphanedChunkDirs} chunk dirs, ` +
           `${stats.orphanedKbDirs} KB dirs, ${stats.oldFiles} old files ` +
           `(${(stats.freedBytes / 1024 / 1024).toFixed(1)} MB freed)`
         );
       }
     } catch (err) {
-      console.error("[cleanup] Periodic cleanup error:", err);
+      log.error({ err }, "[cleanup] Periodic cleanup error");
     }
   }, CLEANUP_INTERVAL);
 

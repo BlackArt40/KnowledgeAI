@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PrismaClient } from "./types";
+import { log } from "@/lib/obs/log";
 
 let _prisma: PrismaClient | null = null;
 
@@ -22,10 +23,10 @@ export async function getDb(): Promise<PrismaClient | null> {
   try {
     const { PrismaClient } = await import("@prisma/client");
     _prisma = new PrismaClient() as unknown as PrismaClient;
-    console.log("[db] Prisma client initialized");
+    log.info("[db] Prisma client initialized");
     return _prisma;
   } catch {
-    console.warn("[db] @prisma/client not installed - using in-memory store");
+    log.warn("[db] @prisma/client not installed - using in-memory store");
     return null;
   }
 }

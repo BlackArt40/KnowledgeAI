@@ -3,6 +3,7 @@
 // access to already-loaded content. Only registers in production builds -
 // in dev, caching would fight Next.js HMR / fast refresh.
 import * as React from "react";
+import { clientLog } from "@/lib/obs/log-browser";
 
 export function SwRegister() {
   React.useEffect(() => {
@@ -12,7 +13,7 @@ export function SwRegister() {
       .register("/sw.js")
       .catch((err: unknown) => {
         // Non-fatal: the app works without offline support.
-        console.warn("[PWA] service worker registration failed", err);
+        clientLog.warn({ err: err instanceof Error ? err.message : String(err) }, "[PWA] service worker registration failed");
       });
   }, []);
 

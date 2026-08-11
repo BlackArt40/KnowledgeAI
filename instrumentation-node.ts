@@ -7,12 +7,13 @@
 // ---------------------------------------------------------------------------
 
 import { startQueue, stopQueue } from "@/lib/queue";
+import { log } from "./src/lib/obs/log";
 
-console.log("[instrumentation] Starting background queue worker...");
+log.info("[instrumentation] Starting background queue worker...");
 startQueue();
 
 const shutdown = async () => {
-  console.log("[instrumentation] Shutting down queue worker...");
+  log.info("[instrumentation] Shutting down queue worker...");
   try {
     await stopQueue();
   } catch {

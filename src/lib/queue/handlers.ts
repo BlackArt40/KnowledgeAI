@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { JobQueue, JobHandler } from "./interface";
+import { log } from "@/lib/obs/log";
 
 // ── Document Processing Handler ──────────────────────────────────────────
 //
@@ -21,13 +22,25 @@ const docProcessHandler: JobHandler = async (payload) => {
   if (!docId) return { ok: false, error: "Missing docId" };
 
   const { getDocument, processDocInQueue } = await import("@/lib/kb/store");
+  const { runWithTraceId } = await import("@/lib/obs/trace");
+  const { recordDoc } = await import("@/lib/obs/metrics");
+  const { reportError } = await import("@/lib/obs/errors");
+
   const doc = getDocument(docId);
   if (!doc) return { ok: false, error: `Document not found: ${docId}` };
 
+  // P6-1: the upload route forwards its traceId so the queue stage (parse ->
+  // chunk -> index) continues the same trace across the request boundary.
+  const start = Date.now();
   try {
-    await processDocInQueue(docId);
+    await runWithTraceId(payload.traceId as string | undefined, "doc-process", async () => {
+      await processDocInQueue(docId);
+    });
+    recordDoc(Date.now() - start, true);
     return { ok: true, data: { docId } };
   } catch (err) {
+    recordDoc(Date.now() - start, false);
+    reportError(err, { source: "queue", context: `doc-process ${docId}` });
     return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
 };
@@ -57,21 +70,34 @@ const agentRunHandler: JobHandler = async (payload) => {
   // because AsyncLocalStorage does not cross process boundaries (BullMQ)
   // or even await boundaries of a fresh call stack.
   const { runWithUser } = await import("@/lib/models/context");
+  // P6-1: tracing + SLI metrics for the background stage.
+  const { runWithTraceId } = await import("@/lib/obs/trace");
+  const { recordAgent } = await import("@/lib/obs/metrics");
+  const { reportError } = await import("@/lib/obs/errors");
 
+  const start = Date.now();
+  let failed = false;
   try {
-    await runWithUser(userId ?? "", async () => {
-      await runTask(task, async (e) => {
+    // P6-1: forward the request's traceId (when present) into the worker so
+    // the agent trace spans continue under the same trace id.
+    await runWithTraceId(payload.traceId as string | undefined, "agent-run", async () => {
+      await runWithUser(userId ?? "", async () => {
+        await runTask(task, async (e) => {
+          saveTask(task);
+          await publishAgentEvent(taskId, e);
+        });
         saveTask(task);
-        await publishAgentEvent(taskId, e);
       });
-      saveTask(task);
     });
     return { ok: true, data: { taskId } };
   } catch (err) {
+    failed = true;
     const message = err instanceof Error ? err.message : "Unknown error";
+    reportError(err, { source: "queue", context: `agent-run ${taskId}` });
     await publishAgentEvent(taskId, { type: "error", message });
     return { ok: false, error: message };
   } finally {
+    recordAgent(Date.now() - start, !failed);
     // Always signal end so the SSE consumer closes its stream, whether the
     // task succeeded, failed, or exhausted retries.
     const { publishAgentEnd } = await import("./index");
@@ -103,5 +129,5 @@ export function registerAllHandlers(queue: JobQueue): void {
   queue.registerHandler("doc-process", docProcessHandler);
   queue.registerHandler("agent-run", agentRunHandler);
   queue.registerHandler("index-cleanup", indexCleanupHandler);
-  console.log("[queue] Handlers registered: doc-process, agent-run, index-cleanup");
+  log.info("[queue] Handlers registered: doc-process, agent-run, index-cleanup");
 }

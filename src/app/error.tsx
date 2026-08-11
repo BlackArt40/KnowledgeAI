@@ -1,9 +1,11 @@
 "use client";
 import * as React from "react";
+import { useT } from "@/lib/i18n/provider";
 import Link from "next/link";
 import { Home, RefreshCw, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { clientLog } from "@/lib/obs/log-browser";
 
 export default function Error({
   error,
@@ -12,8 +14,23 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
   React.useEffect(() => {
-    console.error(error);
+    clientLog.error({ err: { message: error.message || "Page render error", stack: error.stack ?? "" } }, "page render error");
+    // P6-1: report render errors to the observability endpoint (which
+    // forwards to Sentry when SENTRY_DSN is configured).
+    void fetch("/api/obs/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: error.message || "Page render error",
+        stack: error.stack,
+        source: "error.tsx",
+        url: window.location.href,
+        tags: { digest: error.digest ?? "unknown" },
+      }),
+      keepalive: true,
+    }).catch(() => {});
   }, [error]);
 
   return (
@@ -27,7 +44,7 @@ export default function Error({
         <p className="bg-gradient-to-br from-destructive to-amber-500 bg-clip-text text-8xl font-black tracking-tighter text-transparent sm:text-9xl">
           500
         </p>
-        <h1 className="mt-4 text-xl font-semibold">服务器开小差了</h1>
+        <h1 className="mt-4 text-xl font-semibold">{t("page.error.s0")}</h1>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
           抱歉，处理您的请求时发生了内部错误。我们的团队已收到通知，正在紧急修复。
         </p>
@@ -43,10 +60,10 @@ export default function Error({
           <RefreshCw className="h-4 w-4" /> 重试
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/"><Home className="h-4 w-4" /> 返回首页</Link>
+          <Link href="/"><Home className="h-4 w-4" />{t("page.error.s1")}</Link>
         </Button>
         <Button variant="ghost" asChild>
-          <a href="mailto:support@knowledgeai.dev"><LifeBuoy className="h-4 w-4" /> 联系支持</a>
+          <a href="mailto:support@knowledgeai.dev"><LifeBuoy className="h-4 w-4" />{t("page.error.s2")}</a>
         </Button>
       </div>
     </div>

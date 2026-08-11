@@ -1,5 +1,8 @@
 "use client";
+
+import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
+import { clientLog } from "@/lib/obs/log-browser";
 import {
   Users, Activity, DollarSign, Database, HardDrive, Bot, MessagesSquare,
   ShieldBan, ShieldCheck, Search, Server, Cog, Loader2, Gauge, ShieldAlert,
@@ -25,8 +28,12 @@ import { cn } from "@/lib/utils";
 const STATUS_VARIANT = {
   active: "success", banned: "destructive",
 } as const;
-const STATUS_LABEL = { active: "正常", banned: "已封禁" } as const;
-const KB_STATUS = { ready: "就绪", processing: "处理中", error: "异常" } as const;
+function statusLabel(t: (k: string) => string) {
+  return { active: t("page.admin.s42"), banned: t("page.admin.s43") } as const;
+}
+function kbStatusLabel(t: (k: string) => string) {
+  return { ready: t("page.admin.s44"), processing: t("page.admin.s45"), error: t("page.admin.s46") } as const;
+}
 
 interface RateLimitDashboard {
   mode: "memory" | "redis";
@@ -36,13 +43,15 @@ interface RateLimitDashboard {
 }
 
 // P3-3: dimension badges for the rate-limit dashboard
-const RL_KIND: Record<RateLimitStat["kind"], { label: string; variant: "default" | "secondary" | "outline" | "warning" | "success" | "destructive" }> = {
-  ip: { label: "IP", variant: "secondary" },
-  user: { label: "用户", variant: "default" },
-  apikey: { label: "API Key", variant: "outline" },
-  kb: { label: "知识库", variant: "warning" },
-  other: { label: "其他", variant: "outline" },
-};
+function rlKind(t: (k: string) => string): Record<RateLimitStat["kind"], { label: string; variant: "default" | "secondary" | "outline" | "warning" | "success" | "destructive" }> {
+  return {
+    ip: { label: "IP", variant: "secondary" },
+    user: { label: t("page.admin.s4"), variant: "default" },
+    apikey: { label: "API Key", variant: "outline" },
+    kb: { label: t("page.admin.s6"), variant: "warning" },
+    other: { label: t("page.admin.s47"), variant: "outline" },
+  };
+}
 
 function rlResetIn(s: RateLimitStat): string {
   const secs = Math.max(0, Math.ceil((s.resetAt - Date.now()) / 1000));
@@ -50,6 +59,7 @@ function rlResetIn(s: RateLimitStat): string {
 }
 
 export default function AdminPage() {
+  const t = useT();
   const [overview, setOverview] = React.useState<AdminOverview | null>(null);
   const [users, setUsers] = React.useState<AdminUser[]>([]);
   const [kbs, setKbs] = React.useState<KbMonitor[]>([]);
@@ -96,7 +106,7 @@ export default function AdminPage() {
     if (!res.ok) {
       // PATCH failed: refresh from server to discard the optimistic update so
       // the UI doesn't display a change that was never persisted.
-      console.error("patchConfig failed:", res.status, await res.text().catch(() => ""));
+      clientLog.error({ status: res.status, body: (await res.text().catch(() => "")).slice(0, 300) }, "patchConfig failed");
     }
     await refresh();
     setSavingCfg(false);
@@ -144,14 +154,14 @@ export default function AdminPage() {
   );
 
   const statCards = [
-    { icon: Users, label: "总用户数", value: stats.totalUsers.toLocaleString(), accent: "text-primary" },
-    { icon: Activity, label: "30 天活跃", value: stats.activeUsers30d.toLocaleString(), accent: "text-emerald-500" },
+    { icon: Users, label: t("page.admin.s49"), value: stats.totalUsers.toLocaleString(), accent: "text-primary" },
+    { icon: Activity, label: t("page.admin.s50"), value: stats.activeUsers30d.toLocaleString(), accent: "text-emerald-500" },
     { icon: DollarSign, label: "月收入", value: `¥${stats.monthlyRevenue.toLocaleString()}`, accent: "text-amber-500" },
-    { icon: Database, label: "知识库总数", value: stats.totalKbs.toLocaleString(), accent: "text-sky-500" },
-    { icon: MessagesSquare, label: "本月问答", value: stats.qaThisMonth.toLocaleString(), accent: "text-violet-500" },
-    { icon: Bot, label: "本月 Agent", value: stats.agentTasksThisMonth.toLocaleString(), accent: "text-pink-500" },
+    { icon: Database, label: t("page.admin.s52"), value: stats.totalKbs.toLocaleString(), accent: "text-sky-500" },
+    { icon: MessagesSquare, label: t("page.admin.s53"), value: stats.qaThisMonth.toLocaleString(), accent: "text-violet-500" },
+    { icon: Bot, label: t("page.admin.s54"), value: stats.agentTasksThisMonth.toLocaleString(), accent: "text-pink-500" },
     { icon: HardDrive, label: "存储用量", value: `${stats.storageUsedGb} GB`, accent: "text-orange-500" },
-    { icon: Database, label: "文档总数", value: stats.totalDocs.toLocaleString(), accent: "text-teal-500" },
+    { icon: Database, label: t("page.admin.s56"), value: stats.totalDocs.toLocaleString(), accent: "text-teal-500" },
   ];
 
   const maxRev = Math.max(...overview.revenueTrend.map((r) => r.revenue));
@@ -159,8 +169,8 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center gap-2">
-        <Badge variant="destructive" className="text-[10px]">Owner 专属</Badge>
-        <h1 className="text-2xl font-bold tracking-tight">管理后台</h1>
+        <Badge variant="destructive" className="text-[10px]">{t("page.admin.s0")}</Badge>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page.admin.s1")}</h1>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -179,7 +189,7 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> 收入趋势</CardTitle>
+          <CardTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4" />{t("page.admin.s0")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-40 items-end gap-3">
@@ -203,10 +213,10 @@ export default function AdminPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2"><Users className="h-4 w-4" /> 用户管理</span>
+              <span className="flex items-center gap-2"><Users className="h-4 w-4" />{t("page.admin.s1")}</span>
               <div className="relative w-48">
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索用户…" className="h-8 pl-8 text-xs" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("page.admin.s57")} className="h-8 pl-8 text-xs" />
               </div>
             </CardTitle>
           </CardHeader>
@@ -214,12 +224,12 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>用户</TableHead>
-                  <TableHead>套餐</TableHead>
-                  <TableHead>知识库</TableHead>
-                  <TableHead>最近活跃</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead>{t("page.admin.s4")}</TableHead>
+                  <TableHead>{t("page.admin.s5")}</TableHead>
+                  <TableHead>{t("page.admin.s6")}</TableHead>
+                  <TableHead>{t("page.admin.s7")}</TableHead>
+                  <TableHead>{t("page.admin.s8")}</TableHead>
+                  <TableHead className="text-right">{t("page.admin.s9")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,7 +245,7 @@ export default function AdminPage() {
                     <TableCell className="tabular-nums">{u.kbs}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatRelative(u.lastActive)}</TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[u.status]}>{STATUS_LABEL[u.status]}</Badge>
+                      <Badge variant={STATUS_VARIANT[u.status]}>{statusLabel(t)[u.status]}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       {u.status === "banned" ? (
@@ -257,47 +267,47 @@ export default function AdminPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Cog className="h-4 w-4" /> 系统配置</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Cog className="h-4 w-4" />{t("page.admin.s2")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs">默认对话模型</Label>
+              <Label className="text-xs">{t("page.admin.s11")}</Label>
               <Input value={config.defaultModel} onChange={(e) => setConfig({ ...config, defaultModel: e.target.value })} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">嵌入模型</Label>
+              <Label className="text-xs">{t("page.admin.s12")}</Label>
               <Input value={config.embeddingModel} onChange={(e) => setConfig({ ...config, embeddingModel: e.target.value })} className="h-8 text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
-                <Label className="text-xs">限流（次/分）<span className="text-muted-foreground">· 环境变量</span></Label>
+                <Label className="text-xs">{t("page.admin.s13")}<span className="text-muted-foreground">{t("page.admin.s14")}</span></Label>
                 <Input type="number" value={config.rateLimitPerMin} readOnly className="h-8 cursor-not-allowed text-sm opacity-60" />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">上传上限（MB）</Label>
+                <Label className="text-xs">{t("page.admin.s15")}</Label>
                 <Input type="number" value={config.maxUploadMb} onChange={(e) => setConfig({ ...config, maxUploadMb: +e.target.value })} className="h-8 text-sm" />
               </div>
             </div>
             <Separator />
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">允许注册</p>
-                <p className="text-xs text-muted-foreground">关闭后新用户无法注册</p>
+                <p className="text-sm font-medium">{t("page.admin.s16")}</p>
+                <p className="text-xs text-muted-foreground">{t("page.admin.s17")}</p>
               </div>
               <Switch checked={config.allowSignup} onCheckedChange={(v) => patchConfig({ allowSignup: v })} />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">维护模式</p>
-                <p className="text-xs text-muted-foreground">开启后用户看到维护页面</p>
+                <p className="text-sm font-medium">{t("page.admin.s18")}</p>
+                <p className="text-xs text-muted-foreground">{t("page.admin.s19")}</p>
               </div>
               <Switch checked={config.maintenanceMode} onCheckedChange={(v) => patchConfig({ maintenanceMode: v })} />
             </div>
             <Separator />
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium">两步验证强制策略</p>
-                <p className="text-xs text-muted-foreground">要求所选角色的用户必须开启两步验证（TOTP），下次登录时将强制绑定</p>
+                <p className="text-sm font-medium">{t("page.admin.s20")}</p>
+                <p className="text-xs text-muted-foreground">{t("page.admin.s21")}</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map((r) => (
@@ -320,19 +330,19 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Server className="h-4 w-4" /> 知识库监控</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Server className="h-4 w-4" />{t("page.admin.s3")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>知识库</TableHead>
-                <TableHead>所有者</TableHead>
-                <TableHead>文档数</TableHead>
-                <TableHead>大小</TableHead>
-                <TableHead>查询数</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>更新时间</TableHead>
+                <TableHead>{t("page.admin.s6")}</TableHead>
+                <TableHead>{t("page.admin.s23")}</TableHead>
+                <TableHead>{t("page.admin.s24")}</TableHead>
+                <TableHead>{t("page.admin.s25")}</TableHead>
+                <TableHead>{t("page.admin.s26")}</TableHead>
+                <TableHead>{t("page.admin.s8")}</TableHead>
+                <TableHead>{t("page.admin.s27")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -345,7 +355,7 @@ export default function AdminPage() {
                   <TableCell className="tabular-nums">{kb.queries.toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant={kb.status === "ready" ? "success" : kb.status === "processing" ? "warning" : "destructive"}>
-                      {KB_STATUS[kb.status]}
+                      {kbStatusLabel(t)[kb.status]}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{formatRelative(kb.updatedAt)}</TableCell>
@@ -360,9 +370,9 @@ export default function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2"><Gauge className="h-4 w-4" /> 限流仪表盘</span>
+              <span className="flex items-center gap-2"><Gauge className="h-4 w-4" />{t("page.admin.s4")}</span>
               <Badge variant={ratelimit?.mode === "redis" ? "success" : "secondary"}>
-                {ratelimit?.mode === "redis" ? "Redis 分布式" : "内存单实例"}
+                {ratelimit?.mode === "redis" ? t("page.admin.s58") : t("page.admin.s59")}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -370,14 +380,14 @@ export default function AdminPage() {
             {ratelimit && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
-                  ["用户", ratelimit.limits.base],
-                  ["匿名/IP", ratelimit.limits.anon],
+                  [t("page.admin.s4"), ratelimit.limits.base],
+                  [t("page.admin.s60"), ratelimit.limits.anon],
                   ["API Key", ratelimit.limits.key],
-                  ["知识库", ratelimit.limits.kb],
+                  [t("page.admin.s6"), ratelimit.limits.kb],
                 ] as const).map(([label, v]) => (
                   <div key={label} className="rounded-lg border border-border p-2 text-center">
                     <div className="text-[11px] text-muted-foreground">{label}</div>
-                    <div className="text-lg font-bold tabular-nums">{v}<span className="text-xs font-normal text-muted-foreground">/分</span></div>
+                    <div className="text-lg font-bold tabular-nums">{v}<span className="text-xs font-normal text-muted-foreground">{t("page.admin.s29")}</span></div>
                   </div>
                 ))}
               </div>
@@ -385,11 +395,11 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>维度</TableHead>
+                  <TableHead>{t("page.admin.s30")}</TableHead>
                   <TableHead>Key</TableHead>
-                  <TableHead className="text-right">当前/限额</TableHead>
-                  <TableHead className="text-right">剩余</TableHead>
-                  <TableHead className="text-right">重置</TableHead>
+                  <TableHead className="text-right">{t("page.admin.s31")}</TableHead>
+                  <TableHead className="text-right">{t("page.admin.s32")}</TableHead>
+                  <TableHead className="text-right">{t("page.admin.s33")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -402,7 +412,7 @@ export default function AdminPage() {
                 ) : (
                   (ratelimit?.live ?? []).slice(0, 12).map((s) => (
                     <TableRow key={s.key}>
-                      <TableCell><Badge variant={RL_KIND[s.kind].variant}>{RL_KIND[s.kind].label}</Badge></TableCell>
+                      <TableCell><Badge variant={rlKind(t)[s.kind].variant}>{rlKind(t)[s.kind].label}</Badge></TableCell>
                       <TableCell className="max-w-[180px] truncate font-mono text-xs text-muted-foreground" title={s.key}>{s.key}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {s.count}<span className="text-muted-foreground">/{s.limit}</span>
@@ -426,7 +436,7 @@ export default function AdminPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Provider 状态</CardTitle>
+            <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" />{t("page.admin.s5")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -436,7 +446,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{p.label}</span>
                       <Badge variant={p.enabled ? "success" : "secondary"}>
-                        {p.enabled ? "已启用" : "演示模式"}
+                        {p.enabled ? t("page.admin.s61") : t("page.admin.s62")}
                       </Badge>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground" title={p.detail}>{p.detail}</p>
@@ -451,10 +461,10 @@ export default function AdminPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><ScrollText className="h-4 w-4" /> 审计日志</span>
+            <span className="flex items-center gap-2"><ScrollText className="h-4 w-4" />{t("page.admin.s6")}</span>
             <div className="flex items-center gap-2">
               <Badge variant={audit?.chainValid ? "success" : "destructive"}>
-                {audit?.chainValid ? "哈希链完整" : "链校验失败"}
+                {audit?.chainValid ? t("page.admin.s63") : t("page.admin.s64")}
               </Badge>
               <Badge variant="secondary">共 {audit?.total ?? 0} 条</Badge>
             </div>
@@ -465,26 +475,26 @@ export default function AdminPage() {
             <Input
               value={auditAction}
               onChange={(e) => setAuditAction(e.target.value)}
-              placeholder="操作类型过滤（如 kb.delete）"
+              placeholder={t("page.admin.s65")}
               className="h-8 w-56 text-xs"
             />
             <Input
               value={auditActor}
               onChange={(e) => setAuditActor(e.target.value)}
-              placeholder="操作者过滤"
+              placeholder={t("page.admin.s66")}
               className="h-8 w-44 text-xs"
             />
-            <Button size="sm" variant="outline" onClick={searchAudit}>搜索</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setAuditAction(""); setAuditActor(""); refresh(); }}>重置</Button>
+            <Button size="sm" variant="outline" onClick={searchAudit}>{t("page.admin.s36")}</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAuditAction(""); setAuditActor(""); refresh(); }}>{t("page.admin.s33")}</Button>
           </div>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>时间</TableHead>
-                <TableHead>操作者</TableHead>
-                <TableHead>操作类型</TableHead>
-                <TableHead>对象</TableHead>
-                <TableHead>详情</TableHead>
+                <TableHead>{t("page.admin.s37")}</TableHead>
+                <TableHead>{t("page.admin.s38")}</TableHead>
+                <TableHead>{t("page.admin.s39")}</TableHead>
+                <TableHead>{t("page.admin.s40")}</TableHead>
+                <TableHead>{t("page.admin.s41")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { JobQueue, JobType, JobHandler, JobResult } from "./interface";
+import { log, redactText } from "@/lib/obs/log";
 
 interface Job {
   id: string;
@@ -143,15 +144,17 @@ export class MemoryQueue implements JobQueue {
     if (job.attempts < job.maxAttempts) {
       job.status = "queued";
       job.nextRetryAt = Date.now() + backoffDelay(job.attempts);
-      console.warn(
-        `[queue] job ${job.id} failed (attempt ${job.attempts}/${job.maxAttempts}), retrying in ${backoffDelay(job.attempts)}ms: ${errorMessage}`
+      log.warn(
+        { jobId: job.id, attempt: job.attempts, maxAttempts: job.maxAttempts, retryInMs: backoffDelay(job.attempts), err: redactText(errorMessage) },
+        "[queue] job failed, retrying"
       );
       this.scheduleRetry();
     } else {
       job.status = "failed";
       job.result = { ok: false, error: errorMessage };
-      console.error(
-        `[queue] job ${job.id} permanently failed after ${job.attempts} attempts: ${errorMessage}`
+      log.error(
+        { jobId: job.id, attempts: job.attempts, err: redactText(errorMessage) },
+        "[queue] job permanently failed"
       );
     }
   }

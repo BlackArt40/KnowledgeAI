@@ -5,6 +5,9 @@ import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
 import { enqueue, subscribeAgentEvents } from "@/lib/queue";
+import { withApiTrace } from "@/lib/obs/trace";
+import { reportError } from "@/lib/obs/errors";
+import { log } from "@/lib/obs/log";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +17,7 @@ export const dynamic = "force-dynamic";
 // relays events from the background worker (via the agent event bus) to the
 // client. The request thread is NOT blocked by runTask -- it runs in the
 // queue worker. Events: init -> step* -> done|error -> (stream closes).
-export async function POST(req: Request) {
+async function handleRun(req: Request) {
   const authUser = await getRequestUser(req);
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
 
@@ -98,9 +101,12 @@ export async function POST(req: Request) {
 
           // Enqueue the background job. Worker picks it up and publishes
           // step/done/error events to the bus, which we relay above.
-          await enqueue("agent-run", { taskId: task.id, userId: authUser.id });
+          // P6-1: forward the request's traceId so the queue stage continues
+          // the same trace.
+          await enqueue("agent-run", { taskId: task.id, userId: authUser.id, traceId: traceIdOf(req) });
         } catch (err) {
-          console.error("[agent/run] stream error:", err);
+          log.error({ err }, "[agent/run] stream error");
+          reportError(err, { source: "/api/agent/run", context: `task ${task.id}` });
           send({ type: "error", message: "排队或执行失败" });
           // Mark the task as failed so the UI reflects the error state.
           task.status = "failed";
@@ -121,4 +127,15 @@ export async function POST(req: Request) {
   };
 
   return runWithUser(authUser.id, streamResponse);
+}
+
+/** P6-1: the trace id assigned by the proxy (or minted by withApiTrace). */
+function traceIdOf(req: Request): string | undefined {
+  return req.headers.get("x-trace-id") ?? req.headers.get("x-middleware-request-x-trace-id") ?? undefined;
+}
+
+// P6-1: request tracing + SLI metrics (autoEnd - the SSE stream here only
+// relays bus events; the heavy work runs in the queue under the traceId).
+export async function POST(req: Request) {
+  return withApiTrace(req, "api /api/agent/run", () => handleRun(req));
 }

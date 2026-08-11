@@ -5,6 +5,7 @@
 
 import type { ExternalResult, SourceConfig } from "./types";
 import { qualityScore, deduplicateResults } from "./types";
+import { log } from "@/lib/obs/log";
 
 // ── Source config (env-gated) ────────────────────────────────────────────
 export function getSourceConfig(): SourceConfig {
@@ -37,15 +38,15 @@ export function externalLabel(): string {
 async function webSearch(query: string, maxResults = 5): Promise<ExternalResult[]> {
   if (process.env.TAVILY_API_KEY) {
     try { return await tavilySearch(query, maxResults); }
-    catch (e) { console.error("[external] Tavily search failed:", e); }
+    catch (e) { log.error({ err: e }, "[external] Tavily search failed"); }
   }
   if (process.env.SERPAPI_KEY) {
     try { return await serpApiSearch(query, maxResults); }
-    catch (e) { console.error("[external] SerpAPI search failed:", e); }
+    catch (e) { log.error({ err: e }, "[external] SerpAPI search failed"); }
   }
   if (process.env.BRAVE_SEARCH_KEY) {
     try { return await braveSearch(query, maxResults); }
-    catch (e) { console.error("[external] Brave search failed:", e); }
+    catch (e) { log.error({ err: e }, "[external] Brave search failed"); }
   }
   return demoWebResults(query, maxResults);
 }
@@ -151,7 +152,7 @@ async function arxivSearch(query: string, maxResults = 5): Promise<ExternalResul
     const xml = await res.text();
     return parseArxivXml(xml);
   } catch (e) {
-    console.error("[external] ArXiv search failed:", e);
+    log.error({ err: e }, "[external] ArXiv search failed");
     return demoArxivResults(query, maxResults);
   }
 }
@@ -215,7 +216,7 @@ async function githubSearch(query: string, maxResults = 5): Promise<ExternalResu
       publishedAt: repo.updated_at, author: repo.owner?.login,
     }));
   } catch (e) {
-    console.error("[external] GitHub search failed:", e);
+    log.error({ err: e }, "[external] GitHub search failed");
     return demoGithubResults(query, maxResults);
   }
 }

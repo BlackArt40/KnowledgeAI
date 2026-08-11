@@ -8,6 +8,7 @@
 
 import type { PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
+import { log, redactText } from "@/lib/obs/log";
 
 export function isPaymentEnabled(): boolean {
   return !!process.env.STRIPE_SECRET_KEY;
@@ -78,7 +79,7 @@ export async function createCheckoutSession(
   });
 
   if (!res.ok) {
-    console.error("[payment] stripe session failed:", res.status, await res.text());
+    log.error({ status: res.status, body: redactText(await res.text()) }, "[payment] stripe session failed");
     return { url: "", sessionId: _orderId, mode: "mock" };
   }
 

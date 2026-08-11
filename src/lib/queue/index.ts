@@ -17,6 +17,7 @@ import type { JobQueue, JobType, JobHandler } from "./interface";
 import { MemoryQueue } from "./memory-queue";
 import { BullMQQueue } from "./bullmq-queue";
 import type { AgentEvent } from "@/lib/agent/orchestrator";
+import { log } from "@/lib/obs/log";
 
 let _instance: JobQueue | null = null;
 let _handlersRegistered = false;
@@ -35,10 +36,10 @@ function getQueue(): JobQueue {
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
     _instance = new BullMQQueue(redisUrl);
-    console.log("[queue] Backend: BullMQ (Redis)");
+    log.info("[queue] Backend: BullMQ (Redis)");
   } else {
     _instance = new MemoryQueue();
-    console.log("[queue] Backend: Memory (in-process)");
+    log.info("[queue] Backend: Memory (in-process)");
   }
   g.__KAI_QUEUE_INSTANCE__ = _instance;
   return _instance;
@@ -90,7 +91,7 @@ function registerDocHandler(): void {
   // Lazy import to avoid circular dependency at module load time.
   import("./handlers")
     .then(({ registerAllHandlers }) => registerAllHandlers(getQueue()))
-    .catch((err) => console.error("[queue] failed to register handlers:", err));
+    .catch((err) => log.error({ err }, "[queue] failed to register handlers"));
 }
 
 // ── Agent Event Bus ───────────────────────────────────────────────────────
@@ -119,7 +120,7 @@ async function ensureRedisPublisher(): Promise<void> {
     const { publishAgentEventRedis } = await import("./agent-bus-redis");
     redisPublisher = publishAgentEventRedis;
   } catch (err) {
-    console.error("[queue] Redis pub/sub unavailable, falling back to in-memory:", err);
+    log.error({ err }, "[queue] Redis pub/sub unavailable, falling back to in-memory");
   }
 }
 
@@ -135,7 +136,7 @@ export async function publishAgentEvent(
         await redisPublisher(agentChannel(taskId), JSON.stringify({ taskId, event }));
         return;
       } catch (err) {
-        console.error("[queue] redis publish failed, falling back to memory:", err);
+        log.error({ err }, "[queue] redis publish failed, falling back to memory");
       }
     }
   }
@@ -146,7 +147,7 @@ export async function publishAgentEvent(
       try {
         fn({ taskId, event });
       } catch (e) {
-        console.error("[queue] agent event listener error:", e);
+        log.error({ err: e }, "[queue] agent event listener error");
       }
     }
   }
@@ -160,7 +161,7 @@ export async function publishAgentEnd(taskId: string): Promise<void> {
       await redisPublisher(agentChannel(taskId), JSON.stringify({ taskId, event: endEvent }));
       return;
     } catch (err) {
-      console.error("[queue] redis publish end failed, falling back to memory:", err);
+      log.error({ err }, "[queue] redis publish end failed, falling back to memory");
     }
   }
   const listeners = memoryListeners.get(taskId);
@@ -169,7 +170,7 @@ export async function publishAgentEnd(taskId: string): Promise<void> {
       try {
         fn({ taskId, event: endEvent });
       } catch (e) {
-        console.error("[queue] agent end listener error:", e);
+        log.error({ err: e }, "[queue] agent end listener error");
       }
     }
   }
@@ -190,7 +191,7 @@ export async function subscribeAgentEvents(
       const unsubscribe = await subscribeAgentEventsRedis(taskId, onEvent);
       return unsubscribe;
     } catch (err) {
-      console.error("[queue] redis subscribe failed, falling back to memory:", err);
+      log.error({ err }, "[queue] redis subscribe failed, falling back to memory");
     }
   }
 

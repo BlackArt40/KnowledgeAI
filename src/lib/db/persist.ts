@@ -13,6 +13,7 @@
 
 import { getDb, isDbEnabled } from "./client";
 import { encryptToString } from "@/lib/security/crypto";
+import { log } from "@/lib/obs/log";
 
 /** Persist a user create/update to DB. */
 export async function persistUser(user: {
@@ -25,6 +26,8 @@ export async function persistUser(user: {
   plan: string;
   createdAt: number;
   lastLoginAt: number | null;
+  /** P5-4: UI language preference. */
+  locale?: string;
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -37,6 +40,7 @@ export async function persistUser(user: {
       passwordHash: user.passwordHash,
       role: user.role.toUpperCase(),
       status: user.status.toUpperCase(),
+      locale: user.locale ?? "zh-CN",
     };
     if (existing) {
       await db.user.update({ where: { id: user.id }, data });
@@ -44,7 +48,7 @@ export async function persistUser(user: {
       await db.user.create({ data: { id: user.id, ...data } });
     }
   } catch (err) {
-    console.error("[db] persistUser error:", err);
+    log.error({ err }, "[db] persistUser error");
   }
 }
 
@@ -78,7 +82,7 @@ export async function persistKb(kb: {
       });
     }
   } catch (err) {
-    console.error("[db] persistKb error:", err);
+    log.error({ err }, "[db] persistKb error");
   }
 }
 
@@ -90,7 +94,7 @@ export async function deleteKbFromDb(kbId: string): Promise<void> {
   try {
     await db.knowledgeBase.delete({ where: { id: kbId } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteKbFromDb error:", err);
+    log.error({ err }, "[db] deleteKbFromDb error");
   }
 }
 
@@ -132,7 +136,7 @@ export async function persistDoc(doc: {
       });
     }
   } catch (err) {
-    console.error("[db] persistDoc error:", err);
+    log.error({ err }, "[db] persistDoc error");
   }
 }
 
@@ -144,7 +148,7 @@ export async function deleteDocFromDb(docId: string): Promise<void> {
   try {
     await db.kbDocument.delete({ where: { id: docId } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteDocFromDb error:", err);
+    log.error({ err }, "[db] deleteDocFromDb error");
   }
 }
 
@@ -193,7 +197,7 @@ export async function persistTask(task: {
       });
     }
   } catch (err) {
-    console.error("[db] persistTask error:", err);
+    log.error({ err }, "[db] persistTask error");
   }
 }
 
@@ -232,7 +236,7 @@ export async function persistApiKey(key: {
       });
     }
   } catch (err) {
-    console.error("[db] persistApiKey error:", err);
+    log.error({ err }, "[db] persistApiKey error");
   }
 }
 
@@ -244,7 +248,7 @@ export async function deleteApiKeyFromDb(keyId: string): Promise<void> {
   try {
     await db.apiKey.delete({ where: { id: keyId } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteApiKeyFromDb error:", err);
+    log.error({ err }, "[db] deleteApiKeyFromDb error");
   }
 }
 
@@ -259,6 +263,10 @@ export async function persistConversation(conv: {
   createdAt: number;
   updatedAt: number;
   messages: { id: string; role: string; content: string; citations?: unknown; createdAt: number }[];
+  shared?: boolean;
+  workspaceId?: string;
+  archived?: boolean;
+  tags?: string[];
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -272,6 +280,12 @@ export async function persistConversation(conv: {
       userId: conv.userId || "unknown",
       title: conv.title,
       updatedAt: new Date(conv.updatedAt),
+      // P5-3: persist the P4-1/P4-3 fields that used to be memory-only
+      // (shared/workspaceId were lost on restart; archived/tags are new).
+      shared: conv.shared ?? false,
+      workspaceId: conv.workspaceId ?? "ws_default",
+      archived: conv.archived ?? false,
+      tags: conv.tags ?? [],
     };
     if (existing) {
       await (db as unknown as { conversation: { update: (o: unknown) => Promise<unknown> } })
@@ -296,7 +310,42 @@ export async function persistConversation(conv: {
         }).catch(() => {});
     }
   } catch (err) {
-    console.error("[db] persistConversation error:", err);
+    log.error({ err }, "[db] persistConversation error");
+  }
+}
+
+/** Persist feedback on a single message (P5-3). Upserts by message id so
+ *  feedback on historical answers survives restarts. */
+export async function persistMessageFeedback(
+  convId: string,
+  msg: { id: string; role: string; content: string; citations?: unknown; createdAt: number; feedback?: string; feedbackNote?: string; feedbackAt?: number }
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } })
+      .message.upsert({
+        where: { id: msg.id },
+        create: {
+          id: msg.id,
+          conversationId: convId,
+          role: msg.role,
+          content: msg.content,
+          citations: msg.citations ?? null,
+          feedback: msg.feedback ?? null,
+          feedbackNote: msg.feedbackNote ?? null,
+          feedbackAt: msg.feedbackAt ? new Date(msg.feedbackAt) : null,
+          createdAt: new Date(msg.createdAt),
+        },
+        update: {
+          feedback: msg.feedback ?? null,
+          feedbackNote: msg.feedbackNote ?? null,
+          feedbackAt: msg.feedbackAt ? new Date(msg.feedbackAt) : null,
+        },
+      });
+  } catch (err) {
+    log.error({ err }, "[db] persistMessageFeedback error");
   }
 }
 
@@ -309,7 +358,20 @@ export async function deleteConversationFromDb(convId: string): Promise<void> {
     await (db as unknown as { conversation: { delete: (o: unknown) => Promise<unknown> } })
       .conversation.delete({ where: { id: convId } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteConversationFromDb error:", err);
+    log.error({ err }, "[db] deleteConversationFromDb error");
+  }
+}
+
+/** Delete a single message from DB (P5-3 regenerate replaces the old answer). */
+export async function deleteMessageFromDb(messageId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { message: { delete: (o: unknown) => Promise<unknown> } })
+      .message.delete({ where: { id: messageId } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteMessageFromDb error");
   }
 }
 
@@ -347,7 +409,7 @@ export async function persistSubscription(sub: {
         .subscription.create({ data: { userId: sub.userId, ...data } });
     }
   } catch (err) {
-    console.error("[db] persistSubscription error:", err);
+    log.error({ err }, "[db] persistSubscription error");
   }
 }
 
@@ -378,7 +440,7 @@ export async function persistInvoice(invoice: {
         },
       }).catch(() => {});
   } catch (err) {
-    console.error("[db] persistInvoice error:", err);
+    log.error({ err }, "[db] persistInvoice error");
   }
 }
 
@@ -407,7 +469,7 @@ export async function persistLoginEvent(event: {
         },
       }).catch(() => {});
   } catch (err) {
-    console.error("[db] persistLoginEvent error:", err);
+    log.error({ err }, "[db] persistLoginEvent error");
   }
 }
 
@@ -442,7 +504,7 @@ export async function persistNotification(notif: {
         },
       }).catch(() => {});
   } catch (err) {
-    console.error("[db] persistNotification error:", err);
+    log.error({ err }, "[db] persistNotification error");
   }
 }
 
@@ -495,7 +557,7 @@ export async function persistModelConfig(config: {
         .modelConfig.create({ data: { id: config.id, userId: config.userId, ...data, createdAt: new Date(config.createdAt) } });
     }
   } catch (err) {
-    console.error("[db] persistModelConfig error:", err);
+    log.error({ err }, "[db] persistModelConfig error");
   }
 }
 
@@ -508,7 +570,7 @@ export async function deleteModelConfigFromDb(id: string): Promise<void> {
     await (db as unknown as { modelConfig: { delete: (o: unknown) => Promise<unknown> } })
       .modelConfig.delete({ where: { id } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteModelConfigFromDb error:", err);
+    log.error({ err }, "[db] deleteModelConfigFromDb error");
   }
 }
 
@@ -550,7 +612,42 @@ export async function persistTeam(team: {
       });
     }
   } catch (err) {
-    console.error("[db] persistTeam error:", err);
+    log.error({ err }, "[db] persistTeam error");
+  }
+}
+
+// ── Workspace (P4-3 tenant / P5-5 brand color) ────────────────────────────
+
+/** Persist (upsert) a workspace row. */
+export async function persistWorkspace(ws: {
+  id: string;
+  name: string;
+  plan: string;
+  ownerId: string;
+  brandColor: string;
+  createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const data = {
+      name: ws.name,
+      plan: ws.plan,
+      ownerId: ws.ownerId,
+      brandColor: ws.brandColor,
+      updatedAt: new Date(),
+    };
+    const existing = await db.workspace.findUnique({ where: { id: ws.id } });
+    if (existing) {
+      await db.workspace.update({ where: { id: ws.id }, data });
+    } else {
+      await db.workspace.create({
+        data: { id: ws.id, ...data, createdAt: new Date(ws.createdAt) },
+      });
+    }
+  } catch (err) {
+    log.error({ err }, "[db] persistWorkspace error");
   }
 }
 
@@ -579,7 +676,7 @@ export async function persistAuditEntry(
       })
       .catch(() => {});
   } catch (err) {
-    console.error("[db] persistAuditEntry error:", err);
+    log.error({ err }, "[db] persistAuditEntry error");
   }
 }
 
@@ -616,7 +713,7 @@ export async function persistAuditEvent(ev: {
       },
     });
   } catch (err) {
-    console.error("[db] persistAuditEvent error:", err);
+    log.error({ err }, "[db] persistAuditEvent error");
   }
 }
 
@@ -655,7 +752,7 @@ export async function persistTeamMember(
       })
       .catch(() => {});
   } catch (err) {
-    console.error("[db] persistTeamMember error:", err);
+    log.error({ err }, "[db] persistTeamMember error");
   }
 }
 
@@ -668,7 +765,7 @@ export async function deleteTeamMemberFromDb(memberId: string): Promise<void> {
     const tm = db as unknown as { teamMember: { delete: (o: unknown) => Promise<unknown> } };
     await tm.teamMember.delete({ where: { id: memberId } }).catch(() => {});
   } catch (err) {
-    console.error("[db] deleteTeamMemberFromDb error:", err);
+    log.error({ err }, "[db] deleteTeamMemberFromDb error");
   }
 }
 
@@ -712,6 +809,6 @@ export async function persistSystemConfig(config: {
       await sc.systemConfig.create({ data });
     }
   } catch (err) {
-    console.error("[db] persistSystemConfig error:", err);
+    log.error({ err }, "[db] persistSystemConfig error");
   }
 }

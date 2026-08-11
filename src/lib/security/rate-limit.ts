@@ -13,6 +13,8 @@
 // ---------------------------------------------------------------------------
 
 
+import { log } from "@/lib/obs/log";
+
 const WINDOW_MS = 60_000;
 const DEFAULT_LIMIT = parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10);
 const ANON_LIMIT = parseInt(process.env.RATE_LIMIT_ANON_PER_MIN || "20", 10);
@@ -116,10 +118,10 @@ async function getRedisClient(): Promise<unknown | null> {
       lazyConnect: true,
       retryStrategy: () => null,
     });
-    console.log("[ratelimit] Redis client initialized");
+    log.info("[ratelimit] Redis client initialized");
     return redisClient;
   } catch {
-    console.warn("[ratelimit] ioredis not installed - using memory rate limiter");
+    log.warn("[ratelimit] ioredis not installed - using memory rate limiter");
     return null;
   }
 }

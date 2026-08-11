@@ -26,6 +26,7 @@
 import { chunkText } from "../src/lib/rag/chunker";
 import { embed as localEmbed } from "../src/lib/rag/embeddings";
 import type { VectorStore } from "../src/lib/rag/vector-store-interface";
+import { log } from "../src/lib/obs/log";
 
 // ── Embedding helper (LLM if configured, else local hash) ────────────────
 
@@ -68,7 +69,7 @@ async function main() {
   const kbFilter = kbFilterIdx >= 0 ? process.argv[kbFilterIdx + 1] : undefined;
 
   if (!target) {
-    console.error("Usage: MIGRATE_TO=<chromadb|pgvector|pinecone> npx tsx scripts/migrate-vector-store.ts [--dry-run] [--kb <id>]");
+    log.error("Usage: MIGRATE_TO=<chromadb|pgvector|pinecone> npx tsx scripts/migrate-vector-store.ts [--dry-run] [--kb <id>]");
     process.exit(1);
   }
 
@@ -77,7 +78,7 @@ async function main() {
 
   // Hydrate from DB if available (loads real KBs/docs)
   if (process.env.DATABASE_URL) {
-    console.log("[migrate] Hydrating from database...");
+    log.info("[migrate] Hydrating from database...");
     const { ensureHydrated } = await import("../src/lib/db/hydrate");
     await ensureHydrated();
     await new Promise((r) => setTimeout(r, 500)); // let fire-and-forget seed indexing settle
@@ -88,9 +89,9 @@ async function main() {
   let kbs = listAllKbs();
   if (kbFilter) kbs = kbs.filter((k: any) => k.id === kbFilter);
 
-  console.log(`[migrate] Source: in-memory KB store (${kbs.length} KBs)`);
-  console.log(`[migrate] Target: ${target}${dryRun ? " (dry-run)" : ""}`);
-  console.log("");
+  log.info(`[migrate] Source: in-memory KB store (${kbs.length} KBs)`);
+  log.info(`[migrate] Target: ${target}${dryRun ? " (dry-run)" : ""}`);
+  log.info("");
 
   // Instantiate target store
   let targetStore: VectorStore | null = null;
@@ -108,7 +109,7 @@ async function main() {
     const readyDocs = docs.filter((d: any) => d.content && d.content.trim());
     if (readyDocs.length === 0) continue;
 
-    console.log(`  📁 KB: ${kb.name} (${readyDocs.length} docs with content)`);
+    log.info(`  📁 KB: ${kb.name} (${readyDocs.length} docs with content)`);
 
     for (const doc of readyDocs) {
       try {
@@ -121,7 +122,7 @@ async function main() {
         if (dryRun) {
           totalChunks += chunks.length;
           totalDocs++;
-          console.log(`     ✓ [dry-run] ${doc.name} → ${chunks.length} chunks`);
+          log.info(`     ✓ [dry-run] ${doc.name} → ${chunks.length} chunks`);
           continue;
         }
 
@@ -129,35 +130,35 @@ async function main() {
         await targetStore!.indexChunks(kb.id, doc.id, doc.name, chunks, vectors);
         totalChunks += chunks.length;
         totalDocs++;
-        console.log(`     ✅ ${doc.name} (${chunks.length} chunks)`);
+        log.info(`     ✅ ${doc.name} (${chunks.length} chunks)`);
       } catch (err: any) {
         skipped++;
-        console.error(`     ❌ ${doc.name}: ${err.message || err}`);
+        log.error(`     ❌ ${doc.name}: ${err.message || err}`);
       }
     }
   }
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  console.log("");
+  log.info("");
   if (dryRun) {
-    console.log(`[migrate] 📋 Dry-run complete in ${elapsed}s`);
+    log.info(`[migrate] 📋 Dry-run complete in ${elapsed}s`);
   } else {
-    console.log(`[migrate] ✅ Migration complete in ${elapsed}s`);
+    log.info(`[migrate] ✅ Migration complete in ${elapsed}s`);
   }
-  console.log(`[migrate] KBs: ${kbs.length}, Docs: ${totalDocs}, Chunks: ${totalChunks}, Skipped: ${skipped}`);
+  log.info(`[migrate] KBs: ${kbs.length}, Docs: ${totalDocs}, Chunks: ${totalChunks}, Skipped: ${skipped}`);
 
   if (!dryRun && totalChunks > 0) {
     // Verify by counting chunks in target
-    console.log("");
-    console.log("[migrate] Verifying...");
+    log.info("");
+    log.info("[migrate] Verifying...");
     for (const kb of kbs) {
       const count = await targetStore!.chunkCount(kb.id);
-      if (count > 0) console.log(`  ✓ KB "${kb.name}": ${count} chunks in target`);
+      if (count > 0) log.info(`  ✓ KB "${kb.name}": ${count} chunks in target`);
     }
   }
 }
 
 main().catch((err) => {
-  console.error("[migrate] ❌ Error:", err);
+  log.error({ err }, "[migrate] ❌ Error");
   process.exit(1);
 });

@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { chatComplete, isLLMEnabled } from "@/lib/llm/provider";
+import { log } from "@/lib/obs/log";
 import type { RetrievedChunk } from "./types";
 
 function rerankEnabled(): boolean {
@@ -68,7 +69,7 @@ export async function rerank(
       .filter((c): c is RetrievedChunk => c !== undefined);
     return reranked.slice(0, topK);
   } catch (err) {
-    console.warn("[rerank] failed, returning original order:", err instanceof Error ? err.message : err);
+    log.warn({ err: err instanceof Error ? err.message : err }, "[rerank] failed, returning original order");
     return chunks.slice(0, topK);
   }
 }

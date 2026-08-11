@@ -18,23 +18,24 @@
 // ---------------------------------------------------------------------------
 
 import { startQueue, stopQueue, isQueueExternal } from "@/lib/queue";
+import { log } from "./src/lib/obs/log";
 
 async function main() {
   if (!isQueueExternal()) {
-    console.warn("[worker] REDIS_URL not set. Worker process is only useful with BullMQ (Redis). Exiting.");
+    log.warn("[worker] REDIS_URL not set. Worker process is only useful with BullMQ (Redis). Exiting.");
     process.exit(0);
   }
 
-  console.log("[worker] Starting background queue worker...");
+  log.info("[worker] Starting background queue worker...");
   startQueue();
-  console.log("[worker] Worker ready, waiting for jobs.");
+  log.info("[worker] Worker ready, waiting for jobs.");
 
   const shutdown = async (sig: string) => {
-    console.log(`[worker] Received ${sig}, shutting down...`);
+    log.info(`[worker] Received ${sig}, shutting down...`);
     try {
       await stopQueue();
     } catch (err) {
-      console.error("[worker] Error during shutdown:", err);
+      log.error({ err }, "[worker] Error during shutdown");
     }
     process.exit(0);
   };
@@ -44,6 +45,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[worker] Fatal startup error:", err);
+  log.fatal({ err }, "[worker] Fatal startup error");
   process.exit(1);
 });

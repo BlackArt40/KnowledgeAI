@@ -11,6 +11,8 @@
 // agent-bus-redis.ts) can be added for multi-instance broadcast.
 // ---------------------------------------------------------------------------
 
+import { log } from "@/lib/obs/log";
+
 type Listener = (event: unknown) => void;
 type Bus = Map<string, Set<Listener>>;
 
@@ -46,7 +48,7 @@ export function publish(channel: string, event: unknown): void {
     try {
       l(event);
     } catch (err) {
-      console.error("[realtime] listener error:", err);
+      log.error({ err }, "[realtime] listener error");
     }
   }
 }

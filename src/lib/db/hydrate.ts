@@ -13,6 +13,7 @@ import { getDb, isDbEnabled } from "./client";
 import { decryptFromString } from "@/lib/security/crypto";
 import { loadAuditEvents } from "@/lib/security/audit";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
+import { log } from "@/lib/obs/log";
 
 let _hydrated = false;
 
@@ -32,7 +33,7 @@ export async function hydrateFromDb(): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
-  console.log("[db] Hydrating in-memory stores from PostgreSQL...");
+  log.info("[db] Hydrating in-memory stores from PostgreSQL...");
   const counts = { users: 0, kbs: 0, docs: 0, tasks: 0 };
 
   try {
@@ -71,13 +72,15 @@ export async function hydrateFromDb(): Promise<void> {
     const team = await hydrateTeam();
     const admin = await hydrateSystemConfig();
     const audit = await hydrateAudit();
+    // P5-5: workspace rows (brand color survives restarts).
+    const workspaces = await hydrateWorkspace();
 
     _hydrated = true;
-    console.log(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}`
+    log.info(
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}`
     );
   } catch (err) {
-    console.error("[db] Hydration failed:", err);
+    log.error({ err }, "[db] Hydration failed");
     // Don't set _hydrated = true so it retries on next request
   }
 }
@@ -98,6 +101,8 @@ function hydrateUser(u: PrismaUser): void {
     status: u.status.toLowerCase(),
     createdAt: u.createdAt.getTime(),
     lastLoginAt: null as number | null,
+    // P5-4: UI language preference.
+    locale: (u as unknown as { locale?: string | null }).locale ?? "zh-CN",
   };
   store.users.set(u.id, user);
   store.emailIndex.set(u.email.toLowerCase(), u.id);
@@ -187,7 +192,7 @@ async function hydrateConversations(): Promise<number> {
     });
     const g = globalThis as unknown as { __KAI_CHAT_STORE__?: { conversations: Map<string, unknown> } };
     if (!g.__KAI_CHAT_STORE__) return 0;
-    for (const c of convs as unknown as { id: string; kbId: string; userId: string; title: string; createdAt: Date; updatedAt: Date }[]) {
+    for (const c of convs as unknown as { id: string; kbId: string; userId: string; title: string; createdAt: Date; updatedAt: Date; shared: boolean; workspaceId: string; archived: boolean; tags: string[] }[]) {
       // Load messages for this conversation
       const msgs = await (db as unknown as {
         message: { findMany: (o: unknown) => Promise<unknown[]> };
@@ -202,18 +207,27 @@ async function hydrateConversations(): Promise<number> {
         userId: c.userId,
         createdAt: c.createdAt.getTime(),
         updatedAt: c.updatedAt.getTime(),
-        messages: (msgs as unknown as { id: string; role: string; content: string; citations: unknown; createdAt: Date }[]).map(m => ({
+        // P5-3: hydrate the persisted P4-1/P4-3 fields (shared/workspaceId
+        // used to be memory-only and were lost on restart) + archived/tags.
+        shared: c.shared ?? undefined,
+        workspaceId: c.workspaceId ?? "ws_default",
+        archived: c.archived ?? undefined,
+        tags: c.tags ?? undefined,
+        messages: (msgs as unknown as { id: string; role: string; content: string; citations: unknown; createdAt: Date; feedback: string | null; feedbackNote: string | null; feedbackAt: Date | null }[]).map(m => ({
           id: m.id,
           role: m.role,
           content: m.content,
           citations: m.citations,
           createdAt: m.createdAt.getTime(),
+          feedback: m.feedback ?? undefined,
+          feedbackNote: m.feedbackNote ?? undefined,
+          feedbackAt: m.feedbackAt ? m.feedbackAt.getTime() : undefined,
         })),
       });
     }
     return convs.length;
   } catch (err) {
-    console.error("[db] hydrateConversations error:", err);
+    log.error({ err }, "[db] hydrateConversations error");
     return 0;
   }
 }
@@ -259,7 +273,7 @@ async function hydrateModelConfigs(): Promise<number> {
     }
     return count;
   } catch (err) {
-    console.error("[db] hydrateModelConfigs error:", err);
+    log.error({ err }, "[db] hydrateModelConfigs error");
     return 0;
   }
 }
@@ -291,7 +305,7 @@ async function hydrateAudit(): Promise<number> {
     loadAuditEvents(events);
     return events.length;
   } catch (err) {
-    console.error("[db] hydrateAudit error:", err);
+    log.error({ err }, "[db] hydrateAudit error");
     return 0;
   }
 }
@@ -326,7 +340,7 @@ async function hydrateNotifications(): Promise<number> {
     }
     return count;
   } catch (err) {
-    console.error("[db] hydrateNotifications error:", err);
+    log.error({ err }, "[db] hydrateNotifications error");
     return 0;
   }
 }
@@ -406,8 +420,46 @@ async function hydrateTeam(): Promise<{ team: number; members: number; audit: nu
 
     return { team: teamRow ? 1 : 0, members: members.length, audit: audit.length };
   } catch (err) {
-    console.error("[db] hydrateTeam error:", err);
+    log.error({ err }, "[db] hydrateTeam error");
     return { team: 0, members: 0, audit: 0 };
+  }
+}
+
+// ── Workspace hydration (P5-5) ────────────────────────────────────────────
+
+/**
+ * Merge DB workspace rows into __KAI_WORKSPACE_STORE__. `members` stay
+ * memory-only (the Workspace table has no member relation yet), so seeded
+ * workspaces keep their member lists while name/plan/ownerId/brandColor
+ * survive restarts. DB-only rows (created in a previous process) are added
+ * with an empty member list.
+ */
+async function hydrateWorkspace(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as { __KAI_WORKSPACE_STORE__?: Map<string, unknown> };
+  if (!g.__KAI_WORKSPACE_STORE__) return 0;
+  const store = g.__KAI_WORKSPACE_STORE__;
+  try {
+    const rows = await db.workspace.findMany({});
+    for (const w of rows) {
+      const existing = store.get(w.id) as
+        | { members?: string[]; createdAt?: number }
+        | undefined;
+      store.set(w.id, {
+        id: w.id,
+        name: w.name,
+        plan: w.plan,
+        ownerId: w.ownerId,
+        brandColor: w.brandColor ?? "indigo",
+        members: existing?.members ?? [],
+        createdAt: existing?.createdAt ?? w.createdAt.getTime(),
+      });
+    }
+    return rows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateWorkspace error");
+    return 0;
   }
 }
 
@@ -435,7 +487,7 @@ async function hydrateSystemConfig(): Promise<boolean> {
     };
     return true;
   } catch (err) {
-    console.error("[db] hydrateSystemConfig error:", err);
+    log.error({ err }, "[db] hydrateSystemConfig error");
     return false;
   }
 }

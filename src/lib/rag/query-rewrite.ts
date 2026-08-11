@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { chatComplete, isLLMEnabled } from "@/lib/llm/provider";
+import { log } from "@/lib/obs/log";
 
 function rewriteEnabled(): boolean {
   return process.env.QUERY_REWRITE_ENABLED !== "false";
@@ -51,7 +52,7 @@ export async function rewriteQuery(query: string): Promise<string[]> {
     if (rewrites.length === 0) return [query];
     return [query, ...rewrites];
   } catch (err) {
-    console.warn("[query-rewrite] failed, returning original query:", err instanceof Error ? err.message : err);
+    log.warn({ err: err instanceof Error ? err.message : err }, "[query-rewrite] failed, returning original query");
     return [query];
   }
 }

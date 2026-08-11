@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------------
 
 import crypto from "crypto";
+import { log } from "../src/lib/obs/log";
 
 function hashPwd(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -43,7 +44,7 @@ async function main() {
   const { PrismaClient } = await import("@prisma/client");
   const prisma = new PrismaClient();
 
-  console.log("[seed] Starting database seeding...");
+  log.info("[seed] Starting database seeding...");
 
   // ── Users ──────────────────────────────────────────────────────────────
   for (const u of SEED_USERS) {
@@ -60,7 +61,7 @@ async function main() {
         lastLoginAt: null,
       },
     });
-    console.log(`[seed] User: ${u.email}`);
+    log.info(`[seed] User: ${u.email}`);
 
     // Subscription
     const plan = u.plan === "enterprise" ? "enterprise" : u.plan === "pro" ? "pro" : "free";
@@ -84,7 +85,7 @@ async function main() {
     update: {},
     create: { id: "team_default", name: "KnowledgeAI 团队" },
   });
-  console.log(`[seed] Team: ${team.name}`);
+  log.info(`[seed] Team: ${team.name}`);
 
   for (const u of SEED_USERS) {
     await prisma.teamMember.upsert({
@@ -117,7 +118,7 @@ async function main() {
         settings: { chunkSize: 500, chunkOverlap: 50, embeddingModel: "text-embedding-3-small", topK: 5 },
       },
     });
-    console.log(`[seed] KB: ${kb.name}`);
+    log.info(`[seed] KB: ${kb.name}`);
 
     // Sample document
     await prisma.kbDocument.create({
@@ -143,14 +144,16 @@ async function main() {
     });
   }
 
-  console.log("[seed] ✅ Seeding complete!");
-  console.log(`[seed] Users: ${SEED_USERS.length}, KBs: ${SEED_KBS.length}, Team: 1`);
-  console.log(`[seed] Demo login: ${SEED_USERS[0].email} / ${DEMO_PASSWORD}`);
+  log.info("[seed] ✅ Seeding complete!");
+  log.info(`[seed] Users: ${SEED_USERS.length}, KBs: ${SEED_KBS.length}, Team: 1`);
+  // The password field is censored by the structured logger's redact table
+  // (P6-2) - demo credentials never reach stdout in plaintext.
+  log.info({ email: SEED_USERS[0].email, password: DEMO_PASSWORD }, "[seed] Demo login");
 
   await prisma.$disconnect();
 }
 
 main().catch((err) => {
-  console.error("[seed] ❌ Error:", err);
+  log.error({ err }, "[seed] ❌ Error");
   process.exit(1);
 });

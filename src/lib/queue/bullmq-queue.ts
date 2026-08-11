@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import type { JobQueue, JobType, JobHandler, JobResult } from "./interface";
+import { log } from "@/lib/obs/log";
 
 // BullMQ types (dynamic import - not installed in demo mode)
 interface BullMQJobType {
@@ -116,12 +117,12 @@ export class BullMQQueue implements JobQueue {
           { connection, concurrency: 3 }
         );
         this.worker.on("failed", (_job: unknown, err: unknown) => {
-          console.error("[queue] job failed:", err);
+          log.error({ err }, "[queue] job failed");
         });
-        console.log("[queue] BullMQ worker started");
+        log.info("[queue] BullMQ worker started");
       })
       .catch((err) => {
-        console.error("[queue] failed to start BullMQ worker:", err.message);
+        log.error({ err: err instanceof Error ? err.message : err }, "[queue] failed to start BullMQ worker");
       });
   }
 

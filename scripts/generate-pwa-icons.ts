@@ -12,6 +12,7 @@ import { createCanvas } from "@napi-rs/canvas";
 import type { SKRSContext2D } from "@napi-rs/canvas";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { log } from "../src/lib/obs/log";
 
 const OUT_DIR = join(process.cwd(), "public", "icons");
 
@@ -112,5 +113,5 @@ const targets: [string, number][] = [
 ];
 for (const [name, size] of targets) {
   writeFileSync(join(OUT_DIR, name), drawIcon(size));
-  console.log(`✓ public/icons/${name} (${size}×${size})`);
+  log.info(`✓ public/icons/${name} (${size}×${size})`);
 }
