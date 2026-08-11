@@ -13,6 +13,12 @@
 | 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB / 实时协作（在线状态 + KB 实时变更 + 共享会话）/ 文档级权限 + 临时分享链接 / 多租户 Workspace 隔离与切换 | 4 角色 × 10 能力 + SSE 实时推送 + 继承链权限 + 租户隔离 |
 | 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 触摸手势（滑开抽屉·滑切会话·长按操作）/ 相机拍照上传 / 可安装 + 离线访问已加载内容 | 手写 Service Worker + Sheet 抽屉 + 手势 hooks（零新依赖） |
 | 全局搜索 | Cmd+K 命令面板 / 覆盖知识库·文档·对话·Agent 任务·设置 / 分类 Tab + 高亮 / 最近搜索 / 快捷操作 / 深链直达（会话·任务·设置区块·新建 KB） | 单端点内存检索（<100ms）+ 键盘导航 + localStorage 历史 |
+| 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | 自研渲染器 + 反馈持久化 + 2-gram 推荐打分（零新依赖） |
+| 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（685 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | 自研轻量 i18n（Context + useT + 静态扫描零残留断言） |
+| 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量 token + matchMedia 监听 + SSR 品牌注入 |
+| 应用监控 | 分布式追踪（API→RAG→LLM 全链路 span 树）/ QPS·错误率·延迟 P50/P95/P99 仪表盘 / LLM Token·成本·模型分布 / 前端+后端错误自动上报 Sentry | 自研 ALS 追踪 + 内存 SLI 存储 + Sentry Envelope 零依赖直投（SENTRY_DSN 门控） |
+| 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
+| CI/CD | GitHub Actions 四 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 86%）+ Playwright + buildx/GHCR + 蓝绿脚本（secrets 门控） |
 | AI 模型 | 导入外部 LLM / 连接测试 / 一键切换 | OpenAI·DeepSeek·Moonshot·硅基流动·Ollama |
 | 订阅计费 | 套餐 / 订单 / 账单 / 用量计量 / 收银台 | 状态机 + 支付模拟 |
 | 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner/Admin 后台（RBAC 守卫） |
@@ -22,7 +28,7 @@
 ## 🛠 技术栈
 
 - **框架**：Next.js 16（App Router · Turbopack · Route Handlers · SSE 流式）
-- **样式**：Tailwind CSS v4 + CSS 变量设计令牌（亮 / 暗双模式）
+- **样式**：Tailwind CSS v4 + CSS 变量设计令牌（系统 / 亮 / 暗三模式 + 高对比度 + 品牌色）
 - **组件**：shadcn 风格自建组件库（15 个基础组件）
 - **图标**：lucide-react + 自绘品牌图标
 - **语言**：TypeScript 严格模式 · React 19

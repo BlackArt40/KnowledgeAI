@@ -2,11 +2,11 @@
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。
 >
-> **更新日期**：2026-08-10
+> **更新日期**：2026-08-11
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 + P5-3 对话体验增强 + P5-4 国际化 + P5-5 暗色模式与主题增强 + P6-1 应用监控 + P6-2 结构化日志 + P6-3 CI/CD 流水线 已实施。
 >
-> **最新更新**：2026-08-10 - P5-2 全局搜索完整验收通过（Cmd+K 面板 + 覆盖知识库/文档/对话/Agent 任务/设置五类实体 + <100ms 响应；`scripts/smoke/test-global-search.ts` 27 项 + `test-global-search-ui.mjs` 13 项断言全部通过）；P5-1 移动端适配、P4 协作与多租户全部完成，P3 安全加固、P1/P2 全部验收通过、P0 生产化。
+> **最新更新**：2026-08-11 - P6-3 CI/CD 流水线完整验收通过（GitHub Actions 四 job：quality（tsc+lint+prisma drift+build）/ unit（vitest 151 测试，核心模块覆盖率 Lines 86.08%·Funcs 91.03%·Stmts 84.97%·Branches 76.33% 超 70% 阈值）/ integration（demo 模式 functional 25/25 + api 38/38 + performance 24 基准 + 限流验证）/ e2e（Playwright 4/4：登录→上传→问答→Agent）；部署自动化 GHCR 构建推送 + SSH staging（secrets 门控）+ 生产手动审批蓝绿切换（健康检查门 + 自动回滚）；修复 tests/ 三套件 401 根因（补 demo 登录）+ lint 存量 33915→0 errors（根因 .claude worktree 构建产物被误扫，ignore 修复））。
 
 ---
 
@@ -464,53 +464,59 @@
 
 ### P5-3 对话体验增强
 
-**现状**：SSE 流式 + 引用面板，功能完整但交互可优化。
+**现状**：✅ 已完成（2026-08-11）。**Markdown 渲染增强**：`src/components/app/chat-markdown.tsx`（自研零依赖，替代 chat 页纯文本 RichText）——块级标题/嵌套列表/引用/分隔线/表格（复用 ui/table）/fenced 代码块/`mermaid graph LR` 简易芯片流（其他 mermaid 语法降级代码块）；行内 `**bold**`/`*em*`/`code`/链接/`[n]` 引用 chip（保留点击高亮交互）；代码块自研轻量 tokenizer（关键字/字符串/注释/数字/函数分色，`.tok-*` 类 + 亮暗双主题）+ 右上角一键复制。**回答反馈**（负反馈降权闭环）：`ChatMessage` 加 `feedback/feedbackNote/feedbackAt`（Prisma Message 加列 + migration `p5_3_conversation_feedback`，`persistMessageFeedback` 按 id 单条 upsert 绕开「只写 lastMsg」限制）；`POST /api/chat/conversations/[id]/messages/[mid]/feedback`（owner/共享成员，value 支持 null 清除）+ `GET /api/chat/feedback`（workspace 过滤可查）；**检索消费**：/api/chat 收集当前会话点踩消息的 citations docIds → 命中 chunk `score × 0.4` 重排——点踩过的来源后续检索排名下降；前端点踩展开 inline 备注输入（ref 同步防 React 批处理时序）。**回答再生**：`generateStream/generateAsync` 加 `temperature?` 参数；/api/chat body 支持 `{ regenerate, temperature, topK }`——regenerate 时服务端 **pop 最后一条 assistant 消息**（内存+DB，修复旧回答留在历史的 quirk）且**不重复添加 user 消息**；前端 `regenerate()` 发送 temperature 0.7 + topK+3（不同温度/更宽检索）。**知识库推荐**：`GET /api/knowledge-base/recommend?q=&excludeKbId=`（2-gram 重叠打分 name/desc/文档名，workspace 过滤 + 排除当前 KB，top 3）；chat 页每次提问后消息流底部渲染「相关知识库推荐」条（点击切换 KB）。**对话分组与标签**：`Conversation` 加 `archived/tags`（schema + migration）；PATCH 扩展支持 archived/tags；列表 API 默认排除归档（`?archived=1` 查归档，dashboard 自动排除）；会话列表「我的会话 / 已归档」视图切换 + 会话项标签 chips + ⋯ 菜单（桌面 hover / 移动长按：归档/恢复、编辑标签——chips 编辑 dialog、删除）。**顺带修复**：`shared`/`workspaceId` 不再内存独享（persist/hydrate 落库，DB 模式重启不再丢失）。
+
+> **2026-08-11 验收**：`scripts/smoke/test-chat-markdown.tsx`（react-dom/server renderToString 组件级断言）24/24——代码块 pre/语言标签/四类 token 高亮/复制按钮、表格、mermaid 芯片流、不支持语法降级、行内粗体/代码/斜体/引用 chip/链接、标题/列表/引用/hr。`test-chat-enhance.ts`（HTTP）29/29——反馈 POST→消息回读→`GET /api/chat/feedback` 可查 + 非法值 400；**降权闭环**：同会话二次提问后点踩 doc 的 score ≈ ×0.4（ratio 断言）；**再生**：消息数不变（替换非追加）、旧回答 id 消失、新回答存在、topK 扩大后 sources ≥ 原；归档 PATCH→默认列表隐藏→`?archived=1` 可见→dashboard 排除→恢复；标签设置/回读；推荐命中/排除/空查询。`test-chat-enhance-ui.mjs`（CDP 无头 Chrome）21/21——提问→回答渲染、点踩→备注输入→提交→服务端持久化、重新生成完成、⋯ 菜单（归档/标签/删除）、归档视图切换与恢复、标签 chips 编辑与列表展示、推荐条出现。另修复 P5-2 遗留：Node fetch 端到端测量受本机 undici 环境影响（curl 实测 ~2ms），性能断言以服务端 `elapsedMs` 为准（<100ms 严格） + 端到端宽松上限。
 
 **计划**：
-- [ ] Markdown 渲染增强：代码高亮 + 复制按钮 + 表格 / 流程图渲染
-- [ ] 回答反馈：点赞 / 点踩 + 反馈备注（用于 RAG 优化）
-- [ ] 回答再生：不满意时重新生成（不同温度 / 不同检索结果）
-- [ ] 知识库推荐：基于当前对话推荐相关知识库
-- [ ] 对话分组与标签：支持对话归档与分类
+- [x] Markdown 渲染增强：代码高亮 + 复制按钮 + 表格 / 流程图渲染 ✅（自研 chat-markdown：tokenizer 高亮 + 一键复制 + 表格 + mermaid 简易芯片流）
+- [x] 回答反馈：点赞 / 点踩 + 反馈备注（用于 RAG 优化）✅（持久化 + 查询 API + **负反馈引用降权闭环**）
+- [x] 回答再生：不满意时重新生成（不同温度 / 不同检索结果）✅（temperature 0.7 + topK+3 + 服务端替换旧回答）
+- [x] 知识库推荐：基于当前对话推荐相关知识库 ✅（2-gram 打分 + 推荐条）
+- [x] 对话分组与标签：支持对话归档与分类 ✅（归档视图 + 标签 chips + ⋯ 菜单）
 
 **验收标准**：
-- 代码块带语法高亮 + 一键复制
-- 用户反馈数据可用于优化检索
-- 支持同一问题重新生成回答
+- ✅ 代码块带语法高亮 + 一键复制（渲染器 24/24 组件断言 + UI 实测）
+- ✅ 用户反馈数据可用于优化检索（反馈持久化 + 点踩 doc 检索降权闭环 + GET /api/chat/feedback 可查）
+- ✅ 支持同一问题重新生成回答（不同 temperature/topK + 服务端替换，HTTP 29/29 断言）
 
 ---
 
 ### P5-4 国际化（i18n）
 
-**现状**：全站中文硬编码。
+**现状**：✅ 已完成（2026-08-11）。**自研轻量 i18n**（零依赖，替代计划中的 next-intl——探索确认 next-intl 正处 Next 16.3 API 迁移窗口、无前缀模式需 [locale] 目录迁移，自研核心成本相同且无兼容风险）：`src/lib/i18n/` 核心设施——`translate.ts`（点路径 key + {var} 插值 + 缺 key 回退）、`messages/zh-CN.json` + `en.json`（**685 条 key 全量双语**）、`provider.tsx`（LocaleProvider：SSR serverLocale（cookie）无闪烁 + hydration 后 localStorage 优先；`setLocale` 写 localStorage + `kai-locale` cookie + `<html lang>` 即时切换）、`server.ts`（服务端 `serverT()`：cookie → Accept-Language 协商）、`use-format.ts`（formatRelative/formatDate/formatNumber/formatSize 按 locale）。**全站 UI 文案提取**：45+ 文件 / 685 key（(app) 13 页 + 工作台组件 + auth 5 + marketing 8 + 条款页 + share-doc/r + 特殊页；提取工具 `scripts/tools/i18n-extract.py` 支持 JSX 文本节点/属性/对象值/空格变体/模板行跳过；server 组件转 `serverT()`、模块级文案函数化）。**双语切换 UI**：AppShell 顶栏 Globe 下拉（zh/en 即时切换）+ settings 个人信息语言选择（持久化到 `User.locale`，schema/migration `p5_4_user_locale`）。**格式化本地化**：`formatRelative`（just now/X min ago 等）、`formatDate/Number`（Intl，en-US/zh-CN）。**metadata/SEO**：`generateMetadata` 按 cookie 双语。**顺带修复**：(auth)/layout grid 单列溢出（max-content 撑开）；提取器 slug 冲突（非 (app) 文件共享 `page.page` key 空间互相覆盖——login 页「邮箱」被 share-doc「受保护」覆盖的严重 bug）。
+
+> **2026-08-11 验收**：`scripts/smoke/test-i18n-coverage.ts` 4/4——**zh/en key 树完全一致（无缺失/孤儿）**、**src/app + src/components 零残留中文 UI 文案**（排除注释/语言包/API 错误消息/模板行）、t() 调用点 800+。`scripts/smoke/test-i18n.mjs`（CDP 无头 Chrome，dev + prod 双模式）12/12——默认中文渲染、Globe 切换英文即时生效（无刷新）、localStorage + cookie + `<html lang>` 三处持久化、**全量 reload 后仍英文**、切回中文、settings 语言选择持久化到用户 profile（PATCH /api/auth/me locale 回读）。回归：PWA 32/32、移动端布局 17/17、全局搜索 27/27、渲染器 24/24、对话增强 29/29、PWA 离线模式 5/5 全部通过。
 
 **计划**：
-- [ ] 接入 `next-intl` 国际化框架
-- [ ] 提取全站文案至 JSON 语言包
-- [ ] 支持中文 / 英文双语切换
-- [ ] 日期 / 货币 / 数字格式本地化
-- [ ] 用户偏好语言持久化
+- [x] 接入 `next-intl` 国际化框架 ✅（**自研轻量替代**：Context + useT + JSON 语言包 + 服务端 serverT——理由：next-intl 处于 Next 16.3 API 迁移窗口 + 无前缀模式需路由迁移 + 项目零依赖惯例；文档注明）
+- [x] 提取全站文案至 JSON 语言包 ✅（685 key 双语，`scripts/tools/i18n-extract.py` 辅助 + 手动补多行文本/模板串）
+- [x] 支持中文 / 英文双语切换 ✅（AppShell Globe + settings 选择器，即时生效）
+- [x] 日期 / 货币 / 数字格式本地化 ✅（formatRelative/formatDate/formatNumber 按 locale + useFormat hook）
+- [x] 用户偏好语言持久化 ✅（localStorage + `kai-locale` cookie + `User.locale` DB 三层次）
 
 **验收标准**：
-- 支持中 / 英双语切换
-- 所有 UI 文案无硬编码
-- 语言偏好持久化
+- ✅ 支持中 / 英双语切换（CDP 实测：切换即时生效 + reload 保持，12/12）
+- ✅ 所有 UI 文案无硬编码（静态扫描断言 src/app + src/components 零残留中文 + key 树一致）
+- ✅ 语言偏好持久化（localStorage/cookie/用户 profile 三层，刷新与跨设备保持）
 
 ---
 
 ### P5-5 暗色模式与主题增强
 
-**现状**：已有亮 / 暗双模式。
+**现状**：✅ 已完成（2026-08-11）。**三模式主题**：`src/lib/theme/mode.ts` 主题引擎——`kai-theme` 支持 `system | light | dark`（默认跟随系统），根布局 themeScript 预置防闪烁（`system` 用 matchMedia 解析）+ `matchMedia change` 监听实时跟随系统切换；`color-scheme` 属性让原生控件/滚动条随主题。`src/components/theme-toggle.tsx` 重构为三模式下拉（Sun/Moon/Monitor 图标反映当前模式，亮色/暗色/跟随系统三项，Esc/外点关闭），营销 navbar ×2、auth layout、AppShell 四处调用点兼容。**高对比度模式**（无障碍）：`.high-contrast` class + `kai-hc` 持久化 + `@media (prefers-contrast: more)` 系统级自动生效——覆盖 `--muted-foreground/--border/--input/--secondary/--accent/--success/--warning` 为 WCAG AA 达标值（正文 ≥4.5:1、UI 边界 ≥3:1），并修正 doc-type-icon/全局搜索 500 级标签色（亮 700 级 / 暗 300 级）。**主题切换动画**：`theme-transition` 临时 class 驱动颜色 cross-fade（背景/文字/边框 0.3s），`prefers-reduced-motion` 时禁用。**Workspace 级品牌色**：6 色板（indigo/emerald/sky/violet/fuchsia/rose，`src/lib/theme/brand-colors.ts` 每色定义亮/暗/高对比三套 HSL token），`Workspace` 加 `brandColor` 字段并 DB 持久化（新 prisma 模型 + migration `p5_5_workspace_brand_color` + `persistWorkspace`/`hydrateWorkspace` 走完整链路），`PATCH /api/workspaces`（owner 专属 403、色板校验 400、`recordAudit("workspace.update")`），`(app)/layout.tsx` SSR 注入 `<style id="kai-brand-style">` 无闪烁，设置页 PATCH 后即时生效。**设置页「外观」tab**：`src/components/app/theme-settings.tsx`（主题模式三段按钮 / 高对比度 Switch / 品牌色色板，非 owner 禁用 + 提示），`?tab=appearance` 深链 + 全局搜索「外观与主题」条目。**顺带修复 P5-4 遗留**：全局搜索空态快捷操作按钮文案指错 key（s13/s15 与文档状态共用导致显示「已就绪/处理中」）→ 补 s19-s21 独立 key。
+
+> **2026-08-11 验收**：`scripts/smoke/test-theme.ts`（HTTP）17/17——GET 暴露 brandColor/currentBrandColor；PATCH 非法色 400、匿名 401、viewer 403、owner 200 + 回读 + `/api/admin/audit` 记录 `workspace.update`（审计链完整）；清理恢复 indigo。`scripts/smoke/test-theme-ui.mjs`（CDP 无头 Chrome）37/37——默认跟随系统（Emulation.setEmulatedMedia 切媒体 → `html.dark` 实时变化无刷新）；下拉选暗色 → class + localStorage + reload 保持；亮色移除；**过渡动画 class 切换瞬间出现、~500ms 后清除**；高对比度开关 → `html.high-contrast` + reload 保持 + **computed style 实测 WCAG 对比度**（亮/暗双模式：body 文字/muted 文字/primary 按钮 ≥4.5:1、边框 ≥3:1）；品牌色 owner 点选 emerald → `--primary` 变 `158 64% 33%` + style tag 注入 + **reload 后 SSR 保持**；viewer 色板禁用 + 提示。回归：i18n coverage 4/4、i18n CDP 12/12、全局搜索 27/27 + UI 13/13（修复后）、移动端/PWA 17/17、对话增强 29/29、tsc、build 全部通过。
 
 **计划**：
-- [ ] 跟随系统主题自动切换
-- [ ] 自定义品牌色（Workspace 级主题定制）
-- [ ] 高对比度模式（无障碍）
-- [ ] 主题切换动画过渡
+- [x] 跟随系统主题自动切换 ✅（三模式 `kai-theme` + matchMedia 实时监听 + themeScript 预置防闪烁）
+- [x] 自定义品牌色（Workspace 级主题定制）✅（6 色板 + DB 持久化 + owner 专属 PATCH + SSR/即时双路径应用）
+- [x] 高对比度模式（无障碍）✅（class 开关 + `prefers-contrast` 系统级 + WCAG AA 实测断言）
+- [x] 主题切换动画过渡 ✅（`theme-transition` cross-fade + `prefers-reduced-motion` 尊重）
 
 **验收标准**：
-- 支持系统 / 亮 / 暗三模式
-- 高对比度模式通过 WCAG AA 标准
+- ✅ 支持系统 / 亮 / 暗三模式（CDP 实测 37/37：系统实时跟随 + 亮/暗持久化 + reload 保持）
+- ✅ 高对比度模式通过 WCAG AA 标准（computed style 实测：文字 ≥4.5:1、边框 ≥3:1，亮/暗双模式）
 
 ---
 
@@ -520,56 +526,62 @@
 
 ### P6-1 应用监控
 
-**现状**：无 APM，仅 console.log。
+**现状**：✅ 已完成（2026-08-11）。**自研轻量可观测性**（`src/lib/obs/`，零新依赖——OTel SDK 在 Next 16 + Edge proxy 场景集成成本高、与项目零依赖惯例冲突，自研 ALS 追踪满足「全链路可追踪」验收；Sentry 采用**标准 Envelope 协议零依赖直投**，`SENTRY_DSN` 配置时真实上报、未配置内存兜底，均已在文档注明替代理由）。**分布式追踪**：`trace.ts`（AsyncLocalStorage 上下文传播 + `X-Trace-Id` 头透传（proxy 注入请求/响应头）+ 内存 span 环形存储 300）——`withApiTrace` 包路由（api 根 span + 状态感知 SLI 记录），`withSpan`/`traceBegin`+`traceEnd` 埋库函数（无上下文零开销）；覆盖 /api/chat（SSE 流内 finally 终结，全生命周期）、/api/search、/api/agent/run、/api/workspaces、/api/auth/me、/api/knowledge-base(+upload)、/api/chat/conversations、/api/agent/tasks 等 12 个路由；queue 经 payload.traceId 跨请求边界续链（doc-process/agent-run）。**关键指标埋点**：RAG 检索延迟（retriever）、LLM 生成延迟 + usage/token（provider.ts 读取响应 `data.usage` 与 SSE `[DONE]` 前 usage 行，**不改函数签名**；demo 模式抽取式回退也以 `llm.generate`（model "demo"）入链）、文档解析时长（upload 路由 + 队列）、Agent 时长（runTask）。**LLM 监控**：`MODEL_COST_1K` 成本表（gpt-4o/4o-mini/deepseek-chat/moonshot 等 + 默认值），无 usage 时按字符/4 估算，按模型聚合 calls/tokens/costUsd。**错误上报**：`errors.ts` 内存环形（200）+ `sendToSentry`（`POST {dsn}/api/{projectId}/envelope/` + `X-Sentry-Auth: sentry_version=7`，429 视为接受）；前端 `error-reporter.tsx`（window error/unhandledrejection 捕获 + 3s 节流 + 20/会话上限）挂载 root layout，`error.tsx` 渲染错误也上报；`POST /api/obs/report` 入站（保持限流）。**仪表盘**：`/admin/monitoring`（owner/admin，nav「监控」入口）——QPS 折线（复用 UsageChart SVG）、请求 SLI 卡（QPS/总数/错误率/延迟 P50-P95-P99 直方图环形缓冲精确分位）、LLM 模型分布表（含成本合计）、RAG/文档/Agent 卡、最近追踪列表（点击展开 span 树 api→rag→llm）、最近错误列表；`GET /api/admin/monitoring` + `GET /api/admin/monitoring/traces?id=`（requireRole owner/admin）。**已知边界**：Next 16 middleware 无法观察下游响应（源码验证），请求 SLI 由路由内 `withApiTrace` 记录（覆盖已埋点路由）；BullMQ 多进程模式下 queue span 聚合仅限单实例内存。
+
+> **2026-08-11 验收**：`scripts/smoke/test-monitoring.ts`（HTTP）34/34——monitoring API 权限（匿名 401/editor 403/owner 200）+ 结构断言；**全链路追踪**：带 `X-Trace-Id` 调 /api/search → api span；调 /api/chat → span 树含 **api → rag → llm** 且 rag.parentId=api.spanId（父链正确）；错误上报：POST /api/obs/report → dashboard errors 可见（source=client）；SLI 填充：QPS>0、分钟序列、错误率、延迟 P95 实测、rag.calls>0、**llm.byModel 含 demo 且 totalTokens>0、costUsd≥0**。`scripts/smoke/test-sentry.ts`（纯库 + 本地 receiver）24/24——DSN 解析/无效回退、envelope 两行结构（32 位 hex event_id、exception 帧解析、platform node/javascript）、**真实 POST 到本地 receiver**（URL/X-Sentry-Auth/content-type/载荷完整）、429 视为接受、无 DSN 零网络、reportError 环形记录。`scripts/smoke/test-monitoring-ui.mjs`（CDP）14/14——owner 仪表盘全区块渲染（QPS 卡/延迟分位/LLM 表/三卡片/追踪/错误/刷新/SVG 图表）、点击展开 span 树（追踪 id + 类型 chips）、editor 被路由守卫重定向 /dashboard。回归：i18n coverage 4/4、i18n CDP、全局搜索 27/27 + UI 13/13、对话增强 29/29、主题 37/37、移动端 17/17、tsc、build 全部通过。
 
 **计划**：
-- [ ] 接入 OpenTelemetry 分布式追踪
-- [ ] 关键指标埋点：RAG 检索延迟 / LLM 生成延迟 / 文档处理时长
-- [ ] 接入 Sentry 错误监控（前端 + 后端）
-- [ ] 自定义仪表盘：QPS / 错误率 / 延迟 P50/P95/P99
-- [ ] LLM 调用监控：Token 消耗 / 成本 / 模型分布
+- [x] 接入 OpenTelemetry 分布式追踪 ✅（**自研替代**：ALS 上下文 + X-Trace-Id 传播 + span 树存储，全链路 API→RAG→LLM 可查；文档注明）
+- [x] 关键指标埋点：RAG 检索延迟 / LLM 生成延迟 / 文档处理时长 ✅（retriever/provider/upload/queue 五维 SLI）
+- [x] 接入 Sentry 错误监控（前端 + 后端）✅（**零依赖 Envelope 直投**：前端捕获 + 后端 route/queue catch，SENTRY_DSN 门控 + 内存兜底）
+- [x] 自定义仪表盘：QPS / 错误率 / 延迟 P50/P95/P99 ✅（/admin/monitoring 页面 + 聚合 API）
+- [x] LLM 调用监控：Token 消耗 / 成本 / 模型分布 ✅（usage 读取 + 成本表 + 按模型聚合）
 
 **验收标准**：
-- 可追踪单次请求全链路（API → RAG → LLM → 响应）
-- 错误自动上报 Sentry
-- 仪表盘展示核心 SLI 指标
+- ✅ 可追踪单次请求全链路（API → RAG → LLM → 响应）（X-Trace-Id 追踪 + span 父链断言，HTTP 34/34）
+- ✅ 错误自动上报 Sentry（标准 Envelope 协议真实投递 + 本地 receiver 24/24 断言）
+- ✅ 仪表盘展示核心 SLI 指标（QPS / 错误率 / 延迟 P50-P95-P99 / LLM 分布，CDP 14/14）
 
 ---
 
 ### P6-2 结构化日志
 
-**现状**：`console.log` / `console.error` 散落各处。
+**现状**：✅ 已完成（2026-08-11）。**引入 pino 10**（按计划采用真实日志库；零依赖惯例在此让步——pino 依赖链轻、JSON 输出 + 分级 + redact 与验收标准一一对应；Edge 运行时无法 import pino（node:stream），proxy 经自研 `src/lib/obs/log-edge.ts` 输出同构 JSON（Web-API 纯 console，全库唯一允许 console.* 的文件，测试断言），浏览器经 `pino/browser`（`src/lib/obs/log-browser.ts`，无 redact 故客户端站点不传敏感值，已注明）。**统一 JSON 格式 + requestId 关联**：`src/lib/obs/log.ts` pino 单例，`LOG_LEVEL` 分级（debug|info|warn|error，默认 info）；`mixin()` 每行读取 ALS 上下文 → 所有 traced 请求内日志自动带 `requestId`（== X-Trace-Id，零调用点改动）；proxy 每请求一行 `http.request`（method/path/requestId/dimension/rateLimited，Edge JSON），路由终结时 `trace.ts finalizeRecord` 记 `http.response`（method/path/status/durationMs）与 `queue.finish`——单次请求前后端日志同 ID 可串。**敏感信息自动脱敏**：pino redact（censor `***`）内置敏感键表（apiKey/api_key/secret/password/passwd/token/authorization/credential/cookie/x-api-key/privateKey/bearer 等 × 三级通配 `K`/`*.K`/`*.*.K`——fast-redact 无 `**` 深通配，实测确认）+ `LOG_REDACT_KEYS` 环境变量扩展；自由文本（provider 错误响应体、作业错误串）经 `redactText()` 掩码（sk-/pk- key、Bearer token、`key=value`、URL userinfo、500 字符截断）；`prisma/seed.ts` 演示密码改入 `password` 字段自动掩码。**日志聚合**：Loki HTTP Push（`LOG_LOKI_URL` 门控，自定义 Writable destination tee stdout + 2s/100 条批量冲刷 `POST /loki/api/v1/push`，惰性读 env——未设置零网络，失败静默丢弃 + 计数不抛异常；ELK 可经同类 HTTP sink 适配，文档注明）。**查询 API**：内存环 `__KAI_LOG_STORE__`（cap 1000，存 redact 后行）+ `GET /api/admin/logs?level=&requestId=&limit=`（owner/admin，镜像 monitoring 模式）。**全站迁移**：133 处 console.* 全部迁移（src/lib 25 文件 + src/app/api 2 路由 + proxy/instrumentation/worker/seed + 根级 3 运维脚本 + 客户端 3 处），`[module]` 前缀保留在 msg，错误对象入 `{err}` 字段走 pino err serializer（{type,message,stack}）。`next.config.ts` serverExternalPackages 追加 pino（动态 require 安全）；config.ts 新增「结构化日志」provider 条目（admin 面板可见）。
+
+> **2026-08-11 验收**：`scripts/smoke/test-logging.ts`（HTTP + 静态扫描）15/15——静态扫描 src/lib + src/app/api + proxy/instrumentation/worker/seed/根级脚本**零 console.\***（唯一白名单 log-edge.ts，且其不 import pino/node）；/api/admin/logs 权限（匿名 401/editor 403/owner 200）+ 结构断言（ts/level(string)/msg）；`?level=warn` 过滤；**requestId 串联**：带 `X-Trace-Id` 调 /api/search → `?requestId=` 命中同请求全部日志且含 `http.response`（method/path/status/durationMs）；limit 参数。`scripts/smoke/test-logging-sink.ts`（纯库 + 本地 receiver）35/35——顶层/一级/二级嵌套敏感键全脱敏（Loki 载荷 + 内存环双断言，raw body 不含密钥原文）；err 序列化 {type,message,stack}；`runWithTraceId` 内日志带 requestId、trace 外无；`setLogLevel` 分级生效（丢弃行不入 sink）；**Loki 真实推送**（URL/Content-Type/streams/app 标签/values 形状/JSON 可解析）；`LOG_LOKI_URL` 未设置零网络；500 失败不抛异常且恢复后正常；recentLogs 环过滤。回归：monitoring 34/34、sentry 24/24、i18n coverage 4/4、全局搜索 27/27、对话增强 29/29、tsc、build（pino 外部化 + pino/browser 客户端打包 + Edge proxy 编译全通过）。
 
 **计划**：
-- [ ] 引入结构化日志库（`pino` / `winston`）
-- [ ] 统一日志格式（JSON + 请求 ID 关联）
-- [ ] 日志分级：DEBUG / INFO / WARN / ERROR
-- [ ] 敏感信息自动脱敏（API Key / 密码 / Token）
-- [ ] 日志聚合：接入 Loki / ELK
+- [x] 引入结构化日志库（pino / winston）✅（**pino 10**；Edge proxy 用自研 log-edge.ts 同构 JSON、浏览器用 pino/browser——Edge 无法 import pino 的 node:stream，文档注明）
+- [x] 统一日志格式（JSON + 请求 ID 关联）✅（pino 单例 + mixin requestId==X-Trace-Id + proxy http.request / 路由 http.response / 队列 queue.finish 三处埋点）
+- [x] 日志分级：DEBUG / INFO / WARN / ERROR ✅（LOG_LEVEL 环境变量 + setLogLevel 运行时切换，丢弃行不落盘不入环）
+- [x] 敏感信息自动脱敏（API Key / 密码 / Token）✅（redact 敏感键表 × 三级通配 + LOG_REDACT_KEYS + redactText 自由文本 + seed 密码字段化）
+- [x] 日志聚合：接入 Loki / ELK ✅（**Loki HTTP Push**：LOG_LOKI_URL 门控批量推送 + 失败静默降级；ELK 可经同类 HTTP sink 适配——文档注明）
 
 **验收标准**：
-- 所有日志为结构化 JSON
-- 单次请求日志可通过 requestId 串联
-- 敏感字段自动脱敏
+- ✅ 所有日志为结构化 JSON（静态扫描断言服务端零 console.* + 结构断言 ts/level/msg，HTTP 15/15）
+- ✅ 单次请求日志可通过 requestId 串联（X-Trace-Id → requestId → ?requestId= 查询命中 + http.response 字段断言）
+- ✅ 敏感字段自动脱敏（Loki 载荷 + 内存环双断言不含密钥原文，嵌套通配实测，35/35）
 
 ---
 
 ### P6-3 CI/CD 流水线
 
-**现状**：无自动化测试与部署。
+**现状**：✅ 已完成（2026-08-11）。**GitHub Actions CI 重构为四 job**（原单 job 无 lint/测试）：`quality`（保留 postgres service：tsc + **新增 pnpm lint** + prisma migrate drift + build）、`unit`（vitest 151 测试 + **覆盖率阈值门槛** lines/functions/statements ≥70% / branches ≥60%，不达标即红）、`integration`（demo 模式起 dev server，functional 25/25 + api 38/38 + performance 24 基准 + 限流探测）、`e2e`（Playwright 4/4：登录→上传→问答→Agent，webServer 自动拉起 dev，失败产物上传 artifact）。**单元测试框架**：vitest 4 + @vitest/coverage-v8（23 测试文件 151 用例覆盖 rag/auth/billing/team——纯函数优先 + globalThis 内存存储 + vi.mock LLM 抽象路径 + 重型依赖（pdf-parse/mammoth/xlsx）mock；覆盖率 **Lines 86.08% / Functions 91.03% / Statements 84.97% / Branches 76.33%**，远超 70% 验收；排除外部服务后端（chromadb/pgvector/pinecone）与需 tesseract 二进制的 ocr.ts，文档注明）。**集成测试修复**：tests/ 三套件因路由强制认证而全 401——补 demo 账号登录（kai-token cookie），并适配安全契约变化（2FA enroll/verify、rateLimitPerMin env-controlled、限流探测读实际阈值）。**E2E**：Playwright（`e2e/main-flow.spec.ts` + fixture，`playwright.config.ts` 固定 zh-CN locale + webServer 自动起 dev）。**部署自动化**：`deploy.yml`（push main → buildx 构建推 GHCR `staging-<sha>`/`latest-staging` → SSH staging job（STAGING_* secrets 门控，未配置自动跳过）+ `scripts/deploy/staging.sh`（pull → compose up app+worker → Docker 健康检查门））；`deploy-prod.yml`（workflow_dispatch + `environment: production` 手动审批门 → `prod-<sha>`/`latest-prod` → `scripts/deploy/blue-green.sh`（备用端口健康检查通过才接管 :3000，失败自动回滚））。**顺带修复**：`pnpm lint` 存量 33915 problems → 0 errors（根因 eslint flat config 未忽略 `.claude/` worktree 内构建产物，补 ignore 后仅剩 16 个存量 warning；scripts tsx 补豁免）。
+
+> **2026-08-11 验收**：`pnpm test:unit`（vitest --coverage）23 文件 151 测试全绿 + 覆盖率阈值全过（Lines 86.08% / Funcs 91.03% / Stmts 84.97% / Branches 76.33%，阈值 70/70/70/60）；`tests/` 三套件修复后全绿（functional 25/25、api 38/38、performance 24 基准 + 限流第 200 次精确触发 429）；`pnpm test:e2e`（Playwright）4/4——登录（UI 表单 → /dashboard）、上传（新建 KB → setInputFiles → 文档就绪）、问答（SSE 回答气泡）、Agent（调研中…→完成→调研结果报告）；`pnpm lint` 0 errors 退出码 0；`npx tsc --noEmit` + `pnpm build` 通过；三个 workflow YAML 校验通过（yaml-lint），部署脚本 bash -n 通过。回归：P6-2 monitoring 34/34、sentry 24/24、logging 15/15、logging-sink 35/35。**GitHub 端配置项**（仓库侧无法自动设置，文档注明）：branch protection 要求 PR 通过 CI 四 job 才可合并；部署 secrets（STAGING_*/PROD_*）+ `production` environment 审批门。
 
 **计划**：
-- [ ] GitHub Actions CI：lint + type-check + build + test
-- [ ] 单元测试：核心 lib 模块（RAG / auth / billing / team）覆盖率 > 70%
-- [ ] 集成测试：API 路由端到端测试
-- [ ] E2E 测试：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent）
-- [ ] 自动部署：PR 合并至 main → 自动构建 Docker 镜像 → 部署 Staging
-- [ ] 生产部署：手动审批 → 蓝绿 / 滚动发布
+- [x] GitHub Actions CI：lint + type-check + build + test ✅（四 job：quality（tsc+lint+drift+build）/ unit（vitest+覆盖率门槛）/ integration（三套件）/ e2e（Playwright））
+- [x] 单元测试：核心 lib 模块（RAG / auth / billing / team）覆盖率 > 70% ✅（151 用例，实测 Lines 86.08% / Funcs 91.03% / Stmts 84.97% / Branches 76.33%，阈值硬门槛）
+- [x] 集成测试：API 路由端到端测试 ✅（tests/ 三套件修复认证后全绿，纳入 CI integration job）
+- [x] E2E 测试：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent）✅（e2e/main-flow.spec.ts 4/4）
+- [x] 自动部署：PR 合并至 main → 自动构建 Docker 镜像 → 部署 Staging ✅（deploy.yml：GHCR 推送 + SSH staging，secrets 门控）
+- [x] 生产部署：手动审批 → 蓝绿 / 滚动发布 ✅（deploy-prod.yml：environment 审批门 + blue-green.sh 健康检查门 + 自动回滚）
 
 **验收标准**：
-- PR 必须通过 CI 才可合并
-- 核心模块测试覆盖率 > 70%
-- E2E 覆盖关键用户流程
+- ✅ PR 必须通过 CI 才可合并（四 job 全绿 + 文档注明 GitHub branch protection 配置步骤）
+- ✅ 核心模块测试覆盖率 > 70%（vitest 覆盖率阈值硬门槛实测 86%+，不达标 CI 即红）
+- ✅ E2E 覆盖关键用户流程（Playwright 4/4：登录→上传→问答→Agent 全链路）
 
 ---
 
