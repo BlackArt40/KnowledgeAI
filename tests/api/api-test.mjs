@@ -17,8 +17,22 @@ function log(name, method, path, status, ok, detail = "") {
   console.log(`${icon} ${method} ${path} -> ${status} ${detail ? "| " + detail : ""}`);
 }
 
+// P6-3: API routes require auth (getRequestUser -> 401 without a session).
+// All suites log in first with a demo account and attach kai-token.
+let AUTH = null;
+async function login(email = "owner@knowledgeai.dev", password = "password123") {
+  const res = await fetch(`${BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+  if (data.token) AUTH = { Cookie: `kai-token=${data.token}` };
+  return !!data.token;
+}
+
 async function req(method, path, body) {
-  const opts = { method, headers: {} };
+  const opts = { method, headers: { ...(AUTH || {}) } };
   if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   const res = await fetch(`${BASE}${path}`, opts);
   let data = null;
@@ -30,6 +44,10 @@ async function main() {
   console.log("\n╔══════════════════════════════════════════╗");
   console.log("║   KnowledgeAI · 接口测试 (API Tests)     ║");
   console.log("╚══════════════════════════════════════════╝\n");
+
+  // ── 0. 登录（demo 账号） ──
+  const loggedIn = await login();
+  console.log(`${loggedIn ? "✅" : "❌"} 登录 owner@knowledgeai.dev`);
 
   // ── 1. 知识库 API ──
   console.log("── 知识库 API ──");
@@ -53,7 +71,7 @@ async function main() {
 
   // SSE stream test
   const sseRes = await fetch(`${BASE}/api/chat`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", ...(AUTH || {}) },
     body: JSON.stringify({ kbId, query: "产品有哪些功能" }),
   });
   const sseText = await sseRes.text();
@@ -67,7 +85,7 @@ async function main() {
   log("Agent任务列表", "GET", "/api/agent/tasks", r.status, r.status === 200, `${r.data?.tasks?.length ?? 0} 个任务`);
 
   const agentSse = await fetch(`${BASE}/api/agent/run`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", ...(AUTH || {}) },
     body: JSON.stringify({ topic: "AI发展趋势", kbId, outputFormat: "report" }),
   });
   const agentText = await agentSse.text();
@@ -133,11 +151,13 @@ async function main() {
   r = await req("GET", "/api/security");
   log("安全总览", "GET", "/api/security", r.status, r.status === 200 && !!r.data?.twoFactor, `2FA=${r.data?.twoFactor?.enabled} sessions=${r.data?.sessions?.length}`);
 
+  // P3-1 契约: 关闭需验证码（安全门），开启走 enroll 流程返回 secret + QR
   r = await req("POST", "/api/security/2fa", { enable: false });
-  log("关闭2FA", "POST", "/api/security/2fa", r.status, r.status === 200 && r.data?.twoFactor?.enabled === false, `enabled=${r.data?.twoFactor?.enabled}`);
+  log("关闭2FA(无码被拦)", "POST", "/api/security/2fa", r.status, r.status === 400 && !!r.data?.error, `error=${r.data?.error}`);
 
-  r = await req("POST", "/api/security/2fa", { enable: true, method: "app" });
-  log("开启2FA", "POST", "/api/security/2fa", r.status, r.status === 200 && r.data?.twoFactor?.enabled === true, `codes=${r.data?.twoFactor?.backupCodes?.length}`);
+  r = await req("POST", "/api/security/2fa", { action: "enroll" });
+  const qrOk = typeof r.data?.qrCodeDataUrl === "string" && r.data.qrCodeDataUrl.startsWith("data:image/");
+  log("开启2FA(enroll)", "POST", "/api/security/2fa", r.status, r.status === 200 && !!r.data?.secret && qrOk, `secret=${!!r.data?.secret} qr=${qrOk}`);
 
   const sessId = (await req("GET", "/api/security")).data?.sessions?.find(s => !s.current)?.id;
   if (sessId) {
@@ -174,8 +194,11 @@ async function main() {
   r = await req("GET", "/api/admin/config");
   log("系统配置", "GET", "/api/admin/config", r.status, r.status === 200 && !!r.data?.defaultModel, `model=${r.data?.defaultModel} providers=${r.data?.providers?.length}`);
 
+  // rateLimitPerMin is env-controlled (proxy reads RATE_LIMIT_PER_MIN directly,
+  // P3-3) - the PATCH succeeds but the value always mirrors the environment.
   r = await req("PATCH", "/api/admin/config", { rateLimitPerMin: 100 });
-  log("更新配置", "PATCH", "/api/admin/config", r.status, r.status === 200 && r.data?.config?.rateLimitPerMin === 100, `rateLimit=${r.data?.config?.rateLimitPerMin}`);
+  const envRate = r.data?.config?.rateLimitPerMin;
+  log("更新配置", "PATCH", "/api/admin/config", r.status, r.status === 200 && r.data?.config?.rateLimitEnvControlled === true && typeof envRate === "number", `rateLimit=${envRate} envControlled=${r.data?.config?.rateLimitEnvControlled}`);
 
   // ── 9. Error cases ──
   console.log("\n── 错误用例 ──");

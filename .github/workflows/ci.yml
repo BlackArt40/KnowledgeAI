@@ -6,7 +6,8 @@ on:
   pull_request:
 
 jobs:
-  build:
+  # ── 质量门：类型检查 + lint + 迁移漂移检查 + 生产构建 ──────────────────
+  quality:
     runs-on: ubuntu-latest
 
     services:
@@ -62,5 +63,97 @@ jobs:
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --exit-code
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Build
         run: pnpm build
+
+  # ── 单元测试：核心 lib 模块（RAG/auth/billing/team），覆盖率阈值门槛 ──
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      # 覆盖率低于阈值（lines/functions/statements 70% / branches 60%）即失败
+      - name: Unit tests with coverage
+        run: pnpm test:unit
+
+  # ── 集成测试：demo 模式起 dev server，跑 functional + api + performance ──
+  # 提高限流阈值避免测试流量误触 429（默认 200/min 用户级）
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Start dev server (demo mode)
+        run: |
+          RATE_LIMIT_PER_MIN=2000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=1000 \
+          pnpm dev > /tmp/dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/login > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/login > /dev/null
+      - name: Functional tests
+        run: node tests/functional/functional-test.mjs
+      - name: API tests
+        run: node tests/api/api-test.mjs
+      - name: Performance tests
+        run: node tests/performance/performance-test.mjs
+
+  # ── E2E：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent） ──────
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E tests
+        run: pnpm test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

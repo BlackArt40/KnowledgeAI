@@ -1,0 +1,75 @@
+name: Deploy Staging
+
+# P6-3: push main → 构建 Docker 镜像推 GHCR → SSH 部署 staging。
+# 服务器未配置 secrets 时 staging job 自动跳过（镜像仍会构建推送）。
+#
+# 需要配置的仓库 secrets（GitHub → Settings → Secrets and variables → Actions）:
+#   STAGING_HOST     服务器 IP / 域名
+#   STAGING_USER     SSH 用户
+#   STAGING_SSH_KEY  SSH 私钥（部署用，服务器侧需加入 authorized_keys）
+#   STAGING_PORT     SSH 端口（默认 22）
+# 服务器侧: docker + docker compose 可用；镜像仓库需允许匿名拉取或配置 docker login。
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "AGENTS.md"
+      - ".github/workflows/ci.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: meta
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:staging-${{ github.sha }}
+            ${{ env.IMAGE }}:latest-staging
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ secrets.STAGING_HOST != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_PORT || '22' }}
+          script: |
+            cd ${{ secrets.STAGING_DIR || '/srv/knowledgeai' }}
+            bash scripts/deploy/staging.sh ${{ needs.build.outputs.image }}:staging-${{ github.sha }} .

@@ -56,3 +56,10 @@ tests/**/*测试报告.md
 
 # OpenCode tool state
 .omo/
+
+# P6-3: 测试产物与工具目录
+/playwright-report/
+/test-results/
+.playwright/
+.claude/
+.zcode/

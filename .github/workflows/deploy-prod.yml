@@ -1,0 +1,86 @@
+name: Deploy Production (Blue/Green)
+
+# P6-3: 生产部署。手动触发 + environment 保护规则（GitHub 手动审批门）→
+# 构建镜像推 GHCR → 服务器执行蓝绿切换（健康检查通过才接管 :3000）。
+#
+# 使用前:
+#   1. GitHub → Settings → Environments → 创建 `production` environment，
+#      启用 "Required reviewers"（手动审批门）。
+#   2. 配置仓库 secrets: PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_PORT。
+#   3. 服务器侧: scripts/deploy/blue-green.sh 依赖 docker + .env 文件。
+#
+# 回滚: 重新触发本 workflow 并指定上一个镜像 tag，蓝绿脚本会自动回滚失败的切换。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "镜像 tag（留空 = 使用 main 最新构建）"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production # 手动审批门
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "value=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: meta
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }}
+            ghcr.io/${{ github.repository }}:latest-prod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  blue-green:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ secrets.PROD_HOST != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Blue/green deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT || '22' }}
+          script: |
+            cd ${{ secrets.PROD_DIR || '/srv/knowledgeai' }}
+            bash scripts/deploy/blue-green.sh ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }} \
+              ${{ secrets.PROD_APP_NAME || 'kai-app' }} \
+              ${{ secrets.PROD_PORT_EXTERNAL || '3000' }} \
+              ${{ secrets.PROD_ENV_FILE || '.env' }}
