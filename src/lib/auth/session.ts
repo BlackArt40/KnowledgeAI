@@ -1,10 +1,15 @@
 // ---------------------------------------------------------------------------
-// Auth — lightweight JWT session utilities (Web Crypto API, no deps).
-// 🔌 Production: replace with NextAuth.js / better-auth for full OAuth, 
-//    session management, and CSRF protection.
+// Auth — JWT session utilities via jose (HS256, Web Crypto underneath).
+// jose is the de-facto standard JWT library (already in the dependency tree
+// through Auth.js v5); replaced the hand-rolled HMAC JWT in 2026-08 (P7-5).
+// Tokens signed by the old implementation remain verifiable (same HS256 +
+// same AUTH_SECRET) - see session.test.ts legacy-compat case.
 // ---------------------------------------------------------------------------
 
+import { SignJWT, jwtVerify, base64url } from "jose";
+
 const SECRET = process.env.AUTH_SECRET || "dev-secret-change-in-production";
+const secretKey = new TextEncoder().encode(SECRET);
 
 export interface AuthUser {
   id: string;
@@ -13,48 +18,12 @@ export interface AuthUser {
   role: "owner" | "admin" | "editor" | "viewer";
 }
 
-// Base64URL encode/decode
-function b64url(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function b64urlDecode(s: string): ArrayBuffer {
-  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + pad;
-  const bin = atob(b64);
-  const buf = new ArrayBuffer(bin.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
-  return buf;
-}
-
-async function getKey(): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  return crypto.subtle.importKey(
-    "raw",
-    enc.encode(SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"]
-  );
-}
-
 /** Create a signed JWT for a user. */
 export async function createToken(user: AuthUser, expiresInSeconds = 7 * 86400): Promise<string> {
-  const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
-  const payload = b64url(
-    new TextEncoder().encode(
-      JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + expiresInSeconds })
-    )
-  );
-  const data = `${header}.${payload}`;
-  const key = await getKey();
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
-  return `${data}.${b64url(sig)}`;
+  return new SignJWT({ id: user.id, email: user.email, name: user.name, role: user.role })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
+    .sign(secretKey);
 }
 
 // ── Pre-auth token (2FA forced enrollment) ────────────────────────────────
@@ -76,43 +45,32 @@ export interface PreAuthPayload {
 
 /** Create a short-lived pre-auth token for 2FA forced enrollment (default 5 min). */
 export async function createPreAuthToken(user: AuthUser, expiresInSeconds = 5 * 60): Promise<string> {
-  const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
-  const payload = b64url(
-    new TextEncoder().encode(
-      JSON.stringify({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        purpose: "2fa-enroll",
-        exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
-      } satisfies PreAuthPayload)
-    )
-  );
-  const data = `${header}.${payload}`;
-  const key = await getKey();
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
-  return `${data}.${b64url(sig)}`;
+  return new SignJWT({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    purpose: "2fa-enroll",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
+    .sign(secretKey);
 }
 
 /** Verify a pre-auth token and return its payload, or null if invalid/expired/wrong purpose. */
 export async function verifyPreAuthToken(token: string): Promise<PreAuthPayload | null> {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [header, payload, sig] = parts;
-  const key = await getKey();
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    b64urlDecode(sig),
-    new TextEncoder().encode(`${header}.${payload}`)
-  );
-  if (!valid) return null;
   try {
-    const data = JSON.parse(new TextDecoder().decode(b64urlDecode(payload))) as PreAuthPayload;
-    if (data.purpose !== "2fa-enroll") return null;
-    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
-    return data;
+    const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
+    if (payload.purpose !== "2fa-enroll") return null;
+    if (typeof payload.id !== "string" || typeof payload.email !== "string") return null;
+    return {
+      id: payload.id,
+      email: payload.email,
+      name: typeof payload.name === "string" ? payload.name : "",
+      role: typeof payload.role === "string" ? payload.role : "",
+      purpose: "2fa-enroll",
+      exp: typeof payload.exp === "number" ? payload.exp : 0,
+    };
   } catch {
     return null;
   }
@@ -120,28 +78,24 @@ export async function verifyPreAuthToken(token: string): Promise<PreAuthPayload 
 
 /** Verify a JWT and return the user, or null if invalid/expired. */
 export async function verifyToken(token: string): Promise<AuthUser | null> {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [header, payload, sig] = parts;
-  const key = await getKey();
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    b64urlDecode(sig),
-    new TextEncoder().encode(`${header}.${payload}`)
-  );
-  if (!valid) return null;
   try {
-    const data = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
-    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
     // Reject scoped tokens such as the 2FA-enrollment pre-auth token. Only
     // purposeless session JWTs issued by createToken() are valid session
     // credentials; a token carrying a `purpose` field must be verified by its
     // dedicated verifier (verifyPreAuthToken), never treated as a session.
     // Without this check, a preAuthToken (same HMAC key, same JWT shape) would
     // be accepted here, letting users bypass forced 2FA enrollment.
-    if (data.purpose) return null;
-    return { id: data.id, email: data.email, name: data.name, role: data.role };
+    if (payload.purpose) return null;
+    if (typeof payload.id !== "string" || typeof payload.email !== "string" || typeof payload.role !== "string") {
+      return null;
+    }
+    return {
+      id: payload.id,
+      email: payload.email,
+      name: typeof payload.name === "string" ? payload.name : "",
+      role: payload.role as AuthUser["role"],
+    };
   } catch {
     return null;
   }
@@ -169,14 +123,15 @@ export async function hashPassword(password: string): Promise<string> {
     key,
     256
   );
-  return `pbkdf2$100000$${b64url(salt)}$${b64url(hash)}`;
+  return `pbkdf2$100000$${base64url.encode(salt)}$${base64url.encode(new Uint8Array(hash))}`;
 }
 
 /** Verify a password against a hash. */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
-  const salt = b64urlDecode(parts[2]);
+  // copy into an ArrayBuffer-backed view (BufferSource for subtle.deriveBits)
+  const salt = new Uint8Array(base64url.decode(parts[2]));
   const iterations = parseInt(parts[1], 10);
   const key = await crypto.subtle.importKey(
     "raw",
@@ -190,6 +145,6 @@ export async function verifyPassword(password: string, stored: string): Promise<
     key,
     256
   );
-  return b64url(hash) === parts[3];
+  return base64url.encode(new Uint8Array(hash)) === parts[3];
 }
 

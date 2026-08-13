@@ -6,7 +6,7 @@
 // localStorage + the `kai-locale` cookie (server negotiation) and updates
 // <html lang> - the UI re-renders immediately without a page reload.
 import * as React from "react";
-import { MESSAGES, normalizeLocale, translate, type Locale } from "./translate";
+import { normalizeLocale, getI18nInstance, type Locale } from "./translate";
 
 interface I18nContextValue {
   locale: Locale;
@@ -36,8 +36,10 @@ export function LocaleProvider({
     } catch { /* private mode */ }
   }, []);
 
-  const t = React.useCallback(
-    (key: string, vars?: Record<string, string | number>) => translate(MESSAGES[locale], key, vars),
+  // getFixedT(locale) is cheap and stateless on the shared instance -
+  // language switching is a plain re-render, no async changeLanguage needed.
+  const t = React.useMemo(
+    () => getI18nInstance().getFixedT(locale) as (key: string, vars?: Record<string, string | number>) => string,
     [locale]
   );
 

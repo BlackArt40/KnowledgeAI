@@ -1,4 +1,4 @@
-// P6-3 unit tests: auth/session (Web Crypto JWT + PBKDF2, zero deps).
+// P6-3 unit tests: auth/session (jose JWT + Web Crypto PBKDF2).
 import { describe, it, expect } from "vitest";
 import {
   createToken,
@@ -19,6 +19,37 @@ describe("session JWT", () => {
     expect(token.split(".")).toHaveLength(3);
     const payload = await verifyToken(token);
     expect(payload).toMatchObject({ id: "usr_1", email: "a@b.dev", role: "editor" });
+  });
+
+  it("verifies tokens signed by the pre-jose implementation (wire compat)", async () => {
+    // Rebuild the old hand-rolled HS256 JWT (same AUTH_SECRET) and assert
+    // jose still accepts it - sessions minted before the swap keep working.
+    const secret = process.env.AUTH_SECRET || "dev-secret-change-in-production";
+    const b64url = (buf: Uint8Array) =>
+      btoa(String.fromCharCode(...buf)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const header = b64url(enc.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+    const payload = b64url(
+      enc.encode(JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + 3600 }))
+    );
+    const data = `${header}.${payload}`;
+    const sig = b64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(data))));
+    expect(await verifyToken(`${data}.${sig}`)).toMatchObject({ id: "usr_1", role: "editor" });
+    // a legacy pre-auth token is still rejected as a session credential
+    const prePayload = b64url(
+      enc.encode(JSON.stringify({ ...user, purpose: "2fa-enroll", exp: Math.floor(Date.now() / 1000) + 300 }))
+    );
+    const preData = `${header}.${prePayload}`;
+    const preSig = b64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(preData))));
+    expect(await verifyToken(`${preData}.${preSig}`)).toBeNull();
+    expect(await verifyPreAuthToken(`${preData}.${preSig}`)).toMatchObject({ purpose: "2fa-enroll" });
   });
 
   it("rejects tampered tokens", async () => {

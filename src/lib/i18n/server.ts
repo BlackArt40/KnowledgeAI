@@ -1,7 +1,7 @@
 // P5-4: server-side locale resolution + translation for server components
 // and metadata. Locale order: `kai-locale` cookie -> Accept-Language -> zh-CN.
 import { cookies, headers } from "next/headers";
-import { MESSAGES, normalizeLocale, translate, type Locale } from "./translate";
+import { normalizeLocale, getI18nInstance, type Locale } from "./translate";
 
 export async function getLocaleFromCookies(): Promise<Locale> {
   try {
@@ -18,6 +18,6 @@ export async function serverT() {
   const locale = await getLocaleFromCookies();
   return {
     locale,
-    t: (key: string, vars?: Record<string, string | number>) => translate(MESSAGES[locale], key, vars),
+    t: getI18nInstance().getFixedT(locale),
   };
 }

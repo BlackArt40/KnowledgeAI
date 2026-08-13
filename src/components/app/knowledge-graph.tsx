@@ -1,29 +1,23 @@
 "use client";
 
-// P7-3 knowledge-graph visualization - hand-written SVG force layout
-// (zero deps): repulsion + spring iterations, drag, wheel zoom, click to
-// highlight neighbors with a detail panel. Nodes are capped for performance.
+// P7-3 knowledge-graph visualization - SVG rendering + interactions on top
+// of the d3-force layout (src/lib/kg/layout.ts; the physics engine was
+// replaced by d3-force in 2026-08, P7-5). Repulsion + spring forces, drag,
+// wheel zoom, click to highlight neighbors with a detail panel. Nodes are
+// capped for performance.
 
 import * as React from "react";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  computeGraphLayout,
+  type GraphNodeData,
+  type GraphEdgeData,
+} from "@/lib/kg/layout";
 
-export interface GraphNodeData {
-  id: string;
-  label: string;
-  type: string;
-  mentions: number;
-  docCount: number;
-}
-export interface GraphEdgeData {
-  id: string;
-  source: string;
-  target: string;
-  type: string;
-  weight: number;
-}
+export type { GraphNodeData, GraphEdgeData };
 
 const TYPE_COLORS: Record<string, string> = {
   person: "#6366f1",
@@ -39,26 +33,6 @@ const TYPE_KEYS: Record<string, string> = {
   event: "page.knowledge-graph.s15",
 };
 
-interface LayoutNode {
-  id: string;
-  label: string;
-  type: string;
-  mentions: number;
-  docCount: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  fixed?: boolean;
-}
-
-interface LayoutEdge {
-  id: string;
-  source: string;
-  target: string;
-  weight: number;
-}
-
 export function KnowledgeGraph({
   nodes,
   edges,
@@ -71,88 +45,8 @@ export function KnowledgeGraph({
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
 
-  // ── force layout (computed once per data snapshot) ──────────────────────
-  const layout = React.useMemo(() => {
-    const W = 900;
-    const H = 560;
-    const cappedNodes = [...nodes].sort((a, b) => b.mentions - a.mentions).slice(0, 60);
-    // edges reference entity LABELS (API shape) - match against node labels
-    const labelSet = new Set(cappedNodes.map((n) => n.label));
-    const cappedEdges = edges
-      .filter((e) => labelSet.has(e.source) && labelSet.has(e.target))
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 120);
-
-    const ln: LayoutNode[] = cappedNodes.map((n, i) => {
-      const angle = (i / Math.max(1, cappedNodes.length)) * Math.PI * 2;
-      return {
-        id: n.id,
-        label: n.label,
-        type: n.type,
-        mentions: n.mentions,
-        docCount: n.docCount,
-        x: W / 2 + Math.cos(angle) * (W / 3),
-        y: H / 2 + Math.sin(angle) * (H / 3),
-        vx: 0,
-        vy: 0,
-      };
-    });
-    const byLabel = new Map(ln.map((n) => [n.label, n]));
-    const le: LayoutEdge[] = cappedEdges.map((e) => ({ ...e }));
-
-    // iterate force simulation (repulsion + springs + centering)
-    const REPULSION = 1400;
-    const SPRING = 0.06;
-    const TARGET = 110;
-    const CENTER = 0.02;
-    const DAMPING = 0.82;
-    const ITER = 180;
-
-    for (let iter = 0; iter < ITER; iter++) {
-      // repulsion
-      for (let i = 0; i < ln.length; i++) {
-        for (let j = i + 1; j < ln.length; j++) {
-          const a = ln[i];
-          const b = ln[j];
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const dist = Math.max(24, Math.sqrt(dx * dx + dy * dy));
-          const f = REPULSION / (dist * dist);
-          const fx = (dx / dist) * f;
-          const fy = (dy / dist) * f;
-          a.vx += fx; a.vy += fy;
-          b.vx -= fx; b.vy -= fy;
-        }
-      }
-      // springs
-      for (const e of le) {
-        const a = byLabel.get(e.source);
-        const b = byLabel.get(e.target);
-        if (!a || !b) continue;
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const dist = Math.max(10, Math.sqrt(dx * dx + dy * dy));
-        const f = (dist - TARGET) * SPRING;
-        const fx = (dx / dist) * f;
-        const fy = (dy / dist) * f;
-        a.vx += fx; a.vy += fy;
-        b.vx -= fx; b.vy -= fy;
-      }
-      // centering + integration
-      for (const n of ln) {
-        if (n.fixed) continue;
-        n.vx += (W / 2 - n.x) * CENTER;
-        n.vy += (H / 2 - n.y) * CENTER;
-        n.vx *= DAMPING;
-        n.vy *= DAMPING;
-        n.x += n.vx;
-        n.y += n.vy;
-        n.x = Math.max(30, Math.min(W - 30, n.x));
-        n.y = Math.max(30, Math.min(H - 30, n.y));
-      }
-    }
-    return { nodes: ln, edges: le };
-  }, [nodes, edges]);
+  // ── force layout (d3-force, computed once per data snapshot) ────────────
+  const layout = React.useMemo(() => computeGraphLayout(nodes, edges), [nodes, edges]);
 
   // ── interactions ────────────────────────────────────────────────────────
   // edges reference entity LABELS - resolve the selected node's label first
