@@ -1,6 +1,8 @@
 // ---------------------------------------------------------------------------
-// LLM Provider - abstraction over OpenAI-compatible APIs with graceful
-// fallback to local implementations when no provider is configured.
+// LLM Provider - OpenAI-compatible chat + embeddings via the Vercel AI SDK
+// (`ai` + `@ai-sdk/openai`; replaced the raw fetch/SSE client in 2026-08,
+// P7-5). Graceful fallback to local implementations when no provider is
+// configured.
 //
 // Resolution order:
 //   1. User-configured model in models store (enabled)  ← runtime config
@@ -8,6 +10,8 @@
 //   3. Local hash embeddings + extractive generation     ← demo mode
 // ---------------------------------------------------------------------------
 
+import { generateText, streamText, embed, embedMany, type ModelMessage } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { embed as localEmbed, cosine } from "@/lib/rag/embeddings";
 import { getCurrentUserId } from "@/lib/models/context";
 import { recordLlm } from "@/lib/obs/metrics";
@@ -15,24 +19,25 @@ import { traceBegin, traceEnd } from "@/lib/obs/trace";
 import { log, redactText } from "@/lib/obs/log";
 import type { ChatMessage, ChatOptions } from "./types";
 
-// P7-4: map ChatMessage (with optional base64 images) to the OpenAI wire
+// P7-4: map ChatMessage (with optional base64 images) to the AI SDK message
 // format - a user message with images becomes a content array of text +
-// image_url parts (vision models only when a real LLM is configured).
-function wireMessages(messages: ChatMessage[]): unknown[] {
+// image parts (vision models only when a real LLM is configured). The SDK
+// converts the data-URL to the provider's wire format.
+type WirePart = { type: "text"; text: string } | { type: "image"; image: string };
+
+function wireMessages(messages: ChatMessage[]): ModelMessage[] {
   return messages.map((m) => {
     if (m.images && m.images.length > 0) {
-      return {
-        role: m.role,
-        content: [
-          { type: "text", text: m.content },
-          ...m.images.map((img) => ({
-            type: "image_url",
-            image_url: { url: `data:${img.mime};base64,${img.data}` },
-          })),
-        ],
-      };
+      const parts: WirePart[] = [
+        { type: "text", text: m.content },
+        ...m.images.map((img) => ({
+          type: "image" as const,
+          image: `data:${img.mime};base64,${img.data}`,
+        })),
+      ];
+      return { role: m.role, content: parts } as ModelMessage;
     }
-    return { role: m.role, content: m.content };
+    return { role: m.role, content: m.content } as ModelMessage;
   });
 }
 
@@ -42,6 +47,11 @@ interface ResolvedConfig {
   chatModel: string;
   embeddingModel: string;
   label: string;
+}
+
+/** AI SDK OpenAI-compatible provider bound to a resolved config. */
+function openai(cfg: ResolvedConfig) {
+  return createOpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseUrl });
 }
 
 /** Resolve the EMBEDDING config: environment only, never per-user.
@@ -124,22 +134,16 @@ export async function embedText(text: string): Promise<Float32Array> {
   const span = traceBegin("llm.embed", "llm", { model: cfg.embeddingModel });
   const start = Date.now();
   try {
-    const res = await fetch(`${cfg.baseUrl}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
-      body: JSON.stringify({ model: cfg.embeddingModel, input: text }),
+    const { embedding } = await embed({
+      model: openai(cfg).embedding(cfg.embeddingModel),
+      value: text,
     });
-    if (!res.ok) {
-      log.error({ status: res.status, body: redactText(await res.text()) }, "[llm] embedding failed");
-      recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length, error: true });
-      return localEmbed(text); // graceful fallback
-    }
-    const data = await res.json();
     recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length });
-    return new Float32Array(data.data[0].embedding);
+    return new Float32Array(embedding);
+  } catch (err) {
+    log.error({ err, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] embedding failed");
+    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length, error: true });
+    return localEmbed(text); // graceful fallback
   } finally {
     traceEnd(span);
   }
@@ -152,22 +156,16 @@ export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
   const span = traceBegin("llm.embed.batch", "llm", { model: cfg.embeddingModel, n: texts.length });
   const start = Date.now();
   try {
-    const res = await fetch(`${cfg.baseUrl}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
-      body: JSON.stringify({ model: cfg.embeddingModel, input: texts }),
+    const { embeddings } = await embedMany({
+      model: openai(cfg).embedding(cfg.embeddingModel),
+      values: texts,
     });
-    if (!res.ok) {
-      log.error({ status: res.status }, "[llm] batch embedding failed");
-      recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length, error: true });
-      return texts.map((t) => localEmbed(t));
-    }
-    const data = await res.json();
     recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length });
-    return data.data.map((d: { embedding: number[] }) => new Float32Array(d.embedding));
+    return embeddings.map((e) => new Float32Array(e));
+  } catch (err) {
+    log.error({ err, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] batch embedding failed");
+    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length, error: true });
+    return texts.map((t) => localEmbed(t));
   } finally {
     traceEnd(span);
   }
@@ -178,6 +176,11 @@ export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
 interface LlmUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
+}
+
+/** HTTP/API errors carry a statusCode on the AI SDK error; network errors don't. */
+function isHttpError(err: unknown): err is { statusCode: number } {
+  return typeof (err as { statusCode?: unknown })?.statusCode === "number";
 }
 
 export async function chatComplete(
@@ -194,32 +197,27 @@ export async function chatComplete(
   try {
     if (!cfg) return ""; // demo mode (recorded below as a demo call)
 
-    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: cfg.chatModel,
-        messages: wireMessages(messages),
-        temperature: opts?.temperature ?? 0.3,
-        max_tokens: opts?.maxTokens,
-        stream: false,
-      }),
+    const result = await generateText({
+      model: openai(cfg).chat(cfg.chatModel),
+      messages: wireMessages(messages),
+      temperature: opts?.temperature ?? 0.3,
+      maxOutputTokens: opts?.maxTokens,
+      // generator.ts passes the system prompt as the first message
+      allowSystemInMessages: true,
     });
-    if (!res.ok) {
-      log.error({ status: res.status, body: redactText(await res.text()) }, "[llm] chat failed");
-      error = new Error(`LLM HTTP ${res.status}`);
-      return "";
-    }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content ?? "";
-    usage = data.usage as LlmUsage | undefined;
+    const text = result.text;
+    usage = {
+      prompt_tokens: result.usage?.inputTokens,
+      completion_tokens: result.usage?.outputTokens,
+    };
     chars = text.length;
     return text;
   } catch (err) {
     error = err;
+    if (isHttpError(err)) {
+      log.error({ status: err.statusCode, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] chat failed");
+      return "";
+    }
     throw err;
   } finally {
     recordLlm({
@@ -248,58 +246,31 @@ export async function* chatStream(
   try {
     if (!cfg) return;
 
-    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: cfg.chatModel,
-        messages: wireMessages(messages),
-        temperature: opts?.temperature ?? 0.3,
-        max_tokens: opts?.maxTokens,
-        stream: true,
-      }),
+    const result = streamText({
+      model: openai(cfg).chat(cfg.chatModel),
+      messages: wireMessages(messages),
+      temperature: opts?.temperature ?? 0.3,
+      maxOutputTokens: opts?.maxTokens,
+      allowSystemInMessages: true,
     });
-    if (!res.ok || !res.body) {
-      log.error({ status: res.status }, "[llm] chat stream failed");
-      error = new Error(`LLM stream HTTP ${res.status}`);
-      return;
+
+    // textStream is an async iterable of deltas; usage resolves when the
+    // stream finishes.
+    for await (const delta of result.textStream) {
+      chars += delta.length;
+      yield delta;
     }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === "[DONE]") return;
-        try {
-          const json = JSON.parse(payload);
-          // P6-1: OpenAI sends `usage` in the last chunk before [DONE].
-          if (json.usage) usage = json.usage as LlmUsage;
-          const delta = json.choices?.[0]?.delta?.content;
-          if (delta) {
-            chars += (delta as string).length;
-            yield delta as string;
-          }
-        } catch {
-          // skip malformed lines
-        }
-      }
-    }
+    const u = await result.usage;
+    usage = {
+      prompt_tokens: u?.inputTokens,
+      completion_tokens: u?.outputTokens,
+    };
   } catch (err) {
     error = err;
+    if (isHttpError(err)) {
+      log.error({ status: err.statusCode, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] chat stream failed");
+      return;
+    }
     throw err;
   } finally {
     recordLlm({

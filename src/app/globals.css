@@ -258,17 +258,19 @@
   }
 }
 
-/* P5-3: chat markdown syntax-highlight tokens (lightweight, zero deps) */
-.tok-kw { color: #8b5cf6; }
-.tok-str { color: #16a34a; }
-.tok-com { color: #8a8f98; font-style: italic; }
-.tok-num { color: #d97706; }
-.tok-fn { color: #2563eb; }
-.dark .tok-kw { color: #c4b5fd; }
-.dark .tok-str { color: #4ade80; }
-.dark .tok-com { color: #6b7280; }
-.dark .tok-num { color: #fbbf24; }
-.dark .tok-fn { color: #93c5fd; }
+/* P5-3: chat markdown code blocks - highlight.js token theme (rehype-highlight).
+   Code blocks always render on the dark `bg-zinc-950/90` surface, so a single
+   light-on-dark token palette applies in every theme. */
+.hljs { color: #e2e8f0; background: transparent; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: #c4b5fd; }
+.hljs-string, .hljs-attr, .hljs-template-string, .hljs-regexp { color: #4ade80; }
+.hljs-comment, .hljs-quote { color: #6b7280; font-style: italic; }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: #fbbf24; }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-function .hljs-title { color: #93c5fd; }
+.hljs-built_in, .hljs-class .hljs-title, .hljs-variable, .hljs-params { color: #f0abfc; }
+.hljs-meta, .hljs-doctag, .hljs-name { color: #fca5a5; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
 
 /* ============================================================
    P5-5 · High contrast mode (WCAG AA)
