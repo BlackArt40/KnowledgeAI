@@ -24,7 +24,7 @@
 // ---------------------------------------------------------------------------
 
 import { chunkText } from "../src/lib/rag/chunker";
-import { embed as localEmbed } from "../src/lib/rag/embeddings";
+import { embed as localEmbed } from "../src/lib/llm/embeddings";
 import type { VectorStore } from "../src/lib/rag/vector-store-interface";
 import { log } from "../src/lib/obs/log";
 

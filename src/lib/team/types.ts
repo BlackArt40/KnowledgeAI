@@ -1,4 +1,5 @@
-export type Role = "owner" | "admin" | "editor" | "viewer";
+import type { Role } from "@/lib/roles";
+export type { Role };
 export type MemberStatus = "active" | "invited" | "suspended";
 export type KbAccess = "view" | "edit" | "private";
 /** P4-2: per-KB member role override (KB Owner / Editor / Viewer).
@@ -46,20 +47,6 @@ export interface KbAccessEntry {
   /** P4-2: per-member roles on this KB (userId -> role). */
   memberRoles?: Record<string, KbMemberRole>;
 }
-
-export const ROLE_LABEL: Record<Role, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  editor: "Editor",
-  viewer: "Viewer",
-};
-
-export const ROLE_DESC: Record<Role, string> = {
-  owner: "全部权限，含团队设置与计费",
-  admin: "管理知识库与成员",
-  editor: "编辑知识库与问答",
-  viewer: "只读问答",
-};
 
 export const ACCESS_LABEL: Record<KbAccess, string> = {
   view: "全员可读",

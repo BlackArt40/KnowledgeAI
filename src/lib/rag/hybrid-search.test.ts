@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { hybridSearch } from "./hybrid-search";
 import { indexDocument } from "./indexer";
 import { clearBM25Kb } from "./bm25";
-import { embed } from "./embeddings";
+import { embed } from "@/lib/llm/embeddings";
 import type { KbDocument, KbSettings } from "@/lib/kb/types";
 
 const KB = "hybrid-test-kb";

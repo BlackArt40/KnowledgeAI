@@ -33,6 +33,32 @@ describe("bm25 index management", () => {
     expect(bm25ChunkCount(KB)).toBe(0);
     expect(searchBM25(KB, "apple", 5)).toEqual([]);
   });
+
+  it("survives an out-of-band index reset (tracking map is invalidated)", () => {
+    // P7-5 regression: a fresh index must invalidate the chunk-id tracking
+    // map, so re-indexing after a store reset neither throws on discard nor
+    // leaves stale ids behind.
+    indexBM25(KB, "doc-1", "Doc One", ["apple banana"]);
+    delete (globalThis as Record<string, unknown>).__KAI_BM25__; // simulate reset
+    expect(() => indexBM25(KB, "doc-1", "Doc One", ["cherry"])).not.toThrow();
+    expect(bm25ChunkCount(KB)).toBe(1);
+    const r = searchBM25(KB, "cherry", 5);
+    expect(r[0].docId).toBe("doc-1");
+  });
+
+  it("rethrows non-'not in the index' discard errors (no blanket swallow)", () => {
+    // P7-5: discardSafe only tolerates the documented miss case; a real
+    // miniSearch error must surface instead of being silently eaten.
+    indexBM25(KB, "doc-1", "Doc One", ["apple banana"]);
+    const g = globalThis as Record<string, unknown>;
+    const store = g.__KAI_BM25__ as Map<string, { discard: (id: string) => void }>;
+    const ms = store.get(KB)!;
+    const original = ms.discard.bind(ms);
+    ms.discard = () => { throw new Error("index corrupted"); };
+    expect(() => clearBM25Doc(KB, "doc-1")).toThrow("index corrupted");
+    ms.discard = original;
+    clearBM25Kb(KB);
+  });
 });
 
 describe("bm25 search", () => {

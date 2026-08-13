@@ -34,7 +34,6 @@ export interface LayoutNode extends GraphNodeData {
   y: number;
   vx: number;
   vy: number;
-  fixed?: boolean;
 }
 export interface LayoutEdge {
   id: string;
@@ -47,6 +46,12 @@ const W = 900;
 const H = 560;
 const MAX_NODES = 60;
 const MAX_EDGES = 120;
+/**
+ * Synchronous simulation ticks. d3-force's alpha decays monotonically, so
+ * extra ticks only nudge nodes closer to equilibrium - 300 is far past the
+ * point where movement is measurable for <=60 nodes.
+ */
+const ITERATIONS = 300;
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -106,7 +111,7 @@ export function computeGraphLayout(
     .force("x", forceX(W / 2).strength(0.02))
     .force("y", forceY(H / 2).strength(0.02))
     .stop();
-  simulation.tick(300);
+  simulation.tick(ITERATIONS);
 
   // Clamp inside the viewBox so labels stay visible; forceLink rewrote
   // source/target into node references - map back to labels for rendering.

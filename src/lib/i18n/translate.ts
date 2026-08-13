@@ -7,18 +7,11 @@
 //
 // escapeValue: false - React already escapes text nodes on render; escaping
 // here would double-escape interpolated values.
-import i18next, { type i18n, type TFunction } from "i18next";
+import i18next, { type i18n } from "i18next";
 import zh from "./messages/zh-CN.json";
 import en from "./messages/en.json";
 
-export type Messages = Record<string, unknown>;
-export const MESSAGES: Record<string, Messages> = {
-  "zh-CN": zh as Messages,
-  en: en as Messages,
-};
-
-export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
+export type Locale = "zh-CN" | "en";
 
 /** Coerce any input to a supported locale (default zh-CN). */
 export function normalizeLocale(v: string | null | undefined): Locale {
@@ -28,12 +21,12 @@ export function normalizeLocale(v: string | null | undefined): Locale {
 /** Build a configured i18next instance (synchronous - inline resources). */
 function createInstance(): i18n {
   const inst = i18next.createInstance();
-  void inst.init({
+  const result = inst.init({
     lng: "zh-CN",
     fallbackLng: "zh-CN",
     resources: {
-      "zh-CN": { translation: zh as Messages },
-      en: { translation: en as Messages },
+      "zh-CN": { translation: zh as Record<string, unknown> },
+      en: { translation: en as Record<string, unknown> },
     },
     // Message packs use single-brace {var}; `{{ $json.question }}` in the
     // n8n templates must survive untouched (missing vars keep their
@@ -44,6 +37,16 @@ function createInstance(): i18n {
     returnNull: false,
     initAsync: false, // sync init - inline resources, t usable immediately
   });
+  // initAsync:false makes initialization synchronous; a broken message pack
+  // must fail loudly at boot (raw keys in the UI are the silent symptom).
+  // The returned promise is still handled so a rejection can never become an
+  // unhandled-rejection warning.
+  if (result && typeof (result as { catch?: unknown }).catch === "function") {
+    (result as Promise<unknown>).catch(() => undefined);
+  }
+  if (!inst.isInitialized) {
+    throw new Error("i18next failed to initialize (message packs unreadable)");
+  }
   return inst;
 }
 
@@ -52,14 +55,7 @@ function createInstance(): i18n {
 // client (locale switching via re-render).
 const instance = createInstance();
 
-/** t bound to a fixed locale (server-side / non-React code). */
-export function t(locale: Locale, key: string, vars?: Record<string, string | number>): string {
-  return instance.getFixedT(locale)(key, vars);
-}
-
 /** The shared i18next instance (for provider bindings). */
 export function getI18nInstance(): i18n {
   return instance;
 }
-
-export type { TFunction };

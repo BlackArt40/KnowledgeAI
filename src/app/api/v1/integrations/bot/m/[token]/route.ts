@@ -12,7 +12,7 @@ import {
   type BotPlatform,
 } from "@/lib/integrations/bots";
 import { askOnce } from "@/lib/chat/ask-once";
-import { integrationRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+import { integrationRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { withApiTrace, type ApiTraceHandle } from "@/lib/obs/trace";
 import { log } from "@/lib/obs/log";
 

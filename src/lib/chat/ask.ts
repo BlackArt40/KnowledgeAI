@@ -14,7 +14,7 @@ import { getKb, getDocument } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
 import { generateStream } from "@/lib/rag/generator";
 import { searchExternal } from "@/lib/external/provider";
-import { rateLimit, kbRateLimit, rateLimitResponse, getRateLimitLimits } from "@/lib/security/rate-limit";
+import { rateLimit, kbRateLimit, rateLimitResponse, getRateLimitLimits } from "@/lib/rate-limit";
 import type { RetrievedChunk, Citation } from "@/lib/rag/types";
 import { suggestFollowUps } from "@/lib/rag/conversation-context";
 import type { ChatMessage } from "@/lib/rag/conversation-context";

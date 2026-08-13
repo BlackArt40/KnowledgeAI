@@ -91,7 +91,6 @@ export function KnowledgeGraph({
     if (!node) return;
     node.x = (e.clientX - svg.left - pan.x) / zoom - drag.dx;
     node.y = (e.clientY - svg.top - pan.y) / zoom - drag.dy;
-    node.fixed = true;
   }
 
   function onWheel(e: React.WheelEvent) {
