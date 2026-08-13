@@ -1,0 +1,45 @@
+{
+  "name": "kai-vscode",
+  "displayName": "KnowledgeAI 代码库问答",
+  "description": "代码库内 RAG 问答：对选中代码/文件提问，或把工作区同步为知识库文档后对全库提问",
+  "version": "0.1.0",
+  "publisher": "knowledgeai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "kai.askSelection",
+        "title": "KnowledgeAI: 对选中代码提问"
+      },
+      {
+        "command": "kai.askFile",
+        "title": "KnowledgeAI: 对当前文件提问"
+      },
+      {
+        "command": "kai.syncWorkspace",
+        "title": "KnowledgeAI: 同步工作区到知识库"
+      },
+      {
+        "command": "kai.configure",
+        "title": "KnowledgeAI: 配置连接"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "kai.askSelection",
+          "when": "editorHasSelection"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node test/ask.test.js"
+  }
+}

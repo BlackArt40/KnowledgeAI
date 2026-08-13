@@ -631,6 +631,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {user ? ROLE_BADGE[user.role] ?? user.role : ""}
                       </div>
                     </div>
+                    <Link
+                      href="/settings?tab=security"
+                      onClick={() => setUserMenu(false)}
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
+                    >
+                      <ShieldCheck className="h-4 w-4" /> {t("page.app-shell.s29")}
+                    </Link>
                     <button
                       onClick={logout}
                       className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/5"

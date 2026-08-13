@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n/provider";
+import { oauthSignIn } from "@/lib/auth/oauth-signin";
 
 import * as React from "react";
 import Link from "next/link";
@@ -31,6 +32,24 @@ export default function LoginPage() {
   const [step, setStep] = React.useState<"credentials" | "2fa">("credentials");
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  // P3-2: configured OAuth providers (from Auth.js GET /api/auth/providers).
+  // Buttons render only for configured providers; unconfigured ones stay
+  // hidden instead of dead-ending at the provider.
+  const [oauthProviders, setOauthProviders] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((p: Record<string, unknown>) => setOauthProviders(Object.keys(p)))
+      .catch(() => setOauthProviders([]));
+    // P3-2: OAuth flows land back here with ?error= (provider cancel /
+    // configuration / link conflicts) - surface a friendly message.
+    const oauthErr = new URLSearchParams(window.location.search).get("error");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (oauthErr === "oauth_link_conflict") setError(t("page.login.s24"));
+    else if (oauthErr && oauthErr !== "Configuration") setError(t("page.login.s23"));
+    else if (oauthErr === "Configuration") setError(t("page.login.s25"));
+  }, [t]);
 
   // Step 1: verify email + password. The server responds with one of:
   //   { token }                  -> login complete
@@ -188,22 +207,33 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="grid gap-3">
-        <Button variant="outline" className="h-11">
-          <GoogleIcon className="h-4 w-4" />
-          使用 Google 继续
-        </Button>
-        <Button variant="outline" className="h-11">
-          <GithubIcon className="h-4 w-4" />
-          使用 GitHub 继续
-        </Button>
-      </div>
+      {/* P3-2: social login - real OAuth 2.0 (Auth.js Authorization Code +
+          PKCE). POST signin (GET is unsupported by Auth.js v5) via the
+          oauthSignIn helper; the bridge mints the kai-token session. */}
+      {oauthProviders.length > 0 && (
+        <div className="grid gap-3">
+          {oauthProviders.includes("google") && (
+            <Button variant="outline" className="h-11" onClick={() => void oauthSignIn({ provider: "google" })}>
+              <GoogleIcon className="h-4 w-4" />
+              {t("page.login.s21")}
+            </Button>
+          )}
+          {oauthProviders.includes("github") && (
+            <Button variant="outline" className="h-11" onClick={() => void oauthSignIn({ provider: "github" })}>
+              <GithubIcon className="h-4 w-4" />
+              {t("page.login.s22")}
+            </Button>
+          )}
+        </div>
+      )}
 
-      <div className="my-6 flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">{t("page.login.s3")}</span>
-        <Separator className="flex-1" />
-      </div>
+      {oauthProviders.length > 0 && (
+        <div className="my-6 flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">{t("page.login.s3")}</span>
+          <Separator className="flex-1" />
+        </div>
+      )}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">

@@ -23,6 +23,12 @@ import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
 import { ModelSettings } from "@/components/app/model-settings";
 import { ThemeSettings } from "@/components/app/theme-settings";
+import { GoogleIcon, GithubIcon } from "@/components/icons/brand-icons";
+import { oauthSignIn } from "@/lib/auth/oauth-signin";
+
+// P3-2: OAuth providers shown in the social-accounts card (order + labels).
+const OAUTH_PROVIDERS = ["google", "github"] as const;
+const OAUTH_LABEL: Record<string, string> = { google: "Google", github: "GitHub" };
 
 const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
@@ -53,8 +59,34 @@ export default function SettingsPage() {
   const [disableBusy, setDisableBusy] = React.useState(false);
   const [disableError, setDisableError] = React.useState<string | null>(null);
 
+  // P3-2: social login bindings (provider -> providerAccountId)
+  const [oauthLinks, setOauthLinks] = React.useState<Record<string, string>>({});
+  const [unbindProvider, setUnbindProvider] = React.useState<string | null>(null);
+  const [unbindBusy, setUnbindBusy] = React.useState(false);
+  const [unbindError, setUnbindError] = React.useState<string | null>(null);
+
+  async function confirmUnbind() {
+    if (!unbindProvider) return;
+    setUnbindBusy(true);
+    setUnbindError(null);
+    try {
+      const res = await fetch(`/api/auth/oauth/link?provider=${unbindProvider}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setUnbindError(data.error || t("page.settings.s80"));
+        return;
+      }
+      setOauthLinks(data.oauthLinks ?? {});
+      setUnbindProvider(null);
+    } catch {
+      setUnbindError(t("page.settings.s80"));
+    } finally {
+      setUnbindBusy(false);
+    }
+  }
+
   // current authenticated user (profile tab)
-  const [me, setMe] = React.useState<{ id: string; name: string; email: string; role: string; plan: string } | null>(null);
+  const [me, setMe] = React.useState<{ id: string; name: string; email: string; role: string; plan: string; oauthLinks?: Record<string, string> } | null>(null);
   const [profileName, setProfileName] = React.useState("");
   const [curPwd, setCurPwd] = React.useState("");
   const [newPwd, setNewPwd] = React.useState("");
@@ -81,6 +113,8 @@ export default function SettingsPage() {
     if (d.user) {
       setMe(d.user);
       setProfileName(d.user.name);
+      // P3-2: linked OAuth providers ride along on the user object.
+      setOauthLinks(d.user.oauthLinks ?? {});
     }
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -406,6 +440,76 @@ export default function SettingsPage() {
               </Dialog>
             </CardContent>
           </Card>
+
+          {/* P3-2: social accounts (OAuth bindings) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" />{t("page.settings.s73")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">{t("page.settings.s74")}</p>
+              {OAUTH_PROVIDERS.map((p) => {
+                const linked = !!oauthLinks[p];
+                return (
+                  <div key={p} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                      {p === "google" ? <GoogleIcon className="h-4 w-4" /> : <GithubIcon className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium">{OAUTH_LABEL[p]}</span>
+                      {linked && <Badge variant="success" className="ml-2 text-[10px]">{t("page.settings.s75")}</Badge>}
+                    </div>
+                    {linked ? (
+                      <Button size="sm" variant="outline" onClick={() => setUnbindProvider(p)}>
+                        {t("page.settings.s76")}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          void oauthSignIn({
+                            provider: p,
+                            // bind mode: the bridge sees the existing session
+                            // and links instead of logging in, then returns
+                            // to this tab.
+                            callbackUrl: "/api/auth/oauth/bridge?cb=%2Fsettings%3Ftab%3Dsecurity",
+                          })
+                        }
+                      >
+                        {t("page.settings.s77")}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* P3-2: unbind confirmation */}
+          <Dialog open={unbindProvider !== null} onOpenChange={(v) => { if (!v) { setUnbindProvider(null); setUnbindError(null); } }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t("page.settings.s78")}</DialogTitle>
+              </DialogHeader>
+              {unbindError && (
+                <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0" /> {unbindError}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {unbindProvider ? t("page.settings.s79", { provider: OAUTH_LABEL[unbindProvider] ?? unbindProvider }) : ""}
+              </p>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">{t("common.cancel")}</Button>
+                </DialogClose>
+                <Button variant="destructive" onClick={confirmUnbind} disabled={unbindBusy}>
+                  {unbindBusy && <Loader2 className="h-4 w-4 animate-spin" />} {t("page.settings.s76")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Sessions */}
           <Card>
