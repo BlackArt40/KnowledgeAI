@@ -10,8 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
-import { decryptFromString } from "@/lib/security/crypto";
-import { loadAuditEvents } from "@/lib/security/audit";
+import { decryptFromString } from "@/lib/crypto";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 import { log } from "@/lib/obs/log";
 
@@ -310,7 +309,11 @@ async function hydrateAudit(): Promise<number> {
       hash: r.hash,
       createdAt: r.createdAt.getTime(),
     }));
-    loadAuditEvents(events);
+    // Seed the audit store directly (globalThis pattern, same as the other
+    // hydrators) - this keeps db/ free of store-module imports. Chain
+    // integrity is verified per-query by GET /api/admin/audit.
+    const g = globalThis as unknown as { __KAI_AUDIT_STORE__?: unknown[] };
+    g.__KAI_AUDIT_STORE__ = events as unknown[];
     return events.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateAudit error");

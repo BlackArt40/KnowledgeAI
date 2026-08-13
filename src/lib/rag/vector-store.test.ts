@@ -1,7 +1,7 @@
 // P6-3 unit tests: rag/vector-store (public API over the memory backend).
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { indexChunks, clearDoc, clearKb, search, chunkCount } from "./vector-store";
-import { embed } from "./embeddings";
+import { embed } from "@/lib/llm/embeddings";
 
 const env = process.env;
 const KB = "vs-test-kb";

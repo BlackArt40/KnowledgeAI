@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ensureHydrated } from "@/lib/db/hydrate";
-import { rateLimit, getRateLimitLimits } from "@/lib/security/rate-limit";
+import { rateLimit, getRateLimitLimits } from "@/lib/rate-limit";
 import { validateApiKey } from "@/lib/apikeys/store";
 import { verifyToken } from "@/lib/auth/session";
 import { startCleanupTimer } from "@/lib/storage/cleanup";

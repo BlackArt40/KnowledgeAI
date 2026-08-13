@@ -5,8 +5,8 @@
 // ===========================================================================
 
 import fs from "fs";
+import { login, api, BASE } from "../helpers.mjs";
 
-const BASE = "http://localhost:3000";
 const results = [];
 let passCount = 0, failCount = 0;
 
@@ -23,25 +23,7 @@ async function fetchPage(path) {
   return { status: res.status, html, size: html.length };
 }
 
-// P6-3: API routes require auth (getRequestUser -> 401 without a session).
-// All suites log in first with a demo account and attach kai-token.
-let AUTH = null;
-async function login(email = "owner@knowledgeai.dev", password = "password123") {
-  const res = await fetch(`${BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (data.token) AUTH = { Cookie: `kai-token=${data.token}` };
-  return !!data.token;
-}
-
-/** Authenticated API helper: merges the session cookie into every call. */
-function api(path, opts = {}) {
-  const headers = { ...(AUTH || {}), ...(opts.headers || {}) };
-  return fetch(`${BASE}${path}`, { ...opts, headers });
-}
+// P6-3: API routes require auth - login()/api() live in ./helpers.mjs.
 
 function checkContent(html, needles) {
   return needles.every((n) => html.includes(n));

@@ -60,18 +60,31 @@ function store(): Map<string, MiniSearch<StoredChunk>> {
   return g.__KAI_BM25__;
 }
 
-/** Track which chunk ids belong to which doc, for re-index / delete. */
+/**
+ * Source of truth for which chunk ids belong to which doc (re-index/delete).
+ * miniSearch has no list-by-field API, so deletes need this map; it is
+ * invalidated together with the index (getIndex / clearBM25Kb) so the two
+ * never drift apart.
+ */
 function docIndex(): Map<string, Map<string, string[]>> {
   if (!g.__KAI_BM25_DOCS__) g.__KAI_BM25_DOCS__ = new Map();
   return g.__KAI_BM25_DOCS__;
 }
 
-/** miniSearch.discard throws for unknown ids - idempotent wrapper. */
+/**
+ * miniSearch.discard throws for unknown ids. The chunk-id tracking map
+ * (__KAI_BM25_DOCS__) is the source of truth for delete-by-doc operations and
+ * is invalidated whenever the index is recreated, so a miss here only happens
+ * when the globalThis stores were reset out-of-band (tests). Tolerate exactly
+ * that case - any other error must surface.
+ */
 function discardSafe(ms: MiniSearch<StoredChunk>, id: string): void {
   try {
     ms.discard(id);
-  } catch {
-    // not in the index (e.g. the index was reset) - nothing to remove
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.includes("not in the index")) {
+      throw err;
+    }
   }
 }
 
@@ -83,7 +96,6 @@ function getIndex(kbId: string): MiniSearch<StoredChunk> {
       fields: ["text"],
       storeFields: ["docId", "docName", "chunkIndex", "text"],
       tokenize,
-      searchOptions: { boost: { text: 1 } },
     });
     s.set(kbId, ms);
     // A fresh index invalidates any surviving chunk-id tracking (e.g. when

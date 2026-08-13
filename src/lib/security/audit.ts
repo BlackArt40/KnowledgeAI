@@ -144,10 +144,3 @@ export function trimAudit(): number {
   return before - kept.length;
 }
 
-/** Replace the in-memory trail with DB rows (hydration). Entries must be in
- *  newest-first order; the chain is verified afterwards. */
-export function loadAuditEvents(events: AuditEvent[]): void {
-  g.__KAI_AUDIT_STORE__ = events;
-  const { valid } = verifyAuditChain();
-  if (!valid) log.warn("[audit] chain verification FAILED after hydration - entries may have been tampered with");
-}

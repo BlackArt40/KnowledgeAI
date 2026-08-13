@@ -19,7 +19,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelative } from "@/lib/format";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/lib/admin/types";
-import type { RateLimitStat } from "@/lib/security/rate-limit";
+import type { RateLimitStat } from "@/lib/rate-limit";
 import type { ProviderStatus } from "@/lib/config";
 import type { AuditEvent } from "@/lib/security/audit";
 

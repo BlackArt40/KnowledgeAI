@@ -17,8 +17,9 @@ import { TeamSettingsDialog } from "@/components/app/team/team-settings-dialog";
 import { usePresence } from "@/components/app/presence-context";
 import { formatRelative } from "@/lib/format";
 import { can, ROLE_ORDER } from "@/lib/team/rbac";
+import { ROLE_LABEL } from "@/lib/roles";
 import {
-  PERMISSIONS, ROLE_LABEL, ACCESS_LABEL,
+  PERMISSIONS, ACCESS_LABEL,
   type Team, type Member, type AuditEntry, type KbAccessEntry, type Role, type KbAccess,
 } from "@/lib/team/types";
 import { cn } from "@/lib/utils";

@@ -3,7 +3,7 @@ import { getKb } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getGraph } from "@/lib/kg/store";
-import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { withApiTrace } from "@/lib/obs/trace";
 
 export const dynamic = "force-dynamic";

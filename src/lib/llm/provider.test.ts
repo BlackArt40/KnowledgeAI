@@ -21,8 +21,14 @@ vi.mock("@ai-sdk/openai", () => ({
   })),
 }));
 
+// Real SDK result types - mock payloads stay shape-checked instead of `as never`.
+type MockTextResult = Awaited<ReturnType<typeof generateText>>;
+type MockStreamResult = ReturnType<typeof streamText>;
+type MockEmbedResult = Awaited<ReturnType<typeof embed>>;
+type MockEmbedManyResult = Awaited<ReturnType<typeof embedMany>>;
+
 function mockGenerateText(text: string, usage = { inputTokens: 10, outputTokens: 5 }) {
-  vi.mocked(generateText).mockResolvedValue({ text, usage } as never);
+  vi.mocked(generateText).mockResolvedValue({ text, usage } as MockTextResult);
 }
 
 beforeEach(() => {
@@ -115,7 +121,7 @@ describe("chatStream (streamText)", () => {
         yield "好";
       })(),
       usage: Promise.resolve({ inputTokens: 3, outputTokens: 2 }),
-    } as never);
+    } as unknown as MockStreamResult);
     const deltas: string[] = [];
     for await (const d of chatStream([msg({ content: "q" })], { maxTokens: 800 })) {
       deltas.push(d);
@@ -147,7 +153,7 @@ describe("chatStream (streamText)", () => {
 
 describe("embeddings (embed / embedMany)", () => {
   it("embedText returns a Float32Array from the SDK", async () => {
-    vi.mocked(embed).mockResolvedValue({ embedding: [0.1, 0.2, 0.3] } as never);
+    vi.mocked(embed).mockResolvedValue({ embedding: [0.1, 0.2, 0.3] } as MockEmbedResult);
     const v = await embedText("hello");
     expect(v).toBeInstanceOf(Float32Array);
     // Float32Array rounds - compare with tolerance
@@ -158,7 +164,7 @@ describe("embeddings (embed / embedMany)", () => {
   });
 
   it("embedBatch returns Float32Array[] from the SDK", async () => {
-    vi.mocked(embedMany).mockResolvedValue({ embeddings: [[0.1], [0.2], [0.3]] } as never);
+    vi.mocked(embedMany).mockResolvedValue({ embeddings: [[0.1], [0.2], [0.3]] } as MockEmbedManyResult);
     const out = await embedBatch(["a", "b", "c"]);
     expect(out).toHaveLength(3);
     expect(out[0]).toBeInstanceOf(Float32Array);

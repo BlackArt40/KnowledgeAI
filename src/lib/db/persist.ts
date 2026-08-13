@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
-import { encryptToString } from "@/lib/security/crypto";
+import { encryptToString } from "@/lib/crypto";
 import { log } from "@/lib/obs/log";
 
 /** Persist a user create/update to DB. */

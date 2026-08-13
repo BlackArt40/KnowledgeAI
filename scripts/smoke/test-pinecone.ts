@@ -1,7 +1,7 @@
 // @ts-nocheck
 // End-to-end test for PineconeVectorStore against a mock Pinecone server.
 // Usage: npx tsx scripts/test-pinecone.ts
-import { embed } from "../../src/lib/rag/embeddings";
+import { embed } from "../../src/lib/llm/embeddings";
 
 async function main() {
   process.env.VECTOR_STORE = "pinecone";

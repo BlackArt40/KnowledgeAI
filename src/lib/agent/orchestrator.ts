@@ -1,5 +1,5 @@
 import { retrieve } from "@/lib/rag/retriever";
-import { embed, cosine } from "@/lib/rag/embeddings";
+import { embed, cosine } from "@/lib/llm/embeddings";
 import { chatComplete, isLLMEnabled } from "@/lib/llm/provider";
 import { notify } from "@/lib/notifications/store";
 import { getKb } from "@/lib/kb/store";
