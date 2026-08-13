@@ -2,11 +2,11 @@
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。
 >
-> **更新日期**：2026-08-11
+> **更新日期**：2026-08-13
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固 + P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 + P5-3 对话体验增强 + P5-4 国际化 + P5-5 暗色模式与主题增强 + P6-1 应用监控 + P6-2 结构化日志 + P6-3 CI/CD 流水线 已实施。
+> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固（P3-2 OAuth 除外）+ P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 + P5-3 对话体验增强 + P5-4 国际化 + P5-5 暗色模式与主题增强 + P6-1 应用监控 + P6-2 结构化日志 + P6-3 CI/CD 流水线 + P6-4 健康检查与就绪探针 + P7-1 开放 API/SDK + P7-2 集成市场（VS Code / Notion 除外）+ P7-3 知识图谱 + P7-4 多模态 已实施。⏳ 未实现项：**P3-2 OAuth 社交登录**（登录页按钮为装饰，未接入 NextAuth.js）、**P7-2 VS Code 扩展** 与 **Notion/Confluence 同步**（已标注「后续版本」）。
 >
-> **最新更新**：2026-08-11 - P6-3 CI/CD 流水线完整验收通过（GitHub Actions 四 job：quality（tsc+lint+prisma drift+build）/ unit（vitest 151 测试，核心模块覆盖率 Lines 86.08%·Funcs 91.03%·Stmts 84.97%·Branches 76.33% 超 70% 阈值）/ integration（demo 模式 functional 25/25 + api 38/38 + performance 24 基准 + 限流验证）/ e2e（Playwright 4/4：登录→上传→问答→Agent）；部署自动化 GHCR 构建推送 + SSH staging（secrets 门控）+ 生产手动审批蓝绿切换（健康检查门 + 自动回滚）；修复 tests/ 三套件 401 根因（补 demo 登录）+ lint 存量 33915→0 errors（根因 .claude worktree 构建产物被误扫，ignore 修复））。
+> **最新更新**：2026-08-13 - **全量验收复查**：逐项核对 P0-P7 勾选项并实测验收标准（全部在干净 demo 模式 dev server 上重跑）——P7-1 25/25 + 9/9 + 30/30、P7-2 30/30 + 7/7、P7-3 20/20 + 11/11、P7-4 15/15 + 7/7、P6-4 22/22（含 :3100 坏依赖 503 路径）、P6-3 tsc/lint/vitest（Lines 86.06% / Branches 76.27% 超门槛）/E2E 4/4、P5/P4/P3/P2/P1 全部验收测试复跑通过（rate-limit 47/47 于 :3100 低限额实例、audit-encrypt 45/45、graph-rag 20/20 于干净实例）；3 个未实现项已确认（P3-2 OAuth、P7-2 VS Code/Notion）；顺带清理 kg/store.ts 4 处 lint 未使用变量警告（lint 0 errors / 26 warnings）。注：P0-1/P0-2 外部服务验收（PostgreSQL / pgvector / Chroma / Pinecone）需真实服务环境，由 CI integration job 覆盖，本机未实测。
 
 ---
 
@@ -38,7 +38,7 @@
 | 团队协作 | RBAC 权限矩阵、邀请、审计日志、共享 KB | 🔌 Prisma schema 已定义 |
 | 计费 | 三档套餐、模拟支付、Stripe 适配 | 🔌 Stripe Checkout + Webhook |
 | 管理后台 | 用户管理、KB 监控、系统配置、Provider 状态面板 | — |
-| 安全 | 2FA 模拟、会话管理、GDPR 导出 | 🔌 TOTP / Redis 会话接入点 |
+| 安全 | 真实 TOTP 2FA、会话管理、GDPR 导出、AES 加密审计链 | 🔌 OAuth 社交登录未接入（P3-2 未实现，登录页按钮为装饰） |
 | 通知 | 站内通知收件箱 + 偏好设置 | 🔌 邮件 / Web Push 接入点 |
 | per-user 模型 | AsyncLocalStorage 上下文、用户自带 LLM | ✅ 已实现 |
 
@@ -46,14 +46,16 @@
 
 | 编号 | 问题 | 影响 | 优先级 |
 |------|------|------|--------|
-| TD-01 | 全部 `*/store.ts` 使用 `globalThis` 内存存储，重启即失 | 数据不持久、无法多实例 | 🔴 P0 |
-| TD-02 | 向量索引为内存 `Map`，无持久化与 ANN 近似检索 | 大规模 KB 检索性能瓶颈 | 🔴 P0 |
-| TD-03 | 文档解析仅支持纯文本，PDF / Word / Excel 未接入 | 核心场景覆盖不足 | 🟠 P1 |
-| TD-04 | 限流为单实例内存计数器，无分布式支持 | 多实例部署限流失效 | 🟡 P2 |
-| TD-05 | 无自动化测试，无 CI/CD 流水线 | 回归风险高、发布无保障 | 🟠 P1 |
-| TD-06 | 2FA 为模拟实现，无真实 TOTP | 安全合规不达标 | 🟡 P2 |
-| TD-07 | 通知仅站内，无邮件 / 推送渠道 | 用户触达不足 | 🟡 P2 |
-| TD-08 | Agent 编排为内存顺序执行，无任务队列 | 长任务阻塞、无法水平扩展 | 🟠 P1 |
+| TD-01 | 全部 `*/store.ts` 使用 `globalThis` 内存存储，重启即失 | 数据不持久、无法多实例 | ✅ 已解决（P0-1 Prisma 写穿） |
+| TD-02 | 向量索引为内存 `Map`，无持久化与 ANN 近似检索 | 大规模 KB 检索性能瓶颈 | ✅ 已解决（P0-2 四后端 + HNSW） |
+| TD-03 | 文档解析仅支持纯文本，PDF / Word / Excel 未接入 | 核心场景覆盖不足 | ✅ 已解决（P1-1 八格式 + OCR） |
+| TD-04 | 限流为单实例内存计数器，无分布式支持 | 多实例部署限流失效 | ✅ 已解决（P3-3 Redis 滑动窗口） |
+| TD-05 | 无自动化测试，无 CI/CD 流水线 | 回归风险高、发布无保障 | ✅ 已解决（P6-3 四 job CI + E2E） |
+| TD-06 | 2FA 为模拟实现，无真实 TOTP | 安全合规不达标 | ✅ 已解决（P3-1 RFC 6238 TOTP + 恢复码） |
+| TD-07 | 通知仅站内，无邮件 / 推送渠道 | 用户触达不足 | 🟡 P2 未排期（对接点预留） |
+| TD-08 | Agent 编排为内存顺序执行，无任务队列 | 长任务阻塞、无法水平扩展 | ✅ 已解决（P0-4 BullMQ + Redis） |
+| TD-09 | OAuth 社交登录未接入（P3-2） | 登录方式单一，影响用户转化 | 🟡 P2 未排期 |
+| TD-10 | VS Code 扩展 / Notion、Confluence 同步未实现（P7-2） | 生态覆盖缺口 | 🔵 P4 后续版本 |
 
 ---
 
@@ -301,7 +303,7 @@
 
 ### P3-2 OAuth 社交登录
 
-**现状**：登录页有 Google / GitHub 按钮，但未接入真实 OAuth。
+**现状**：⏳ **未实现**（截至 2026-08-13 全量验收复查确认）。登录页（`src/app/(auth)/login/page.tsx`）有 Google / GitHub 按钮，但为装饰性入口——点击无任何跳转/OAuth 流程；`next-auth` / `better-auth` 未安装；`src/lib/auth/session.ts` 仅以注释保留「🔌 生产环境接入 NextAuth.js」的接入点说明。验收标准（Google/GitHub 一键登录、账号关联、解绑）均未达成。**建议**：后续迭代接入 Auth.js v5（PKCE + state 校验 + 账号绑定），或维持邮箱密码 + 2FA 作为唯一登录方式并移除装饰按钮。
 
 **计划**：
 - [ ] 接入 NextAuth.js（Auth.js v5）
@@ -310,7 +312,7 @@
 - [ ] 账号关联：已有邮箱用户首次 OAuth 登录时绑定
 - [ ] OAuth 状态安全校验（PKCE + state 参数）
 
-**验收标准**：
+**验收标准**（⏳ 未达成）：
 - Google / GitHub 一键登录可用
 - OAuth 用户自动创建 / 关联账号
 - 支持解绑社交账号
@@ -587,18 +589,20 @@
 
 ### P6-4 健康检查与就绪探针
 
-**现状**：无健康检查端点。
+**现状**：✅ 已完成（2026-08-11）。**三个公开端点**（`force-dynamic` + `withApiTrace` 保持 SLI 一致，proxy SKIP_PATHS 加入 `/api/health` 前缀免限流——探针每 5-30s 高频访问）：`GET /api/health` **存活探针**（恒 200 `{status:"ok", version, uptimeMs, ts}`，与依赖完全解耦）；`GET /api/health/ready` **就绪探针**（`src/lib/health/readiness.ts` 三检查并行：DB `SELECT 1`（3s 超时，Prisma 无连接超时需显式 Promise.race）/ Redis `connect()`（lazyConnect+connectTimeout 3s，ioredis 类型未声明 ping/call 故用类型完备的 connect）/ LLM `GET {baseUrl}/models`（5s AbortSignal，OpenAI 兼容 API 通用，不消耗 token；直接读 env 不走 per-user 解析）；**未配置的依赖 = skipped，演示模式即就绪态（200）**；配置了但不可达 → **503 degraded**，degradedSince 随响应返回）；`GET /api/health/db` **数据库检查**（ok/skipped → 200，degraded → 503 含 detail）。**告警状态机**（globalThis `__KAI_HEALTH_STATE__`，HMR 不重置）：ok→degraded 转移时 `notify` 站内 securityAlert 给全部 owner/admin + `log.error` 结构化日志 + `reportError`（错误环 + SENTRY_DSN 门控），持续降级每 10 分钟重报（去重），恢复时发「已恢复」通知；失败记录 ring（cap 50）。**容器/K8s 配置**：Dockerfile HEALTHCHECK、docker-compose app、blue-green.sh health-cmd 全部从 `/` 改为 `/api/health`（staging.sh 依赖 Docker 健康状态自动生效）；新增 `k8s/deployment.yaml` 示例（startupProbe 60s 容错 + livenessProbe /api/health 30s + readinessProbe /api/health/ready 10s 摘流量 + Service）。**顺带修复**：`src/types/optional-modules.d.ts` 桩类型遮蔽真实依赖类型（注释声称「安装后真实类型取代桩类型」实为错误——ambient declare module 永远遮蔽包自带类型），移除 bullmq/ioredis/mammoth/xlsx 桩类型（真实类型生效，ioredis Redis#connect 等 API 可用），仅保留无类型包的 pdf-parse 声明与未安装的 @aws-sdk。
+
+> **2026-08-11 验收**：`scripts/smoke/test-health.ts`（HTTP）22/22——`/api/health` 200 + 结构（status/uptimeMs/ts）；demo 模式 `/api/health/ready` 200 + checks 含 db/redis/llm 全 skipped（演示模式即就绪态）；`/api/health/db` 200；**30 次连续探测无 429**（SKIP_PATHS 豁免）；**503 路径**：`:3100` 生产实例（`DATABASE_URL`/`REDIS_URL` 指向死端口）→ `/api/health/ready` **503** + degraded 含 db/redis + degradedSince 非空、`/api/health/db` 503、**`/api/health` 仍 200**（存活与依赖解耦）；**告警端到端**：503 探测后 owner 登录可见「服务依赖不可用」securityAlert 站内通知。`src/lib/health/readiness.test.ts`（vitest）10/10——三检查 skipped 分支、db/llm degraded 分支（死端口即时失败）、告警状态机（转移通知 owner/admin、同窗口去重、恢复通知、静默无变化）。回归：vitest 全量 161/161、logging 15/15 + sink 35/35、monitoring 34/34、tsc、build（含 optional-modules 类型修复）。
 
 **计划**：
-- [ ] `/api/health` — 存活探针（进程存活）
-- [ ] `/api/health/ready` — 就绪探针（DB / Redis / LLM 连通性）
-- [ ] `/api/health/db` — 数据库连接检查
-- [ ] Docker / K8s 健康检查配置
-- [ ] 告警：就绪探针失败时自动通知
+- [x] `/api/health` — 存活探针（进程存活）✅（恒 200，与依赖解耦，容器 HEALTHCHECK 指向）
+- [x] `/api/health/ready` — 就绪探针（DB / Redis / LLM 连通性）✅（三检查并行 + 超时；未配置=skipped 演示就绪，不可达=503 degraded）
+- [x] `/api/health/db` — 数据库连接检查 ✅（SELECT 1 实测 + 3s 超时，503 带 detail）
+- [x] Docker / K8s 健康检查配置 ✅（Dockerfile/compose/blue-green 指向 /api/health + k8s 三探针示例清单）
+- [x] 告警：就绪探针失败时自动通知 ✅（转移告警 + 10 分钟重报去重 + 恢复通知：站内通知 owner/admin + 结构化日志 + 错误环/Sentry）
 
 **验收标准**：
-- K8s liveness / readiness probe 正常工作
-- 依赖服务不可用时探针返回 503
+- ✅ K8s liveness / readiness probe 正常工作（k8s/deployment.yaml 三探针 + 容器健康检查实测 200/503 语义，HTTP 22/22）
+- ✅ 依赖服务不可用时探针返回 503（:3100 坏依赖实例实测：ready/db 503，存活仍 200）
 
 ---
 
@@ -608,75 +612,77 @@
 
 ### P7-1 开放 API 与 SDK
 
-**现状**：API Key 鉴权已实现，但无公开 API 文档。
+**现状**：✅ 已完成（2026-08-12）。OpenAPI 3.0 规范（`src/lib/openapi/spec.ts` → `GET /api/openapi.json`，覆盖 `/api/v1/*`，含 API Key + JWT 双鉴权声明）+ Swagger UI（`/docs`，swagger-ui-dist postinstall 注入，可 Try-it-out）+ 三语言 SDK（`sdk/` js mjs+d.ts / python stdlib / go stdlib，零依赖）+ Webhook 引擎（`src/lib/webhooks/`，HMAC `X-KAI-Signature`、队列重试 + 死信、事件 kb.ready/agent.completed/usage.alert）+ 版本化 API（`/api/v1/`：me/knowledge-bases/chat/agent-run/webhooks，API Key scope 强制 `kb:read/kb:write/chat:read/agent:run`，旧路由不变）+ 开发者门户（`/developer`：SDK 快速开始 + Webhook 订阅管理 + 用量统计 + 集成市场）。
 
 **计划**：
-- [ ] OpenAPI 3.0 规范自动生成（从 Route Handlers 推导）
-- [ ] 交互式 API 文档（Swagger UI / Stoplight）
-- [ ] 官方 SDK：Python / JavaScript / Go
-- [ ] Webhook 事件推送（KB 就绪 / Agent 完成 / 用量告警）
-- [ ] API 版本管理（`/api/v1/` 前缀 + 向下兼容策略）
-- [ ] 开发者门户：API Key 管理 + 用量统计 + 文档
+- [x] OpenAPI 3.0 规范（`/api/openapi.json`，覆盖 `/api/v1/*`，含 API Key + JWT 双鉴权声明）
+- [x] 交互式 API 文档（`/docs` Swagger UI，swagger-ui-dist 静态资源 postinstall 注入，可 Try-it-out）
+- [x] 官方 SDK：Python / JavaScript / Go（`sdk/`，零依赖；对 dev server 实测通过）
+- [x] Webhook 事件推送（`kb.ready` / `agent.completed` / `usage.alert`，HMAC-SHA256 签名 + 队列重试 + 死信标记）
+- [x] API 版本管理（`/api/v1/` 前缀：me / knowledge-bases / chat / agent/run / webhooks；API Key scope 强制；旧路由不变 = 向下兼容）
+- [x] 开发者门户（`/developer`：SDK 快速开始 + Webhook 订阅管理 + 用量统计 + 集成市场；`/api-keys` 增加 24h 调用量时序）
 
-**验收标准**：
-- OpenAPI 文档可交互测试
-- 三种语言 SDK 可用
-- Webhook 事件可靠推送（含重试）
+**验收标准**（`scripts/smoke/test-openapi.ts` 25/25、`test-sdk.ts` 9/9、`test-webhooks.ts` 30/30）：
+- ✅ OpenAPI 文档可交互测试（Swagger UI 资源 200 + Try-it-out 配置；v1 scope 403/401 语义实测）
+- ✅ 三种语言 SDK 可用（py/js/go 对 live server 全流程：me/KB/ask SSE/agent/webhook）
+- ✅ Webhook 事件可靠推送（含重试：本地 receiver 验签、三事件端到端、抖动接收端重试成功、永久失败死信）
 
 ---
 
 ### P7-2 插件 / 集成市场
 
-**现状**：无第三方集成。
+**现状**：✅ 部分完成（2026-08-12）。已实现：三平台群机器人（Slack/飞书/钉钉，`POST /api/v1/integrations/bot/m/<token>` + challenge 回显 + token SHA-256 哈希存储）、Chrome 扩展（MV3 右键问答）、Zapier/n8n（v1 API + Webhook 触发）、Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖）、CORS 放行（仅 Header 鉴权）。⏳ **未实现（标注「后续版本」）**：VS Code 扩展（代码库内 RAG 问答）、Notion/Confluence 同步（自动导入文档至知识库）——两项均为 IDE/文档平台深度集成，按 ROADMAP 排期为后续迭代。
 
 **计划**：
-- [ ] Slack / 飞书 / 钉钉 机器人集成（直接在群内问答）
-- [ ] Chrome 扩展：网页选中文字 → 发送至 KnowledgeAI 问答
-- [ ] VS Code 扩展：代码库内 RAG 问答
-- [ ] Notion / Confluence 同步：自动导入文档至知识库
-- [ ] Zapier / n8n 集成：连接 500+ 工作流工具
-- [ ] Embeddable Widget：可嵌入任意网站的问答组件
+- [x] Slack / 飞书 / 钉钉 机器人集成（`POST /api/v1/integrations/bot/m/<token>`：url_verification challenge、三平台消息解析与回复格式、`x-kai-platform` 覆盖头；token 仅创建时展示、SHA-256 哈希存储）
+- [x] Chrome 扩展（`integrations/chrome-extension/` MV3：右键选中文字 → 结果页问答；设置页存 API Key/KB）
+- [ ] VS Code 扩展：代码库内 RAG 问答（后续版本）
+- [ ] Notion / Confluence 同步：自动导入文档至知识库（后续版本）
+- [x] Zapier / n8n 集成（v1 REST API + Webhook 事件触发即工作流接入，`/developer` 提供 n8n HTTP Request 节点示例）
+- [x] Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖，任意静态站点可独立部署；`/developer` 生成安装片段）
+- [x] CORS：`/api/*` 放行跨域（仅 Header 鉴权，无 Cookie）
 
-**验收标准**：
-- 至少 3 种集成可用
-- 嵌入式组件可独立部署
-- 集成有独立的认证与限流
+**验收标准**（`scripts/smoke/test-integrations.ts` 30/30、`test-widget-ui.mjs` 7/7）：
+- ✅ 至少 3 种集成可用（Widget / 三平台群机器人 / Chrome 扩展 / n8n-Zapier）
+- ✅ 嵌入式组件可独立部署（单文件自包含无 import；demo.html + 真实浏览器渲染问答实测）
+- ✅ 集成有独立的认证与限流（bot token 401/删除后 404；`integration:<id>` 独立档位，:3100 低限额实例压测 429 且属主额度不受影响）
 
 ---
 
 ### P7-3 知识图谱
 
-**现状**：无实体关系建模。
+**现状**：✅ 已完成（2026-08-12）。`src/lib/kg/`——文档实体抽取（`extract.ts` 确定性 pattern NER：中/英人名、组织、概念、事件）+ 关系图谱构建（`store.ts` 内存图 + Prisma `KnowledgeEntity`/`KnowledgeRelation` 落库，同句共现，按文档增量索引/删除）+ GraphRAG（`graph-rag.ts` 查询实体 → 1-hop 邻居扩展 → 命中邻居的 chunk 加权重排，默认开启 `kb.settings.graphRag`）+ SVG 力导向图可视化（`/knowledge-base/[id]/graph` 拖拽/缩放/点击高亮 + 详情面板）+ 实体消歧合并（同标签同类型聚合，幂等增量）。
 
 **计划**：
-- [ ] 文档实体抽取（NER）：从文档中识别人物 / 组织 / 概念 / 事件
-- [ ] 实体关系图谱构建（Neo4j / NebulaGraph）
-- [ ] GraphRAG：结合向量检索 + 图谱遍历的混合检索
-- [ ] 知识图谱可视化（D3.js / Cytoscape.js 交互式探索）
-- [ ] 实体消歧与合并
+- [x] 文档实体抽取（NER：`src/lib/kg/extract.ts`，中文姓氏/组织后缀/引号概念/日期事件 + 英文规则，确定性 demo 路径；LLM 配置时走 Vision/JSON 增强）
+- [x] 实体关系图谱构建（`src/lib/kg/store.ts` 内存图 + Prisma `KnowledgeEntity`/`KnowledgeRelation` 落库；同句共现关系，按文档增量索引/删除）
+- [x] GraphRAG（`src/lib/kg/graph-rag.ts`：查询实体 → 1-hop 邻居扩展 → 命中邻居的 chunk 加权重排；聊天检索默认开启 `kb.settings.graphRag`）
+- [x] 知识图谱可视化（`/knowledge-base/[id]/graph`：手写 SVG 力导向图，拖拽/缩放/点击高亮邻居 + 实体详情面板；`/api/knowledge-base/[id]/graph` + `graph/search`）
+- [x] 实体消歧与合并（同标签同类型合并 + mentions/docIds 聚合，按文档增量更新幂等）
 
-**验收标准**：
-- 自动从文档中抽取实体与关系
-- 图谱可视化可交互探索
-- GraphRAG 检索精度优于纯向量检索
+**验收标准**（`scripts/smoke/test-graph-rag.ts` 20/20、`test-graph-ui.mjs` 11/11）：
+- ✅ 自动从文档中抽取实体与关系（上传 3 文档 → 图谱 API 实体/关系/权限校验）
+- ✅ 图谱可视化可交互探索（真实浏览器：节点/边渲染、点击高亮邻居、详情面板、图例）
+- ✅ GraphRAG 检索精度优于纯向量检索（同库同查询对比：基线 top-1 = 词面重复干扰项，GraphRAG top-1 = 答案源，precision@1 严格提升）
 
 ---
 
 ### P7-4 多模态支持
 
-**现状**：仅支持文本文档与文本问答。
+**现状**：✅ 已完成（2026-08-12）。`src/lib/rag/vision.ts` 图片描述（LLM Vision content-parts / demo OCR + 尺寸回退）+ 多模态问答（`/api/chat` 与 `/api/v1/chat` body `images[]` base64，LLM 透传 content parts）+ 语音输入/输出（`src/lib/voice/` STT/TTS + `useSpeechRecognition/useSpeechSynthesis`，不支持浏览器自动隐藏）+ 字幕索引（`.srt/.vtt` 解析，`DocType.subtitle` 可检索）。
 
 **计划**：
-- [ ] 图片文档索引（Vision LLM 描述图片内容 → 文本嵌入）
-- [ ] 多模态问答：支持上传图片提问
-- [ ] 语音输入：Web Speech API → STT → 文本问答
-- [ ] 语音输出：TTS 朗读回答
-- [ ] 视频字幕提取与索引
+- [x] 图片文档索引（`src/lib/rag/vision.ts`：LLM 配置时 Vision content-parts 生成描述，demo 回退 OCR + 尺寸；`parseImage` 接入）
+- [x] 多模态问答（`/api/chat` + `/api/v1/chat` body 支持 `images[]`（base64）：LLM 模式透传 content parts，demo 模式 OCR/视觉描述并入上下文）
+- [x] 语音输入（`src/lib/voice/stt.ts` + `useSpeechRecognition`：Web Speech API，麦克风按钮、实时转写、final 自动发送；不支持浏览器自动隐藏）
+- [x] 语音输出（`src/lib/voice/tts.ts` + `useSpeechSynthesis`：speechSynthesis 朗读回答，助手气泡朗读/停止按钮）
+- [x] 视频字幕提取与索引（`.srt/.vtt` 解析：去时间戳/序号/内联标签，`DocType.subtitle`，可检索）
 
-**验收标准**：
-- 图片文档可被检索
-- 支持图片 + 文本混合提问
-- 支持语音问答闭环
+**验收标准**（`scripts/smoke/test-multimodal.ts` 15/15、`test-multimodal-ui.mjs` 7/7）：
+- ✅ 图片文档可被检索（canvas 生成含文字图片 → 上传 → OCR 入索引 → 提问命中该图片文档）
+- ✅ 支持图片 + 文本混合提问（`images[]` 附提问：回答引用图片内容；畸形图片容错不 500）
+- ✅ 支持语音问答闭环（STT 语音输入 + TTS 朗读输出组件实测；`src/lib/voice/*.test.ts` 单测）
+- ✅ 字幕文件（srt）上传 → subtitle 类型 → 对白可检索
 
 ---
 
@@ -742,9 +748,9 @@ gantt
 |--------|------|------|----------|
 | **M1 · 生产就绪** ✅ | 第 4 周 | 可部署的生产架构 | DB 持久化 + 向量库 + 异步队列 + S3 存储 |
 | **M2 · 智能增强** ✅ | 第 8 周 | RAG 与 Agent 能力质的飞跃 | 多格式解析 + 混合检索 + LangGraph + 外部数据源 |
-| **M3 · 企业级安全** ✅ | 第 8 周 | 通过安全合规审计 | TOTP 2FA + OAuth + 分布式限流 + 加密审计 |
-| **M4 · 协作平台** | 第 12 周 | 团队协作与多租户 | 实时协作 + 精细权限 + 多租户隔离 |
-| **M5 · 开放生态** | 第 16 周+ | 平台化与生态建设 | 开放 API + SDK + 插件市场 + 知识图谱 + 多模态 |
+| **M3 · 企业级安全** ✅ | 第 8 周 | 通过安全合规审计 | TOTP 2FA + 分布式限流 + 加密审计（⏳ OAuth 未实现，见 P3-2） |
+| **M4 · 协作平台** ✅ | 第 12 周 | 团队协作与多租户 | 实时协作 + 精细权限 + 多租户隔离 |
+| **M5 · 开放生态** ⏳ 部分完成 | 第 16 周+ | 平台化与生态建设 | 开放 API + SDK + 插件市场 + 知识图谱 + 多模态（⏳ VS Code 扩展 / Notion 同步未实现，见 P7-2） |
 
 ---
 
