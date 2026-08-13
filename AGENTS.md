@@ -99,6 +99,7 @@ When adding a new external integration, follow the same shape: env check -> real
 
 ## Conventions
 
+- **技术选型原则：不造重复轮子** —— 优先采用成熟、维护活跃且与当前技术栈（Next 16 / React 19 / Node 22 / Edge runtime）兼容的现成框架与库（例：Auth.js v5 做 OAuth、BullMQ 做队列、Prisma 做持久化、Radix UI 做无障碍原语、pino 做日志、pdf-parse/mammoth/xlsx 做解析、swagger-ui-dist 做 API 文档）。**只有「没有合适的现成方案」或「现成方案与项目约束冲突」（兼容性风险、依赖过重、集成成本高于自研）时才自研**，且自研必须在 ROADMAP / 设计说明注明替代对象与理由（既有案例：i18n 自研替代 next-intl——其处于 Next 16.3 API 迁移窗口；监控自研替代 OTel/Sentry SDK——与 Edge proxy 集成成本高；JWT/PBKDF2/TOTP/AES 自研——安全基元用 crypto 自带实现更轻）。选型流程：先调研成熟方案 → 验证与 Next 16/Edge 兼容 → 确认不适用再自研，不要凭「零依赖惯例」默认造轮子。
 - **TypeScript strict**, path alias `@/*` -> `./src/*`. No `as any` / `@ts-ignore` in app code (the `as unknown as` casts in `persist.ts`/`hydrate.ts` are a known smell for models not in the generated client types - match the existing pattern there rather than introducing `as any`).
 - App Router under `src/app/`: route groups `(app)` (AppShell-wrapped workspace), `(auth)` (login/register/verify), plus top-level `api/`, `privacy/`, `terms/`, `maintenance/`.
 - RBAC roles: `OWNER` / `ADMIN` / `EDITOR` / `VIEWER`. Guard via `src/lib/auth/guard.ts`. Self-registration defaults to `EDITOR`.
