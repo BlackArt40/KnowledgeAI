@@ -1,8 +1,9 @@
 // @ts-nocheck
-// P5-3 acceptance: ChatMarkdown renderer (code blocks with syntax highlight +
-// copy button, tables, mermaid chip flow, [n] citation chips). Renders the
-// component server-side via react-dom/server (already a dependency) and
-// asserts on the produced HTML - deterministic, no browser needed.
+// P5-3 acceptance: ChatMarkdown renderer (react-markdown + rehype-highlight:
+// code blocks with highlight.js classes + copy button, GFM tables, mermaid
+// chip flow, [n] citation chips). Renders the component server-side via
+// react-dom/server (already a dependency) and asserts on the produced HTML -
+// deterministic, no browser needed.
 // Run: npx tsx scripts/smoke/test-chat-markdown.tsx
 
 import { renderToString } from "react-dom/server";
@@ -22,10 +23,10 @@ async function main() {
   const codeHtml = renderToString(<LocaleProvider serverLocale="zh-CN"><ChatMarkdown text={codeMd} /></LocaleProvider>);
   check("code: <pre> rendered", codeHtml.includes("<pre"), "");
   check("code: language label shown", codeHtml.includes("js"), "");
-  check("code: keyword token highlighted", codeHtml.includes("tok-kw"), "");
-  check("code: string token highlighted", codeHtml.includes("tok-str"), "");
-  check("code: comment token highlighted", codeHtml.includes("tok-com"), "");
-  check("code: number token highlighted", codeHtml.includes("tok-num"), "");
+  check("code: keyword token highlighted", codeHtml.includes("hljs-keyword"), "");
+  check("code: string token highlighted", codeHtml.includes("hljs-string"), "");
+  check("code: comment token highlighted", codeHtml.includes("hljs-comment"), "");
+  check("code: number token highlighted", codeHtml.includes("hljs-number"), "");
   // The copy action lives in an onClick handler (not serialized by
   // renderToString) - assert the rendered UI + handler binding separately.
   check("code: copy button present", codeHtml.includes('aria-label="复制代码"'), "");
