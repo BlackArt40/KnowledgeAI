@@ -12,7 +12,7 @@
 
 import { generateText, streamText, embed, embedMany, type ModelMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { embed as localEmbed, cosine } from "@/lib/rag/embeddings";
+import { embed as localEmbed, cosine } from "@/lib/llm/embeddings";
 import { getCurrentUserId } from "@/lib/models/context";
 import { recordLlm } from "@/lib/obs/metrics";
 import { traceBegin, traceEnd } from "@/lib/obs/trace";
@@ -131,21 +131,20 @@ export async function embedText(text: string): Promise<Float32Array> {
   const cfg = await resolveEmbeddingConfig();
   if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return localEmbed(text);
 
-  const span = traceBegin("llm.embed", "llm", { model: cfg.embeddingModel });
-  const start = Date.now();
+  const span = beginLlmSpan("llm.embed", cfg.embeddingModel);
+  span.ctx.chars = text.length;
   try {
     const { embedding } = await embed({
       model: openai(cfg).embedding(cfg.embeddingModel),
       value: text,
     });
-    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length });
     return new Float32Array(embedding);
   } catch (err) {
+    span.ctx.error = err;
     log.error({ err, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] embedding failed");
-    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: text.length, error: true });
     return localEmbed(text); // graceful fallback
   } finally {
-    traceEnd(span);
+    span.finish();
   }
 }
 
@@ -153,21 +152,20 @@ export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
   const cfg = await resolveEmbeddingConfig();
   if (!cfg || !cfg.embeddingModel || cfg.embeddingModel === "local") return texts.map((t) => localEmbed(t));
 
-  const span = traceBegin("llm.embed.batch", "llm", { model: cfg.embeddingModel, n: texts.length });
-  const start = Date.now();
+  const span = beginLlmSpan("llm.embed.batch", cfg.embeddingModel, { n: texts.length });
+  span.ctx.chars = texts.join("").length;
   try {
     const { embeddings } = await embedMany({
       model: openai(cfg).embedding(cfg.embeddingModel),
       values: texts,
     });
-    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length });
     return embeddings.map((e) => new Float32Array(e));
   } catch (err) {
+    span.ctx.error = err;
     log.error({ err, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] batch embedding failed");
-    recordLlm({ model: cfg.embeddingModel, durationMs: Date.now() - start, chars: texts.join("").length, error: true });
     return texts.map((t) => localEmbed(t));
   } finally {
-    traceEnd(span);
+    span.finish();
   }
 }
 
@@ -183,17 +181,45 @@ function isHttpError(err: unknown): err is { statusCode: number } {
   return typeof (err as { statusCode?: unknown })?.statusCode === "number";
 }
 
+/**
+ * Shared LLM-call lifecycle: trace span + timing + usage/error recording.
+ * `ctx` accumulates usage/chars/error during the call; `finish()` records the
+ * metric and closes the span exactly once (call it in `finally`). Keeps the
+ * sync (chatComplete) and streaming (chatStream) paths from duplicating the
+ * same bookkeeping.
+ */
+interface LlmSpan {
+  ctx: { usage: LlmUsage | undefined; chars: number; error: unknown };
+  finish: () => void;
+}
+
+function beginLlmSpan(spanName: string, model: string, meta: Record<string, unknown> = {}): LlmSpan {
+  const span = traceBegin(spanName, "llm", { model, ...meta });
+  const start = Date.now();
+  const ctx: LlmSpan["ctx"] = { usage: undefined, chars: 0, error: undefined };
+  return {
+    ctx,
+    finish: () => {
+      const error = ctx.error;
+      recordLlm({
+        model,
+        durationMs: Date.now() - start,
+        promptTokens: ctx.usage?.prompt_tokens,
+        completionTokens: ctx.usage?.completion_tokens,
+        chars: ctx.chars,
+        error: !!error,
+      });
+      traceEnd(span, error);
+    },
+  };
+}
+
 export async function chatComplete(
   messages: ChatMessage[],
   opts?: ChatOptions
 ): Promise<string> {
   const cfg = await resolveChatConfig();
-  const model = cfg?.chatModel ?? "demo";
-  const span = traceBegin("llm.chat", "llm", { model });
-  const start = Date.now();
-  let error: unknown;
-  let usage: LlmUsage | undefined;
-  let chars = 0;
+  const span = beginLlmSpan("llm.chat", cfg?.chatModel ?? "demo");
   try {
     if (!cfg) return ""; // demo mode (recorded below as a demo call)
 
@@ -206,29 +232,21 @@ export async function chatComplete(
       allowSystemInMessages: true,
     });
     const text = result.text;
-    usage = {
+    span.ctx.usage = {
       prompt_tokens: result.usage?.inputTokens,
       completion_tokens: result.usage?.outputTokens,
     };
-    chars = text.length;
+    span.ctx.chars = text.length;
     return text;
   } catch (err) {
-    error = err;
+    span.ctx.error = err;
     if (isHttpError(err)) {
       log.error({ status: err.statusCode, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] chat failed");
       return "";
     }
     throw err;
   } finally {
-    recordLlm({
-      model,
-      durationMs: Date.now() - start,
-      promptTokens: usage?.prompt_tokens,
-      completionTokens: usage?.completion_tokens,
-      chars,
-      error: !!error,
-    });
-    traceEnd(span, error);
+    span.finish();
   }
 }
 
@@ -237,12 +255,7 @@ export async function* chatStream(
   opts?: ChatOptions
 ): AsyncGenerator<string> {
   const cfg = await resolveChatConfig();
-  const model = cfg?.chatModel ?? "demo";
-  const span = traceBegin("llm.chat.stream", "llm", { model });
-  const start = Date.now();
-  let error: unknown;
-  let usage: LlmUsage | undefined;
-  let chars = 0;
+  const span = beginLlmSpan("llm.chat.stream", cfg?.chatModel ?? "demo");
   try {
     if (!cfg) return;
 
@@ -257,31 +270,23 @@ export async function* chatStream(
     // textStream is an async iterable of deltas; usage resolves when the
     // stream finishes.
     for await (const delta of result.textStream) {
-      chars += delta.length;
+      span.ctx.chars += delta.length;
       yield delta;
     }
     const u = await result.usage;
-    usage = {
+    span.ctx.usage = {
       prompt_tokens: u?.inputTokens,
       completion_tokens: u?.outputTokens,
     };
   } catch (err) {
-    error = err;
+    span.ctx.error = err;
     if (isHttpError(err)) {
       log.error({ status: err.statusCode, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] chat stream failed");
       return;
     }
     throw err;
   } finally {
-    recordLlm({
-      model,
-      durationMs: Date.now() - start,
-      promptTokens: usage?.prompt_tokens,
-      completionTokens: usage?.completion_tokens,
-      chars,
-      error: !!error,
-    });
-    traceEnd(span, error);
+    span.finish();
   }
 }
 

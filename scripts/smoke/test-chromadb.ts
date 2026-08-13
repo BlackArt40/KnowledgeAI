@@ -3,7 +3,7 @@
 // Requires: ChromaDB running on localhost:8000
 // Usage: VECTOR_STORE=chromadb npx tsx scripts/test-chromadb.ts
 
-import { embed } from "../../src/lib/rag/embeddings";
+import { embed } from "../../src/lib/llm/embeddings";
 
 async function main() {
   process.env.VECTOR_STORE = "chromadb";

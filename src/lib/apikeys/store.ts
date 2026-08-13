@@ -1,6 +1,6 @@
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
-import { encryptToString, decryptFromString, isEncrypted } from "@/lib/security/crypto";
+import { encryptToString, decryptFromString, isEncrypted } from "@/lib/crypto";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };

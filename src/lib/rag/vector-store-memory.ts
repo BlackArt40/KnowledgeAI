@@ -5,7 +5,7 @@
 // Uses brute-force cosine similarity - fine for small datasets (< 50k chunks).
 // ---------------------------------------------------------------------------
 
-import { cosine } from "./embeddings";
+import { cosine } from "@/lib/llm/embeddings";
 import type { VectorStore, SearchResult } from "./vector-store-interface";
 
 interface StoredChunk {

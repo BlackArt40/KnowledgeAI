@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getKb, listDocuments, updateKbSettings, deleteKb, canViewDoc } from "@/lib/kb/store";
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
-import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { recordAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";

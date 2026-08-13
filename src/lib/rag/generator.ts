@@ -1,4 +1,4 @@
-import { embed, cosine } from "./embeddings";
+import { embed, cosine } from "@/lib/llm/embeddings";
 import { chatComplete, chatStream, isLLMEnabled } from "@/lib/llm/provider";
 import type { ChatImage, ChatMessage as LlmChatMessage } from "@/lib/llm/types";
 import { recordLlm } from "@/lib/obs/metrics";

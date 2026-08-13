@@ -1,4 +1,4 @@
-// P6-3 unit tests: rag/embeddings (pure deterministic hashed embeddings).
+// P6-3 unit tests: llm/embeddings (pure deterministic hashed embeddings).
 import { describe, it, expect } from "vitest";
 import { embed, cosine, DIM } from "./embeddings";
 

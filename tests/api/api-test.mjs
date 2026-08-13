@@ -5,8 +5,8 @@
 // ===========================================================================
 
 import fs from "fs";
+import { login, api, BASE, AUTH } from "../helpers.mjs";
 
-const BASE = "http://localhost:3000";
 const results = [];
 let passCount = 0, failCount = 0;
 
@@ -17,24 +17,12 @@ function log(name, method, path, status, ok, detail = "") {
   console.log(`${icon} ${method} ${path} -> ${status} ${detail ? "| " + detail : ""}`);
 }
 
-// P6-3: API routes require auth (getRequestUser -> 401 without a session).
-// All suites log in first with a demo account and attach kai-token.
-let AUTH = null;
-async function login(email = "owner@knowledgeai.dev", password = "password123") {
-  const res = await fetch(`${BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (data.token) AUTH = { Cookie: `kai-token=${data.token}` };
-  return !!data.token;
-}
+// P6-3: API routes require auth - login()/api() live in ./helpers.mjs.
 
 async function req(method, path, body) {
-  const opts = { method, headers: { ...(AUTH || {}) } };
-  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
-  const res = await fetch(`${BASE}${path}`, opts);
+  const opts = { method };
+  if (body) { opts.headers = { "Content-Type": "application/json" }; opts.body = JSON.stringify(body); }
+  const res = await api(path, opts);
   let data = null;
   try { data = await res.json(); } catch {}
   return { status: res.status, data, headers: res.headers };

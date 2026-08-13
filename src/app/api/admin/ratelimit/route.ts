@@ -3,7 +3,7 @@ import {
   getRateLimitLimits,
   isDistributedRateLimit,
   rateLimitStats,
-} from "@/lib/security/rate-limit";
+} from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 

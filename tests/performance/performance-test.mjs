@@ -5,29 +5,17 @@
 // ===========================================================================
 
 import fs from "fs";
+import { login, api, BASE, AUTH } from "../helpers.mjs";
 
-const BASE = "http://localhost:3000";
 const benchmarks = [];
 
-// P6-3: API routes require auth (getRequestUser -> 401 without a session).
-// All suites log in first with a demo account and attach kai-token.
-let AUTH = null;
-async function login(email = "owner@knowledgeai.dev", password = "password123") {
-  const res = await fetch(`${BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (data.token) AUTH = { Cookie: `kai-token=${data.token}` };
-  return !!data.token;
-}
+// P6-3: API routes require auth - login()/AUTH/api() live in ./helpers.mjs.
 
 async function timedReq(method, path, body) {
-  const opts = { method, headers: { ...(AUTH || {}) } };
-  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const opts = { method };
+  if (body) { opts.headers = { "Content-Type": "application/json" }; opts.body = JSON.stringify(body); }
   const start = performance.now();
-  const res = await fetch(`${BASE}${path}`, opts);
+  const res = await api(path, opts);
   const elapsed = performance.now() - start;
   let size = 0;
   try { const text = await res.text(); size = text.length; } catch {}

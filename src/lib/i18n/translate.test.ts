@@ -4,7 +4,12 @@
 // their placeholder (the n8n `{{ $json.question }}` templates rely on it),
 // and {count} pluralization degrades to the base key (zh has no plurals).
 import { describe, it, expect } from "vitest";
-import { normalizeLocale, t, getI18nInstance, MESSAGES, type Locale } from "./translate";
+import { normalizeLocale, getI18nInstance, type Locale } from "./translate";
+
+/** Test helper mirroring the old `t(locale, key, vars)` entry point. */
+function t(locale: Locale, key: string, vars?: Record<string, string | number>): string {
+  return getI18nInstance().getFixedT(locale)(key, vars);
+}
 
 describe("normalizeLocale", () => {
   it("coerces to supported locales (default zh-CN)", () => {
@@ -19,7 +24,7 @@ describe("normalizeLocale", () => {
 describe("translation contract (i18next adapter)", () => {
   it("resolves dotted keys against the nested message packs", () => {
     expect(t("zh-CN", "common.save")).toBe("保存");
-    expect(t("en", "common.save")).toBe((MESSAGES.en as { common: { save: string } }).common.save);
+    expect(t("en", "common.save")).toBe("Save");
   });
 
   it("interpolates {var} placeholders", () => {
@@ -60,6 +65,6 @@ describe("translation contract (i18next adapter)", () => {
 
   it("normalizeLocale is the single source of truth for locale typing", () => {
     const l: Locale = normalizeLocale("en");
-    expect(t(l, "common.save")).toBe((MESSAGES.en as { common: { save: string } }).common.save);
+    expect(t(l, "common.save")).toBe("Save");
   });
 });

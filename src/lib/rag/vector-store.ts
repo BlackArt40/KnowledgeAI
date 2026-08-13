@@ -8,7 +8,7 @@
 // All operations are async to support both sync (memory) and async (DB) backends.
 // ---------------------------------------------------------------------------
 
-import { embed } from "./embeddings";
+import { embed } from "@/lib/llm/embeddings";
 import { MemoryVectorStore } from "./vector-store-memory";
 import { PgVectorStore } from "./vector-store-pgvector";
 import { ChromaVectorStore } from "./vector-store-chromadb";

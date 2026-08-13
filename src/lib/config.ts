@@ -8,7 +8,7 @@ import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
-import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/security/rate-limit";
+import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/rate-limit";
 import { getLogLevel, isLokiEnabled, lokiUrl } from "@/lib/obs/log";
 
 export interface ProviderStatus {

@@ -2,7 +2,7 @@ import { getKb } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { subscribe } from "@/lib/realtime/bus";
-import { kbRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 

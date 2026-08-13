@@ -5,10 +5,10 @@
 // ---------------------------------------------------------------------------
 
 import crypto from "crypto";
-import type { Role } from "@/lib/team/types";
+import type { Role } from "@/lib/roles";
 import { persistUser } from "@/lib/db/persist";
 import { hashPassword, verifyPassword } from "@/lib/auth/session";
-import { ROLE_LABEL, ROLE_DESC } from "@/lib/team/types";
+import { ROLE_LABEL, ROLE_DESC } from "@/lib/roles";
 
 export interface User {
   id: string;
