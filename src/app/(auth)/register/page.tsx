@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n/provider";
+import { oauthSignIn } from "@/lib/auth/oauth-signin";
 
 import * as React from "react";
 import Link from "next/link";
@@ -22,6 +23,16 @@ export default function RegisterPage() {
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  // P3-2: configured OAuth providers (Auth.js). OAuth sign-up goes through
+  // the same bridge as login - a new identity auto-creates the account.
+  const [oauthProviders, setOauthProviders] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((p: Record<string, unknown>) => setOauthProviders(Object.keys(p)))
+      .catch(() => setOauthProviders([]));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,22 +68,30 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <div className="grid gap-3">
-        <Button variant="outline" className="h-11">
-          <Google className="h-4 w-4" />
-          使用 Google 继续
-        </Button>
-        <Button variant="outline" className="h-11">
-          <Github className="h-4 w-4" />
-          使用 GitHub 继续
-        </Button>
-      </div>
+      {oauthProviders.length > 0 && (
+        <div className="grid gap-3">
+          {oauthProviders.includes("google") && (
+            <Button variant="outline" className="h-11" onClick={() => void oauthSignIn({ provider: "google" })}>
+              <Google className="h-4 w-4" />
+              {t("page.register.s12")}
+            </Button>
+          )}
+          {oauthProviders.includes("github") && (
+            <Button variant="outline" className="h-11" onClick={() => void oauthSignIn({ provider: "github" })}>
+              <Github className="h-4 w-4" />
+              {t("page.register.s13")}
+            </Button>
+          )}
+        </div>
+      )}
 
-      <div className="my-6 flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">{t("page.register.s1")}</span>
-        <Separator className="flex-1" />
-      </div>
+      {oauthProviders.length > 0 && (
+        <div className="my-6 flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">{t("page.register.s1")}</span>
+          <Separator className="flex-1" />
+        </div>
+      )}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">

@@ -337,7 +337,15 @@
       "s70": "Data for model training",
       "s71": "Allow desensitized data to improve AI models",
       "s72": "Appearance",
-      "langHint": "UI language, applies immediately."
+      "langHint": "UI language, applies immediately.",
+      "s73": "Social accounts",
+      "s74": "Link Google / GitHub for one-click sign-in; providers bound here are attached to your current account",
+      "s75": "Linked",
+      "s76": "Unlink",
+      "s77": "Link",
+      "s78": "Unlink social account",
+      "s79": "Unlink {provider}? After unlinking you must sign in with another method (email/password or another provider)",
+      "s80": "Operation failed, please try again"
     },
     "chat": {
       "s0": "Conversations",
@@ -605,7 +613,8 @@
       "s25": "Loading…",
       "s26": "New",
       "s27": "Monitoring",
-      "s28": "Developer"
+      "s28": "Developer",
+      "s29": "Account"
     },
     "monitoring": {
       "s0": "Observability",
@@ -835,7 +844,12 @@
       "s17": "Hide password",
       "s18": "Show password",
       "s19": "Signing in…",
-      "s20": "Sign in"
+      "s20": "Sign in",
+      "s21": "Continue with Google",
+      "s22": "Continue with GitHub",
+      "s23": "Social login failed. Please try again or use email login",
+      "s24": "This social account is already linked to another user",
+      "s25": "Social login is not configured yet - please use email login"
     },
     "register": {
       "s0": "Create account",
@@ -849,7 +863,9 @@
       "s8": "at least 8 characters",
       "s9": "Hide password",
       "s10": "Show password",
-      "s11": "Creating…"
+      "s11": "Creating…",
+      "s12": "Continue with Google",
+      "s13": "Continue with GitHub"
     },
     "2fa-enroll": {
       "s0": "Set up two-factor authentication",
@@ -1026,7 +1042,20 @@
       "s70": "POST {origin}/api/v1/chat\nHeaders: { Authorization: \"Bearer kai_sk_...\" }\nBody:    { \"kbId\": \"kb_xxx\", \"query\": \"{{ $json.question }}\" }\n→ returns text/event-stream - aggregate with a \"Wait for response\" node",
       "s71": "What formats are supported?",
       "s72": "Production callback",
-      "s73": "Copy to any website"
+      "s73": "Copy to any website",
+      "s81": "Document sync (Notion / Confluence)",
+      "s82": "Import documents from external platforms into a knowledge base (each page becomes a searchable document; duplicate names are skipped)",
+      "s83": "Sync",
+      "s84": "Database ID (e.g. 8f3a…)",
+      "s85": "Space key (e.g. DEV)",
+      "s86": "Please enter a Notion database ID",
+      "s87": "Please enter a Confluence space key",
+      "s88": "Sync failed - check your connection config",
+      "s89": "sync finished",
+      "s90": "imported",
+      "s91": "skipped",
+      "s92": "failed",
+      "s93": "Notion requires NOTION_TOKEN (or a request-body token); Confluence requires CONFLUENCE_BASE_URL / EMAIL / TOKEN env vars"
     },
     "knowledge-graph": {
       "s0": "Back to KB",

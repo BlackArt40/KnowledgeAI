@@ -14,7 +14,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  passwordHash: string;
+  passwordHash: string | null;
   role: Role;
   plan: "free" | "pro" | "enterprise";
   status: "active" | "banned";
@@ -22,6 +22,10 @@ export interface User {
   lastLoginAt: number | null;
   /** P5-4: preferred UI language ("zh-CN" | "en"), persisted to the DB. */
   locale?: string;
+  /** P3-2: OAuth provider links (provider -> providerAccountId), e.g.
+   *  { google: "1177...", github: "4821..." }. OAuth-only accounts have
+   *  passwordHash null. Persisted via persistUser / hydrateUser. */
+  oauthLinks?: Record<string, string>;
 }
 
 // Demo password for all seed accounts
@@ -96,9 +100,12 @@ export function getUserById(id: string): User | null {
 export async function verifyCredentials(email: string, password: string): Promise<User | null> {
   const user = findUserByEmail(email);
   if (!user) return null;
-  if (!(await passwordMatches(password, user.passwordHash))) return null;
+  // OAuth-only accounts have no password - they can't use password login.
+  const hash = user.passwordHash;
+  if (!hash) return null;
+  if (!(await passwordMatches(password, hash))) return null;
   // P3-4: migrate legacy SHA-256 hashes to PBKDF2 on successful login.
-  if (!user.passwordHash.startsWith("pbkdf2$")) {
+  if (!hash.startsWith("pbkdf2$")) {
     user.passwordHash = await hashPassword(password);
     void persistUser(user);
   }
@@ -123,6 +130,38 @@ export async function createUser(name: string, email: string, password: string, 
     status: "active",
     createdAt: Date.now(),
     lastLoginAt: null,
+  };
+  s.users.set(user.id, user);
+  s.emailIndex.set(email.toLowerCase(), user.id);
+  void persistUser(user);
+  return user;
+}
+
+/** P3-2: create a passwordless user from an OAuth identity (Google/GitHub).
+ *  `passwordHash` stays null; login is only possible via the linked provider
+ *  (or by setting a password later through the profile settings). */
+export async function createOAuthUser(
+  name: string,
+  email: string,
+  provider: string,
+  providerUserId: string
+): Promise<User | { error: string }> {
+  seed();
+  const s = store();
+  if (s.emailIndex.has(email.toLowerCase())) {
+    return { error: "该邮箱已被注册" };
+  }
+  const user: User = {
+    id: uid("usr"),
+    name,
+    email,
+    passwordHash: null,
+    role: "editor",
+    plan: "free",
+    status: "active",
+    createdAt: Date.now(),
+    lastLoginAt: null,
+    oauthLinks: { [provider]: providerUserId },
   };
   s.users.set(user.id, user);
   s.emailIndex.set(email.toLowerCase(), user.id);
@@ -162,9 +201,14 @@ export async function updateUser(
   }
 
   if (input.newPassword) {
-    if (!input.currentPassword) return { error: "修改密码需提供当前密码" };
-    if (!(await passwordMatches(input.currentPassword, user.passwordHash))) {
-      return { error: "当前密码不正确" };
+    // P3-2: OAuth-only accounts have no password yet - setting one does not
+    // require a current password (it's an initial password, not a change).
+    const current = input.currentPassword;
+    if (user.passwordHash) {
+      if (!current) return { error: "修改密码需提供当前密码" };
+      if (!(await passwordMatches(current, user.passwordHash))) {
+        return { error: "当前密码不正确" };
+      }
     }
     if (input.newPassword.length < 8) return { error: "新密码至少 8 位" };
     user.passwordHash = await hashPassword(input.newPassword);

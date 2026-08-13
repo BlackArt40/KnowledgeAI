@@ -1,10 +1,11 @@
 "use client";
 
 // P7-2 集成市场 tab: Embeddable Widget 片段生成 + 群机器人管理 + Chrome
-// 扩展 + n8n/Zapier 文档。所有文案走 t()（page.developer.s44+）。
+// 扩展 + n8n/Zapier 文档 + Notion/Confluence 文档同步。所有文案走 t()
+// （page.developer.s44+）。
 
 import * as React from "react";
-import { Plus, Trash2, Copy, Check, Power, Bot, Globe, Puzzle, Workflow } from "lucide-react";
+import { Plus, Trash2, Copy, Check, Power, Bot, Globe, Puzzle, Workflow, RefreshCw, FileDown, Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,19 @@ export function DeveloperIntegrations() {
   const [botKb, setBotKb] = React.useState("");
   const [botToken, setBotToken] = React.useState<{ token: string; id: string } | null>(null);
   const [error, setError] = React.useState("");
+
+  // P7-2: Notion / Confluence sync form
+  const [syncKb, setSyncKb] = React.useState("");
+  const [notionDb, setNotionDb] = React.useState("");
+  const [confSpace, setConfSpace] = React.useState("");
+  const [syncing, setSyncing] = React.useState<"notion" | "confluence" | null>(null);
+  const [syncResult, setSyncResult] = React.useState<{
+    source: "notion" | "confluence";
+    imported: number;
+    skipped: number;
+    failed: number;
+    error?: string;
+  } | null>(null);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -112,6 +126,44 @@ export function DeveloperIntegrations() {
   async function deleteBot(id: string) {
     await fetch(`/api/v1/integrations/bot/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function runSync(source: "notion" | "confluence") {
+    if (!syncKb) {
+      setSyncResult({ source, imported: 0, skipped: 0, failed: 0, error: t("page.developer.s59") });
+      return;
+    }
+    if (source === "notion" && !notionDb.trim()) {
+      setSyncResult({ source, imported: 0, skipped: 0, failed: 0, error: t("page.developer.s86") });
+      return;
+    }
+    if (source === "confluence" && !confSpace.trim()) {
+      setSyncResult({ source, imported: 0, skipped: 0, failed: 0, error: t("page.developer.s87") });
+      return;
+    }
+    setSyncing(source);
+    setSyncResult(null);
+    try {
+      const res = await fetch(`/api/v1/integrations/sync/${source}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          source === "notion"
+            ? { kbId: syncKb, databaseId: notionDb.trim() }
+            : { kbId: syncKb, spaceKey: confSpace.trim() }
+        ),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncResult({ source, imported: 0, skipped: 0, failed: 0, error: data.error ?? t("page.developer.s88") });
+        return;
+      }
+      setSyncResult({ source, imported: data.imported ?? 0, skipped: data.skipped ?? 0, failed: data.failed ?? 0 });
+    } catch {
+      setSyncResult({ source, imported: 0, skipped: 0, failed: 0, error: t("page.developer.s88") });
+    } finally {
+      setSyncing(null);
+    }
   }
 
   const widgetSnippet = `<!-- ${t("page.developer.s73")} -->
@@ -326,6 +378,86 @@ export function DeveloperIntegrations() {
             </pre>
           </div>
           <p className="text-xs text-muted-foreground">{t("page.developer.s66")}</p>
+        </CardContent>
+      </Card>
+
+      {/* ── Notion / Confluence 文档同步 ──────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" />
+            {t("page.developer.s81")}
+          </CardTitle>
+          <CardDescription>{t("page.developer.s82")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>{t("page.developer.s47")}</Label>
+              <Select value={syncKb} onValueChange={setSyncKb}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("page.developer.s48")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {kbs.map((kb) => (
+                    <SelectItem key={kb.id} value={kb.id}>{kb.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Notion</Label>
+              <Input
+                value={notionDb}
+                onChange={(e) => setNotionDb(e.target.value)}
+                placeholder={t("page.developer.s84")}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Confluence</Label>
+              <Input
+                value={confSpace}
+                onChange={(e) => setConfSpace(e.target.value)}
+                placeholder={t("page.developer.s85")}
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => runSync("notion")}
+                disabled={syncing !== null}
+              >
+                {syncing === "notion" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+                {t("page.developer.s83")} Notion
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => runSync("confluence")}
+                disabled={syncing !== null}
+              >
+                {syncing === "confluence" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
+                {t("page.developer.s83")} Confluence
+              </Button>
+            </div>
+          </div>
+          {syncResult && (
+            <p className="text-sm">
+              {syncResult.error ? (
+                <span className="text-destructive">{syncResult.error}</span>
+              ) : (
+                <span className="text-muted-foreground">
+                  {syncResult.source === "notion" ? "Notion" : "Confluence"} {t("page.developer.s89")}：
+                  {t("page.developer.s90")} {syncResult.imported} / {t("page.developer.s91")} {syncResult.skipped} / {t("page.developer.s92")} {syncResult.failed}
+                </span>
+              )}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">{t("page.developer.s93")}</p>
         </CardContent>
       </Card>
     </div>

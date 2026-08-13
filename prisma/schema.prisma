@@ -28,6 +28,10 @@ model User {
   updatedAt        DateTime   @updatedAt
   // P5-4: preferred UI language ("zh-CN" | "en")
   locale           String     @default("zh-CN")
+  // P3-2: social login links, JSON map provider -> providerAccountId
+  // (e.g. {"google":"1177...","github":"4821..."}). Null when the user has
+  // no linked OAuth identity. OAuth-only accounts keep passwordHash null.
+  oauthLinks       Json?
 
   teamMemberships TeamMember[]
   apiKeys         ApiKey[]

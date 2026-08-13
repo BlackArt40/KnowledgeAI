@@ -109,6 +109,8 @@ function hydrateUser(u: PrismaUser): void {
     lastLoginAt: null as number | null,
     // P5-4: UI language preference.
     locale: (u as unknown as { locale?: string | null }).locale ?? "zh-CN",
+    // P3-2: OAuth provider links (provider -> providerAccountId).
+    oauthLinks: (u as unknown as { oauthLinks?: Record<string, string> | null }).oauthLinks ?? undefined,
   };
   store.users.set(u.id, user);
   store.emailIndex.set(u.email.toLowerCase(), u.id);

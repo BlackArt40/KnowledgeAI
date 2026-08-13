@@ -20,7 +20,7 @@ export async function persistUser(user: {
   id: string;
   email: string;
   name: string;
-  passwordHash: string;
+  passwordHash: string | null;
   role: string;
   status: string;
   plan: string;
@@ -28,6 +28,8 @@ export async function persistUser(user: {
   lastLoginAt: number | null;
   /** P5-4: UI language preference. */
   locale?: string;
+  /** P3-2: OAuth provider links (provider -> providerAccountId). */
+  oauthLinks?: Record<string, string>;
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -41,6 +43,8 @@ export async function persistUser(user: {
       role: user.role.toUpperCase(),
       status: user.status.toUpperCase(),
       locale: user.locale ?? "zh-CN",
+      // OAuth links: JSONB column; null keeps rows backwards compatible.
+      oauthLinks: user.oauthLinks ?? null,
     };
     if (existing) {
       await db.user.update({ where: { id: user.id }, data });
