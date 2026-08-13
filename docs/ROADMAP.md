@@ -4,9 +4,9 @@
 >
 > **更新日期**：2026-08-13
 >
-> **当前状态**：✅ 全部 12 周开发计划完成 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固（P3-2 OAuth 除外）+ P4 协作与多租户 + P5-1 移动端适配 + P5-2 全局搜索 + P5-3 对话体验增强 + P5-4 国际化 + P5-5 暗色模式与主题增强 + P6-1 应用监控 + P6-2 结构化日志 + P6-3 CI/CD 流水线 + P6-4 健康检查与就绪探针 + P7-1 开放 API/SDK + P7-2 集成市场（VS Code / Notion 除外）+ P7-3 知识图谱 + P7-4 多模态 已实施。⏳ 未实现项：**P3-2 OAuth 社交登录**（登录页按钮为装饰，未接入 NextAuth.js）、**P7-2 VS Code 扩展** 与 **Notion/Confluence 同步**（已标注「后续版本」）。
+> **当前状态**：✅ **ROADMAP 全部计划项已完成**。12 周开发计划 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固（含 P3-2 OAuth 社交登录）+ P4 协作与多租户 + P5 体验优化五件套 + P6 可观测性/CI/CD/健康检查 + P7 开放 API/集成市场（含 VS Code 扩展与 Notion/Confluence 同步）/知识图谱/多模态 均已实施并通过验收测试。
 >
-> **最新更新**：2026-08-13 - **全量验收复查**：逐项核对 P0-P7 勾选项并实测验收标准（全部在干净 demo 模式 dev server 上重跑）——P7-1 25/25 + 9/9 + 30/30、P7-2 30/30 + 7/7、P7-3 20/20 + 11/11、P7-4 15/15 + 7/7、P6-4 22/22（含 :3100 坏依赖 503 路径）、P6-3 tsc/lint/vitest（Lines 86.06% / Branches 76.27% 超门槛）/E2E 4/4、P5/P4/P3/P2/P1 全部验收测试复跑通过（rate-limit 47/47 于 :3100 低限额实例、audit-encrypt 45/45、graph-rag 20/20 于干净实例）；3 个未实现项已确认（P3-2 OAuth、P7-2 VS Code/Notion）；顺带清理 kg/store.ts 4 处 lint 未使用变量警告（lint 0 errors / 26 warnings）。注：P0-1/P0-2 外部服务验收（PostgreSQL / pgvector / Chroma / Pinecone）需真实服务环境，由 CI integration job 覆盖，本机未实测。
+> **最新更新**：2026-08-13 - **P3-2 OAuth 社交登录 + P7-2 VS Code 扩展 / Notion·Confluence 同步 完成**：接入 Auth.js v5（next-auth@5.0.0-beta.32，Google + GitHub，Authorization Code + PKCE + CSRF state 全程库处理）——桥接路由 `/api/auth/oauth/bridge` 在 provider dance 后铸造现有 kai-token 会话（OAuth 身份经 `getToken` 读取，登录模式自动建号/邮箱关联，绑定模式保持会话不变）；登录/注册页 OAuth 按钮接真实跳转（`oauthSignIn` 客户端 helper，POST+CSRF——GET signin 在 v5 不支持）+ 按 `/api/auth/providers` 动态显隐 + `?error=` 提示；设置页「社交账号」Card（绑定/解绑，`DELETE /api/auth/oauth/link`，保留 ≥1 登录方式，审计 `auth.oauth_link/unlink`）；`User.oauthLinks Json?` 落库（migration `p3_2_oauth_links`）；**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：选中代码/当前文件提问 + 工作区同步为 KB 文档 + context.secrets 配置）；**Notion/Confluence 同步**（`src/lib/integrations/sync/`：blocks→Markdown 与 HTML→Markdown 转换器 + 按名去重幂等 + 审计 `integration.sync` + 开发者门户两张同步 Card；新增 `POST /api/v1/knowledge-bases/[id]/documents` 文本建文档端点，重名 409）；验收：`test-oauth.ts` 28/28（mock OIDC 授权服务器 + jwks/id_token 签发 + :3100 实例全流程）、`test-sync.ts` 15/15（mock Notion/Confluence + 去重 + 可检索 + 未配置 400）、`test-vscode.ts` 21/21（manifest + ask.js/sync.js 对 live server 全流程）；全量回归 tsc/lint(0 errors)/vitest 覆盖率（Stmts 82.97%/Br 72.92%）/i18n parity/E2E 4/4/P7 既有验收复跑全过。
 
 ---
 
@@ -38,7 +38,7 @@
 | 团队协作 | RBAC 权限矩阵、邀请、审计日志、共享 KB | 🔌 Prisma schema 已定义 |
 | 计费 | 三档套餐、模拟支付、Stripe 适配 | 🔌 Stripe Checkout + Webhook |
 | 管理后台 | 用户管理、KB 监控、系统配置、Provider 状态面板 | — |
-| 安全 | 真实 TOTP 2FA、会话管理、GDPR 导出、AES 加密审计链 | 🔌 OAuth 社交登录未接入（P3-2 未实现，登录页按钮为装饰） |
+| 安全 | 真实 TOTP 2FA、会话管理、GDPR 导出、AES 加密审计链 | 🔌 OAuth 社交登录已接入（Auth.js v5，Google/GitHub） |
 | 通知 | 站内通知收件箱 + 偏好设置 | 🔌 邮件 / Web Push 接入点 |
 | per-user 模型 | AsyncLocalStorage 上下文、用户自带 LLM | ✅ 已实现 |
 
@@ -54,8 +54,8 @@
 | TD-06 | 2FA 为模拟实现，无真实 TOTP | 安全合规不达标 | ✅ 已解决（P3-1 RFC 6238 TOTP + 恢复码） |
 | TD-07 | 通知仅站内，无邮件 / 推送渠道 | 用户触达不足 | 🟡 P2 未排期（对接点预留） |
 | TD-08 | Agent 编排为内存顺序执行，无任务队列 | 长任务阻塞、无法水平扩展 | ✅ 已解决（P0-4 BullMQ + Redis） |
-| TD-09 | OAuth 社交登录未接入（P3-2） | 登录方式单一，影响用户转化 | 🟡 P2 未排期 |
-| TD-10 | VS Code 扩展 / Notion、Confluence 同步未实现（P7-2） | 生态覆盖缺口 | 🔵 P4 后续版本 |
+| TD-09 | OAuth 社交登录未接入（P3-2） | 登录方式单一，影响用户转化 | ✅ 已解决（P3-2 Auth.js v5 双 provider + 桥接 + 绑定/解绑） |
+| TD-10 | VS Code 扩展 / Notion、Confluence 同步未实现（P7-2） | 生态覆盖缺口 | ✅ 已解决（P7-2 扩展 + 同步连接器 + 文档同步 Card） |
 
 ---
 
@@ -303,19 +303,21 @@
 
 ### P3-2 OAuth 社交登录
 
-**现状**：⏳ **未实现**（截至 2026-08-13 全量验收复查确认）。登录页（`src/app/(auth)/login/page.tsx`）有 Google / GitHub 按钮，但为装饰性入口——点击无任何跳转/OAuth 流程；`next-auth` / `better-auth` 未安装；`src/lib/auth/session.ts` 仅以注释保留「🔌 生产环境接入 NextAuth.js」的接入点说明。验收标准（Google/GitHub 一键登录、账号关联、解绑）均未达成。**建议**：后续迭代接入 Auth.js v5（PKCE + state 校验 + 账号绑定），或维持邮箱密码 + 2FA 作为唯一登录方式并移除装饰按钮。
+**现状**：✅ 已完成（2026-08-13）。**接入 Auth.js v5（next-auth@5.0.0-beta.32）**——Google + GitHub 双 provider（Authorization Code + PKCE + CSRF state 全程由库处理，env 门控：`GOOGLE_CLIENT_ID/SECRET`、`GITHUB_CLIENT_ID/SECRET`，未配置时按钮不显示）。**桥接路由 `GET /api/auth/oauth/bridge`**：provider dance 完成后用 `getToken()` 读 Auth.js JWT（jwt callback 携带 `oauthProvider/oauthProviderId` claims）→ `upsertOauthUser`（按 provider 关联 → 按邮箱自动关联已有账号 → 自动创建无密码账号）→ 铸造现有 `kai-token` 会话（登录模式）；已有会话时进入**绑定模式**（设置页「绑定」→ 身份挂到当前用户，会话不变，邮箱冲突 400）。**OAuth 登录跳过应用 2FA**（provider MFA 即足够，文档注明）。**前端**：登录/注册页装饰按钮 → `oauthSignIn` 客户端 helper（POST `/api/auth/signin/{provider}` + CSRF——Auth.js v5 不支持 GET signin）+ `/api/auth/providers` 动态显隐 + `?error=` 友好提示（未配置/取消/绑定冲突）；设置页安全 tab「社交账号」Card（已绑定徽章 + 绑定/解绑，解绑确认 dialog）。**解绑**：`DELETE /api/auth/oauth/link?provider=`（要求保留 ≥1 登录方式：无密码且无其他 provider 时 400）。**审计**：`auth.oauth_login_success/failed`、`auth.oauth_link/link_failed/unlink` 入哈希链。**数据**：`User.oauthLinks Json?`（provider→providerAccountId，migration `p3_2_oauth_links`）+ persist/hydrate 全链路，OAuth-only 账号 `passwordHash` 为 null（可后续设置密码）。**账户安全**：GitHub 隐藏邮箱时回退 `login@users.noreply.github.com`；`AUTH_SECRET` 复用现有密钥。
+
+> **2026-08-13 验收**：`scripts/smoke/test-oauth.ts` 28/28——未配置实例 signin 回落 /login + providers 为空；mock OIDC 授权服务器（discovery + jwks + RS256 id_token + authorize/token/userinfo）+ :3100 实例：signin 302 含 PKCE(S256) 与 redirect_uri、GitHub authorize URL 走 mock issuer（非 github.com）；自动建号（新邮箱）+ oauthLinks 记录 + 重复登录同 userId；邮箱关联（预注册同邮箱 → 同一 userId + provider 绑定）；绑定模式（owner 已登录 → 302 回 /settings?tab=security + 会话不变 + oauthLinks 新增）；解绑（200 + 移除 + 审计可查；OAuth-only 唯一方式 400；未知 provider 400；匿名 401）；审计 oauth_login_success 可查。实现要点（文档注明）：跨 realm URL 陷阱——app 代码构造的 URL 实例在 Next 生产 chunk 与 @auth/core 不同 realm，`new URL(跨realm实例)` 崩溃，故 provider 端点一律传**字符串**（normalizeEndpoint 在库内转 URL）；GitHub 默认 authorization.url 与 token/userinfo 指向真实 github.com，需显式字符串覆盖（Auth.js 用 provider 配置覆盖 discovery 端点）。
 
 **计划**：
-- [ ] 接入 NextAuth.js（Auth.js v5）
-- [ ] Google OAuth 2.0 集成
-- [ ] GitHub OAuth 集成
-- [ ] 账号关联：已有邮箱用户首次 OAuth 登录时绑定
-- [ ] OAuth 状态安全校验（PKCE + state 参数）
+- [x] 接入 NextAuth.js（Auth.js v5）✅（next-auth@5.0.0-beta.32，Google + GitHub，PKCE + CSRF 库处理）
+- [x] Google OAuth 2.0 集成 ✅（env 门控 + `GOOGLE_ISSUER` 覆写测试/代理）
+- [x] GitHub OAuth 集成 ✅（env 门控 + `GITHUB_ISSUER` 覆写 + noreply 邮箱回退）
+- [x] 账号关联：已有邮箱用户首次 OAuth 登录时绑定 ✅（upsertOauthUser 按邮箱关联；设置页绑定模式）
+- [x] OAuth 状态安全校验（PKCE + state 参数）✅（Auth.js 内置 pkce/state checks + CSRF）
 
-**验收标准**（⏳ 未达成）：
-- Google / GitHub 一键登录可用
-- OAuth 用户自动创建 / 关联账号
-- 支持解绑社交账号
+**验收标准**（`scripts/smoke/test-oauth.ts` 28/28）：
+- ✅ Google / GitHub 一键登录可用（真实 OAuth 流程 + mock 授权服务器端到端）
+- ✅ OAuth 用户自动创建 / 关联账号（新邮箱自动建号 + 同邮箱关联 + 设置页绑定）
+- ✅ 支持解绑社交账号（DELETE /api/auth/oauth/link + 审计 + 保留 ≥1 登录方式）
 
 ---
 
@@ -631,19 +633,21 @@
 
 ### P7-2 插件 / 集成市场
 
-**现状**：✅ 部分完成（2026-08-12）。已实现：三平台群机器人（Slack/飞书/钉钉，`POST /api/v1/integrations/bot/m/<token>` + challenge 回显 + token SHA-256 哈希存储）、Chrome 扩展（MV3 右键问答）、Zapier/n8n（v1 API + Webhook 触发）、Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖）、CORS 放行（仅 Header 鉴权）。⏳ **未实现（标注「后续版本」）**：VS Code 扩展（代码库内 RAG 问答）、Notion/Confluence 同步（自动导入文档至知识库）——两项均为 IDE/文档平台深度集成，按 ROADMAP 排期为后续迭代。
+**现状**：✅ 已完成（2026-08-12 ~ 08-13）。已实现：三平台群机器人（Slack/飞书/钉钉，`POST /api/v1/integrations/bot/m/<token>` + challenge 回显 + token SHA-256 哈希存储）、Chrome 扩展（MV3 右键问答）、Zapier/n8n（v1 API + Webhook 触发）、Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖）、CORS 放行（仅 Header 鉴权）、**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：`kai.askSelection` 选中代码提问（editor 右键菜单）/ `kai.askFile` 当前文件提问 / `kai.syncWorkspace` 工作区同步为 KB 文档（忽略 node_modules/dist 等 + 大小上限，走 `POST /api/v1/knowledge-bases/[id]/documents` 重名 409 幂等）/ `kai.configure` context.secrets 配置；SSE 协议在 `ask.js`/`sync.js` 纯 Node 模块，可脱离 VS Code 测试）、**Notion / Confluence 同步**（`src/lib/integrations/sync/`：Notion API v1 blocks→Markdown 转换器（标题/列表/表格/代码/引用，2 层递归）+ Confluence `body.storage` HTML→Markdown 转换器（ac:macro 解包 + 表格管道行）+ 按文档名去重幂等 + 审计 `integration.sync`；路由 `POST /api/v1/integrations/sync/{notion,confluence}`（登录或 API Key `kb:write` + canEditKb + 未配置 400）；开发者门户「文档同步」Card（KB 选择 + databaseId/spaceKey + 结果摘要））。另新增通用文本建文档端点 `POST /api/v1/knowledge-bases/[id]/documents`（body `{name, content}`，`kb:write` scope，同名 409）。
+
+> **2026-08-13 验收**：`scripts/smoke/test-vscode.ts` 21/21——manifest 结构（main/engines/4 命令/文件齐备）+ ask.js SSE 客户端对 live server 全流程（登录→API key chat:read→提问得回答、无效 key 抛错）+ v1 documents 建文档→queue ready→workspace 收集（忽略 node_modules/二进制）→批量同步→重名幂等→全部 ready；`scripts/smoke/test-sync.ts` 15/15——mock Notion(:5090)/Confluence(:5091) + :3100 配置实例：同步 200 + 导入 2+2 + 重跑去重 + 4 文档 queue ready + 同步内容可检索（问答命中导入内容）+ 审计 integration.sync + 缺参 400/KB 404 + 未配置实例 400；转换器单测 `src/lib/integrations/sync/sync.test.ts` 10/10。
 
 **计划**：
 - [x] Slack / 飞书 / 钉钉 机器人集成（`POST /api/v1/integrations/bot/m/<token>`：url_verification challenge、三平台消息解析与回复格式、`x-kai-platform` 覆盖头；token 仅创建时展示、SHA-256 哈希存储）
 - [x] Chrome 扩展（`integrations/chrome-extension/` MV3：右键选中文字 → 结果页问答；设置页存 API Key/KB）
-- [ ] VS Code 扩展：代码库内 RAG 问答（后续版本）
-- [ ] Notion / Confluence 同步：自动导入文档至知识库（后续版本）
+- [x] VS Code 扩展：代码库内 RAG 问答（`integrations/vscode-extension/`：选中代码/文件提问 + 工作区同步为 KB 文档，`kai.*` 四命令，context.secrets 配置）
+- [x] Notion / Confluence 同步：自动导入文档至知识库（`src/lib/integrations/sync/` 转换器 + 去重幂等 + v1 同步路由 + 开发者门户 Card）
 - [x] Zapier / n8n 集成（v1 REST API + Webhook 事件触发即工作流接入，`/developer` 提供 n8n HTTP Request 节点示例）
 - [x] Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖，任意静态站点可独立部署；`/developer` 生成安装片段）
 - [x] CORS：`/api/*` 放行跨域（仅 Header 鉴权，无 Cookie）
 
-**验收标准**（`scripts/smoke/test-integrations.ts` 30/30、`test-widget-ui.mjs` 7/7）：
-- ✅ 至少 3 种集成可用（Widget / 三平台群机器人 / Chrome 扩展 / n8n-Zapier）
+**验收标准**（`scripts/smoke/test-integrations.ts` 30/30、`test-widget-ui.mjs` 7/7、`test-vscode.ts` 21/21、`test-sync.ts` 15/15）：
+- ✅ 至少 5 种集成可用（Widget / 三平台群机器人 / Chrome 扩展 / VS Code 扩展 / n8n-Zapier / Notion-Confluence 同步）
 - ✅ 嵌入式组件可独立部署（单文件自包含无 import；demo.html + 真实浏览器渲染问答实测）
 - ✅ 集成有独立的认证与限流（bot token 401/删除后 404；`integration:<id>` 独立档位，:3100 低限额实例压测 429 且属主额度不受影响）
 
@@ -748,9 +752,9 @@ gantt
 |--------|------|------|----------|
 | **M1 · 生产就绪** ✅ | 第 4 周 | 可部署的生产架构 | DB 持久化 + 向量库 + 异步队列 + S3 存储 |
 | **M2 · 智能增强** ✅ | 第 8 周 | RAG 与 Agent 能力质的飞跃 | 多格式解析 + 混合检索 + LangGraph + 外部数据源 |
-| **M3 · 企业级安全** ✅ | 第 8 周 | 通过安全合规审计 | TOTP 2FA + 分布式限流 + 加密审计（⏳ OAuth 未实现，见 P3-2） |
+| **M3 · 企业级安全** ✅ | 第 8 周 | 通过安全合规审计 | TOTP 2FA + OAuth 社交登录 + 分布式限流 + 加密审计 |
 | **M4 · 协作平台** ✅ | 第 12 周 | 团队协作与多租户 | 实时协作 + 精细权限 + 多租户隔离 |
-| **M5 · 开放生态** ⏳ 部分完成 | 第 16 周+ | 平台化与生态建设 | 开放 API + SDK + 插件市场 + 知识图谱 + 多模态（⏳ VS Code 扩展 / Notion 同步未实现，见 P7-2） |
+| **M5 · 开放生态** ✅ | 第 16 周+ | 平台化与生态建设 | 开放 API + SDK + 插件市场（含 VS Code / Notion·Confluence 同步）+ 知识图谱 + 多模态 |
 
 ---
 
