@@ -41,7 +41,7 @@ docker run -d \
   --name "${BLUE}" \
   --env-file "${ENV_FILE}" \
   -p "${ALT_PORT}:3000" \
-  --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1" \
+  --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1" \
   --health-interval 5s \
   --health-timeout 3s \
   --health-retries 3 \

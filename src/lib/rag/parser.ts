@@ -16,7 +16,8 @@
 
 import zlib from "zlib";
 import type { DocType } from "@/lib/kb/types";
-import { isScannedPdf, ocrScannedPdf, ocrImage } from "./ocr";
+import { isScannedPdf, ocrScannedPdf } from "./ocr";
+import { describeImage } from "./vision";
 import { log } from "@/lib/obs/log";
 
 export interface ParsedDocument {
@@ -45,6 +46,8 @@ export async function parseDocument(
       return parseWord(buf, filename);
     case "image":
       return parseImage(buf);
+    case "subtitle":
+      return parseSubtitle(buf);
     case "other":
       // Try by extension
       return parseByExtension(buf, filename);
@@ -148,11 +151,51 @@ async function parseWord(buf: Buffer, filename: string): Promise<ParsedDocument 
   return null;
 }
 
-// ── Image (OCR via tesseract.js) ─────────────────────────────────────────
+// ── Image (P7-4: OCR + vision description) ───────────────────────────────
 
 async function parseImage(buf: Buffer): Promise<ParsedDocument | null> {
-  const text = await ocrImage(buf);
+  // describeImage: vision-LLM caption when a provider is configured, OCR
+  // otherwise (deterministic demo path) - either way the text is indexed and
+  // the image document becomes retrievable.
+  const desc = await describeImage(buf, "image/png");
+  const text = desc?.text ?? "";
   if (!text || text.length < 10) return null;
+  return { text: text.slice(0, 500_000), title: null };
+}
+
+// ── Subtitle .srt / .vtt (P7-4: 视频字幕提取) ─────────────────────────────
+// Strips cue indexes, timestamps and inline tags - the dialogue text is what
+// gets indexed, so subtitle queries hit the actual spoken content.
+
+function parseSubtitle(buf: Buffer): ParsedDocument | null {
+  const raw = buf.toString("utf-8");
+  if (!raw.trim()) return null;
+
+  // 1. remove inline tags (<i>, <font ...>, {\an8} style markers)
+  const cleaned = raw
+    .replace(/<[^>]+>/g, "")
+    .replace(/\{\\[^}]*\}/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+
+  // 2. strip cue index lines (pure digits)
+  const lines = cleaned
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^\d+$/.test(l));
+
+  // 3. strip timestamp lines (HH:MM:SS,mmm --> ... / WEBVTT header / NOTE)
+  const textLines = lines.filter((l) => {
+    if (/^(WEBVTT|NOTE|Kind:|Language:)/i.test(l)) return false;
+    if (/\d{1,2}:\d{2}:\d{2}[.,]\d{3}\s*-->/.test(l)) return false;
+    if (/\d{1,2}:\d{2}\s*-->/.test(l)) return false;
+    return true;
+  });
+
+  const text = textLines.join("\n").trim();
+  if (text.length < 10) return null;
   return { text: text.slice(0, 500_000), title: null };
 }
 

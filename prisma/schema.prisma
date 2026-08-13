@@ -371,3 +371,73 @@ model SystemConfig {
   required2FARoles String[] @default([])
   updatedAt        DateTime @updatedAt
 }
+
+// ── P7-1: Outgoing webhook subscriptions ─────────────────────────────────
+// User-configured HTTPS endpoints that receive HMAC-SHA256-signed event
+// notifications (kb.ready / agent.completed / usage.alert). Delivery is
+// fire-and-forget via the job queue (webhook-deliver) with retries; `failures`
+// + `lastError` track the dead-letter state. See src/lib/webhooks/.
+model WebhookSubscription {
+  id             String    @id @default(cuid())
+  userId         String
+  workspaceId    String    @default("ws_default")
+  name           String
+  url            String
+  secret         String    @default("")
+  events         String[]
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  lastDeliveryAt DateTime?
+  failures       Int       @default(0)
+  lastError      String?
+
+  @@index([workspaceId])
+}
+
+// ── P7-2: Chat-bot integrations (Slack / 飞书 / 钉钉) ────────────────────
+// One row per bot binding: a KB tied to a platform webhook endpoint. The
+// callback token is stored SHA-256-hashed (never plaintext); each bot has its
+// own rate-limit tier. See src/lib/integrations/bots.ts.
+model BotIntegration {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String   @default("ws_default")
+  name        String
+  platform    String // slack | feishu | dingtalk | test
+  kbId        String
+  kbName      String   @default("")
+  tokenHash   String
+  active      Boolean  @default(true)
+  calls       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
+// ── P7-3: Knowledge graph (entities + relations) ─────────────────────────
+// NER-extracted entities and sentence co-occurrence relations per KB, used by
+// the graph visualization and GraphRAG hybrid retrieval. See src/lib/kg/.
+model KnowledgeEntity {
+  id        String   @id @default(cuid())
+  kbId      String
+  label     String
+  type      String // person | organization | concept | event
+  mentions  Int      @default(1)
+  docIds    String[]
+  createdAt DateTime @default(now())
+
+  @@index([kbId])
+}
+
+model KnowledgeRelation {
+  id        String   @id @default(cuid())
+  kbId      String
+  source    String
+  target    String
+  type      String   @default("co-occurs")
+  weight    Int      @default(1)
+  docIds    String[]
+  createdAt DateTime @default(now())
+
+  @@index([kbId])
+}

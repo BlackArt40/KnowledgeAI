@@ -1,0 +1,85 @@
+# P6-4: Kubernetes 示例清单（健康检查与就绪探针）
+#
+# 用法：替换镜像占位符后 apply。
+#   kubectl apply -f k8s/deployment.yaml
+#
+# 探针语义（与 /api/health* 对应）：
+#   startupProbe  -> 首次启动容错（就绪探针在依赖就绪前允许失败）
+#   livenessProbe -> GET /api/health（进程存活，与依赖无关，恒 200）
+#   readinessProbe-> GET /api/health/ready（DB/Redis/LLM 连通；依赖不可用返回 503 -> 摘流量）
+#
+# 依赖（DB/Redis）应作为同命名空间的 Service 提供；镜像通过
+# DATABASE_URL / REDIS_URL 环境变量指向它们（示例用 Secret 占位）。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledgeai
+  labels:
+    app: knowledgeai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: knowledgeai
+  template:
+    metadata:
+      labels:
+        app: knowledgeai
+    spec:
+      containers:
+        - name: app
+          # 替换为实际镜像（与 deploy 工作流推送的 GHCR tag 对应）
+          image: ghcr.io/your-org/knowledgeai:latest-prod
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: knowledgeai-env
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: knowledgeai-env
+                  key: REDIS_URL
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            failureThreshold: 30 # 30 * 2s = 60s 启动容错
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3 # 依赖不可用时返回 503 -> 从 Service 摘除流量
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledgeai
+spec:
+  selector:
+    app: knowledgeai
+  ports:
+    - port: 80
+      targetPort: 3000

@@ -19,6 +19,9 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     ".playwright/**",
+    // P7-1: vendored swagger-ui assets (minified third-party bundle copied
+    // from node_modules by scripts/tools/copy-swagger-ui.mjs)
+    "public/vendor/**",
   ]),
   // Manual smoke scripts + seed use @ts-nocheck (per AGENTS.md convention).
   // These are standalone tsx scripts, not app code, so relax type-strictness rules.

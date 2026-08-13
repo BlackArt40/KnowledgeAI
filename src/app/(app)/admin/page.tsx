@@ -49,6 +49,7 @@ function rlKind(t: (k: string) => string): Record<RateLimitStat["kind"], { label
     user: { label: t("page.admin.s4"), variant: "default" },
     apikey: { label: "API Key", variant: "outline" },
     kb: { label: t("page.admin.s6"), variant: "warning" },
+    integration: { label: t("page.admin.s48"), variant: "secondary" },
     other: { label: t("page.admin.s47"), variant: "outline" },
   };
 }

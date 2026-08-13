@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
+import { indexDocGraph, clearKbGraph } from "@/lib/kg/store";
 import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
 import { canViewKb, canEditKb } from "@/lib/team/store";
@@ -66,11 +67,13 @@ export function docTypeFromName(name: string): DocType {
   if (n.endsWith(".csv")) return "csv";
   if (n.endsWith(".txt")) return "text";
   if (/\.(png|jpe?g|gif|webp|bmp)$/.test(n)) return "image";
+  // P7-4: 视频字幕文件（srt/vtt）→ 提取文本索引
+  if (/\.(srt|vtt)$/.test(n)) return "subtitle";
   return "other";
 }
 
 export function isTextLike(type: DocType): boolean {
-  return ["markdown", "text", "csv"].includes(type);
+  return ["markdown", "text", "csv", "subtitle"].includes(type);
 }
 
 function estimateChunks(doc: KbDocument, settings: KbSettings): number {
@@ -172,6 +175,21 @@ export async function processDocInQueue(docId: string): Promise<void> {
       await indexDocument(d, kb.settings).catch((e) =>
         log.error({ err: e }, "[kb] index error")
       );
+      // P7-3: knowledge-graph extraction (entities + relations) for GraphRAG
+      // and the graph visualization. Fire-and-forget - graph is auxiliary.
+      void indexDocGraph(kb.id, d.id, d.content ?? "").catch((e) =>
+        log.warn({ err: e }, "[kb] graph index error")
+      );
+      // P7-1: notify webhook subscribers when a document becomes queryable.
+      const { emitWebhookEvent } = await import("@/lib/webhooks/store");
+      void emitWebhookEvent(kb.workspaceId, "kb.ready", {
+        kbId: kb.id,
+        kbName: kb.name,
+        docId: d.id,
+        docName: d.name,
+        chunks: d.chunks,
+        status: "ready",
+      }).catch((e) => log.warn({ err: e }, "[kb] webhook emit failed"));
     }
   } catch (err) {
     const d = store.docs.get(docId);
@@ -368,6 +386,8 @@ export async function deleteKb(id: string): Promise<boolean> {
   }
   await vsClearKb(id);
   void deleteKbFromDb(id);
+  // P7-3: drop the KB's knowledge graph (entities + relations).
+  void clearKbGraph(id);
   // Clean up local files for this KB (fire-and-forget)
   const kbDir = path.join(process.cwd(), ".uploads", id);
   void fs.rm(kbDir, { recursive: true, force: true }).catch(() => {});

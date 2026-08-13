@@ -812,3 +812,226 @@ export async function persistSystemConfig(config: {
     log.error({ err }, "[db] persistSystemConfig error");
   }
 }
+
+// ── P7-1: Webhook subscriptions ───────────────────────────────────────────
+
+/** Persist (upsert) a webhook subscription. */
+export async function persistWebhookSubscription(sub: {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  name: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+  createdAt: number;
+  lastDeliveryAt: number | null;
+  failures: number;
+  lastError: string | null;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const wh = db as unknown as {
+      webhookSubscription: {
+        findUnique: (o: unknown) => Promise<unknown>;
+        update: (o: unknown) => Promise<unknown>;
+        create: (o: unknown) => Promise<unknown>;
+      };
+    };
+    const data = {
+      userId: sub.userId,
+      workspaceId: sub.workspaceId,
+      name: sub.name,
+      url: sub.url,
+      secret: sub.secret,
+      events: sub.events,
+      active: sub.active,
+      lastDeliveryAt: sub.lastDeliveryAt ? new Date(sub.lastDeliveryAt) : null,
+      failures: sub.failures,
+      lastError: sub.lastError,
+    };
+    const existing = await wh.webhookSubscription.findUnique({ where: { id: sub.id } });
+    if (existing) {
+      await wh.webhookSubscription.update({ where: { id: sub.id }, data });
+    } else {
+      await wh.webhookSubscription.create({ data: { id: sub.id, createdAt: new Date(sub.createdAt), ...data } });
+    }
+  } catch (err) {
+    log.error({ err }, "[db] persistWebhookSubscription error");
+  }
+}
+
+/** Delete a webhook subscription row. */
+export async function deleteWebhookSubscriptionFromDb(id: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const wh = db as unknown as { webhookSubscription: { delete: (o: unknown) => Promise<unknown> } };
+    await wh.webhookSubscription.delete({ where: { id } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteWebhookSubscriptionFromDb error");
+  }
+}
+
+// ── P7-2: Bot integrations ────────────────────────────────────────────────
+
+/** Persist (upsert) a bot integration binding. */
+export async function persistBotIntegration(bot: {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  name: string;
+  platform: string;
+  kbId: string;
+  kbName?: string;
+  tokenHash: string;
+  active: boolean;
+  calls: number;
+  createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const bi = db as unknown as {
+      botIntegration: {
+        findUnique: (o: unknown) => Promise<unknown>;
+        update: (o: unknown) => Promise<unknown>;
+        create: (o: unknown) => Promise<unknown>;
+      };
+    };
+    const data = {
+      userId: bot.userId,
+      workspaceId: bot.workspaceId,
+      name: bot.name,
+      platform: bot.platform,
+      kbId: bot.kbId,
+      kbName: bot.kbName ?? "",
+      tokenHash: bot.tokenHash,
+      active: bot.active,
+      calls: bot.calls,
+    };
+    const existing = await bi.botIntegration.findUnique({ where: { id: bot.id } });
+    if (existing) {
+      await bi.botIntegration.update({ where: { id: bot.id }, data });
+    } else {
+      await bi.botIntegration.create({ data: { id: bot.id, createdAt: new Date(bot.createdAt), ...data } });
+    }
+  } catch (err) {
+    log.error({ err }, "[db] persistBotIntegration error");
+  }
+}
+
+/** Delete a bot integration row. */
+export async function deleteBotIntegrationFromDb(id: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const bi = db as unknown as { botIntegration: { delete: (o: unknown) => Promise<unknown> } };
+    await bi.botIntegration.delete({ where: { id } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteBotIntegrationFromDb error");
+  }
+}
+
+// ── P7-3: Knowledge graph (entities + relations) ──────────────────────────
+
+/** Persist (upsert) a knowledge-graph entity. */
+export async function persistEntity(entity: {
+  id: string; kbId: string; label: string; type: string;
+  mentions: number; docIds: string[]; createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const ke = db as unknown as {
+      knowledgeEntity: {
+        findUnique: (o: unknown) => Promise<unknown>;
+        update: (o: unknown) => Promise<unknown>;
+        create: (o: unknown) => Promise<unknown>;
+      };
+    };
+    const data = {
+      kbId: entity.kbId,
+      label: entity.label,
+      type: entity.type,
+      mentions: entity.mentions,
+      docIds: entity.docIds,
+    };
+    const existing = await ke.knowledgeEntity.findUnique({ where: { id: entity.id } });
+    if (existing) {
+      await ke.knowledgeEntity.update({ where: { id: entity.id }, data });
+    } else {
+      await ke.knowledgeEntity.create({ data: { id: entity.id, createdAt: new Date(entity.createdAt), ...data } });
+    }
+  } catch (err) {
+    log.error({ err }, "[db] persistEntity error");
+  }
+}
+
+/** Persist (upsert) a knowledge-graph relation. */
+export async function persistRelation(relation: {
+  id: string; kbId: string; source: string; target: string; type: string;
+  weight: number; docIds: string[]; createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const kr = db as unknown as {
+      knowledgeRelation: {
+        findUnique: (o: unknown) => Promise<unknown>;
+        update: (o: unknown) => Promise<unknown>;
+        create: (o: unknown) => Promise<unknown>;
+      };
+    };
+    const data = {
+      kbId: relation.kbId,
+      source: relation.source,
+      target: relation.target,
+      type: relation.type,
+      weight: relation.weight,
+      docIds: relation.docIds,
+    };
+    const existing = await kr.knowledgeRelation.findUnique({ where: { id: relation.id } });
+    if (existing) {
+      await kr.knowledgeRelation.update({ where: { id: relation.id }, data });
+    } else {
+      await kr.knowledgeRelation.create({ data: { id: relation.id, createdAt: new Date(relation.createdAt), ...data } });
+    }
+  } catch (err) {
+    log.error({ err }, "[db] persistRelation error");
+  }
+}
+
+/** Delete a knowledge-graph entity row. */
+export async function deleteEntityFromDb(id: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const ke = db as unknown as { knowledgeEntity: { delete: (o: unknown) => Promise<unknown> } };
+    await ke.knowledgeEntity.delete({ where: { id } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteEntityFromDb error");
+  }
+}
+
+/** Delete a knowledge-graph relation row. */
+export async function deleteRelationFromDb(id: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const kr = db as unknown as { knowledgeRelation: { delete: (o: unknown) => Promise<unknown> } };
+    await kr.knowledgeRelation.delete({ where: { id } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteRelationFromDb error");
+  }
+}

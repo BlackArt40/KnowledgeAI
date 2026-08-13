@@ -15,6 +15,27 @@ import { traceBegin, traceEnd } from "@/lib/obs/trace";
 import { log, redactText } from "@/lib/obs/log";
 import type { ChatMessage, ChatOptions } from "./types";
 
+// P7-4: map ChatMessage (with optional base64 images) to the OpenAI wire
+// format - a user message with images becomes a content array of text +
+// image_url parts (vision models only when a real LLM is configured).
+function wireMessages(messages: ChatMessage[]): unknown[] {
+  return messages.map((m) => {
+    if (m.images && m.images.length > 0) {
+      return {
+        role: m.role,
+        content: [
+          { type: "text", text: m.content },
+          ...m.images.map((img) => ({
+            type: "image_url",
+            image_url: { url: `data:${img.mime};base64,${img.data}` },
+          })),
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
 interface ResolvedConfig {
   apiKey: string;
   baseUrl: string;
@@ -181,7 +202,7 @@ export async function chatComplete(
       },
       body: JSON.stringify({
         model: cfg.chatModel,
-        messages,
+        messages: wireMessages(messages),
         temperature: opts?.temperature ?? 0.3,
         max_tokens: opts?.maxTokens,
         stream: false,
@@ -235,7 +256,7 @@ export async function* chatStream(
       },
       body: JSON.stringify({
         model: cfg.chatModel,
-        messages,
+        messages: wireMessages(messages),
         temperature: opts?.temperature ?? 0.3,
         max_tokens: opts?.maxTokens,
         stream: true,

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>KnowledgeAI 扩展设置</title>
+  <style>
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px; color: #1f2937; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 16px 0 4px; }
+    input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+    button { margin-top: 20px; background: #6366f1; color: #fff; border: 0; border-radius: 10px; padding: 10px 20px; font-size: 15px; cursor: pointer; }
+    #status { color: #059669; font-size: 13px; margin-top: 12px; }
+    .hint { color: #6b7280; font-size: 12px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>KnowledgeAI 扩展设置</h1>
+
+  <label for="endpoint">服务地址（endpoint）</label>
+  <input id="endpoint" placeholder="http://localhost:3000" />
+  <div class="hint">KnowledgeAI 服务根地址，不带尾部斜杠。</div>
+
+  <label for="apiKey">API Key</label>
+  <input id="apiKey" type="password" placeholder="kai_sk_..." />
+  <div class="hint">需具备 chat:read 权限（在服务端 API 密钥页创建）。</div>
+
+  <label for="kbId">知识库 ID</label>
+  <input id="kbId" placeholder="kb_xxx" />
+  <div class="hint">在知识库详情页的地址栏可看到 kb_ 开头的 ID。</div>
+
+  <button id="save">保存</button>
+  <div id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

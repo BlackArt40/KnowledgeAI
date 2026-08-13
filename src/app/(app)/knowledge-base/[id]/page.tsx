@@ -13,6 +13,7 @@ import {
   HardDrive,
   Loader2,
   MessagesSquare,
+  Network,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -160,6 +161,12 @@ export default function KbDetailPage() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/chat">
               <MessagesSquare className="h-4 w-4" /> 去问答
+            </Link>
+          </Button>
+          {/* P7-3: knowledge-graph visualization entry */}
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/knowledge-base/${kb.id}/graph`}>
+              <Network className="h-4 w-4" /> {t("page.knowledge-base-[id].s30")}
             </Link>
           </Button>
           <KbSettingsDialog kb={kb} onSaved={(updated) => setData((d) => (d ? { ...d, kb: updated } : d))} />

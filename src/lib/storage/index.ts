@@ -33,6 +33,8 @@ const ALLOWED_EXTENSIONS = new Set([
   ".xls", ".xlsx",
   ".html", ".htm",
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+  // P7-4: 视频字幕文件
+  ".srt", ".vtt",
 ]);
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_UPLOAD_MB || "50", 10) * 1024 * 1024;

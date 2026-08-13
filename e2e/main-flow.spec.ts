@@ -53,8 +53,16 @@ test("问答：对上传的文档提问并收到回答", async ({ page }) => {
 
   await page.goto(`/chat?kb=${kbId}`);
   const question = "向量检索是怎么实现的？";
-  await page.locator("textarea").fill(question);
-  await page.locator("textarea").press("Enter");
+  const chatBox = page.locator("textarea").first();
+  await expect(chatBox).toBeVisible();
+  // React 水合接管受控组件前 fill 可能与默认值竞争——填充后校验，未生效则重试
+  for (let i = 0; i < 5; i++) {
+    await chatBox.fill(question);
+    if ((await chatBox.inputValue()) === question) break;
+    await page.waitForTimeout(300);
+  }
+  await expect(chatBox).toHaveValue(question);
+  await chatBox.press("Enter");
 
   // 用户气泡出现
   await expect(page.getByText(question).first()).toBeVisible({ timeout: 15_000 });
