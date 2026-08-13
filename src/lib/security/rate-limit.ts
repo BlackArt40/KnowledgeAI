@@ -7,6 +7,8 @@
 // Features:
 //   - Sliding window counter (not fixed window)
 //   - Tiered rate limiting (P3-3): anonymous IP / user / API key / KB
+//   - Integration tier (P7-2): third-party integrations (bots, widget) get
+//     their own dimension so one integration can't starve a user's quota
 //   - Configurable window + limit
 //   - Returns remaining + accurate reset timestamp (earliest entry expiry)
 //   - Stats ring buffer + live view for the admin rate-limit dashboard
@@ -20,6 +22,7 @@ const DEFAULT_LIMIT = parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10);
 const ANON_LIMIT = parseInt(process.env.RATE_LIMIT_ANON_PER_MIN || "20", 10);
 const KEY_LIMIT = parseInt(process.env.RATE_LIMIT_KEY_PER_MIN || "500", 10);
 const KB_LIMIT = parseInt(process.env.RATE_LIMIT_KB_PER_MIN || "60", 10);
+const INTEGRATION_LIMIT = parseInt(process.env.RATE_LIMIT_INTEGRATION_PER_MIN || "120", 10);
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -31,7 +34,7 @@ export interface RateLimitResult {
 
 /** All tier limits - single source of truth for proxy / routes / admin panel. */
 export function getRateLimitLimits() {
-  return { base: DEFAULT_LIMIT, anon: ANON_LIMIT, key: KEY_LIMIT, kb: KB_LIMIT };
+  return { base: DEFAULT_LIMIT, anon: ANON_LIMIT, key: KEY_LIMIT, kb: KB_LIMIT, integration: INTEGRATION_LIMIT };
 }
 
 // ── Memory rate limiter (fallback) ───────────────────────────────────────
@@ -159,7 +162,7 @@ async function redisRateLimit(key: string, limit: number): Promise<RateLimitResu
 
 export interface RateLimitStat {
   key: string;
-  kind: "ip" | "user" | "apikey" | "kb" | "other";
+  kind: "ip" | "user" | "apikey" | "kb" | "integration" | "other";
   limit: number;
   count: number;
   remaining: number;
@@ -187,6 +190,7 @@ function kindOf(key: string): RateLimitStat["kind"] {
   if (key.startsWith("user:")) return "user";
   if (key.startsWith("apikey:")) return "apikey";
   if (key.startsWith("kb:")) return "kb";
+  if (key.startsWith("integration:")) return "integration";
   return "other";
 }
 
@@ -241,6 +245,17 @@ export async function rateLimit(
  *  can't read bodies/path params, so KB-tier checks live in route handlers. */
 export function kbRateLimit(kbId: string, limit: number = KB_LIMIT): Promise<RateLimitResult> {
   return rateLimit(`kb:${kbId}`, limit);
+}
+
+/** Per-integration tier (P7-2). Third-party integrations (bot bindings,
+ *  widget embeds) authenticate with their own token and are rate-limited
+ *  independently from the owning user's quota. Enforced in-route because the
+ *  token lives in the path/body, which the proxy can't see. */
+export function integrationRateLimit(
+  integrationId: string,
+  limit: number = INTEGRATION_LIMIT
+): Promise<RateLimitResult> {
+  return rateLimit(`integration:${integrationId}`, limit);
 }
 
 /** Standard 429 response for route-level limits (same shape as the proxy's). */

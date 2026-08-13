@@ -5,18 +5,12 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Plus,
-  Brain,
   Send,
-  Copy,
-  RefreshCw,
-  ThumbsUp,
-  ThumbsDown,
   Search,
   FileText,
   Sparkles,
   Library,
   MessageSquareText,
-  Check,
   Trash2,
   Square,
   Download,
@@ -26,6 +20,8 @@ import {
   Archive,
   Tag,
   X,
+  Mic,
+  ImagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +41,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { ChatMarkdown } from "@/components/app/chat-markdown";
+import { MessageBubble } from "@/components/app/chat/message-bubble";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useHorizontalSwipe, useLongPress } from "@/hooks/use-gestures";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { cn } from "@/lib/utils";
 import { useSse } from "@/lib/use-sse";
+import { consumeSseStream } from "@/lib/sse";
 import type { Citation } from "@/lib/rag/types";
 
 interface KbLite {
@@ -200,6 +198,9 @@ export default function ChatPage() {
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
+  // P7-4: image attachments (base64) sent with the next question.
+  const [attachments, setAttachments] = React.useState<{ mime: string; data: string; name: string }[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [webSearch, setWebSearch] = React.useState(false); // 联网搜索开关：开启后每次提问同时检索 web
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
@@ -220,6 +221,17 @@ export default function ChatPage() {
   // Monotonic counter so a stale send()'s finally() cannot clobber a newer
   // send's `sending` state after the user switches conversations mid-stream.
   const sendEpoch = React.useRef(0);
+  // P7-4: voice input - final transcript auto-sends the question.
+  const {
+    listening,
+    interim: sttInterim,
+    supported: sttSupported,
+    start: sttStart,
+    stop: sttStop,
+  } = useSpeechRecognition({
+    onFinalText: (text) => send(text),
+    onError: () => {},
+  });
   // Holds a conversation ID from URL params (?conv=xxx) for deep-linking
   // from the dashboard. Cleared after the conversation is loaded.
   const pendingConvRef = React.useRef<string | null>(null);
@@ -429,7 +441,12 @@ export default function ChatPage() {
     );
   }
 
-  async function streamAnswer(content: string, aiMsgId: string, epoch: number, opts?: { regenerate?: boolean }) {
+  async function streamAnswer(
+    content: string,
+    aiMsgId: string,
+    epoch: number,
+    opts?: { regenerate?: boolean; images?: { mime: string; data: string; name: string }[] }
+  ) {
     const controller = new AbortController();
     abortRef.current = controller;
     let acc = "";
@@ -445,6 +462,10 @@ export default function ChatPage() {
           query: content,
           conversationId: activeConv ?? undefined,
           webSearch,
+          // P7-4: multimodal - send image attachments (base64) with the question.
+          ...(opts?.images && opts.images.length > 0
+            ? { images: opts.images.map(({ mime, data }) => ({ mime, data })) }
+            : {}),
           // P5-3: regenerate with different parameters (higher temperature +
           // wider retrieval) so the retry explores new ground server-side.
           ...(opts?.regenerate
@@ -455,50 +476,36 @@ export default function ChatPage() {
       });
       if (!res.ok || !res.body) throw new Error(t("page.chat.s12"));
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      // 共享 SSE 帧解析（src/lib/sse.ts）——事件名/帧格式只在一处维护。
       let convId = activeConv;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buffer.indexOf("\n\n")) >= 0) {
-          const raw = buffer.slice(0, idx);
-          buffer = buffer.slice(idx + 2);
-          const line = raw.split("\n").find((l) => l.startsWith("data:"));
-          if (!line) continue;
-          const data = JSON.parse(line.slice(5).trim());
-          if (data.type === "sources") {
-            // Store chunk metadata for real-time citation rendering.
-            sourceChunks = data.chunks ?? [];
-          } else if (data.type === "token") {
-            acc += data.text;
-            // Real-time citation extraction: parse [n] markers from the
-            // accumulated text and build citations from sourceChunks so the
-            // reference panel updates live during streaming.
-            const liveCites = extractLiveCitations(acc, sourceChunks);
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === aiMsgId
-                  ? { ...x, content: acc, citations: liveCites.length > 0 ? liveCites : x.citations }
-                  : x
+      await consumeSseStream(res, (data) => {
+        if (data.type === "sources") {
+          // Store chunk metadata for real-time citation rendering.
+          sourceChunks = data.chunks as typeof sourceChunks;
+        } else if (data.type === "token") {
+          acc += (data.text as string) ?? "";
+          // Real-time citation extraction: parse [n] markers from the
+          // accumulated text and build citations from sourceChunks so the
+          // reference panel updates live during streaming.
+          const liveCites = extractLiveCitations(acc, sourceChunks);
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === aiMsgId
+                ? { ...x, content: acc, citations: liveCites.length > 0 ? liveCites : x.citations }
+                : x
+              )
+          );
+        } else if (data.type === "done") {
+          convId = data.conversationId as string;
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === aiMsgId
+                ? { ...x, content: acc, citations: data.citations as Citation[] | undefined, followUps: data.followUps as string[] | undefined, streaming: false, ...(data.messageId ? { serverId: data.messageId as string } : {}) }
+                : x
               )
             );
-          } else if (data.type === "done") {
-            convId = data.conversationId;
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === aiMsgId
-                  ? { ...x, content: acc, citations: data.citations, followUps: data.followUps, streaming: false, ...(data.messageId ? { serverId: data.messageId } : {}) }
-                  : x
-              )
-            );
-          }
         }
-      }
+      });
       // Only switch to the new/updated conversation if the user hasn't
       // navigated away mid-stream (epoch guard).
       if (convId !== activeConv && sendEpoch.current === epoch) {
@@ -547,17 +554,36 @@ export default function ChatPage() {
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if (!content || !selectedKb || sending) return;
+    const withImages = attachments.length > 0 ? attachments : undefined;
     setInput("");
+    setAttachments([]);
     setSending(true);
     const userMsg: Msg = { id: `u_${Date.now()}`, role: "user", content };
     const aiMsg: Msg = { id: `a_${Date.now()}`, role: "assistant", content: "", streaming: true };
     setMessages((m) => [...m, userMsg, aiMsg]);
     const epoch = ++sendEpoch.current;
     try {
-      await streamAnswer(content, aiMsg.id, epoch);
+      await streamAnswer(content, aiMsg.id, epoch, { images: withImages });
     } finally {
       if (epoch === sendEpoch.current) setSending(false);
     }
+  }
+
+  // P7-4: pick image attachments (max 4) and read them as base64.
+  function pickImages(files: FileList | null) {
+    if (!files) return;
+    const list = [...files].filter((f) => f.type.startsWith("image/")).slice(0, 4 - attachments.length);
+    for (const f of list) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = String(reader.result ?? "").split(",")[1] ?? "";
+        if (data) {
+          setAttachments((prev) => [...prev, { mime: f.type || "image/png", data, name: f.name }]);
+        }
+      };
+      reader.readAsDataURL(f);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   // Regenerate the last answer: reuse the last user question, drop the
@@ -913,10 +939,66 @@ export default function ChatPage() {
               <span className="text-[11px] text-muted-foreground">{t("page.chat.s4")}</span>
             )}
           </div>
+          {/* P7-4: image attachment previews */}
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2 px-1">
+              {attachments.map((img, i) => (
+                <div key={i} className="group relative">
+                  <img
+                    src={`data:${img.mime};base64,${img.data}`}
+                    alt={img.name}
+                    className="h-16 w-16 rounded-lg border border-border object-cover"
+                  />
+                  <button
+                    type="button"
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white"
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label={t("page.chat.s64")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2 focus-within:ring-2 focus-within:ring-ring">
+            {/* P7-4: attach image */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => pickImages(e.target.files)}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 text-muted-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={t("page.chat.s65")}
+              title={t("page.chat.s65")}
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
+            {/* P7-4: voice input (Web Speech API) */}
+            {sttSupported && (
+              <Button
+                type="button"
+                variant={listening ? "destructive" : "ghost"}
+                size="icon"
+                className={cn("h-9 w-9 shrink-0", listening ? "animate-pulse" : "text-muted-foreground")}
+                onClick={() => (listening ? sttStop() : sttStart())}
+                aria-label={t("page.chat.s66")}
+                title={t("page.chat.s66")}
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            )}
             <textarea
               ref={inputRef}
-              value={input}
+              value={listening ? (input ? `${input} ${sttInterim}` : sttInterim) : input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 // Ignore Enter while an IME (e.g. Chinese pinyin) is composing:
@@ -1072,168 +1154,6 @@ function EmptyState({ onPick, kbReady, suggestions }: { onPick: (q: string) => v
         </Button>
       )}
     </div>
-  );
-}
-
-function MessageBubble({
-  msg,
-  onCite,
-  onRegenerate,
-  onFeedback,
-}: {
-  msg: Msg;
-  onCite: (n: number) => void;
-  onRegenerate?: () => void;
-  onFeedback?: (v: "up" | "down", note?: string) => void;
-}) {
-  const t = useT();
-  const [copied, setCopied] = React.useState(false);
-  // P5-3: dislike opens an inline note field (persisted alongside the vote).
-  // A ref mirrors the input so the submit handler always reads the latest
-  // value even if React hasn't flushed the controlled-state update yet.
-  const [noteOpen, setNoteOpen] = React.useState(false);
-  const [note, setNote] = React.useState("");
-  const noteRef = React.useRef("");
-  if (msg.role === "user") {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-          {msg.content}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex gap-3">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
-        <Brain className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 max-w-[85%]">
-        <div className="rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed">
-          {/* P5-3: full Markdown rendering (code blocks with highlight + copy,
-              tables, mermaid chip flows) on top of the [n] citation chips. */}
-          <ChatMarkdown text={msg.content} onCite={onCite} />
-          {msg.streaming && (
-            <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-middle" />
-          )}
-        </div>
-        {!msg.streaming && msg.content && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1 px-1">
-            <ActionBtn
-              icon={copied ? Check : Copy}
-              label={copied ? t("page.chat.s35") : t("page.chat.s36")}
-              onClick={() => {
-                navigator.clipboard?.writeText(msg.content.replace(/\[\d+\]/g, ""));
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-            />
-            <ActionBtn icon={RefreshCw} label={t("page.chat.s37")} onClick={onRegenerate} />
-            <ActionBtn icon={ThumbsUp} label={t("page.chat.s38")} active={msg.feedback === "up"} onClick={() => onFeedback?.("up")} />
-            <ActionBtn
-              icon={ThumbsDown}
-              label={t("page.chat.s39")}
-              active={msg.feedback === "down"}
-              onClick={() => {
-                if (msg.feedback === "down") { onFeedback?.("down"); return; }
-                setNoteOpen(true);
-              }}
-            />
-            {noteOpen && (
-              <div className="flex w-full items-center gap-1.5 pt-0.5">
-                <input
-                  autoFocus
-                  value={note}
-                  onChange={(e) => {
-                    setNote(e.target.value);
-                    noteRef.current = e.target.value;
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      onFeedback?.("down", noteRef.current.trim());
-                      setNoteOpen(false);
-                      setNote("");
-                      noteRef.current = "";
-                    }
-                  }}
-                  placeholder={t("page.chat.s40")}
-                  className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    onFeedback?.("down", noteRef.current.trim());
-                    setNoteOpen(false);
-                    setNote("");
-                    noteRef.current = "";
-                  }}
-                  className="h-8 rounded-lg bg-brand-gradient px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-                >
-                  提交
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setNoteOpen(false); setNote(""); noteRef.current = ""; }}
-                  className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  取消
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// render text with [n] markers as clickable citation chips
-function RichText({ text, onCite }: { text: string; onCite: (n: number) => void }) {
-  const parts = text.split(/(\[\d+\])/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        const m = p.match(/^\[(\d+)\]$/);
-        if (m) {
-          return (
-            <button
-              key={i}
-              onClick={() => onCite(Number(m[1]))}
-              className="mx-0.5 inline-flex h-4 min-w-4 -translate-y-0.5 items-center justify-center rounded bg-primary/15 px-1 align-baseline text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              {m[1]}
-            </button>
-          );
-        }
-        return <span key={i}>{p}</span>;
-      })}
-    </>
-  );
-}
-
-function ActionBtn({
-  icon: Icon,
-  label,
-  onClick,
-  active,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  onClick?: () => void;
-  active?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors",
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      )}
-    >
-      <Icon className="h-3 w-3" /> {label}
-    </button>
   );
 }
 

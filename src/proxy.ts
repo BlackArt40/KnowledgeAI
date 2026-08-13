@@ -34,6 +34,9 @@ const SKIP_PATHS = [
   "/api/kb",             // P4-1: realtime KB event streams (per-KB tier enforced in the route)
   "/api/team/presence",  // P4-1: presence SSE stream + heartbeat (long-lived)
   "/api/share",          // P4-2: public doc share links (token is the credential)
+  "/api/health",         // P6-4: liveness/readiness probes (probed every 5-30s by Docker/K8s)
+  "/api/v1/integrations/bot", // P7-2: platform bot callbacks (token auth + integration tier in-route)
+  "/api/openapi.json",   // P7-1: public API spec (docs page fetches it; anon tier too low)
 ];
 
 interface Tier {
@@ -91,6 +94,21 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // P7-2: CORS for the public API surface. Auth is header-based (Bearer
+  // kai_sk_... / JWT), never cookies, so the API is safe to call from any
+  // origin - the embedded widget and the Chrome extension are cross-origin
+  // clients. Handle preflight + attach headers to the (possibly modified)
+  // response below.
+  const origin = req.headers.get("origin");
+  if (origin) {
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: corsHeaders(origin),
+      });
+    }
+  }
+
   // P6-1: trace id - propagate an incoming one or mint a fresh id, and make it
   // visible to the downstream route (request headers) + the client (response
   // header). Route-level `withApiTrace` records the spans + SLIs under it.
@@ -98,9 +116,12 @@ export async function proxy(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-trace-id", traceId);
 
+  const base = { "x-trace-id": traceId };
+  const withCors = origin ? { ...base, ...corsHeaders(origin) } : base;
+
   // Skip SSE streams and webhooks
   if (SKIP_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next({ request: { headers: requestHeaders }, headers: { "x-trace-id": traceId } });
+    return NextResponse.next({ request: { headers: requestHeaders }, headers: withCors });
   }
 
   const tier = await tierOf(req);
@@ -131,6 +152,7 @@ export async function proxy(req: NextRequest) {
           "X-RateLimit-Remaining": "0",
           "X-RateLimit-Reset": String(result.resetAt),
           "x-trace-id": traceId,
+          ...(origin ? corsHeaders(origin) : {}),
         },
       }
     );
@@ -140,7 +162,18 @@ export async function proxy(req: NextRequest) {
   // headers onto the route's final response, which would override the accurate
   // per-dimension headers set by route-level 429s (rateLimitResponse). 429s
   // returned by THIS proxy still carry the full X-RateLimit-* set.
-  return NextResponse.next({ request: { headers: requestHeaders }, headers: { "x-trace-id": traceId } });
+  return NextResponse.next({ request: { headers: requestHeaders }, headers: withCors });
+}
+
+/** P7-2: permissive CORS for the header-auth public API (no cookies involved,
+ *  so echoing any origin is safe for the embedded widget / extension). */
+function corsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Trace-Id, X-KAI-Required-Scope",
+    "Access-Control-Max-Age": "86400",
+  };
 }
 
 export const config = {

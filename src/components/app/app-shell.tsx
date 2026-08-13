@@ -29,6 +29,7 @@ import {
   LogOut,
   Globe,
   Activity,
+  Code2,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -76,6 +77,8 @@ const navGroups: { titleKey: string; items: NavItem[] }[] = [
     titleKey: "page.app-shell.s14",
     items: [
       { labelKey: "page.app-shell.s15", href: "/api-keys", icon: KeyRound, roles: ["owner", "admin", "editor"] },
+      // P7-1: developer portal (API docs, webhooks, integrations, SDK).
+      { labelKey: "page.app-shell.s28", href: "/developer", icon: Code2, roles: ["owner", "admin", "editor"] },
       { labelKey: "page.app-shell.s16", href: "/settings", icon: Settings },
       { labelKey: "page.app-shell.s17", href: "/admin", icon: ShieldCheck, roles: ["owner", "admin"] },
       // P6-1: observability dashboard (owner/admin).
@@ -289,6 +292,7 @@ const titleMap: Record<string, string> = {
   "/billing": "page.app-shell.s12",
   "/usage": "page.app-shell.s13",
   "/api-keys": "page.app-shell.s15",
+  "/developer": "page.app-shell.s28",
   "/settings": "page.app-shell.s16",
   "/admin": "page.app-shell.s17",
   "/admin/monitoring": "page.app-shell.s27",
@@ -386,6 +390,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       "/agent": ["owner", "admin", "editor"],
       "/usage": ["owner", "admin", "editor"],
       "/api-keys": ["owner", "admin", "editor"],
+      "/developer": ["owner", "admin", "editor"],
     };
     for (const [prefix, roles] of Object.entries(RESTRICTED)) {
       if (path === prefix || path.startsWith(prefix + "/")) {

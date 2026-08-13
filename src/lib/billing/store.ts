@@ -1,6 +1,7 @@
 import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
 import { getUserById, updateUserPlan } from "@/lib/auth/store";
+import { log } from "@/lib/obs/log";
 
 
 // ── Per-user billing store ───────────────────────────────────────────────
@@ -202,6 +203,51 @@ export function recordQa(userId: string, workspaceId?: string): void {
   if (workspaceId) {
     const w = getWorkspaceUsage(workspaceId);
     w.qaUsed += 1;
+    // P7-1: fire the usage.alert webhook once per workspace+limit crossing.
+    void maybeEmitUsageAlert(workspaceId);
+  }
+}
+
+// ── P7-1: usage.alert webhook ─────────────────────────────────────────────
+// Fire once per (workspace, plan limit) crossing so subscribers aren't spammed
+// on every request after the threshold. The workspace plan's qaLimit (null =
+// unlimited) gates the alert; demo mode defaults to free (100 QA / month).
+//
+// Dedup state lives on globalThis (like every other store in this codebase):
+// a module-level Map would be per-process in a multi-instance deployment and
+// each instance would fire its own alert on the same crossing.
+
+declare global {
+  var __KAI_USAGE_ALERT_STORE__: Map<string, number> | undefined;
+}
+
+function alertedWsStore(): Map<string, number> {
+  if (!globalThis.__KAI_USAGE_ALERT_STORE__) globalThis.__KAI_USAGE_ALERT_STORE__ = new Map();
+  return globalThis.__KAI_USAGE_ALERT_STORE__;
+}
+
+async function maybeEmitUsageAlert(workspaceId: string): Promise<void> {
+  try {
+    const { getWorkspace } = await import("@/lib/workspace/store");
+    const ws = getWorkspace(workspaceId);
+    if (!ws) return;
+    const planDef = getPlan(ws.plan);
+    if (!planDef.qaLimit) return; // unlimited plans never alert
+    const usage = getWorkspaceUsage(workspaceId);
+    if (usage.qaUsed < planDef.qaLimit) return;
+    const alertedWs = alertedWsStore();
+    if (alertedWs.get(workspaceId) === planDef.qaLimit) return; // already alerted
+    alertedWs.set(workspaceId, planDef.qaLimit);
+    const { emitWebhookEvent } = await import("@/lib/webhooks/store");
+    await emitWebhookEvent(workspaceId, "usage.alert", {
+      workspaceId,
+      plan: ws.plan,
+      usage: usage.qaUsed,
+      limit: planDef.qaLimit,
+    });
+  } catch (err) {
+    // metering is on the hot path - never throw
+    log.warn({ err }, "[billing] usage alert emit failed");
   }
 }
 

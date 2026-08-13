@@ -7,3 +7,4 @@ allowBuilds:
   unrs-resolver: true
   msgpackr-extract: false
   tesseract.js: false
+  '@scarf/scarf': false

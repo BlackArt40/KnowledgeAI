@@ -1,5 +1,6 @@
 import { embed, cosine } from "./embeddings";
 import { chatComplete, chatStream, isLLMEnabled } from "@/lib/llm/provider";
+import type { ChatImage, ChatMessage as LlmChatMessage } from "@/lib/llm/types";
 import { recordLlm } from "@/lib/obs/metrics";
 import { traceBegin, traceEnd } from "@/lib/obs/trace";
 import type { RetrievedChunk, Citation, GenerationResult } from "./types";
@@ -89,17 +90,18 @@ export function generate(query: string, chunks: RetrievedChunk[]): GenerationRes
 
 // ── LLM RAG prompt builder ───────────────────────────────────────────────
 
-function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatMessage[]) {
+function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatMessage[], images?: ChatImage[]): LlmChatMessage[] {
   const sources = chunks
     .map((c, i) => `[${i + 1}] 《${c.docName}》${c.url ? `（来源：${c.url}）` : ""}\n${c.text.slice(0, 600)}`)
     .join("\n\n");
 
 
   // Use contextual prompt (with history + intent) when history is provided
+  let messages: LlmChatMessage[];
   if (history && history.length > 0) {
-    return buildContextualSystemPrompt(query, history, sources);
-  }
-  const system = `你是 KnowledgeAI 知识助手。请根据以下检索到的来源内容回答用户问题。
+    messages = buildContextualSystemPrompt(query, history, sources) as ChatMessage[];
+  } else {
+    const system = `你是 KnowledgeAI 知识助手。请根据以下检索到的来源内容回答用户问题。
 要求：
 1. 仅基于提供的来源内容回答，不要编造信息
 2. 在引用来源处标注 [n]，n 对应来源编号
@@ -108,11 +110,21 @@ function buildRagPrompt(query: string, chunks: RetrievedChunk[], history?: ChatM
 
 【来源】
 ${sources}`;
-
-  return [
-    { role: "system" as const, content: system },
-    { role: "user" as const, content: query },
-  ];
+    messages = [
+      { role: "system" as const, content: system },
+      { role: "user" as const, content: query },
+    ];
+  }
+  // P7-4: attach uploaded images to the LAST user message (the current query).
+  if (images && images.length > 0) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        messages[i] = { ...messages[i], images };
+        break;
+      }
+    }
+  }
+  return messages;
 }
 
 // Parse [n] markers from LLM output → build citations list.
@@ -146,7 +158,8 @@ export async function generateAsync(
   query: string,
   chunks: RetrievedChunk[],
   history?: ChatMessage[],
-  temperature = 0.3
+  temperature = 0.3,
+  images?: ChatImage[]
 ): Promise<GenerationResult> {
   if (chunks.length === 0) {
     return {
@@ -156,7 +169,7 @@ export async function generateAsync(
   }
 
   if (await isLLMEnabled()) {
-    const messages = buildRagPrompt(query, chunks, history);
+    const messages = buildRagPrompt(query, chunks, history, images);
     const text = await chatComplete(messages, { temperature, maxTokens: 800 });
     if (text) {
       return { text, citations: parseCitations(text, chunks) };
@@ -191,7 +204,8 @@ export async function* generateStream(
   query: string,
   chunks: RetrievedChunk[],
   history?: ChatMessage[],
-  temperature = 0.3
+  temperature = 0.3,
+  images?: ChatImage[]
 ): AsyncGenerator<StreamEvent, StreamResult> {
   if (chunks.length === 0) {
     const text = "未在当前知识库中检索到相关内容。可以尝试换一种问法，或为该知识库上传更多文档。";
@@ -200,7 +214,7 @@ export async function* generateStream(
   }
 
   if (await isLLMEnabled()) {
-    const messages = buildRagPrompt(query, chunks, history);
+    const messages = buildRagPrompt(query, chunks, history, images);
     let full = "";
     for await (const delta of chatStream(messages, { temperature, maxTokens: 800 })) {
       full += delta;

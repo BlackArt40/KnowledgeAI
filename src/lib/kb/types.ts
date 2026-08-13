@@ -6,7 +6,7 @@ export type DocStatus =
   | "ready"
   | "failed";
 
-export type DocType = "pdf" | "word" | "markdown" | "text" | "web" | "csv" | "image" | "other";
+export type DocType = "pdf" | "word" | "markdown" | "text" | "web" | "csv" | "image" | "subtitle" | "other";
 
 import type { DocAccess } from "@/lib/team/types";
 
@@ -33,6 +33,8 @@ export interface KbSettings {
   chunkOverlap: number; // overlap tokens
   embeddingModel: string;
   topK: number; // retrieval count
+  /** P7-3: GraphRAG re-ranking on chat retrieval (default true when absent). */
+  graphRag?: boolean;
 }
 
 export interface KnowledgeBase {

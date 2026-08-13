@@ -8,7 +8,7 @@
 // Selected via REDIS_URL env var: if set -> BullMQ, otherwise -> Memory.
 // ---------------------------------------------------------------------------
 
-export type JobType = "doc-process" | "agent-run" | "index-cleanup";
+export type JobType = "doc-process" | "agent-run" | "index-cleanup" | "webhook-deliver";
 
 export interface JobData {
   type: JobType;

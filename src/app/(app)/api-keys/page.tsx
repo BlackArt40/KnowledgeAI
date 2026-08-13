@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/provider";
 import * as React from "react";
 import {
   KeyRound, Plus, Copy, Check, Trash2, Power, CheckCircle2, XCircle,
-  Terminal,
+  Terminal, BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,29 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelative } from "@/lib/format";
+import { UsageChart } from "@/components/app/usage-chart";
 import { SCOPES, type ApiKey, type CallLog, type KeyStatus } from "@/lib/apikeys/types";
 import { cn } from "@/lib/utils";
+
+/** P7-1: bucket call logs by hour (last 24h) for the usage chart. */
+function bucketByHour(logs: CallLog[]): { labels: string[]; data: number[] } {
+  const now = Date.now();
+  const labels: string[] = [];
+  const data: number[] = [];
+  for (let i = 23; i >= 0; i--) {
+    const start = now - i * 3600_000;
+    const end = start + 3600_000;
+    labels.push(i % 3 === 0 ? new Date(start).getHours() + "h" : "");
+    data.push(logs.filter((l) => l.ts >= start && l.ts < end).length);
+  }
+  return { labels, data };
+}
 
 export default function ApiKeysPage() {
   const t = useT();
   const [keys, setKeys] = React.useState<ApiKey[]>([]);
   const [logs, setLogs] = React.useState<CallLog[]>([]);
+  const [hourly, setHourly] = React.useState<{ labels: string[]; data: number[] }>({ labels: [], data: [] });
   const [loading, setLoading] = React.useState(true);
   const [creating, setCreating] = React.useState(false);
   const [newKey, setNewKey] = React.useState<ApiKey | null>(null);
@@ -37,12 +53,15 @@ export default function ApiKeysPage() {
     ]);
     setKeys(k.keys ?? []);
     setLogs(l.logs ?? []);
+    // P7-1: bucket call logs by hour (last 24h) for the usage chart.
+    setHourly(bucketByHour(l.logs ?? []));
     setLoading(false);
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { refresh(); }, [refresh]);
 
+  // P7-1: bucket call logs by hour (last 24h) for the usage chart.
   function toggleScope(id: string) {
     setScopes((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
   }
@@ -214,6 +233,16 @@ export default function ApiKeysPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* P7-1: API 调用量时序（按小时，基于 CallLog） */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />{t("page.api-keys.s26")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UsageChart data={hourly.data} labels={hourly.labels} />
         </CardContent>
       </Card>
 

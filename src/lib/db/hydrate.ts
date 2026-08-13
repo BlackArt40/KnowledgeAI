@@ -74,10 +74,16 @@ export async function hydrateFromDb(): Promise<void> {
     const audit = await hydrateAudit();
     // P5-5: workspace rows (brand color survives restarts).
     const workspaces = await hydrateWorkspace();
+    // P7-1: webhook subscription rows (delivery state survives restarts).
+    const webhooks = await hydrateWebhookSubscriptions();
+    // P7-2: bot integration rows (bindings survive restarts).
+    const bots = await hydrateBotIntegrations();
+    // P7-3: knowledge-graph rows (entities/relations survive restarts).
+    const graph = await hydrateKnowledgeGraph();
 
     _hydrated = true;
     log.info(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}`
     );
   } catch (err) {
     log.error({ err }, "[db] Hydration failed");
@@ -463,6 +469,56 @@ async function hydrateWorkspace(): Promise<number> {
   }
 }
 
+// ── P7-1: Webhook subscription hydration ──────────────────────────────────
+
+/**
+ * Merge DB webhook subscription rows into __KAI_WEBHOOK_STORE__ so configured
+ * endpoints + delivery state survive restarts. Subscriptions created in a
+ * previous process land in the store; memory-only delivery records stay lost
+ * (they are a short ring buffer by design).
+ */
+async function hydrateWebhookSubscriptions(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as {
+    __KAI_WEBHOOK_STORE__?: { subs: Map<string, unknown>; deliveries: unknown[] };
+  };
+  if (!g.__KAI_WEBHOOK_STORE__) return 0;
+  try {
+    const rows = await (db as unknown as {
+      webhookSubscription: { findMany: (o?: unknown) => Promise<unknown[]> };
+    }).webhookSubscription.findMany({});
+    const store = g.__KAI_WEBHOOK_STORE__.subs;
+    for (const r of rows as unknown as {
+      id: string; userId: string; workspaceId: string; name: string; url: string;
+      secret: string; events: string[]; active: boolean; createdAt: Date;
+      lastDeliveryAt: Date | null; failures: number; lastError: string | null;
+    }[]) {
+      const existing = store.get(r.id) as
+        | { lastDeliveryAt?: number | null; failures?: number; lastError?: string | null }
+        | undefined;
+      store.set(r.id, {
+        id: r.id,
+        userId: r.userId,
+        workspaceId: r.workspaceId,
+        name: r.name,
+        url: r.url,
+        secret: r.secret,
+        events: r.events,
+        active: r.active,
+        createdAt: r.createdAt.getTime(),
+        lastDeliveryAt: existing?.lastDeliveryAt ?? (r.lastDeliveryAt ? r.lastDeliveryAt.getTime() : null),
+        failures: existing?.failures ?? r.failures,
+        lastError: existing?.lastError ?? r.lastError,
+      });
+    }
+    return rows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateWebhookSubscriptions error");
+    return 0;
+  }
+}
+
 // ── Admin SystemConfig hydration ─────────────────────────────────────────
 
 async function hydrateSystemConfig(): Promise<boolean> {
@@ -489,5 +545,117 @@ async function hydrateSystemConfig(): Promise<boolean> {
   } catch (err) {
     log.error({ err }, "[db] hydrateSystemConfig error");
     return false;
+  }
+}
+
+// ── P7-2: Bot integration hydration ───────────────────────────────────────
+
+/**
+ * Merge DB bot rows into __KAI_BOT_STORE__ so bindings survive restarts.
+ * The plaintext token is intentionally not stored anywhere - only the hash,
+ * so hydrated bindings can verify callbacks but cannot re-reveal the token.
+ */
+async function hydrateBotIntegrations(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as { __KAI_BOT_STORE__?: { bots: Map<string, unknown>; plaintextTokens: Map<string, string> } };
+  if (!g.__KAI_BOT_STORE__) return 0;
+  try {
+    const rows = await (db as unknown as {
+      botIntegration: { findMany: (o?: unknown) => Promise<unknown[]> };
+    }).botIntegration.findMany({});
+    const store = g.__KAI_BOT_STORE__.bots;
+    for (const r of rows as unknown as {
+      id: string; userId: string; workspaceId: string; name: string; platform: string;
+      kbId: string; kbName: string; tokenHash: string; active: boolean; calls: number;
+      createdAt: Date;
+    }[]) {
+      const existing = store.get(r.id) as { calls?: number } | undefined;
+      store.set(r.id, {
+        id: r.id,
+        userId: r.userId,
+        workspaceId: r.workspaceId,
+        name: r.name,
+        platform: r.platform,
+        kbId: r.kbId,
+        kbName: r.kbName,
+        tokenHash: r.tokenHash,
+        active: r.active,
+        calls: existing?.calls ?? r.calls,
+        createdAt: r.createdAt.getTime(),
+      });
+    }
+    return rows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateBotIntegrations error");
+    return 0;
+  }
+}
+
+// ── P7-3: Knowledge-graph hydration ───────────────────────────────────────
+
+/**
+ * Merge DB graph rows into __KAI_GRAPH_STORE__ so extracted entities and
+ * relations survive restarts. Per-doc contribution maps are memory-only
+ * (rebuilt on the next re-index), so hydrate only fills entities/relations
+ * and the label index.
+ */
+async function hydrateKnowledgeGraph(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as {
+    __KAI_GRAPH_STORE__?: {
+      entities: Map<string, unknown>;
+      relations: Map<string, unknown>;
+      labelIndex: Map<string, string>;
+      docGraphs: Map<string, unknown>;
+    };
+  };
+  if (!g.__KAI_GRAPH_STORE__) return 0;
+  try {
+    const ke = db as unknown as {
+      knowledgeEntity: { findMany: (o?: unknown) => Promise<unknown[]> };
+      knowledgeRelation: { findMany: (o?: unknown) => Promise<unknown[]> };
+    };
+    const entityRows = await ke.knowledgeEntity.findMany({});
+    const relationRows = await ke.knowledgeRelation.findMany({});
+    for (const r of entityRows as unknown as {
+      id: string; kbId: string; label: string; type: string; mentions: number;
+      docIds: string[]; createdAt: Date;
+    }[]) {
+      const existing = g.__KAI_GRAPH_STORE__.entities.get(r.id) as
+        | { mentions?: number; docIds?: string[] } | undefined;
+      g.__KAI_GRAPH_STORE__.entities.set(r.id, {
+        id: r.id,
+        kbId: r.kbId,
+        label: r.label,
+        type: r.type,
+        mentions: existing?.mentions ?? r.mentions,
+        docIds: existing?.docIds ?? r.docIds,
+        createdAt: r.createdAt.getTime(),
+      });
+      g.__KAI_GRAPH_STORE__.labelIndex.set(`${r.kbId}:${r.label}`, r.id);
+    }
+    for (const r of relationRows as unknown as {
+      id: string; kbId: string; source: string; target: string; type: string;
+      weight: number; docIds: string[]; createdAt: Date;
+    }[]) {
+      const existing = g.__KAI_GRAPH_STORE__.relations.get(r.id) as
+        | { weight?: number; docIds?: string[] } | undefined;
+      g.__KAI_GRAPH_STORE__.relations.set(r.id, {
+        id: r.id,
+        kbId: r.kbId,
+        source: r.source,
+        target: r.target,
+        type: r.type,
+        weight: existing?.weight ?? r.weight,
+        docIds: existing?.docIds ?? r.docIds,
+        createdAt: r.createdAt.getTime(),
+      });
+    }
+    return entityRows.length + relationRows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateKnowledgeGraph error");
+    return 0;
   }
 }

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KnowledgeAI Widget 演示</title>
+  <style>
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 720px; margin: 0 auto; padding: 48px 24px; color: #1f2937; line-height: 1.7; }
+    code, pre { background: #f3f4f6; border-radius: 8px; padding: 2px 6px; font-size: 14px; }
+    pre { padding: 14px; overflow-x: auto; }
+    input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+    label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: 600; }
+    button { margin-top: 16px; background: #6366f1; color: #fff; border: 0; border-radius: 10px; padding: 10px 20px; font-size: 15px; cursor: pointer; }
+    .note { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h1>KnowledgeAI 嵌入组件演示</h1>
+  <p>这是 <code>public/widget/kai-widget.js</code> 的独立演示页 —— 该文件可部署到任意静态站点，零依赖、零构建。</p>
+
+  <label for="endpoint">服务地址（endpoint）</label>
+  <input id="endpoint" value="http://localhost:3000" />
+  <label for="apiKey">API Key（chat:read 权限）</label>
+  <input id="apiKey" placeholder="kai_sk_..." />
+  <label for="kbId">知识库 ID（kbId）</label>
+  <input id="kbId" placeholder="kb_xxx" />
+  <button onclick="boot()">加载组件</button>
+
+  <div class="note">
+    组件以独立 iframe/脚本方式工作：<code>&lt;script src="/widget/kai-widget.js"&gt;&lt;/script&gt;</code> 后调用
+    <code>KnowledgeAIWidget.init({ endpoint, apiKey, kbId })</code>。填入上方参数点击「加载组件」，
+    右下角会出现悬浮按钮。CORS：服务端需允许本页来源（demo 模式默认放行）。
+  </div>
+
+  <script src="/widget/kai-widget.js"></script>
+  <script>
+    function boot() {
+      var endpoint = document.getElementById("endpoint").value.trim();
+      var apiKey = document.getElementById("apiKey").value.trim();
+      var kbId = document.getElementById("kbId").value.trim();
+      if (!apiKey || !kbId) { alert("请填写 API Key 与知识库 ID"); return; }
+      KnowledgeAIWidget.init({ endpoint: endpoint, apiKey: apiKey, kbId: kbId, title: "AI 助手" });
+      alert("组件已加载，点击右下角悬浮按钮开始问答");
+    }
+  </script>
+</body>
+</html>

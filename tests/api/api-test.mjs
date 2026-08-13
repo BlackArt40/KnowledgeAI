@@ -211,6 +211,83 @@ async function main() {
   r = await req("DELETE", "/api/api-keys/nonexistent");
   log("密钥不存在", "DELETE", "/api/api-keys/nonexistent", r.status, r.status === 404, `404`);
 
+  // ── 10. P7-1: v1 API + OpenAPI ──
+  console.log("\n── v1 API + OpenAPI ──");
+  r = await req("GET", "/api/openapi.json");
+  log("OpenAPI规范", "GET", "/api/openapi.json", r.status, r.status === 200 && r.data?.openapi === "3.0.3" && Object.keys(r.data?.paths ?? {}).length >= 7, `paths=${Object.keys(r.data?.paths ?? {}).length}`);
+
+  r = await req("GET", "/api/v1/me");
+  log("v1/me", "GET", "/api/v1/me", r.status, r.status === 200 && !!r.data?.user?.id, r.data?.user?.email);
+
+  r = await req("GET", "/api/v1/knowledge-bases");
+  log("v1/KB列表", "GET", "/api/v1/knowledge-bases", r.status, r.status === 200 && Array.isArray(r.data?.kbs));
+
+  // API Key scope 强制（chat:read 密钥不能调 agent）
+  const keyRes = await req("POST", "/api/api-keys", { name: "itest-v1", scopes: ["kb:read", "chat:read"] });
+  const keySecret = keyRes.data?.key?.secret;
+  log("创建API密钥", "POST", "/api/api-keys", keyRes.status, keyRes.status === 201 && !!keySecret);
+  const keyHeaders = { Authorization: `Bearer ${keySecret}` };
+  const agentRes = await fetch(`${BASE}/api/v1/agent/run`, {
+    method: "POST",
+    headers: { ...keyHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ topic: "x" }),
+  });
+  log("v1/agent scope强制", "POST", "/api/v1/agent/run", agentRes.status, agentRes.status === 403, `403 (缺 agent:run)`);
+
+  // ── 11. P7-1: Webhook ──
+  console.log("\n── Webhook ──");
+  r = await req("POST", "/api/v1/webhooks", { name: "itest", url: "https://example.com/hook", events: ["kb.ready"] });
+  const whId = r.data?.webhook?.id;
+  log("创建Webhook", "POST", "/api/v1/webhooks", r.status, r.status === 201 && !!whId);
+  r = await req("GET", "/api/v1/webhooks");
+  log("Webhook列表", "GET", "/api/v1/webhooks", r.status, r.status === 200 && Array.isArray(r.data?.webhooks));
+  r = await req("POST", "/api/v1/webhooks", { name: "bad", url: "ftp://x", events: ["kb.ready"] });
+  log("Webhook非法URL", "POST", "/api/v1/webhooks", r.status, r.status === 400);
+  r = await req("DELETE", `/api/v1/webhooks/${whId}`);
+  log("删除Webhook", "DELETE", `/api/v1/webhooks/${whId}`, r.status, r.status === 200);
+
+  // ── 12. P7-2: 群机器人 ──
+  console.log("\n── 群机器人 ──");
+  r = await req("POST", "/api/v1/integrations/bot", { name: "itest-bot", platform: "test", kbId });
+  const botToken = r.data?.bot?.token;
+  const botId = r.data?.bot?.id;
+  log("创建机器人", "POST", "/api/v1/integrations/bot", r.status, r.status === 201 && !!botToken && botToken.startsWith("kai_bot_"));
+  const botRes = await fetch(`${BASE}/api/v1/integrations/bot/m/${botToken}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "你好" }),
+  });
+  const botData = await botRes.json();
+  log("机器人问答", "POST", `/api/v1/integrations/bot/m/<token>`, botRes.status, botRes.status === 200 && typeof botData?.answer === "string" && botData.answer.length > 0);
+  const badBot = await fetch(`${BASE}/api/v1/integrations/bot/m/kai_bot_wrongtoken000000000000000000000000`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "hi" }),
+  });
+  log("机器人坏令牌", "POST", "/api/v1/integrations/bot/m/<bad>", badBot.status, badBot.status === 401);
+  r = await req("DELETE", `/api/v1/integrations/bot/${botId}`);
+  log("删除机器人", "DELETE", `/api/v1/integrations/bot/${botId}`, r.status, r.status === 200);
+
+  // ── 13. P7-3: 知识图谱 ──
+  console.log("\n── 知识图谱 ──");
+  r = await req("GET", `/api/knowledge-base/${kbId}/graph`);
+  log("图谱数据", "GET", `/api/knowledge-base/${kbId}/graph`, r.status, r.status === 200 && Array.isArray(r.data?.nodes) && Array.isArray(r.data?.edges));
+  r = await req("GET", `/api/knowledge-base/${kbId}/graph/search?q=产品`);
+  log("图谱实体搜索", "GET", `/api/knowledge-base/${kbId}/graph/search`, r.status, r.status === 200 && Array.isArray(r.data?.entities));
+  r = await req("GET", "/api/knowledge-base/nonexistent/graph");
+  log("图谱KB不存在", "GET", "/api/knowledge-base/nonexistent/graph", r.status, r.status === 404);
+
+  // ── 14. P7-4: 多模态（图片混合提问，demo OCR 路径） ──
+  console.log("\n── 多模态 ──");
+  const imgB64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const mmRes = await fetch(`${BASE}/api/chat`, {
+    method: "POST",
+    headers: { ...(AUTH || {}), "Content-Type": "application/json" },
+    body: JSON.stringify({ kbId, query: "这张图片是什么？", images: [{ mime: "image/png", data: imgB64 }] }),
+  });
+  const mmText = await mmRes.text();
+  log("图片混合提问", "POST", "/api/chat (images)", mmRes.status, mmRes.status === 200 && mmText.includes('"type":"done"'), `SSE done`);
+
   // ── Summary ──
   console.log("\n════════════════════════════════════════════");
   console.log(`  总计: ${results.length} | 通过: ${passCount} | 失败: ${failCount}`);
@@ -234,7 +311,7 @@ function generateReport() {
 | 通过 | ${passCount} ✅ |
 | 失败 | ${failCount} ${failCount > 0 ? "❌" : ""} |
 | 通过率 | ${((passCount / results.length) * 100).toFixed(1)}% |
-| 测试端点数 | 35 个 API 路由 |
+| 测试端点数 | 60+ API 路由 |
 
 ## 测试明细
 
@@ -255,6 +332,11 @@ ${results.map((r, i) => `| ${i + 1} | ${r.name} | ${r.method} | \`${r.path}\` | 
 | 安全隐私 | 6 | 总览/2FA/会话/隐私/GDPR导出 |
 | 管理后台 | 5 | 总览/用户/封禁解封/KB监控/配置 |
 | 错误用例 | 3 | 404/400/参数校验 |
+| 开放 API（P7-1） | 5 | OpenAPI 规范/v1 身份/v1 KB/API Key scope 强制 |
+| Webhook（P7-1） | 4 | 创建/列表/非法 URL 校验/删除 |
+| 群机器人（P7-2） | 4 | 创建/问答/坏令牌/删除 |
+| 知识图谱（P7-3） | 3 | 图谱数据/实体搜索/KB 不存在 |
+| 多模态（P7-4） | 1 | 图片混合提问（SSE done） |
 
 ## SSE 流式端点验证
 

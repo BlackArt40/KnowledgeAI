@@ -20,6 +20,25 @@ export interface RequestUser {
   workspaceId: string;
 }
 
+/**
+ * Shared RequestUser constructor (P7-2): builds a RequestUser from a store
+ * User + optional workspace cookie. Used by the session path, the API-key
+ * path AND the bot-integration path - one decision, three call sites, so
+ * workspace resolution rules can't drift between them.
+ */
+export function requestUserFromUser(
+  user: { id: string; email: string; name: string; role: string },
+  workspaceCookie: string | null = null
+): RequestUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    workspaceId: resolveWorkspace(user.id, user.email, workspaceCookie).id,
+  };
+}
+
 function readCookie(req: Request, name: string): string | null {
   return (
     req.headers
@@ -49,26 +68,14 @@ export async function getRequestUser(
     if (!apiKey) return null;
     const owner = getUserById(apiKey.userId);
     if (!owner) return null;
-    return {
-      id: owner.id,
-      email: owner.email,
-      name: owner.name,
-      role: owner.role,
-      workspaceId: resolveWorkspace(owner.id, owner.email, readCookie(req, "kai-workspace")).id,
-    };
+    return requestUserFromUser(owner, readCookie(req, "kai-workspace"));
   }
 
   const token = cookieToken || bearerToken;
   if (!token) return null;
   const payload = await verifyToken(token);
   if (!payload) return null;
-  return {
-    id: payload.id,
-    email: payload.email,
-    name: payload.name,
-    role: payload.role,
-    workspaceId: resolveWorkspace(payload.id, payload.email, readCookie(req, "kai-workspace")).id,
-  };
+  return requestUserFromUser(payload, readCookie(req, "kai-workspace"));
 }
 
 /** Require one of the given roles for an API route.

@@ -130,12 +130,17 @@ async function main() {
 
   // ── 3. level 过滤 ────────────────────────────────────────────────────
   console.log("\n── 3. level 过滤 ──");
+  const allRes = await req("GET", "/api/admin/logs?limit=200", { token });
+  const allEntries = allRes.data?.logs ?? [];
   const warnRes = await req("GET", "/api/admin/logs?level=warn&limit=200", { token });
   const warnEntries = warnRes.data?.logs ?? [];
   const minWarn = { trace: 10, debug: 20, info: 30, warn: 40, error: 50, fatal: 60 };
   const allWarnOrAbove = warnEntries.every((e) => (minWarn[e.level] ?? 0) >= 40);
-  check("?level=warn 只含 warn/error/fatal", warnEntries.length > 0 && allWarnOrAbove,
-    `count=${warnEntries.length} levels=${[...new Set(warnEntries.map((e) => e.level))].join(",")}`);
+  // 过滤生效：全量里有 info 级条目，且过滤结果不含任何 info/debug 条目
+  const hasInfoInAll = allEntries.some((e) => (minWarn[e.level] ?? 0) < 40);
+  const noInfoInFiltered = warnEntries.every((e) => (minWarn[e.level] ?? 0) >= 40);
+  check("?level=warn 过滤掉 info/debug", hasInfoInAll && allWarnOrAbove && noInfoInFiltered,
+    `all=${allEntries.length} warn=${warnEntries.length} levels=${[...new Set(warnEntries.map((e) => e.level))].join(",")}`);
 
   // ── 4. requestId 串联：X-Trace-Id → requestId ────────────────────────
   console.log("\n── 4. requestId 串联 ──");

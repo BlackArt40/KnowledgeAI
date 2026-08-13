@@ -89,6 +89,21 @@ const agentRunHandler: JobHandler = async (payload) => {
         saveTask(task);
       });
     });
+    // P7-1: notify webhook subscribers when the agent research completed.
+    if (task.status === "done") {
+      const { emitWebhookEvent } = await import("@/lib/webhooks/store");
+      await emitWebhookEvent(task.workspaceId, "agent.completed", {
+        taskId: task.id,
+        topic: task.topic,
+        kbId: task.kbId,
+        kbName: task.kbName,
+        status: task.status,
+        outputFormat: task.outputFormat,
+        durationMs: task.durationMs,
+      }).catch((err) => {
+        log.warn({ err }, "[queue] agent webhook emit failed");
+      });
+    }
     return { ok: true, data: { taskId } };
   } catch (err) {
     failed = true;
@@ -124,10 +139,70 @@ const indexCleanupHandler: JobHandler = async (payload) => {
   }
 };
 
+// ── Webhook Delivery Handler ──────────────────────────────────────────────
+//
+// Performs ONE HTTP attempt for an outgoing webhook event (P7-1). Queue
+// retries (3 attempts, exponential backoff in memory mode; BullMQ retry +
+// DLQ with Redis) provide the reliability layer. A 2xx response marks the
+// subscription healthy; non-2xx / network errors increment its failure count
+// and set lastError (dead-letter state after retries are exhausted).
+//
+// Payload: { subscriptionId: string, payload: WebhookEventPayload }
+
+const WEBHOOK_TIMEOUT_MS = 10_000;
+
+const webhookDeliverHandler: JobHandler = async (payload) => {
+  const subscriptionId = payload.subscriptionId as string;
+  const eventPayload = payload.payload as { event: string; ts: number; data: Record<string, unknown> };
+  if (!subscriptionId || !eventPayload) return { ok: false, error: "Missing subscriptionId/payload" };
+
+  const { getWebhookSubscription, signWebhookPayload, recordDelivery, markDeliveryOutcome } =
+    await import("@/lib/webhooks/store");
+
+  const sub = getWebhookSubscription(subscriptionId);
+  if (!sub) return { ok: false, error: `Subscription not found: ${subscriptionId}` };
+  if (!sub.active) return { ok: true, data: { skipped: "inactive" } };
+
+  const body = JSON.stringify(eventPayload);
+  const start = Date.now();
+  try {
+    const signature = await signWebhookPayload(sub.secret, body);
+    const res = await fetch(sub.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-KAI-Event": eventPayload.event,
+        "X-KAI-Signature": `sha256=${signature}`,
+        "X-KAI-Delivery": `whk_${crypto.randomUUID().slice(0, 8)}`,
+        "User-Agent": "KnowledgeAI-Webhook/1.0",
+      },
+      body,
+      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
+    });
+    const ok = res.ok;
+    recordDelivery({
+      subscriptionId, event: eventPayload.event as never,
+      status: ok ? res.status : "error", latencyMs: Date.now() - start,
+      detail: ok ? undefined : `HTTP ${res.status}`,
+    });
+    markDeliveryOutcome(subscriptionId, ok, ok ? undefined : `HTTP ${res.status}`);
+    return ok ? { ok: true } : { ok: false, error: `HTTP ${res.status}` };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "网络错误";
+    recordDelivery({
+      subscriptionId, event: eventPayload.event as never,
+      status: "error", latencyMs: Date.now() - start, detail,
+    });
+    markDeliveryOutcome(subscriptionId, false, detail);
+    return { ok: false, error: detail };
+  }
+};
+
 /** Register all job handlers with the given queue instance. */
 export function registerAllHandlers(queue: JobQueue): void {
   queue.registerHandler("doc-process", docProcessHandler);
   queue.registerHandler("agent-run", agentRunHandler);
   queue.registerHandler("index-cleanup", indexCleanupHandler);
-  log.info("[queue] Handlers registered: doc-process, agent-run, index-cleanup");
+  queue.registerHandler("webhook-deliver", webhookDeliverHandler);
+  log.info("[queue] Handlers registered: doc-process, agent-run, index-cleanup, webhook-deliver");
 }
