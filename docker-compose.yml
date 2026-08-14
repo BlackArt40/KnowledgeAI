@@ -14,6 +14,11 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # 限流档位可配置（性能测试等场景需调高，如 RATE_LIMIT_PER_MIN=2000）
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
+      RATE_LIMIT_ANON_PER_MIN: ${RATE_LIMIT_ANON_PER_MIN:-20}
+      RATE_LIMIT_KEY_PER_MIN: ${RATE_LIMIT_KEY_PER_MIN:-500}
+      RATE_LIMIT_KB_PER_MIN: ${RATE_LIMIT_KB_PER_MIN:-60}
     ports:
       - "3000:3000"
     volumes:
@@ -44,6 +49,11 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # 限流档位可配置（性能测试等场景需调高，如 RATE_LIMIT_PER_MIN=2000）
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
+      RATE_LIMIT_ANON_PER_MIN: ${RATE_LIMIT_ANON_PER_MIN:-20}
+      RATE_LIMIT_KEY_PER_MIN: ${RATE_LIMIT_KEY_PER_MIN:-500}
+      RATE_LIMIT_KB_PER_MIN: ${RATE_LIMIT_KB_PER_MIN:-60}
     volumes:
       - uploads:/app/.uploads
     depends_on:
@@ -51,6 +61,10 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    # worker 是纯队列消费者，无 HTTP 端口——禁用镜像自带的 wget HEALTHCHECK，
+    # 进程存活由 restart: unless-stopped 保障。
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   redis:
