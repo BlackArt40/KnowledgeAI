@@ -113,10 +113,13 @@ export function recordDelivery(record: Omit<DeliveryRecord, "id" | "ts">): void 
   if (s.deliveries.length > MAX_DELIVERY_RECORDS) s.deliveries.length = MAX_DELIVERY_RECORDS;
 }
 
-export function listDeliveryRecords(subscriptionId?: string, limit = 30): DeliveryRecord[] {
-  const all = subscriptionId
-    ? store().deliveries.filter((d) => d.subscriptionId === subscriptionId)
-    : store().deliveries;
+/** List delivery records for ONE workspace (tenant boundary). Optionally
+ *  narrow to a single subscription. Never call with a caller-supplied
+ *  workspaceId omitted - that would leak records across tenants. */
+export function listDeliveryRecords(workspaceId: string, subscriptionId?: string, limit = 30): DeliveryRecord[] {
+  const all = store().deliveries.filter(
+    (d) => d.workspaceId === workspaceId && (!subscriptionId || d.subscriptionId === subscriptionId)
+  );
   return all.slice(0, limit);
 }
 

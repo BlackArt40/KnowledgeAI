@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
+import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import {
   createWebhookSubscription,
   listWebhookSubscriptions,
@@ -14,21 +15,27 @@ import { withApiTrace } from "@/lib/obs/trace";
 export const dynamic = "force-dynamic";
 
 // Versioned public API (P7-1): webhook subscription management.
-// Authenticated via JWT session or API key (keys act as their owner).
-// NOTE: a subscription URL is a credential-ish endpoint - creating/updating
-// it is audited (webhook.create / webhook.delete).
+// Authenticated via JWT session or API key. API-key callers MUST carry the
+// `webhooks:write` scope (JWT sessions pass - they already hold full
+// privileges). NOTE: a subscription URL is a credential-ish endpoint -
+// creating/updating it is audited (webhook.create / webhook.delete).
 
 async function handleGET(req: Request) {
+  const scope = await requireApiKeyScope(req, "webhooks:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const subs = listWebhookSubscriptions(u.workspaceId);
   return NextResponse.json({
     webhooks: subs,
-    deliveries: listDeliveryRecords(undefined, 30),
+    // deliveries are tenant-scoped - never list across workspaces
+    deliveries: listDeliveryRecords(u.workspaceId, undefined, 30),
   });
 }
 
 async function handlePOST(req: Request) {
+  const scope = await requireApiKeyScope(req, "webhooks:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
 

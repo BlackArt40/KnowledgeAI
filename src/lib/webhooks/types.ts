@@ -43,6 +43,8 @@ export interface WebhookSubscription {
 export interface DeliveryRecord {
   id: string;
   subscriptionId: string;
+  /** Tenant boundary - listDeliveryRecords MUST filter by this. */
+  workspaceId: string;
   event: WebhookEvent;
   status: number | "error" | "dead";
   ts: number;

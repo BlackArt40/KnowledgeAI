@@ -162,6 +162,7 @@ export async function persistTask(task: {
   userId?: string;
   topic: string;
   kbId?: string;
+  kbName?: string;
   outputFormat: string;
   status: string;
   report?: string;
@@ -173,6 +174,10 @@ export async function persistTask(task: {
   shareConfig?: unknown;
   versions?: unknown;
   comments?: unknown;
+  agents?: unknown[];
+  maxSteps?: number;
+  template?: string;
+  workspaceId?: string;
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -182,6 +187,7 @@ export async function persistTask(task: {
     const data = {
       topic: task.topic,
       kbId: task.kbId ?? null,
+      kbName: task.kbName ?? null,
       outputFormat: task.outputFormat,
       status: task.status,
       report: task.report ?? null,
@@ -192,6 +198,10 @@ export async function persistTask(task: {
       shareConfig: task.shareConfig ?? null,
       versions: task.versions ?? null,
       comments: task.comments ?? null,
+      agents: task.agents ?? null,
+      maxSteps: task.maxSteps ?? 5,
+      template: task.template ?? null,
+      workspaceId: task.workspaceId ?? "ws_default",
     };
     if (existing) {
       await db.agentTask.update({ where: { id: task.id }, data });

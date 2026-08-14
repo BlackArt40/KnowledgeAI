@@ -3,6 +3,7 @@ import type { ClientInfo } from "./ua";
 import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 import { getConfig } from "@/lib/admin/store";
+import { log } from "@/lib/obs/log";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
 
@@ -217,8 +218,11 @@ export function is2FAEnabled(userId: string): boolean {
 export function is2FARequiredForRole(role: string): boolean {
   try {
     return getConfig().required2FARoles.includes(role);
-  } catch {
-    return false;
+  } catch (err) {
+    // Fail CLOSED: an unreadable admin config must not silently weaken the
+    // 2FA policy - treat the role as requiring 2FA and surface the problem.
+    log.warn({ err }, "[security] 2FA required-roles config read failed - treating as required");
+    return true;
   }
 }
 

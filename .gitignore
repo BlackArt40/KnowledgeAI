@@ -71,3 +71,6 @@ tests/**/*测试报告.md
 __pycache__/
 *.pyc
 .brooks-lint-history.json
+
+# 本地测试数据准备（仅本地使用，不提交 GitHub）
+/scripts/local/

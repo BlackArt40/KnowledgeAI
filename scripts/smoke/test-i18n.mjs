@@ -49,6 +49,11 @@ async function main() {
     "--disable-gpu",
   ], { stdio: "ignore" });
 
+  // P7-5: guarantee Chrome dies on EVERY exit path - process.exit()
+  // skips finally blocks, so this handler is the last line of defense.
+  process.on("exit", () => { try { chrome.kill("SIGKILL"); } catch {} });
+  let exitCode = 0;
+
   try {
     await waitForPort(PORT);
     const target = await fetch(
@@ -224,10 +229,11 @@ async function main() {
     ws.close();
     console.log(`\n${results.join("\n")}`);
     console.log(`\nI18n UI acceptance: ${results.length - failures}/${results.length} passed${failures ? `, ${failures} FAILED` : ""}\nScreenshots: ${OUT_DIR}/`);
-    process.exit(failures > 0 ? 1 : 0);
-  } finally {
-    chrome.kill();
-  }
+    exitCode = failures > 0 ? 1 : 0;
+    } finally {
+      chrome.kill();
+    }
+    process.exit(exitCode);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

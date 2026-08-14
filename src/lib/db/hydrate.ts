@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
-import { decryptFromString } from "@/lib/crypto";
+import { decryptFromString, isEncrypted } from "@/lib/crypto";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 import { log } from "@/lib/obs/log";
 
@@ -31,6 +31,14 @@ export async function hydrateFromDb(): Promise<void> {
 
   const db = await getDb();
   if (!db) return;
+
+  // Stores are created lazily by their modules on first access, but hydration
+  // is triggered from the proxy on the first request and races with route
+  // handlers. A store that has not been touched yet would make its hydrateX()
+  // no-op (data loaded from DB would never appear in the app). Ensure every
+  // store exists first (P4-3 regression: KBs/tasks/conversations/team/... were
+  // silently missing after restart in DB mode).
+  ensureStores();
 
   log.info("[db] Hydrating in-memory stores from PostgreSQL...");
   const counts = { users: 0, kbs: 0, docs: 0, tasks: 0 };
@@ -71,6 +79,8 @@ export async function hydrateFromDb(): Promise<void> {
     const team = await hydrateTeam();
     const admin = await hydrateSystemConfig();
     const audit = await hydrateAudit();
+    const keys = await hydrateApiKeys();
+    const billing = await hydrateBilling();
     // P5-5: workspace rows (brand color survives restarts).
     const workspaces = await hydrateWorkspace();
     // P7-1: webhook subscription rows (delivery state survives restarts).
@@ -81,8 +91,11 @@ export async function hydrateFromDb(): Promise<void> {
     const graph = await hydrateKnowledgeGraph();
 
     _hydrated = true;
+    // With DB rows loaded, block the demo seed() paths (seed only runs while
+    // seeded === false) so demo rows cannot mix with DB rows.
+    markSeeded();
     log.info(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}`
     );
   } catch (err) {
     log.error({ err }, "[db] Hydration failed");
@@ -91,6 +104,103 @@ export async function hydrateFromDb(): Promise<void> {
 }
 
 // ── Per-model hydration helpers ──────────────────────────────────────────
+
+/**
+ * Create every in-memory store before hydration writes into it. Store
+ * modules initialize their globalThis singleton lazily on first access;
+ * hydration runs concurrently with the first request, so stores the request
+ * path has not touched yet would otherwise make their hydrateX() a no-op and
+ * the DB rows would never surface. The structures mirror the init code in
+ * each store module (kb/chat/agent/workspace/team/notifications/webhooks/
+ * admin/bots/kg) so later store() calls reuse them unchanged.
+ */
+function ensureStores(): void {
+  const g = globalThis as Record<string, unknown>;
+  if (!g.__KAI_USER_STORE__)
+    g.__KAI_USER_STORE__ = { users: new Map(), emailIndex: new Map(), seeded: false };
+  if (!g.__KAI_KB_STORE__)
+    g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
+  if (!g.__KAI_CHAT_STORE__)
+    g.__KAI_CHAT_STORE__ = { conversations: new Map() };
+  if (!g.__KAI_AGENT_STORE__)
+    g.__KAI_AGENT_STORE__ = { tasks: new Map() };
+  if (!g.__KAI_MODEL_STORE__)
+    g.__KAI_MODEL_STORE__ = new Map();
+  if (!g.__KAI_NOTIF_STORE__ || !(g.__KAI_NOTIF_STORE__ as { seededUsers?: unknown }).seededUsers)
+    g.__KAI_NOTIF_STORE__ = { prefsByUser: new Map(), notificationsByUser: new Map(), seededUsers: new Set() };
+  if (!g.__KAI_TEAM_STORE__)
+    g.__KAI_TEAM_STORE__ = {
+      team: { id: "team_default", name: "KnowledgeAI 团队", logoInitial: "K", plan: "专业版", createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90 },
+      members: new Map(),
+      audit: [],
+      kbAccess: new Map(),
+      kbMemberRoles: new Map(),
+      seeded: false,
+    };
+  if (!g.__KAI_WORKSPACE_STORE__)
+    g.__KAI_WORKSPACE_STORE__ = new Map();
+  if (!g.__KAI_WEBHOOK_STORE__)
+    g.__KAI_WEBHOOK_STORE__ = { subs: new Map(), deliveries: [] };
+  if (!g.__KAI_BOT_STORE__)
+    g.__KAI_BOT_STORE__ = { bots: new Map(), plaintextTokens: new Map() };
+  if (!g.__KAI_GRAPH_STORE__)
+    g.__KAI_GRAPH_STORE__ = { entities: new Map(), relations: new Map(), labelIndex: new Map(), docGraphs: new Map() };
+  if (!g.__KAI_ADMIN_STORE__)
+    // Mirror admin/store.ts defaults - an empty config would make
+    // getConfig() throw (e.g. required2FARoles) and 2FA policy fails closed.
+    g.__KAI_ADMIN_STORE__ = {
+      config: {
+        defaultModel: "gpt-4o",
+        embeddingModel: "bge-m3",
+        rateLimitPerMin: 60,
+        maxUploadMb: 50,
+        maintenanceMode: false,
+        allowSignup: true,
+        required2FARoles: [],
+      },
+    };
+  if (!g.__KAI_APIKEY_STORE__)
+    g.__KAI_APIKEY_STORE__ = { keys: [], logs: [] };
+  if (!g.__KAI_BILLING_STORE__)
+    // seeded: true - DB rows are authoritative once hydration runs; the
+    // demo subscription/invoice seed must not mix into a DB-backed store.
+    g.__KAI_BILLING_STORE__ = {
+      subscriptionsByUser: new Map(),
+      invoicesByUser: new Map(),
+      orders: new Map(),
+      usageByUser: new Map(),
+      seeded: true,
+    };
+
+  // The default workspace is the tenant fallback for every request (cookie /
+  // no-cookie resolution); it must exist even when the DB has no row for it.
+  const wsStore = g.__KAI_WORKSPACE_STORE__ as Map<string, {
+    id: string; name: string; plan: string; ownerId: string;
+    members: string[]; createdAt: number; brandColor: string;
+  }>;
+  if (!wsStore.has("ws_default")) {
+    wsStore.set("ws_default", {
+      id: "ws_default",
+      name: "KnowledgeAI 团队",
+      plan: "pro",
+      ownerId: "usr_owner",
+      members: ["owner@knowledgeai.dev", "admin@knowledgeai.dev", "editor@knowledgeai.dev", "viewer@knowledgeai.dev"],
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
+      brandColor: "indigo",
+    });
+  }
+}
+
+/** Block demo seed() paths now that DB rows are authoritative. */
+function markSeeded(): void {
+  const g = globalThis as Record<string, unknown>;
+  const userStore = g.__KAI_USER_STORE__ as { seeded?: boolean } | undefined;
+  if (userStore) userStore.seeded = true;
+  const kbStore = g.__KAI_KB_STORE__ as { seeded?: boolean } | undefined;
+  if (kbStore) kbStore.seeded = true;
+  const teamStore = g.__KAI_TEAM_STORE__ as { seeded?: boolean } | undefined;
+  if (teamStore) teamStore.seeded = true;
+}
 
 function hydrateUser(u: PrismaUser): void {
   const g = globalThis as unknown as { __KAI_USER_STORE__?: { users: Map<string, unknown>; emailIndex: Map<string, string>; seeded: boolean } };
@@ -126,6 +236,10 @@ function hydrateKb(kb: PrismaKb): void {
     color: "from-primary/15",
     initial: kb.name.charAt(0) || "K",
     ownerId: kb.ownerId,
+    // P4-3: the KnowledgeBase table has no workspaceId column (memory-only
+    // field); DB rows belong to the default workspace, same as in-memory
+    // creation. Without it the tenant filter hides every hydrated KB.
+    workspaceId: (kb as unknown as { workspaceId?: string | null }).workspaceId ?? "ws_default",
     createdAt: kb.createdAt.getTime(),
     updatedAt: kb.updatedAt.getTime(),
     settings: {
@@ -158,11 +272,28 @@ function hydrateDoc(d: PrismaDoc): void {
 function hydrateTask(t: PrismaAgentTask): void {
   const g = globalThis as unknown as { __KAI_AGENT_STORE__?: { tasks: Map<string, unknown> } };
   if (!g.__KAI_AGENT_STORE__) return;
+  const row = t as unknown as {
+    workspaceId?: string | null;
+    kbName?: string | null;
+    agents?: unknown[] | null;
+    maxSteps?: number | null;
+    template?: string | null;
+    updatedAt?: Date | null;
+  };
   g.__KAI_AGENT_STORE__.tasks.set(t.id, {
     id: t.id,
     topic: t.topic,
     kbId: t.kbId ?? undefined,
+    kbName: row.kbName ?? undefined,
+    // P4-3: persisted column since the agent_task_extended migration - the
+    // default keeps rows written before the migration in the right tenant.
+    workspaceId: row.workspaceId ?? "ws_default",
     outputFormat: t.outputFormat,
+    // P2-1: workflow config persisted so the separate worker process can run
+    // tasks created by the web process (cross-process consistency).
+    agents: (row.agents as string[] | null) ?? ["planner", "searcher", "analyzer", "writer"],
+    maxSteps: row.maxSteps ?? 5,
+    template: row.template ?? undefined,
     status: t.status,
     report: t.report ?? undefined,
     outline: t.outline as string[] ?? [],
@@ -173,7 +304,7 @@ function hydrateTask(t: PrismaAgentTask): void {
     versions: (t.versions as unknown[] | null) ?? undefined,
     comments: (t.comments as unknown[] | null) ?? undefined,
     createdAt: t.createdAt.getTime(),
-    updatedAt: t.createdAt.getTime(),
+    updatedAt: (row.updatedAt ?? t.createdAt).getTime(),
     userId: t.userId,
   });
 }
@@ -662,5 +793,202 @@ async function hydrateKnowledgeGraph(): Promise<number> {
   } catch (err) {
     log.error({ err }, "[db] hydrateKnowledgeGraph error");
     return 0;
+  }
+}
+
+/** Hydrate API keys from DB (secrets stay encrypted at rest - decrypt here). */
+async function hydrateApiKeys(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: { keys: Array<Record<string, unknown>> } };
+  if (!g.__KAI_APIKEY_STORE__) return 0;
+  try {
+    const rows = await (db as unknown as {
+      apiKey: { findMany: (o?: unknown) => Promise<unknown[]> };
+    }).apiKey.findMany({ orderBy: { createdAt: "desc" } });
+    const store = g.__KAI_APIKEY_STORE__;
+    const seen = new Set(store.keys.map((k) => k.id));
+    for (const r of rows as unknown as {
+      id: string; userId: string; name: string; secret: string; prefix: string;
+      scopes: string[]; status: string; calls: number; lastUsed: Date | null; createdAt: Date;
+    }[]) {
+      if (seen.has(r.id)) continue;
+      store.keys.push({
+        id: r.id,
+        userId: r.userId,
+        name: r.name,
+        secret: isEncrypted(r.secret) ? decryptFromString(r.secret) : r.secret,
+        prefix: r.prefix,
+        scopes: r.scopes,
+        status: r.status,
+        calls: r.calls,
+        lastUsed: r.lastUsed ? r.lastUsed.getTime() : null,
+        createdAt: r.createdAt.getTime(),
+      });
+    }
+    return store.keys.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateApiKeys error");
+    return 0;
+  }
+}
+
+/** Hydrate subscriptions / invoices / orders so billing pages show history
+ *  after restart. Usage counters are runtime metrics and stay in memory. */
+async function hydrateBilling(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const g = globalThis as unknown as {
+    __KAI_BILLING_STORE__?: {
+      subscriptionsByUser: Map<string, unknown>;
+      invoicesByUser: Map<string, unknown[]>;
+      orders: Map<string, unknown>;
+    };
+  };
+  if (!g.__KAI_BILLING_STORE__) return 0;
+  try {
+    const sdb = db as unknown as {
+      subscription: { findMany: (o?: unknown) => Promise<unknown[]> };
+      invoice: { findMany: (o?: unknown) => Promise<unknown[]> };
+      order: { findMany: (o?: unknown) => Promise<unknown[]> };
+    };
+    const store = g.__KAI_BILLING_STORE__;
+    const subs = await sdb.subscription.findMany({});
+    for (const s of subs as unknown as {
+      userId: string; plan: string; status: string;
+      periodStart: Date; periodEnd: Date; paymentMethod: string | null;
+    }[]) {
+      store.subscriptionsByUser.set(s.userId, {
+        plan: s.plan,
+        status: s.status,
+        periodStart: s.periodStart.getTime(),
+        periodEnd: s.periodEnd.getTime(),
+        seats: 1,
+        paymentMethod: s.paymentMethod ?? undefined,
+      });
+    }
+    const invoices = await sdb.invoice.findMany({ orderBy: { date: "desc" } });
+    for (const inv of invoices as unknown as {
+      id: string; userId: string; amount: number; plan: string; status: string; method: string; date: Date;
+    }[]) {
+      const list = store.invoicesByUser.get(inv.userId) ?? [];
+      list.push({
+        id: inv.id,
+        date: inv.date.getTime(),
+        amount: inv.amount,
+        plan: inv.plan,
+        status: inv.status,
+        method: inv.method,
+      });
+      store.invoicesByUser.set(inv.userId, list);
+    }
+    const orders = await sdb.order.findMany({ orderBy: { createdAt: "desc" } });
+    for (const o of orders as unknown as {
+      id: string; userId: string; plan: string; amount: number; method: string; status: string; createdAt: Date;
+    }[]) {
+      store.orders.set(o.id, {
+        id: o.id,
+        userId: o.userId,
+        plan: o.plan,
+        amount: o.amount,
+        method: o.method,
+        status: o.status,
+        createdAt: o.createdAt.getTime(),
+      });
+    }
+    return subs.length + invoices.length + orders.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateBilling error");
+    return 0;
+  }
+}
+
+// ── On-demand single-row hydration (cross-process consistency) ──────────
+//
+// The worker process hydrates its in-memory stores once at boot. Rows
+// created afterwards by the web process (uploads, agent runs, webhook
+// subscriptions) reach the DB via fire-and-forget persist - a separate
+// worker would report "Document/Task/Subscription not found" for anything
+// created after boot. Queue handlers call these before handling; BullMQ
+// retries (attempts: 3) cover the persist race window.
+
+export async function loadKbFromDb(kbId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    const row = await db.knowledgeBase.findUnique({ where: { id: kbId } });
+    if (!row) return false;
+    hydrateKb(row);
+    return true;
+  } catch (err) {
+    log.warn({ err }, "[db] loadKbFromDb failed");
+    return false;
+  }
+}
+
+export async function loadDocFromDb(docId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    const row = await db.kbDocument.findUnique({ where: { id: docId } });
+    if (!row) return false;
+    hydrateDoc(row);
+    // The processing pipeline resolves the owning KB from the store too.
+    const kbRow = await db.knowledgeBase.findUnique({ where: { id: row.kbId } });
+    if (kbRow) hydrateKb(kbRow);
+    return true;
+  } catch (err) {
+    log.warn({ err }, "[db] loadDocFromDb failed");
+    return false;
+  }
+}
+
+export async function loadTaskFromDb(taskId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    const row = await db.agentTask.findUnique({ where: { id: taskId } });
+    if (!row) return false;
+    hydrateTask(row);
+    // runTask resolves the KB from the store for RAG retrieval.
+    if (row.kbId) {
+      const kbRow = await db.knowledgeBase.findUnique({ where: { id: row.kbId } });
+      if (kbRow) hydrateKb(kbRow);
+    }
+    return true;
+  } catch (err) {
+    log.warn({ err }, "[db] loadTaskFromDb failed");
+    return false;
+  }
+}
+
+export async function loadWebhookFromDb(subscriptionId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    const row = await (db as unknown as {
+      webhookSubscription: { findUnique: (o: unknown) => Promise<Record<string, unknown> | null> };
+    }).webhookSubscription.findUnique({ where: { id: subscriptionId } });
+    if (!row) return false;
+    const g = globalThis as unknown as { __KAI_WEBHOOK_STORE__?: { subs: Map<string, unknown> } };
+    if (!g.__KAI_WEBHOOK_STORE__) return false;
+    g.__KAI_WEBHOOK_STORE__.subs.set(subscriptionId, {
+      id: row.id,
+      userId: row.userId,
+      workspaceId: row.workspaceId,
+      name: row.name,
+      url: row.url,
+      secret: row.secret,
+      events: row.events,
+      active: row.active,
+      createdAt: (row.createdAt as Date).getTime(),
+      lastDeliveryAt: row.lastDeliveryAt ? (row.lastDeliveryAt as Date).getTime() : null,
+      failures: row.failures,
+      lastError: row.lastError,
+    });
+    return true;
+  } catch (err) {
+    log.warn({ err }, "[db] loadWebhookFromDb failed");
+    return false;
   }
 }

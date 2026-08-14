@@ -1,11 +1,29 @@
+# 本地开发 / 单机部署编排：app（Next standalone）+ worker（BullMQ）+ Redis + PostgreSQL(pgvector)。
+#
+# 环境变量（KAI_ENV_FILE，默认 .env.local；服务器部署传 .env）提供 AUTH_SECRET 等
+# 其余配置。DATABASE_URL / REDIS_URL 默认指向本编排的服务名（容器内 localhost 是
+# 容器自己，不能复用宿主机的 localhost 地址）；如需外部 DB/Redis，用环境变量覆盖：
+#   DATABASE_URL=postgresql://user:pwd@db-host:5432/knowledgeai
+#   REDIS_URL=redis://redis-host:6379
+# PostgreSQL 账号与 DATABASE_URL 保持一致：POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB。
+
 services:
   app:
     build: .
+    env_file: ${KAI_ENV_FILE:-.env.local}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "3000:3000"
-    env_file: .env.local
+    volumes:
+      # app 与 worker 共享上传目录：doc-process 在 worker 里读 app 写入的文件
+      - uploads:/app/.uploads
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       # P6-4: liveness probe (dependency connectivity = /api/health/ready)
@@ -22,9 +40,17 @@ services:
   worker:
     build: .
     command: ["node", "worker.js"]
-    env_file: .env.local
+    env_file: ${KAI_ENV_FILE:-.env.local}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - uploads:/app/.uploads
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   redis:
@@ -34,6 +60,32 @@ services:
     volumes:
       - redis-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # pgvector image: the KbChunk embedding column needs the `vector` extension
+  # (created via raw SQL - see prisma migrations / src/lib/rag).
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-knowledgeai-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-knowledgeai}
+    ports:
+      - "5432:5432" # 便于本机 psql/prisma 直连；与宿主已有 Postgres 冲突时可去掉
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-knowledgeai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   redis-data:
+  postgres-data:
+  uploads:

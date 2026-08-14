@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
+import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import { getWebhookSubscription, auditWebhook } from "@/lib/webhooks/store";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 // POST /api/v1/webhooks/[id]/test - enqueue a `ping` test delivery so the
 // subscriber can verify the endpoint + HMAC signature end-to-end.
 async function handlePOST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const scope = await requireApiKeyScope(req, "webhooks:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;

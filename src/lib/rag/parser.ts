@@ -4,7 +4,7 @@
 // Supported formats:
 //   .txt / .md / .csv / .json  -> direct UTF-8 read
 //   .html / .htm               -> strip tags (reuse fetcher logic)
-//   .pdf                       -> pdf-parse (dynamic import)
+//   .pdf                       -> pdfjs-dist text extraction (dynamic import)
 //   .docx                      -> mammoth (dynamic import)
 //   .xlsx / .xls               -> xlsx / SheetJS (dynamic import)
 //   .pptx                      -> zip XML extraction (built-in)
@@ -102,22 +102,54 @@ function parseHtml(buf: Buffer): ParsedDocument | null {
   return { text: body.slice(0, 500_000), title };
 }
 
-// ── PDF (pdf-parse) ─────────────────────────────────────────────────────
+// ── PDF (pdfjs-dist) ─────────────────────────────────────────────────────
+// Text extraction via pdfjs-dist - the same engine the OCR pipeline uses
+// (ocr.ts). Replaced pdf-parse (2026-08-14): unmaintained, bundled an old
+// pdf.js kernel, and duplicated the engine we already ship.
 
 async function parsePdf(buf: Buffer): Promise<ParsedDocument | null> {
   let text: string | null = null;
   let pages: number | undefined;
   let title: string | null = null;
   try {
-    const mod = await import("pdf-parse");
-    const pdfParse = (mod as { default?: (buf: Buffer) => Promise<{ text: string; numpages?: number; info?: { Title?: string } }> }).default
-      || (mod as unknown as (buf: Buffer) => Promise<{ text: string; numpages?: number; info?: { Title?: string } }>);
-    const data = await pdfParse(Buffer.from(buf));
-    text = data.text?.trim() || null;
-    pages = data.numpages;
-    title = data.info?.Title?.trim() || null;
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const getDocument = (pdfjs as unknown as {
+      getDocument: (src: { data: Uint8Array }) => {
+        promise: Promise<{
+          numPages: number;
+          getPage: (n: number) => Promise<{
+            getTextContent: () => Promise<{ items: Array<{ str?: string; hasEOL?: boolean }> }>;
+          }>;
+          getMetadata?: () => Promise<{ info?: { Title?: string } }>;
+        }>;
+      };
+    }).getDocument;
+
+    const doc = await getDocument({ data: new Uint8Array(buf) }).promise;
+    pages = doc.numPages;
+    const parts: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      let line = "";
+      for (const item of content.items) {
+        line += item.str ?? "";
+        if (item.hasEOL) {
+          parts.push(line);
+          line = "";
+        }
+      }
+      if (line.trim()) parts.push(line);
+    }
+    text = parts.join("\n").trim() || null;
+    try {
+      const meta = await doc.getMetadata?.();
+      title = meta?.info?.Title?.trim() || null;
+    } catch {
+      /* document metadata is optional */
+    }
   } catch {
-    log.warn("[parser] pdf-parse not installed or failed - will try OCR fallback");
+    log.warn("[parser] pdfjs-dist extraction failed - will try OCR fallback");
   }
   if (text && text.length >= 10 && !isScannedPdf(text, pages)) {
     return { text: text.slice(0, 500_000), title, pages };

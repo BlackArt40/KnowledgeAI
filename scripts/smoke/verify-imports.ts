@@ -1,7 +1,6 @@
-// Verifies all six parser/OCR dependencies resolve via dynamic import.
+// Verifies all parser/OCR dependencies resolve via dynamic import.
 async function main() {
   const checks: Array<[string, string]> = [
-    ["pdf-parse", "pdf-parse"],
     ["mammoth", "mammoth"],
     ["xlsx", "xlsx"],
     ["tesseract.js", "tesseract.js"],

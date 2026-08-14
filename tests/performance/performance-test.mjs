@@ -53,10 +53,23 @@ async function main() {
   const loggedIn = await login();
   console.log(`${loggedIn ? "✅" : "❌"} 登录 owner@knowledgeai.dev`);
 
+  // Resolve a real KB id before benchmarking: demo seed ids are random per
+  // boot (uid("kb")) and DB-backed stores hydrate their own ids, so a
+  // hardcoded id 404s and the KB详情/SSE benchmarks would silently measure
+  // an error path (0 tokens) instead of the real RAG flow.
+  let kbId = "kb_i22ohga1"; // fallback only when the KB list is unavailable
+  try {
+    const kbRes = await api("/api/knowledge-base");
+    const kbData = await kbRes.json().catch(() => ({}));
+    const kbs = Array.isArray(kbData) ? kbData : kbData.kbs ?? [];
+    if (kbs[0]?.id) kbId = kbs[0].id;
+  } catch {}
+  console.log(`✅ 解析 KB: ${kbId}\n`);
+
   // ── 1. API 响应时间基准 ──
   console.log("── API 响应时间基准 (5次/端点) ──\n");
   await benchmark("知识库列表", "GET", "/api/knowledge-base");
-  await benchmark("KB详情", "GET", "/api/knowledge-base/kb_i22ohga1");
+  await benchmark("KB详情", "GET", `/api/knowledge-base/${kbId}`);
   await benchmark("会话列表", "GET", "/api/chat/conversations");
   await benchmark("团队详情", "GET", "/api/team");
   await benchmark("审计日志", "GET", "/api/team/audit");
@@ -86,7 +99,7 @@ async function main() {
     const start = performance.now();
     const res = await fetch(`${BASE}/api/chat`, {
       method: "POST", headers: { "Content-Type": "application/json", ...(AUTH || {}) },
-      body: JSON.stringify({ kbId: "kb_i22ohga1", query: "产品功能" }),
+      body: JSON.stringify({ kbId, query: "产品功能" }),
     });
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -185,10 +198,10 @@ async function main() {
   console.log(`  限流: ${rateLimited ? "✅ 生效" : "❌ 未生效"} (第${first429}次触发)`);
   console.log("══════════════════════════════════════════════════\n");
 
-  generateReport(avgFirstToken, avgTotal, concurrentResults, concAvg, rateLimited, first429, sseLatencies);
+  generateReport(avgFirstToken, avgTotal, concurrentResults, concAvg, rateLimited, first429, sseLatencies, userLimit, probeCount);
 }
 
-function generateReport(avgFirstToken, avgTotal, concResults, concAvg, rateLimited, first429, sseLatencies) {
+function generateReport(avgFirstToken, avgTotal, concResults, concAvg, rateLimited, first429, sseLatencies, userLimit, probeCount) {
   const md = `# KnowledgeAI · 性能测试报告
 
 > 自动生成于 ${new Date().toLocaleString("zh-CN", { hour12: false })}
@@ -238,15 +251,15 @@ ${concResults.map((r, i) => `| 批次 ${i+1} | ${r.elapsed}ms | ${r.avgMs}ms | $
 
 ## 5. 限流测试 (Rate Limiting)
 
-> 连续发送 70 个请求到 \`/api/billing\`，验证限流中间件是否在达到阈值（60次/分钟）后返回 429。
+> 连续发送 ${probeCount} 个请求到 \`/api/billing\`，验证限流中间件是否在达到阈值（${userLimit}次/分钟）后返回 429。
 
 | 指标 | 结果 |
 | --- | --- |
-| 限流阈值 | 60 次/分钟 |
+| 限流阈值 | ${userLimit} 次/分钟 |
 | 首次 429 触发 | 第 ${first429} 次请求 |
 | 限流生效 | ${rateLimited ? "✅ 是" : "❌ 否"} |
-| 429 响应体 | \`{"error":"请求过于频繁，请稍后再试","retryAfter":N}\` |
-| 响应头 | \`X-RateLimit-Limit\` / \`X-RateLimit-Remaining\` / \`X-RateLimit-Reset\` |
+| 429 响应体 | \`{"error":"请求过于频繁，请稍后再试","retryAfter":N,"dimension":"user"}\` |
+| 响应头 | \`Retry-After\` / \`X-RateLimit-Limit\` / \`X-RateLimit-Remaining\` / \`X-RateLimit-Reset\` |
 
 ## 6. 写操作性能
 

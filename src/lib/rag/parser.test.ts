@@ -2,12 +2,24 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { parseDocument } from "./parser";
 
-vi.mock("pdf-parse", () => ({
-  default: vi.fn(async () => ({
-    text: "PDF 解析出的正文内容，超过二十个字符，用于验证非扫描版 PDF 的文本提取路径是否正常工作。",
-    numpages: 1,
-    info: { Title: "PDF 标题" },
+// Mock pdfjs-dist text extraction (same module specifier the parser imports).
+const { mockPdfGetTextContent, mockPdfGetMetadata } = vi.hoisted(() => ({
+  mockPdfGetTextContent: vi.fn(async () => ({
+    items: [
+      { str: "PDF 解析出的正文内容，超过二十个字符，用于验证非扫描版 PDF 的文本提取路径是否正常工作。", hasEOL: true },
+    ],
   })),
+  mockPdfGetMetadata: vi.fn(async () => ({ info: { Title: "PDF 标题" } })),
+}));
+
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
+  getDocument: () => ({
+    promise: Promise.resolve({
+      numPages: 1,
+      getPage: async () => ({ getTextContent: mockPdfGetTextContent }),
+      getMetadata: mockPdfGetMetadata,
+    }),
+  }),
 }));
 
 vi.mock("mammoth", () => ({
@@ -80,11 +92,9 @@ describe("parseDocument with heavy deps mocked", () => {
   });
 
   it("returns null when pdf has no extractable text (OCR disabled)", async () => {
-    vi.mocked((await import("pdf-parse")).default).mockResolvedValueOnce({
-      text: "x",
-      numpages: 1,
-      info: {},
-    } as never);
+    mockPdfGetTextContent.mockResolvedValueOnce({
+      items: [{ str: "x", hasEOL: false }],
+    });
     const out = await parseDocument(Buffer.from("%PDF-fake"), "scan.pdf", "pdf");
     expect(out).toBeNull();
   });

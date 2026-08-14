@@ -271,10 +271,11 @@ function main() {
       ws.close();
       console.log(`\n${results.join("\n")}`);
       console.log(`\n${MODE} acceptance: ${results.length - failures}/${results.length} passed${failures ? `, ${failures} FAILED` : ""}${MODE === "layout" ? `\nScreenshots: ${OUT_DIR}/` : ""}`);
-      process.exit(failures > 0 ? 1 : 0);
-    } finally {
-      chrome.kill();
-    }
+      exitCode = failures > 0 ? 1 : 0;
+      } finally {
+        chrome.kill();
+      }
+      process.exit(exitCode);
   })();
 }
 
