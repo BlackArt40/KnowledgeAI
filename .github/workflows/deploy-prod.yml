@@ -10,6 +10,10 @@ name: Deploy Production (Blue/Green)
 #   3. 服务器侧: scripts/deploy/blue-green.sh 依赖 docker + .env 文件。
 #
 # 回滚: 重新触发本 workflow 并指定上一个镜像 tag，蓝绿脚本会自动回滚失败的切换。
+#
+# 注意: job 级 `if` 不允许 secrets 上下文（GitHub 限制），未配置 PROD_HOST
+# 时的跳过判断经 job 级 env 代理后在 step 级 `if` 里用 env 完成；镜像 tag
+# 经 build job 的 outputs 传递（`steps` 上下文不能跨 job 引用）。
 
 on:
   workflow_dispatch:
@@ -29,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production # 手动审批门
     outputs:
-      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.tag.outputs.value }}
     steps:
       - uses: actions/checkout@v4
 
@@ -67,11 +71,13 @@ jobs:
   blue-green:
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ secrets.PROD_HOST != '' }}
+    env:
+      PROD_HOST: ${{ secrets.PROD_HOST }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Blue/green deploy over SSH
+        if: ${{ env.PROD_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PROD_HOST }}
@@ -81,8 +87,8 @@ jobs:
           script: |
             cd ${{ secrets.PROD_DIR || '/srv/knowledgeai' }}
             # 同步更新 worker 容器，保证队列消费端与 app 版本一致
-            export KAI_WORKER_IMAGE=ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }}
-            bash scripts/deploy/blue-green.sh ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }} \
+            export KAI_WORKER_IMAGE=ghcr.io/${{ github.repository }}:prod-${{ needs.build.outputs.tag }}
+            bash scripts/deploy/blue-green.sh ghcr.io/${{ github.repository }}:prod-${{ needs.build.outputs.tag }} \
               ${{ secrets.PROD_APP_NAME || 'kai-app' }} \
               ${{ secrets.PROD_PORT_EXTERNAL || '3000' }} \
               ${{ secrets.PROD_ENV_FILE || '.env' }}
