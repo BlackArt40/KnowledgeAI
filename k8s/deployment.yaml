@@ -10,6 +10,23 @@
 #
 # 依赖（DB/Redis）应作为同命名空间的 Service 提供；镜像通过
 # DATABASE_URL / REDIS_URL 环境变量指向它们（示例用 Secret 占位）。
+#
+# worker：BullMQ 消费端（doc-process / agent-run / index-cleanup）必须单独部署，
+# 否则队列任务永远无人处理（app 只写队列不消费）。
+# uploads 卷：app 与 worker 共享上传目录（worker 读取 app 写入的文档文件）。
+# 单节点示例用 ReadWriteOnce PVC；多副本生产建议 RWX 或对象存储（UPLOAD_DIR 为
+# 相对路径 .uploads，也可改为挂载对象存储的路径）。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: knowledgeai-uploads
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,6 +43,8 @@ spec:
       labels:
         app: knowledgeai
     spec:
+      securityContext:
+        fsGroup: 1001 # 让 uploads PVC 组归属 1001，nextjs(uid 1001) 可写
       containers:
         - name: app
           # 替换为实际镜像（与 deploy 工作流推送的 GHCR tag 对应）
@@ -45,6 +64,9 @@ spec:
                 secretKeyRef:
                   name: knowledgeai-env
                   key: REDIS_URL
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/.uploads
           startupProbe:
             httpGet:
               path: /api/health
@@ -72,6 +94,58 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: knowledgeai-uploads
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledgeai-worker
+  labels:
+    app: knowledgeai-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: knowledgeai-worker
+  template:
+    metadata:
+      labels:
+        app: knowledgeai-worker
+    spec:
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: worker
+          image: ghcr.io/your-org/knowledgeai:latest-prod
+          command: ["node", "worker.js"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: knowledgeai-env
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: knowledgeai-env
+                  key: REDIS_URL
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/.uploads
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: knowledgeai-uploads
 ---
 apiVersion: v1
 kind: Service

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
+import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import {
   getWebhookSubscription,
   updateWebhookSubscription,
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
 
 // PATCH /api/v1/webhooks/[id] - update name/url/secret/events/active
 async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const scope = await requireApiKeyScope(req, "webhooks:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;
@@ -51,6 +54,8 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
 
 // DELETE /api/v1/webhooks/[id]
 async function handleDELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const scope = await requireApiKeyScope(req, "webhooks:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;
@@ -74,6 +79,8 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
 // GET /api/v1/webhooks/[id] - one subscription + its delivery history
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withApiTrace(req, "api /api/v1/webhooks GET", async () => {
+    const scope = await requireApiKeyScope(req, "webhooks:write");
+    if (scope.error) return scope.error;
     const u = await getRequestUser(req);
     if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
     const { id } = await ctx.params;
@@ -81,6 +88,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!sub || sub.workspaceId !== u.workspaceId) {
       return NextResponse.json({ error: "Webhook 不存在" }, { status: 404 });
     }
-    return NextResponse.json({ webhook: sub, deliveries: listDeliveryRecords(id, 30) });
+    return NextResponse.json({ webhook: sub, deliveries: listDeliveryRecords(u.workspaceId, id, 30) });
   });
 }

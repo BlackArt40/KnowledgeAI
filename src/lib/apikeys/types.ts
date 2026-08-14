@@ -29,4 +29,5 @@ export const SCOPES = [
   { id: "chat:read", label: "问答调用" },
   { id: "agent:run", label: "Agent 调研" },
   { id: "team:read", label: "团队信息" },
+  { id: "webhooks:write", label: "Webhook 管理" },
 ] as const;

@@ -80,6 +80,8 @@ jobs:
           port: ${{ secrets.PROD_PORT || '22' }}
           script: |
             cd ${{ secrets.PROD_DIR || '/srv/knowledgeai' }}
+            # 同步更新 worker 容器，保证队列消费端与 app 版本一致
+            export KAI_WORKER_IMAGE=ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }}
             bash scripts/deploy/blue-green.sh ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }} \
               ${{ secrets.PROD_APP_NAME || 'kai-app' }} \
               ${{ secrets.PROD_PORT_EXTERNAL || '3000' }} \

@@ -48,7 +48,9 @@ async function main() {
   log("登录页", "/login", p.status, p.status === 200 && checkContent(p.html, ["登录", "密码"]), `${(p.size/1024).toFixed(0)}KB`);
 
   p = await fetchPage("/register");
-  log("注册页", "/register", p.status, p.status === 200 && checkContent(p.html, ["注册"]), `${(p.size/1024).toFixed(0)}KB`);
+  // The register form is client-rendered (i18n), so assert on the SSR
+  // marketing copy instead of the form labels.
+  log("注册页", "/register", p.status, p.status === 200 && checkContent(p.html, ["知识助手"]), `${(p.size/1024).toFixed(0)}KB`);
 
   p = await fetchPage("/verify-email");
   log("邮箱验证", "/verify-email", p.status, p.status === 200, `${(p.size/1024).toFixed(0)}KB`);

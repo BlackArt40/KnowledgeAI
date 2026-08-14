@@ -11,6 +11,16 @@ async function handleGET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const kbId = new URL(req.url).searchParams.get("kbId");
+  // Cross-process: with a separate worker, task status is persisted to the
+  // DB by the worker process - reload non-terminal tasks so this process's
+  // snapshot reflects queue progress.
+  const { loadTaskFromDb } = await import("@/lib/db/hydrate");
+  const stale = listTasks(u.id, u.workspaceId).filter((t) =>
+    ["queued", "running"].includes(t.status)
+  );
+  if (stale.length > 0) {
+    await Promise.allSettled(stale.map((t) => loadTaskFromDb(t.id)));
+  }
   const tasks = listTasks(u.id, u.workspaceId)
     .filter((t) => (kbId ? t.kbId === kbId : true))
     .map((t) => ({

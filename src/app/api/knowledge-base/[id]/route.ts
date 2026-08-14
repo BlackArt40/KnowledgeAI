@@ -31,6 +31,16 @@ export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadAccessible(req, id);
   if ("error" in r) return r.error;
+  // Cross-process: with a separate queue worker (BullMQ), processing happens
+  // in another process that persists stage/status to the DB; this process's
+  // store snapshot may be stale, so reload non-terminal docs before reading.
+  const { loadDocFromDb } = await import("@/lib/db/hydrate");
+  const staleDocs = listDocuments(id).filter((d) =>
+    ["queued", "parsing", "chunking", "vectorizing"].includes(d.status)
+  );
+  if (staleDocs.length > 0) {
+    await Promise.allSettled(staleDocs.map((d) => loadDocFromDb(d.id)));
+  }
   // P4-2: document-level permissions - hide private docs from non-owners and
   // carry each doc's access override so the UI can render per-doc controls.
   const visible = listDocuments(id).filter((d) => canViewDoc(r.kb, d, r.u.id));

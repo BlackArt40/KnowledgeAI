@@ -8,3 +8,12 @@ docs
 .uploads
 coverage
 .playwright
+# 本地测试数据（scripts/local 种子脚本与样例文档，不进镜像）
+scripts/local
+# OCR 语言包与本地缓存（运行时下载到 .tessdata/）
+*.traineddata
+.tessdata
+# 本地测试产物
+playwright-report
+test-results
+*.tsbuildinfo

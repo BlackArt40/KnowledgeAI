@@ -8,6 +8,10 @@
 // Packages) and their real type declarations must apply. An ambient
 // `declare module` SHADOWS the package's own types, so keeping the stubs
 // blocked the real APIs (e.g. ioredis Redis#connect).
+//
+// 2026-08-14 tech-stack review: pdf-parse dropped entirely - PDF text
+// extraction now uses pdfjs-dist (real dependency, ships its own types).
+// `stripe` is a real dependency too and needs no stub here.
 // ---------------------------------------------------------------------------
 
 declare module "@aws-sdk/client-s3" {
@@ -32,18 +36,4 @@ declare module "@aws-sdk/s3-request-presigner" {
     command: unknown,
     options: unknown
   ): Promise<string>;
-}
-
-// pdf-parse ships no type declarations (plain JS package, no @types either),
-// so a minimal ambient module stays - the parser casts the result itself.
-declare module "pdf-parse" {
-  interface PdfData {
-    text: string;
-    numpages?: number;
-    info?: { Title?: string };
-  }
-  const pdfParse: ((buf: Buffer) => Promise<PdfData>) & {
-    default?: (buf: Buffer) => Promise<PdfData>;
-  };
-  export default pdfParse;
 }

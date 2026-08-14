@@ -129,6 +129,9 @@ export async function processDocInQueue(docId: string): Promise<void> {
     d.status = status;
     d.progress = Math.round(from + ((to - from) * progress) / 100);
     store.docs.set(docId, d);
+    // Cross-process: persist every stage so a separate worker's progress is
+    // visible to the web process (which reloads non-terminal states on read).
+    void persistDoc(d);
     // P4-1: broadcast doc progress so viewers see processing live.
     publish(`kb:${d.kbId}`, {
       type: "doc_status",
@@ -170,6 +173,7 @@ export async function processDocInQueue(docId: string): Promise<void> {
     d.status = "ready";
     d.progress = 100;
     store.docs.set(docId, d);
+    void persistDoc(d);
 
     if (kb) {
       await indexDocument(d, kb.settings).catch((e) =>
@@ -197,6 +201,7 @@ export async function processDocInQueue(docId: string): Promise<void> {
       d.status = "failed";
       d.error = err instanceof Error ? err.message : "处理失败";
       store.docs.set(docId, d);
+      void persistDoc(d);
     }
     throw err;
   }

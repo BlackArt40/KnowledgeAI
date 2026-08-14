@@ -51,14 +51,29 @@ async function main() {
   console.log("Built scanned PDF:", pdfBuf.length, "bytes");
 
   try {
-    const pp = await import("pdf-parse");
-    const pdfParse = (pp as { default?: (b: Buffer) => Promise<{ text: string; numpages?: number }> }).default
-      || (pp as unknown as (b: Buffer) => Promise<{ text: string; numpages?: number }>);
-    const d = await pdfParse(pdfBuf);
-    console.log("pdf-parse text length:", d.text?.length, "pages:", d.numpages);
-    assert(isScannedPdf(d.text || "", d.numpages), "isScannedPdf flags the image-only PDF");
+    // Text extraction via pdfjs-dist (same engine as src/lib/rag/parser.ts)
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const getDocument = (pdfjs as unknown as {
+      getDocument: (src: { data: Uint8Array }) => {
+        promise: Promise<{
+          numPages: number;
+          getPage: (n: number) => Promise<{
+            getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
+          }>;
+        }>;
+      };
+    }).getDocument;
+    const doc = await getDocument({ data: new Uint8Array(pdfBuf) }).promise;
+    let text = "";
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((it) => it.str ?? "").join(" ");
+    }
+    console.log("pdfjs-dist text length:", text.length, "pages:", doc.numPages);
+    assert(isScannedPdf(text, doc.numPages), "isScannedPdf flags the image-only PDF");
   } catch (e) {
-    console.log("pdf-parse check skipped:", e instanceof Error ? e.message : e);
+    console.log("pdfjs-dist check skipped:", e instanceof Error ? e.message : e);
   }
 
   const ocrText = await ocrScannedPdf(pdfBuf, { lang: "eng", maxPages: 5 });

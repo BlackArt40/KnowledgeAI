@@ -29,7 +29,7 @@ async function main() {
   assert(imgParsed !== null, "parseDocument(image) returns non-null");
   assert(imgParsed !== null && imgParsed.text.toUpperCase().includes("IMAGE"), `image OCR contains "IMAGE" (got: ${imgParsed!.text})`);
 
-  // Digital text PDF (has a text layer) -> pdf-parse extracts text, no OCR.
+  // Digital text PDF (has a text layer) -> pdfjs-dist extracts text, no OCR.
   const pageW = 300, pageH = 300;
   const content = "BT /F1 12 Tf 20 280 Td (DIGITAL PDF TEXT) Tj ET";
   const contentBytes = Buffer.from(content, "latin1");

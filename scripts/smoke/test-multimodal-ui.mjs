@@ -203,13 +203,14 @@ async function main() {
 
     console.log("\n" + results.join("\n"));
     console.log(`\n${failures === 0 ? "✅" : "❌"} multimodal-ui smoke: ${results.length - failures}/${results.length} passed`);
-    process.exit(failures > 0 ? 1 : 0);
-  } catch (e) {
-    console.error(e);
-    process.exit(1);
-  } finally {
-    chrome.kill("SIGTERM");
-  }
+    exitCode = failures > 0 ? 1 : 0;
+    } catch (err) {
+      console.error(e);
+      exitCode = 1;
+    } finally {
+      chrome.kill();
+    }
+    process.exit(exitCode);
 }
 
 main();

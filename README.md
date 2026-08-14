@@ -92,7 +92,7 @@ docs/                # 产品文档 / 设计说明 / 路线图
 # 复制环境变量
 cp .env.example .env.local
 
-# 构建并运行（含 Redis）
+# 构建并运行（Redis + PostgreSQL + worker）
 docker compose up -d
 
 # 或单独构建镜像

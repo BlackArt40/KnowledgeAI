@@ -99,6 +99,11 @@ async function main() {
     "--no-first-run", "--no-default-browser-check", "--disable-gpu",
   ], { stdio: "ignore" });
 
+  // P7-5: guarantee Chrome dies on EVERY exit path - process.exit()
+  // skips finally blocks, so this handler is the last line of defense.
+  process.on("exit", () => { try { chrome.kill("SIGKILL"); } catch {} });
+  let exitCode = 0;
+
   try {
     await waitForPort(PORT);
     const target = await fetch(
@@ -210,13 +215,14 @@ async function main() {
     // ── 3. 汇总 ─────────────────────────────────────────────────────────
     console.log("\n" + results.join("\n"));
     console.log(`\n${failures === 0 ? "✅" : "❌"} graph-ui smoke: ${results.length - failures}/${results.length} passed`);
-    process.exit(failures > 0 ? 1 : 0);
-  } catch (e) {
-    console.error(e);
-    process.exit(1);
-  } finally {
-    chrome.kill("SIGTERM");
-  }
+    exitCode = failures > 0 ? 1 : 0;
+    } catch (e) {
+      console.error(e);
+      exitCode = 1;
+    } finally {
+      chrome.kill("SIGTERM");
+    }
+    process.exit(exitCode);
 }
 
 main();

@@ -418,13 +418,14 @@ async function main() {
 
     console.log(`\n${results.join("\n")}`);
     console.log(`\nTheme UI acceptance: ${results.length - failures}/${results.length} passed${failures ? `, ${failures} FAILED` : ""} (screenshots: ${OUT_DIR})`);
-    process.exit(failures > 0 ? 1 : 0);
-  } catch (err) {
-    console.error("CDP error:", err);
-    process.exit(1);
-  } finally {
-    chrome.kill();
-  }
+    exitCode = failures > 0 ? 1 : 0;
+    } catch (err) {
+      console.error("CDP error:", err);
+      exitCode = 1;
+    } finally {
+      chrome.kill();
+    }
+    process.exit(exitCode);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

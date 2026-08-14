@@ -93,14 +93,23 @@ describe("webhook subscriptions", () => {
     expect(s1).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("delivery records ring + outcome tracking", () => {
+  it("delivery records ring + outcome tracking + tenant isolation", () => {
     const sub = createWebhookSubscription({
       userId: "u1", workspaceId: "w", name: "A", url: "https://a.example.com", events: ["kb.ready"],
     })!;
-    recordDelivery({ subscriptionId: sub.id, event: "kb.ready", status: 200, latencyMs: 12 });
-    recordDelivery({ subscriptionId: sub.id, event: "kb.ready", status: "error", latencyMs: 900, detail: "ECONNREFUSED" });
-    expect(listDeliveryRecords(sub.id).length).toBe(2);
-    expect(listDeliveryRecords(sub.id)[0].status).toBe("error");
+    recordDelivery({ subscriptionId: sub.id, workspaceId: "w", event: "kb.ready", status: 200, latencyMs: 12 });
+    recordDelivery({ subscriptionId: sub.id, workspaceId: "w", event: "kb.ready", status: "error", latencyMs: 900, detail: "ECONNREFUSED" });
+    // A delivery from ANOTHER workspace must never be visible to ws "w".
+    const other = createWebhookSubscription({
+      userId: "u1", workspaceId: "ws_other", name: "O", url: "https://o.example.com", events: ["kb.ready"],
+    })!;
+    recordDelivery({ subscriptionId: other.id, workspaceId: "ws_other", event: "kb.ready", status: 200, latencyMs: 5 });
+
+    expect(listDeliveryRecords("w", sub.id).length).toBe(2);
+    expect(listDeliveryRecords("w", sub.id)[0].status).toBe("error");
+    expect(listDeliveryRecords("w").length).toBe(2); // ws_other record filtered out
+    expect(listDeliveryRecords("ws_other").length).toBe(1);
+    expect(listDeliveryRecords("w").every((d) => d.workspaceId === "w")).toBe(true);
 
     markDeliveryOutcome(sub.id, false, "HTTP 500");
     expect(getWebhookSubscription(sub.id)?.failures).toBe(1);

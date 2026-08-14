@@ -25,8 +25,12 @@ const docProcessHandler: JobHandler = async (payload) => {
   const { runWithTraceId } = await import("@/lib/obs/trace");
   const { recordDoc } = await import("@/lib/obs/metrics");
   const { reportError } = await import("@/lib/obs/errors");
+  // Cross-process: a separate worker's store is a boot-time snapshot - reload
+  // rows the web process created after boot from the DB.
+  const { loadDocFromDb } = await import("@/lib/db/hydrate");
 
-  const doc = getDocument(docId);
+  let doc = getDocument(docId);
+  if (!doc && (await loadDocFromDb(docId))) doc = getDocument(docId);
   if (!doc) return { ok: false, error: `Document not found: ${docId}` };
 
   // P6-1: the upload route forwards its traceId so the queue stage (parse ->
@@ -60,7 +64,9 @@ const agentRunHandler: JobHandler = async (payload) => {
   if (!taskId) return { ok: false, error: "Missing taskId" };
 
   const { getTask, saveTask } = await import("@/lib/agent/store");
-  const task = getTask(taskId);
+  const { loadTaskFromDb } = await import("@/lib/db/hydrate");
+  let task = getTask(taskId);
+  if (!task && (await loadTaskFromDb(taskId))) task = getTask(taskId);
   if (!task) return { ok: false, error: `Task not found: ${taskId}` };
 
   const { runTask } = await import("@/lib/agent/orchestrator");
@@ -158,8 +164,10 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
 
   const { getWebhookSubscription, signWebhookPayload, recordDelivery, markDeliveryOutcome } =
     await import("@/lib/webhooks/store");
+  const { loadWebhookFromDb } = await import("@/lib/db/hydrate");
 
-  const sub = getWebhookSubscription(subscriptionId);
+  let sub = getWebhookSubscription(subscriptionId);
+  if (!sub && (await loadWebhookFromDb(subscriptionId))) sub = getWebhookSubscription(subscriptionId);
   if (!sub) return { ok: false, error: `Subscription not found: ${subscriptionId}` };
   if (!sub.active) return { ok: true, data: { skipped: "inactive" } };
 
@@ -181,7 +189,7 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
     });
     const ok = res.ok;
     recordDelivery({
-      subscriptionId, event: eventPayload.event as never,
+      subscriptionId, workspaceId: sub.workspaceId, event: eventPayload.event as never,
       status: ok ? res.status : "error", latencyMs: Date.now() - start,
       detail: ok ? undefined : `HTTP ${res.status}`,
     });
@@ -190,7 +198,7 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
   } catch (err) {
     const detail = err instanceof Error ? err.message : "网络错误";
     recordDelivery({
-      subscriptionId, event: eventPayload.event as never,
+      subscriptionId, workspaceId: sub.workspaceId, event: eventPayload.event as never,
       status: "error", latencyMs: Date.now() - start, detail,
     });
     markDeliveryOutcome(subscriptionId, false, detail);
