@@ -35,7 +35,8 @@ export async function persistUser(user: {
   const db = await getDb();
   if (!db) return;
   try {
-    const existing = await db.user.findUnique({ where: { id: user.id } });
+    // Atomic upsert: findUnique+create/update races (fire-and-forget writers)
+    // could double-create the same row and hit the unique constraint.
     const data = {
       email: user.email,
       name: user.name,
@@ -46,11 +47,11 @@ export async function persistUser(user: {
       // OAuth links: JSONB column; null keeps rows backwards compatible.
       oauthLinks: user.oauthLinks ?? null,
     };
-    if (existing) {
-      await db.user.update({ where: { id: user.id }, data });
-    } else {
-      await db.user.create({ data: { id: user.id, ...data } });
-    }
+    await db.user.upsert({
+      where: { id: user.id },
+      update: data,
+      create: { id: user.id, ...data },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistUser error");
   }
@@ -70,7 +71,6 @@ export async function persistKb(kb: {
   const db = await getDb();
   if (!db) return;
   try {
-    const existing = await db.knowledgeBase.findUnique({ where: { id: kb.id } });
     const data = {
       name: kb.name,
       description: kb.desc,
@@ -78,13 +78,11 @@ export async function persistKb(kb: {
       settings: kb.settings,
       updatedAt: new Date(kb.updatedAt),
     };
-    if (existing) {
-      await db.knowledgeBase.update({ where: { id: kb.id }, data });
-    } else {
-      await db.knowledgeBase.create({
-        data: { id: kb.id, ...data, createdAt: new Date(kb.createdAt) },
-      });
-    }
+    await db.knowledgeBase.upsert({
+      where: { id: kb.id },
+      update: data,
+      create: { id: kb.id, ...data, createdAt: new Date(kb.createdAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistKb error");
   }
@@ -120,7 +118,6 @@ export async function persistDoc(doc: {
   const db = await getDb();
   if (!db) return;
   try {
-    const existing = await db.kbDocument.findUnique({ where: { id: doc.id } });
     const data = {
       name: doc.name,
       type: doc.type,
@@ -132,13 +129,11 @@ export async function persistDoc(doc: {
       content: doc.content ?? null,
       updatedAt: new Date(),
     };
-    if (existing) {
-      await db.kbDocument.update({ where: { id: doc.id }, data });
-    } else {
-      await db.kbDocument.create({
-        data: { id: doc.id, kbId: doc.kbId, ...data, uploadedAt: new Date(doc.uploadedAt) },
-      });
-    }
+    await db.kbDocument.upsert({
+      where: { id: doc.id },
+      update: data,
+      create: { id: doc.id, kbId: doc.kbId, ...data, uploadedAt: new Date(doc.uploadedAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistDoc error");
   }
@@ -183,7 +178,6 @@ export async function persistTask(task: {
   const db = await getDb();
   if (!db) return;
   try {
-    const existing = await db.agentTask.findUnique({ where: { id: task.id } });
     const data = {
       topic: task.topic,
       kbId: task.kbId ?? null,
@@ -203,13 +197,11 @@ export async function persistTask(task: {
       template: task.template ?? null,
       workspaceId: task.workspaceId ?? "ws_default",
     };
-    if (existing) {
-      await db.agentTask.update({ where: { id: task.id }, data });
-    } else {
-      await db.agentTask.create({
-        data: { id: task.id, userId: task.userId, ...data, createdAt: new Date(task.createdAt) },
-      });
-    }
+    await db.agentTask.upsert({
+      where: { id: task.id },
+      update: data,
+      create: { id: task.id, userId: task.userId, ...data, createdAt: new Date(task.createdAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistTask error");
   }
@@ -232,7 +224,6 @@ export async function persistApiKey(key: {
   const db = await getDb();
   if (!db) return;
   try {
-    const existing = await db.apiKey.findUnique({ where: { id: key.id } });
     const data = {
       name: key.name,
       keyHash: key.secret,  // store the secret as keyHash in DB
@@ -242,13 +233,11 @@ export async function persistApiKey(key: {
       calls: key.calls,
       lastUsed: key.lastUsed ? new Date(key.lastUsed) : null,
     };
-    if (existing) {
-      await db.apiKey.update({ where: { id: key.id }, data });
-    } else {
-      await db.apiKey.create({
-        data: { id: key.id, userId: key.userId, ...data, createdAt: new Date(key.createdAt) },
-      });
-    }
+    await db.apiKey.upsert({
+      where: { id: key.id },
+      update: data,
+      create: { id: key.id, userId: key.userId, ...data, createdAt: new Date(key.createdAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistApiKey error");
   }
@@ -286,9 +275,7 @@ export async function persistConversation(conv: {
   const db = await getDb();
   if (!db) return;
   try {
-    // Upsert conversation
-    const existing = await (db as unknown as { conversation: { findUnique: (o: unknown) => Promise<unknown> } })
-      .conversation.findUnique({ where: { id: conv.id } });
+    // Upsert conversation (atomic - fire-and-forget writers must not race)
     const data = {
       kbId: conv.kbId,
       userId: conv.userId || "unknown",
@@ -301,13 +288,12 @@ export async function persistConversation(conv: {
       archived: conv.archived ?? false,
       tags: conv.tags ?? [],
     };
-    if (existing) {
-      await (db as unknown as { conversation: { update: (o: unknown) => Promise<unknown> } })
-        .conversation.update({ where: { id: conv.id }, data });
-    } else {
-      await (db as unknown as { conversation: { create: (o: unknown) => Promise<unknown> } })
-        .conversation.create({ data: { id: conv.id, ...data, createdAt: new Date(conv.createdAt) } });
-    }
+    await (db as unknown as { conversation: { upsert: (o: unknown) => Promise<unknown> } })
+      .conversation.upsert({
+        where: { id: conv.id },
+        update: data,
+        create: { id: conv.id, ...data, createdAt: new Date(conv.createdAt) },
+      });
     // Persist latest message only (fire-and-forget, avoid full resync)
     const lastMsg = conv.messages[conv.messages.length - 1];
     if (lastMsg) {
@@ -413,15 +399,12 @@ export async function persistSubscription(sub: {
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
       paymentMethod: sub.paymentMethod ?? null,
     };
-    const existing = await (db as unknown as { subscription: { findUnique: (o: unknown) => Promise<unknown> } })
-      .subscription.findUnique({ where: { userId: sub.userId } });
-    if (existing) {
-      await (db as unknown as { subscription: { update: (o: unknown) => Promise<unknown> } })
-        .subscription.update({ where: { userId: sub.userId }, data });
-    } else {
-      await (db as unknown as { subscription: { create: (o: unknown) => Promise<unknown> } })
-        .subscription.create({ data: { userId: sub.userId, ...data } });
-    }
+    await (db as unknown as { subscription: { upsert: (o: unknown) => Promise<unknown> } })
+      .subscription.upsert({
+        where: { userId: sub.userId },
+        update: data,
+        create: { userId: sub.userId, ...data },
+      });
   } catch (err) {
     log.error({ err }, "[db] persistSubscription error");
   }
@@ -561,15 +544,12 @@ export async function persistModelConfig(config: {
       lastTestedAt: config.lastTestedAt ? new Date(config.lastTestedAt) : null,
       lastTestOk: config.lastTestOk,
     };
-    const existing = await (db as unknown as { modelConfig: { findUnique: (o: unknown) => Promise<unknown> } })
-      .modelConfig.findUnique({ where: { id: config.id } });
-    if (existing) {
-      await (db as unknown as { modelConfig: { update: (o: unknown) => Promise<unknown> } })
-        .modelConfig.update({ where: { id: config.id }, data });
-    } else {
-      await (db as unknown as { modelConfig: { create: (o: unknown) => Promise<unknown> } })
-        .modelConfig.create({ data: { id: config.id, userId: config.userId, ...data, createdAt: new Date(config.createdAt) } });
-    }
+    await (db as unknown as { modelConfig: { upsert: (o: unknown) => Promise<unknown> } })
+      .modelConfig.upsert({
+        where: { id: config.id },
+        update: data,
+        create: { id: config.id, userId: config.userId, ...data, createdAt: new Date(config.createdAt) },
+      });
   } catch (err) {
     log.error({ err }, "[db] persistModelConfig error");
   }
@@ -612,19 +592,14 @@ export async function persistTeam(team: {
     };
     const t = db as unknown as {
       team: {
-        findUnique: (o: unknown) => Promise<unknown>;
-        update: (o: unknown) => Promise<unknown>;
-        create: (o: unknown) => Promise<unknown>;
+        upsert: (o: unknown) => Promise<unknown>;
       };
     };
-    const existing = await t.team.findUnique({ where: { id: team.id } });
-    if (existing) {
-      await t.team.update({ where: { id: team.id }, data });
-    } else {
-      await t.team.create({
-        data: { id: team.id, ...data, createdAt: new Date(team.createdAt) },
-      });
-    }
+    await t.team.upsert({
+      where: { id: team.id },
+      update: data,
+      create: { id: team.id, ...data, createdAt: new Date(team.createdAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistTeam error");
   }
@@ -652,14 +627,11 @@ export async function persistWorkspace(ws: {
       brandColor: ws.brandColor,
       updatedAt: new Date(),
     };
-    const existing = await db.workspace.findUnique({ where: { id: ws.id } });
-    if (existing) {
-      await db.workspace.update({ where: { id: ws.id }, data });
-    } else {
-      await db.workspace.create({
-        data: { id: ws.id, ...data, createdAt: new Date(ws.createdAt) },
-      });
-    }
+    await db.workspace.upsert({
+      where: { id: ws.id },
+      update: data,
+      create: { id: ws.id, ...data, createdAt: new Date(ws.createdAt) },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistWorkspace error");
   }
@@ -850,9 +822,7 @@ export async function persistWebhookSubscription(sub: {
   try {
     const wh = db as unknown as {
       webhookSubscription: {
-        findUnique: (o: unknown) => Promise<unknown>;
-        update: (o: unknown) => Promise<unknown>;
-        create: (o: unknown) => Promise<unknown>;
+        upsert: (o: unknown) => Promise<unknown>;
       };
     };
     const data = {
@@ -867,12 +837,11 @@ export async function persistWebhookSubscription(sub: {
       failures: sub.failures,
       lastError: sub.lastError,
     };
-    const existing = await wh.webhookSubscription.findUnique({ where: { id: sub.id } });
-    if (existing) {
-      await wh.webhookSubscription.update({ where: { id: sub.id }, data });
-    } else {
-      await wh.webhookSubscription.create({ data: { id: sub.id, createdAt: new Date(sub.createdAt), ...data } });
-    }
+    await wh.webhookSubscription.upsert({
+      where: { id: sub.id },
+      update: data,
+      create: { id: sub.id, createdAt: new Date(sub.createdAt), ...data },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistWebhookSubscription error");
   }
@@ -913,9 +882,7 @@ export async function persistBotIntegration(bot: {
   try {
     const bi = db as unknown as {
       botIntegration: {
-        findUnique: (o: unknown) => Promise<unknown>;
-        update: (o: unknown) => Promise<unknown>;
-        create: (o: unknown) => Promise<unknown>;
+        upsert: (o: unknown) => Promise<unknown>;
       };
     };
     const data = {
@@ -929,12 +896,11 @@ export async function persistBotIntegration(bot: {
       active: bot.active,
       calls: bot.calls,
     };
-    const existing = await bi.botIntegration.findUnique({ where: { id: bot.id } });
-    if (existing) {
-      await bi.botIntegration.update({ where: { id: bot.id }, data });
-    } else {
-      await bi.botIntegration.create({ data: { id: bot.id, createdAt: new Date(bot.createdAt), ...data } });
-    }
+    await bi.botIntegration.upsert({
+      where: { id: bot.id },
+      update: data,
+      create: { id: bot.id, createdAt: new Date(bot.createdAt), ...data },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistBotIntegration error");
   }
@@ -966,9 +932,7 @@ export async function persistEntity(entity: {
   try {
     const ke = db as unknown as {
       knowledgeEntity: {
-        findUnique: (o: unknown) => Promise<unknown>;
-        update: (o: unknown) => Promise<unknown>;
-        create: (o: unknown) => Promise<unknown>;
+        upsert: (o: unknown) => Promise<unknown>;
       };
     };
     const data = {
@@ -978,12 +942,11 @@ export async function persistEntity(entity: {
       mentions: entity.mentions,
       docIds: entity.docIds,
     };
-    const existing = await ke.knowledgeEntity.findUnique({ where: { id: entity.id } });
-    if (existing) {
-      await ke.knowledgeEntity.update({ where: { id: entity.id }, data });
-    } else {
-      await ke.knowledgeEntity.create({ data: { id: entity.id, createdAt: new Date(entity.createdAt), ...data } });
-    }
+    await ke.knowledgeEntity.upsert({
+      where: { id: entity.id },
+      update: data,
+      create: { id: entity.id, createdAt: new Date(entity.createdAt), ...data },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistEntity error");
   }
@@ -1000,9 +963,7 @@ export async function persistRelation(relation: {
   try {
     const kr = db as unknown as {
       knowledgeRelation: {
-        findUnique: (o: unknown) => Promise<unknown>;
-        update: (o: unknown) => Promise<unknown>;
-        create: (o: unknown) => Promise<unknown>;
+        upsert: (o: unknown) => Promise<unknown>;
       };
     };
     const data = {
@@ -1013,12 +974,11 @@ export async function persistRelation(relation: {
       weight: relation.weight,
       docIds: relation.docIds,
     };
-    const existing = await kr.knowledgeRelation.findUnique({ where: { id: relation.id } });
-    if (existing) {
-      await kr.knowledgeRelation.update({ where: { id: relation.id }, data });
-    } else {
-      await kr.knowledgeRelation.create({ data: { id: relation.id, createdAt: new Date(relation.createdAt), ...data } });
-    }
+    await kr.knowledgeRelation.upsert({
+      where: { id: relation.id },
+      update: data,
+      create: { id: relation.id, createdAt: new Date(relation.createdAt), ...data },
+    });
   } catch (err) {
     log.error({ err }, "[db] persistRelation error");
   }

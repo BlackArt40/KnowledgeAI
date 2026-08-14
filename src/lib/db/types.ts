@@ -152,6 +152,7 @@ export interface PrismaWorkspace {
 export interface PrismaClient {
   user: {
     findUnique(opts: { where: { id?: string; email?: string } }): Promise<PrismaUser | null>;
+    upsert(opts: { where: { id?: string; email?: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { orderBy?: unknown }): Promise<PrismaUser[]>;
     create(opts: { data: unknown }): Promise<PrismaUser>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaUser>;
@@ -160,6 +161,7 @@ export interface PrismaClient {
   };
   knowledgeBase: {
     findUnique(opts: { where: { id: string } }): Promise<PrismaKb | null>;
+    upsert(opts: { where: { id: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaKb[]>;
     create(opts: { data: unknown }): Promise<PrismaKb>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaKb>;
@@ -167,6 +169,7 @@ export interface PrismaClient {
   };
   kbDocument: {
     findUnique(opts: { where: { id: string } }): Promise<PrismaDoc | null>;
+    upsert(opts: { where: { id: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaDoc[]>;
     create(opts: { data: unknown }): Promise<PrismaDoc>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaDoc>;
@@ -185,6 +188,7 @@ export interface PrismaClient {
   };
   agentTask: {
     findUnique(opts: { where: { id: string } }): Promise<PrismaAgentTask | null>;
+    upsert(opts: { where: { id: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaAgentTask[]>;
     create(opts: { data: unknown }): Promise<PrismaAgentTask>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaAgentTask>;
@@ -192,6 +196,7 @@ export interface PrismaClient {
   };
   apiKey: {
     findUnique(opts: { where: { id?: string; keyHash?: string } }): Promise<PrismaApiKey | null>;
+    upsert(opts: { where: { id?: string; keyHash?: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaApiKey[]>;
     create(opts: { data: unknown }): Promise<PrismaApiKey>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaApiKey>;
@@ -217,6 +222,7 @@ export interface PrismaClient {
   };
   workspace: {
     findUnique(opts: { where: { id: string } }): Promise<PrismaWorkspace | null>;
+    upsert(opts: { where: { id: string }; update: unknown; create: unknown }): Promise<unknown>;
     findMany(opts?: { orderBy?: unknown }): Promise<PrismaWorkspace[]>;
     create(opts: { data: unknown }): Promise<PrismaWorkspace>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaWorkspace>;
