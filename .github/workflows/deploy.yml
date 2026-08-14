@@ -10,8 +10,11 @@ name: Deploy Staging
 #   STAGING_PORT     SSH 端口（默认 22）
 # 服务器侧: docker + docker compose 可用；镜像仓库需允许匿名拉取或配置 docker login。
 #
-# 注意: job 级 `if` 不允许 secrets 上下文（GitHub 限制），未配置 STAGING_HOST
-# 时的跳过判断经 job 级 env 代理后在 step 级 `if` 里用 env 完成。
+# 注意:
+# - job 级 `if` 不允许 secrets 上下文（GitHub 限制），未配置 STAGING_HOST
+#   时的跳过判断经 job 级 env 代理后在 step 级 `if` 里用 env 完成。
+# - GHCR 镜像名必须小写：github.repository 保留原始大小写，经 shell
+#   ${VAR,,} 转小写后通过 build job 的 outputs 传给下游。
 
 on:
   push:
@@ -23,9 +26,6 @@ on:
       - ".github/workflows/ci.yml"
   workflow_dispatch:
 
-env:
-  IMAGE: ghcr.io/${{ github.repository }}
-
 permissions:
   contents: read
   packages: write
@@ -33,8 +33,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.img.outputs.value }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Lowercase image reference
+        id: img
+        run: echo "value=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -53,8 +59,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE }}:staging-${{ github.sha }}
-            ${{ env.IMAGE }}:latest-staging
+            ${{ steps.img.outputs.value }}:staging-${{ github.sha }}
+            ${{ steps.img.outputs.value }}:latest-staging
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -76,4 +82,4 @@ jobs:
           port: ${{ secrets.STAGING_PORT || '22' }}
           script: |
             cd ${{ secrets.STAGING_DIR || '/srv/knowledgeai' }}
-            bash scripts/deploy/staging.sh ghcr.io/${{ github.repository }}:staging-${{ github.sha }} .
+            bash scripts/deploy/staging.sh ${{ needs.build.outputs.image }}:staging-${{ github.sha }} .

@@ -11,9 +11,11 @@ name: Deploy Production (Blue/Green)
 #
 # 回滚: 重新触发本 workflow 并指定上一个镜像 tag，蓝绿脚本会自动回滚失败的切换。
 #
-# 注意: job 级 `if` 不允许 secrets 上下文（GitHub 限制），未配置 PROD_HOST
-# 时的跳过判断经 job 级 env 代理后在 step 级 `if` 里用 env 完成；镜像 tag
-# 经 build job 的 outputs 传递（`steps` 上下文不能跨 job 引用）。
+# 注意:
+# - job 级 `if` 不允许 secrets 上下文（GitHub 限制），未配置 PROD_HOST
+#   时的跳过判断经 job 级 env 代理后在 step 级 `if` 里用 env 完成。
+# - GHCR 镜像名必须小写：github.repository 保留原始大小写，经 shell
+#   ${VAR,,} 转小写后通过 build job 的 outputs 传递（steps 上下文不能跨 job）。
 
 on:
   workflow_dispatch:
@@ -33,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production # 手动审批门
     outputs:
+      image: ${{ steps.img.outputs.value }}
       tag: ${{ steps.tag.outputs.value }}
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +48,10 @@ jobs:
           else
             echo "value=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Lowercase image reference
+        id: img
+        run: echo "value=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -63,8 +70,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:prod-${{ steps.tag.outputs.value }}
-            ghcr.io/${{ github.repository }}:latest-prod
+            ${{ steps.img.outputs.value }}:prod-${{ steps.tag.outputs.value }}
+            ${{ steps.img.outputs.value }}:latest-prod
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -87,8 +94,8 @@ jobs:
           script: |
             cd ${{ secrets.PROD_DIR || '/srv/knowledgeai' }}
             # 同步更新 worker 容器，保证队列消费端与 app 版本一致
-            export KAI_WORKER_IMAGE=ghcr.io/${{ github.repository }}:prod-${{ needs.build.outputs.tag }}
-            bash scripts/deploy/blue-green.sh ghcr.io/${{ github.repository }}:prod-${{ needs.build.outputs.tag }} \
+            export KAI_WORKER_IMAGE=${{ needs.build.outputs.image }}:prod-${{ needs.build.outputs.tag }}
+            bash scripts/deploy/blue-green.sh ${{ needs.build.outputs.image }}:prod-${{ needs.build.outputs.tag }} \
               ${{ secrets.PROD_APP_NAME || 'kai-app' }} \
               ${{ secrets.PROD_PORT_EXTERNAL || '3000' }} \
               ${{ secrets.PROD_ENV_FILE || '.env' }}
