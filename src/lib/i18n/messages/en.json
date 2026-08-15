@@ -120,7 +120,9 @@
       "s23": "Failed",
       "s24": "Queued",
       "s25": "Running",
-      "s26": "Users"
+      "s26": "Users",
+      "s27": "New Knowledge Base",
+      "s28": "Start Q&A"
     },
     "admin": {
       "s0": "Revenue trend",
@@ -415,7 +417,8 @@
       "s65": "Add image",
       "s66": "Voice input",
       "s67": "Stop reading",
-      "s68": "Read aloud"
+      "s68": "Read aloud",
+      "s69": "New Chat"
     },
     "global-search": {
       "s0": "Global search",
@@ -801,7 +804,30 @@
       "s1": "The system is undergoing maintenance. Please try again later. For urgent issues, contact the administrator."
     },
     "team": {
-      "s24": "Remove member permission"
+      "s24": "Reset permission",
+      "tabMembers": "Members",
+      "tabShared": "Shared",
+      "tabMatrix": "Permissions",
+      "tabAudit": "Audit log",
+      "member": "Member",
+      "role": "Role",
+      "status": "Status",
+      "recentActive": "Last active",
+      "selfMarker": "(me)",
+      "online": "Online",
+      "removeMember": "Remove member",
+      "setSharedAccess": "Configure shared access",
+      "sharedAccessInfo": "View shared access",
+      "mineMarker": "Mine",
+      "everyoneRead": "Everyone can read",
+      "memberEditable": "Members can edit",
+      "onlyOwnerAdmin": "Owner/Admin only",
+      "memberPermLabel": "Member permission",
+      "addMemberPh": "Add member…",
+      "capability": "Capability",
+      "noAudit": "No audit records",
+      "invited": "Invited",
+      "banned": "Banned"
     },
     "verify-email": {
       "s0": "Verify your email",
@@ -1076,6 +1102,29 @@
       "s15": "Event",
       "s16": "Other",
       "s17": "Mentioned {mentions}× · from {docs} documents · {neighbors} direct relations"
+    },
+    "kb": {
+      "title": "Knowledge Bases",
+      "subtitle": "{count} knowledge bases",
+      "newKb": "New Knowledge Base",
+      "noDesc": "No description",
+      "moreActions": "More actions",
+      "deleteKb": "Delete knowledge base"
+    },
+    "usage": {
+      "title": "Usage",
+      "subtitle": "Workspace usage overview",
+      "planPro": "Pro",
+      "planEnt": "Enterprise",
+      "planFree": "Free",
+      "meterQa": "Q&A",
+      "meterApi": "API calls",
+      "meterStorage": "Storage",
+      "meterAgent": "Agent tasks",
+      "unitTimes": "times",
+      "limitInfinite": "Unlimited",
+      "nearLimit": "Near limit",
+      "last14Days": "Last 14 days"
     }
   }
 }

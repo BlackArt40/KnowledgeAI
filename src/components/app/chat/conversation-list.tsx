@@ -63,7 +63,7 @@ export function ConversationList({
     <div className="flex h-full min-h-0 flex-col">
       <div className="p-3">
         <Button variant="gradient" className="w-full justify-start" onClick={onNew}>
-          <Plus className="h-4 w-4" /> 新建会话
+          <Plus className="h-4 w-4" /> {t("page.chat.s69")}
         </Button>
       </div>
       <div className="px-3 pb-2">

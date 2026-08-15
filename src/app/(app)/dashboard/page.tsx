@@ -187,12 +187,12 @@ export default function DashboardPage() {
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/knowledge-base">
-              <Plus className="h-4 w-4" /> 新建知识库
+              <Plus className="h-4 w-4" /> {t("page.dashboard.s27")}
             </Link>
           </Button>
           <Button variant="gradient" asChild>
             <Link href="/chat">
-              <MessagesSquare className="h-4 w-4" /> 开始问答
+              <MessagesSquare className="h-4 w-4" /> {t("page.dashboard.s28")}
             </Link>
           </Button>
         </div>
@@ -358,7 +358,7 @@ export default function DashboardPage() {
               <p className="text-sm">{t("page.dashboard.s3")}</p>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/chat">
-                  <MessagesSquare className="h-4 w-4" /> 开始问答
+                  <MessagesSquare className="h-4 w-4" /> {t("page.dashboard.s28")}
                 </Link>
               </Button>
             </div>
