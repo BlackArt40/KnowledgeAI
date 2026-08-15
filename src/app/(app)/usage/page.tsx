@@ -14,7 +14,22 @@ import { useFormat } from "@/lib/i18n/use-format";
 import { cn } from "@/lib/utils";
 import type { Usage } from "@/lib/billing/types";
 
-interface UsageData { usage: Usage; plan: string }
+interface UsageData {
+  // workspace-scoped meters (P4-3): no trend/apiCalls - those are per-user
+  usage: {
+    workspaceId: string;
+    qaUsed: number;
+    qaLimit: number | null;
+    storageUsed: number;
+    storageLimit: number | null;
+    agentTasks: number;
+    agentLimit: number | null;
+    kbCount: number;
+  };
+  plan: string;
+  /** per-user meters, incl. the QA/API trend series (Usage type). */
+  userUsage?: Usage;
+}
 
 export default function UsagePage() {
   const t = useT();
@@ -39,9 +54,12 @@ export default function UsagePage() {
     );
   }
 
-  const { usage, plan } = data;
-  const trendData = usage.trend.map((t) => t.qa);
-  const trendLabels = usage.trend.map((t) => t.date);
+  const { usage, plan, userUsage } = data;
+  // P4-3: the trend series lives on the per-user meters (userUsage), not on
+  // the workspace usage object.
+  const trend = userUsage?.trend ?? [];
+  const trendData = trend.map((t) => t.qa);
+  const trendLabels = trend.map((t) => t.date);
 
   const meters = [
     {
@@ -49,7 +67,7 @@ export default function UsagePage() {
       limit: usage.qaLimit, unit: t("page.usage.unitTimes"), accent: "text-primary",
     },
     {
-      icon: KeyRound, label: t("page.usage.meterApi"), used: usage.apiCalls,
+      icon: KeyRound, label: t("page.usage.meterApi"), used: userUsage?.apiCalls ?? 0,
       limit: null, unit: t("page.usage.unitTimes"), accent: "text-emerald-500",
     },
     {

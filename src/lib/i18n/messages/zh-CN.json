@@ -120,7 +120,9 @@
       "s23": "失败",
       "s24": "排队中",
       "s25": "进行中",
-      "s26": "用户"
+      "s26": "用户",
+      "s27": "新建知识库",
+      "s28": "开始问答"
     },
     "admin": {
       "s0": "收入趋势",
@@ -415,7 +417,8 @@
       "s65": "添加图片",
       "s66": "语音输入",
       "s67": "停止朗读",
-      "s68": "朗读回答"
+      "s68": "朗读回答",
+      "s69": "新建会话"
     },
     "global-search": {
       "s0": "全局搜索",
@@ -801,7 +804,30 @@
       "s1": "系统正在进行维护升级，请稍后再试。如有紧急问题，请联系管理员。"
     },
     "team": {
-      "s24": "移除成员权限"
+      "s24": "重置权限",
+      "tabMembers": "成员",
+      "tabShared": "共享",
+      "tabMatrix": "权限矩阵",
+      "tabAudit": "审计日志",
+      "member": "成员",
+      "role": "角色",
+      "status": "状态",
+      "recentActive": "最近活跃",
+      "selfMarker": "（我）",
+      "online": "在线",
+      "removeMember": "移除成员",
+      "setSharedAccess": "设置知识库共享访问权限",
+      "sharedAccessInfo": "查看知识库共享访问权限",
+      "mineMarker": "我的",
+      "everyoneRead": "所有人可读",
+      "memberEditable": "成员可编辑",
+      "onlyOwnerAdmin": "仅 Owner/Admin",
+      "memberPermLabel": "成员权限",
+      "addMemberPh": "添加成员…",
+      "capability": "能力",
+      "noAudit": "暂无审计记录",
+      "invited": "已邀请",
+      "banned": "已封禁"
     },
     "verify-email": {
       "s0": "验证你的邮箱",
@@ -1076,6 +1102,29 @@
       "s15": "事件",
       "s16": "其他",
       "s17": "被提及 {mentions} 次 · 来自 {docs} 篇文档 · 直接关联 {neighbors} 个实体"
+    },
+    "kb": {
+      "title": "知识库",
+      "subtitle": "共 {count} 个知识库",
+      "newKb": "新建知识库",
+      "noDesc": "暂无描述",
+      "moreActions": "更多操作",
+      "deleteKb": "删除知识库"
+    },
+    "usage": {
+      "title": "用量统计",
+      "subtitle": "工作区用量概览",
+      "planPro": "专业版",
+      "planEnt": "企业版",
+      "planFree": "免费版",
+      "meterQa": "智能问答",
+      "meterApi": "API 调用",
+      "meterStorage": "存储空间",
+      "meterAgent": "Agent 任务",
+      "unitTimes": "次",
+      "limitInfinite": "不限",
+      "nearLimit": "接近上限",
+      "last14Days": "近 14 天"
     }
   }
 }

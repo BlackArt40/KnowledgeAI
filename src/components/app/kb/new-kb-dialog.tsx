@@ -74,7 +74,7 @@ export function NewKbDialog({
       <DialogTrigger asChild>
         {trigger ?? (
           <Button variant="gradient">
-            <Plus className="h-4 w-4" /> 新建知识库
+            <Plus className="h-4 w-4" /> {t("page.new-kb-dialog.s0")}
           </Button>
         )}
       </DialogTrigger>
