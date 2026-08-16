@@ -1,6 +1,7 @@
 import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
 import { getUserById, updateUserPlan } from "@/lib/auth/store";
+import { persistInvoice, persistOrder, persistSubscription } from "@/lib/db/persist";
 import { log } from "@/lib/obs/log";
 
 
@@ -303,6 +304,7 @@ export function createOrder(plan: PlanId, method: PayMethod, userId: string): Or
     userId,
   };
   store().orders.set(order.id, order);
+  void persistOrder(order);
   return order;
 }
 
@@ -345,6 +347,32 @@ export function payOrder(orderId: string, userId: string): { order: Order; succe
     method: order.method,
   });
   s.invoicesByUser.set(userId, invoices);
+
+  // Write-through so a restart (or a payment webhook arriving after one)
+  // never loses the paid order, subscription state, or invoice history.
+  void persistOrder(order);
+  const sub = s.subscriptionsByUser.get(userId);
+  if (sub) {
+    void persistSubscription({
+      userId,
+      plan: sub.plan,
+      status: sub.status,
+      periodStart: sub.periodStart,
+      periodEnd: sub.periodEnd,
+      cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+      paymentMethod: order.method,
+    });
+  }
+  const invoice = invoices[0];
+  void persistInvoice({
+    id: invoice.id,
+    userId,
+    amount: invoice.amount,
+    plan: invoice.plan,
+    status: invoice.status,
+    method: invoice.method,
+    date: invoice.date,
+  });
 
   return { order, success: true };
 }

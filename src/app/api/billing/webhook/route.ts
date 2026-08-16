@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook } from "@/lib/billing/provider";
 import { payOrder, getOrder } from "@/lib/billing/store";
+import { loadOrderFromDb } from "@/lib/db/hydrate";
 export const dynamic = "force-dynamic";
 
 // POST /api/billing/webhook — Stripe webhook handler
@@ -20,6 +21,9 @@ export async function POST(req: Request) {
     const session = event.data.object;
     const orderId = session.metadata?.order_id;
     if (orderId) {
+      // The order may predate a restart -> hydrate it from the DB so a valid
+      // payment is never silently dropped.
+      if (!getOrder(orderId)) await loadOrderFromDb(orderId);
       const order = getOrder(orderId);
       if (order) payOrder(orderId, order.userId);
     }

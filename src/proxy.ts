@@ -28,6 +28,8 @@ import { logEdge } from "@/lib/obs/log-edge";
 const SKIP_PATHS = [
   "/api/chat",        // SSE stream + conversation CRUD (user + KB tiers enforced in routes)
   "/api/agent/run",   // SSE stream
+  "/api/v1/chat",     // P7-1: same SSE pipeline (user + KB tiers enforced in handleChatRequest)
+  "/api/v1/agent/run", // P7-1: same SSE relay as /api/agent/run (scope-gated by API key)
   "/api/billing/webhook",
   "/api/notifications",  // polled every 30s
   "/api/auth/me",        // called on every page load
