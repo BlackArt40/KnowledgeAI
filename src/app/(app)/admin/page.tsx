@@ -54,9 +54,9 @@ function rlKind(t: (k: string) => string): Record<RateLimitStat["kind"], { label
   };
 }
 
-function rlResetIn(s: RateLimitStat): string {
+function rlResetIn(s: RateLimitStat, t: (k: string) => string): string {
   const secs = Math.max(0, Math.ceil((s.resetAt - Date.now()) / 1000));
-  return secs <= 0 ? "已重置" : `${secs}s`;
+  return secs <= 0 ? t("page.admin.s67") : `${secs}s`;
 }
 
 export default function AdminPage() {
@@ -157,11 +157,11 @@ export default function AdminPage() {
   const statCards = [
     { icon: Users, label: t("page.admin.s49"), value: stats.totalUsers.toLocaleString(), accent: "text-primary" },
     { icon: Activity, label: t("page.admin.s50"), value: stats.activeUsers30d.toLocaleString(), accent: "text-emerald-500" },
-    { icon: DollarSign, label: "月收入", value: `¥${stats.monthlyRevenue.toLocaleString()}`, accent: "text-amber-500" },
+    { icon: DollarSign, label: t("page.admin.s68"), value: `¥${stats.monthlyRevenue.toLocaleString()}`, accent: "text-amber-500" },
     { icon: Database, label: t("page.admin.s52"), value: stats.totalKbs.toLocaleString(), accent: "text-sky-500" },
     { icon: MessagesSquare, label: t("page.admin.s53"), value: stats.qaThisMonth.toLocaleString(), accent: "text-violet-500" },
     { icon: Bot, label: t("page.admin.s54"), value: stats.agentTasksThisMonth.toLocaleString(), accent: "text-pink-500" },
-    { icon: HardDrive, label: "存储用量", value: `${stats.storageUsedGb} GB`, accent: "text-orange-500" },
+    { icon: HardDrive, label: t("page.admin.s69"), value: `${stats.storageUsedGb} GB`, accent: "text-orange-500" },
     { icon: Database, label: t("page.admin.s56"), value: stats.totalDocs.toLocaleString(), accent: "text-teal-500" },
   ];
 
@@ -251,11 +251,11 @@ export default function AdminPage() {
                     <TableCell className="text-right">
                       {u.status === "banned" ? (
                         <Button size="sm" variant="ghost" className="h-7 text-success hover:text-success" onClick={() => setUserStatus(u.id, "active")}>
-                          <ShieldCheck className="h-3.5 w-3.5" /> 解封
+                          <ShieldCheck className="h-3.5 w-3.5" /> {t("page.admin.s70")}
                         </Button>
                       ) : (
                         <Button size="sm" variant="ghost" className="h-7 text-destructive hover:text-destructive" onClick={() => setUserStatus(u.id, "banned")}>
-                          <ShieldBan className="h-3.5 w-3.5" /> 封禁
+                          <ShieldBan className="h-3.5 w-3.5" /> {t("page.admin.s71")}
                         </Button>
                       )}
                     </TableCell>
@@ -323,7 +323,7 @@ export default function AdminPage() {
               </div>
             </div>
             <Button size="sm" className="w-full" onClick={() => patchConfig(config)} disabled={savingCfg}>
-              {savingCfg && <Loader2 className="h-4 w-4 animate-spin" />} 保存配置
+              {savingCfg && <Loader2 className="h-4 w-4 animate-spin" />} {t("page.admin.s72")}
             </Button>
           </CardContent>
         </Card>
@@ -407,7 +407,7 @@ export default function AdminPage() {
                 {(ratelimit?.live ?? []).length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground">
-                      暂无限流记录（API 请求产生流量后自动出现）
+                      {t("page.admin.s73")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -423,14 +423,14 @@ export default function AdminPage() {
                           {s.remaining}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right text-xs tabular-nums text-muted-foreground">{rlResetIn(s)}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums text-muted-foreground">{rlResetIn(s, t)}</TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
             <Button size="sm" variant="outline" className="w-full" onClick={refresh}>
-              <Loader2 className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> 刷新
+              <Loader2 className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> {t("page.admin.s74")}
             </Button>
           </CardContent>
         </Card>
@@ -467,7 +467,7 @@ export default function AdminPage() {
               <Badge variant={audit?.chainValid ? "success" : "destructive"}>
                 {audit?.chainValid ? t("page.admin.s63") : t("page.admin.s64")}
               </Badge>
-              <Badge variant="secondary">共 {audit?.total ?? 0} 条</Badge>
+              <Badge variant="secondary">{t("page.admin.s75", { count: audit?.total ?? 0 })}</Badge>
             </div>
           </CardTitle>
         </CardHeader>
@@ -502,7 +502,7 @@ export default function AdminPage() {
               {(audit?.audit ?? []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground">
-                    暂无审计记录
+                    {t("page.admin.s76")}
                   </TableCell>
                 </TableRow>
               ) : (

@@ -70,7 +70,14 @@
       "s16": "Switch plan",
       "s17": "Paid",
       "s18": "Pending",
-      "s19": "Refunded"
+      "s19": "Refunded",
+      "s20": "{count} seats",
+      "s21": "Current period: ",
+      "s22": "Resume subscription",
+      "s23": "Upgrade to Enterprise",
+      "s24": "Cancel subscription",
+      "s25": "Billing history",
+      "s26": "Export CSV"
     },
     "checkout": {
       "s0": "Order summary",
@@ -91,7 +98,18 @@
       "s15": "Free plan needs no payment",
       "s16": "Enterprise custom quote",
       "s17": "Switching to Free takes effect at the end of the current period.",
-      "s18": "Contact the sales team for a custom plan and quote."
+      "s18": "Contact the sales team for a custom plan and quote.",
+      "s19": "Back to billing",
+      "s20": "Custom",
+      "s21": "Free",
+      "s22": "Confirm payment ¥{price}",
+      "s23": "By paying you agree to the",
+      "s24": "Secure & encrypted",
+      "s25": "Waiting for {method} confirmation…",
+      "s26": "Due ¥{amount} · complete the payment on your phone",
+      "s27": "Upgraded to",
+      "s28": " — your subscription is active immediately.",
+      "s29": "View invoices"
     },
     "dashboard": {
       "s0": "Usage trend",
@@ -122,7 +140,15 @@
       "s25": "Running",
       "s26": "Users",
       "s27": "New Knowledge Base",
-      "s28": "Start Q&A"
+      "s28": "Start Q&A",
+      "s29": "Welcome back, {name}",
+      "s30": "Here's an overview of your knowledge workspace.",
+      "s31": "Daily Q&A",
+      "s32": "Last {days} days",
+      "s33": "Agent tasks",
+      "s34": "All",
+      "s35": "Start research",
+      "s36": "View all"
     },
     "admin": {
       "s0": "Revenue trend",
@@ -191,7 +217,17 @@
       "s63": "Hash chain intact",
       "s64": "Chain check failed",
       "s65": "Filter by action (e.g. kb.delete)",
-      "s66": "Filter by actor"
+      "s66": "Filter by actor",
+      "s67": "reset",
+      "s68": "Monthly revenue",
+      "s69": "Storage used",
+      "s70": "Unban",
+      "s71": "Ban",
+      "s72": "Save config",
+      "s73": "No rate-limit records yet — they appear once API traffic flows",
+      "s74": "Refresh",
+      "s75": "{count} total",
+      "s76": "No audit records"
     },
     "knowledge-base-[id]": {
       "s0": "Add documents",
@@ -203,7 +239,14 @@
       "s6": "Ready",
       "s7": "Chunks",
       "s8": "Storage used",
-      "s30": "Graph"
+      "s30": "Graph",
+      "s31": "Back to knowledge bases",
+      "s32": "Knowledge bases",
+      "s33": "Chunk {n}",
+      "s34": "Overlap {n}",
+      "s35": "Go to Q&A",
+      "s36": "Documents",
+      "s37": "{count} processing"
     },
     "agent": {
       "s0": "Export",
@@ -263,7 +306,30 @@
       "s58": "took {s}s",
       "s59": "PPT outline",
       "s60": "Mind map",
-      "s61": "Research report"
+      "s61": "Research report",
+      "s62": "Agent Research",
+      "s63": "Multiple agents collaborate (plan → retrieve → analyze → write) and automatically produce a fully cited research report.",
+      "s64": "Retrieval depth",
+      "s65": "Execution",
+      "s66": "Parallel",
+      "s67": "Conditional",
+      "s68": "Running",
+      "s69": "Research report",
+      "s70": "Share settings",
+      "s71": "Versions",
+      "s72": "Comments",
+      "s73": "Task history",
+      "s74": "Citations",
+      "s75": "Relevance {pct}%",
+      "s76": "Compare with current",
+      "s77": "Restore",
+      "s78": "Diff of \"{label}\" vs current",
+      "s79": "added",
+      "s80": "removed",
+      "s81": "Reply",
+      "s82": "Ref [{n}]",
+      "s83": "Annotation on ref [{n}]",
+      "s84": "Control access to the public share link: expiry, password, and view limit."
     },
     "settings": {
       "s0": "Security",
@@ -347,7 +413,23 @@
       "s77": "Link",
       "s78": "Unlink social account",
       "s79": "Unlink {provider}? After unlinking you must sign in with another method (email/password or another provider)",
-      "s80": "Operation failed, please try again"
+      "s80": "Operation failed, please try again",
+      "s81": "With two-factor authentication enabled, signing in requires a one-time code from your authenticator app (Google Authenticator / 1Password / Microsoft Authenticator), adding an extra layer of protection to your account.",
+      "s82": "Bound {time}",
+      "s83": "{count} backup codes remaining",
+      "s84": "Backup codes are used when you lose access to your authenticator. Each code can be used only once and is invalidated after use. They are shown only once during setup — store them somewhere safe.",
+      "s85": "Enable two-factor authentication",
+      "s86": "Finish setup",
+      "s87": "Generating secret key…",
+      "s88": "Confirm disable",
+      "s89": "Save changes",
+      "s90": "Notification preferences",
+      "s91": "Under the GDPR (General Data Protection Regulation) and the Personal Information Protection Law, you have the right to access, export, and delete your personal data.",
+      "s92": "Export my data",
+      "s93": "Delete account & data",
+      "s94": "This will permanently delete your account, knowledge bases, conversation history, and all related data, and ",
+      "s95": "⚠️ After deletion you will no longer be able to sign in, and all API keys will be revoked immediately.",
+      "s96": "Confirm permanent deletion"
     },
     "chat": {
       "s0": "Conversations",
@@ -418,7 +500,20 @@
       "s66": "Voice input",
       "s67": "Stop reading",
       "s68": "Read aloud",
-      "s69": "New Chat"
+      "s69": "New Chat",
+      "s70": "{count} docs ready",
+      "s71": "{count} docs searchable",
+      "s72": "Related knowledge bases",
+      "s73": "Matched: {terms}",
+      "s74": "Web search",
+      "s75": "Add tags to \"{title}\" to organize and find this conversation.",
+      "s76": "Are you sure you want to delete this conversation? All of its messages will be permanently deleted and cannot be recovered.",
+      "s77": ", ",
+      "s78": "Archived",
+      "s79": "Save tags",
+      "s80": "Citations from AI answers will appear here",
+      "s81": "Relevance {pct}%",
+      "s82": "Follow-ups"
     },
     "global-search": {
       "s0": "Global search",
@@ -442,7 +537,10 @@
       "s18": "Multiple agents generate a research report",
       "s19": "New knowledge base",
       "s20": "Upload documents after creating",
-      "s21": "Start a Q&A"
+      "s21": "Start a Q&A",
+      "s22": "Recent searches",
+      "s23": "Quick actions",
+      "s24": "No results found for \"{query}\""
     },
     "model-settings": {
       "s0": "Chat model",
@@ -473,14 +571,37 @@
       "s25": "e.g. {preset} · {model}",
       "s26": "e.g. {m}",
       "s27": "Enter or fetch a model",
-      "s28": "Leave empty to use local embeddings"
+      "s28": "Leave empty to use local embeddings",
+      "s29": "External AI models",
+      "s30": "Add model",
+      "s31": "Import OpenAI-compatible models from OpenAI / DeepSeek / Moonshot / SiliconFlow / Ollama and more. Once enabled, they power Q&A and agent research. Without configuration, the local demo mode is used.",
+      "s32": "Default",
+      "s33": "Embedding: {model}",
+      "s34": "Test connection",
+      "s35": "Set as default",
+      "s36": "Unset default",
+      "s37": "Add external model",
+      "s38": "Get API key",
+      "s39": "None"
     },
     "upload-zone": {
       "s0": "Upload failed",
       "s1": "Network error",
       "s2": "Add failed",
       "s6": "Upload failed",
-      "s7": "Upload failed"
+      "s7": "Upload failed",
+      "s8": "Upload files",
+      "s9": "Web link",
+      "s10": "Merging… {name}",
+      "s11": "Uploading chunks… {name} {progress}%",
+      "s12": "Uploading… {progress}%",
+      "s13": "{received}/{total} chunks",
+      "s14": " · Resumable",
+      "s15": "Drag and drop files here, or ",
+      "s16": "click to upload",
+      "s17": "Supports PDF / Word / Markdown / TXT / CSV / images (OCR) · Large files are automatically uploaded in chunks (≤ 500MB)",
+      "s18": "Take a photo to upload (OCR text recognition)",
+      "s19": "Add"
     },
     "usage-chart": {
       "s0": "Mon",
@@ -503,7 +624,12 @@
       "s8": "Save failed",
       "s9": "User config",
       "s10": "Other",
-      "s12": " (disabled)"
+      "s12": " (disabled)",
+      "s13": "Settings",
+      "s14": "Adjust chunking and retrieval parameters. New documents will be processed with the updated settings.",
+      "s15": "{presets} built-in presets · {user} user-configured (from Settings → AI models)",
+      "s16": "Settings were changed by another member (version conflict). Close and reopen the dialog to load the latest settings.",
+      "s17": "Save settings"
     },
     "document-list": {
       "s0": "No documents yet",
@@ -516,7 +642,12 @@
       "s7": "Web link",
       "s8": "Share document",
       "s9": "Create share link",
-      "s10": "Delete document"
+      "s10": "Delete document",
+      "s11": "Ready",
+      "s12": "Failed",
+      "s13": "Vectorizing",
+      "s14": "Upload files or add web links — AI parses and vectorizes them automatically",
+      "s15": "{count} chunks"
     },
     "doc-share-dialog": {
       "s0": "Share link (accessible without login)",
@@ -530,7 +661,11 @@
       "s8": "Unlimited",
       "s9": "empty = no password",
       "s16": "valid until {date}",
-      "s17": "Permanent"
+      "s17": "Permanent",
+      "s18": "Share document",
+      "s19": "Views: {views} / {max}",
+      "s20": "Revoke share",
+      "s21": "Generate share link"
     },
     "new-kb-dialog": {
       "s0": "New Knowledge Base",
@@ -540,7 +675,8 @@
       "s4": "Create failed",
       "s5": "e.g. Product docs",
       "s6": "One line describing this KB's purpose",
-      "s7": "Choose a color"
+      "s7": "Choose a color",
+      "s8": "Create a knowledge base, then upload documents to start vectorizing."
     },
     "invite-dialog": {
       "s0": "Invite member",
@@ -553,7 +689,9 @@
       "s7": "Viewer · read-only Q&A",
       "s8": "Cancel",
       "s9": "Invite failed",
-      "s10": "New member name"
+      "s10": "New member name",
+      "s11": "Invite member",
+      "s12": "Send invite"
     },
     "chat-markdown": {
       "s0": "Flowchart (simplified)",
@@ -617,7 +755,12 @@
       "s26": "New",
       "s27": "Monitoring",
       "s28": "Developer",
-      "s29": "Account"
+      "s29": "Account",
+      "s30": "New workspace",
+      "s31": "Unlock Agent research and unlimited Q&A",
+      "s32": "Upgrade now",
+      "s33": "Mark all as read",
+      "s34": "Sign out"
     },
     "monitoring": {
       "s0": "Observability",
@@ -659,12 +802,16 @@
     "not-found": {
       "s0": "Page not found",
       "s1": "Back to home",
-      "s2": "Go to Knowledge Base"
+      "s2": "Go to Knowledge Base",
+      "s3": "The page you're looking for doesn't exist or has been moved. Check the link, or head back to the homepage."
     },
     "error": {
       "s0": "The server hit a snag",
       "s1": "Back to home",
-      "s2": "Contact support"
+      "s2": "Contact support",
+      "s3": "Sorry, an internal error occurred while processing your request. Our team has been notified and is working on an urgent fix.",
+      "s4": "Error code: {code}",
+      "s5": "Retry"
     },
     "navbar": {
       "s0": "Log in",
@@ -686,7 +833,18 @@
       "s7": "Industry hiring trends whitepaper",
       "s8": "Page 3",
       "s9": "Tech salary survey",
-      "s10": "Page 8"
+      "s10": "Page 8",
+      "s11": "New: Agent research is here",
+      "s12": "Turn your team's documents into",
+      "s13": "Upload documents and AI builds the knowledge base for you; your team asks questions grounded in it, and multiple collaborating agents draft the research reports.",
+      "s14": "Start for free",
+      "s15": "AI Q&A",
+      "s16": "Product docs knowledge base",
+      "s17": "What's the job outlook for AI engineers in 2026?",
+      "s18": "According to the knowledge base, demand for AI engineers keeps growing in 2026 — RAG, agents, and MLOps skills are in especially short supply.",
+      "s19": "Regenerate",
+      "s20": "Ask grounded in your knowledge base…",
+      "s21": "Citations"
     },
     "features": {
       "s0": "Done",
@@ -713,7 +871,10 @@
       "s21": "Security & compliance",
       "s22": "2FA, session management, data export - GDPR and PIPL compliant.",
       "s23": "Subscription billing",
-      "s24": "Free / Pro / Enterprise plans with WeChat, Alipay and card payments."
+      "s24": "Free / Pro / Enterprise plans with WeChat, Alipay and card payments.",
+      "s25": "What are this quarter's key metrics?",
+      "s26": "Revenue up 38% year-over-year, RAG query volume doubled",
+      "s27": "In progress"
     },
     "pricing": {
       "s0": "Free",
@@ -743,7 +904,8 @@
       "s24": "Custom models & rate limits",
       "s25": "Pricing",
       "s26": "Simple, transparent pricing",
-      "s27": "Start free and upgrade as your team grows. All plans include data isolation and GDPR compliance."
+      "s27": "Start free and upgrade as your team grows. All plans include data isolation and GDPR compliance.",
+      "s28": "Most popular"
     },
     "testimonials": {
       "s0": "After connecting thousands of tech docs, new-hire onboarding time halved. Answers come with citations - highly trustworthy.",
@@ -793,11 +955,17 @@
       "s15": "Privacy Policy",
       "s16": "Terms of Service",
       "s17": "GDPR Notice",
-      "s18": "Cookie Policy"
+      "s18": "Cookie Policy",
+      "s19": "Upload documents, let AI build your knowledge base, power team Q&A, and auto-generate research reports. The all-in-one enterprise AI knowledge platform.",
+      "s20": "All rights reserved.",
+      "s21": "All systems operational · GDPR compliant"
     },
     "cta": {
       "s0": "Team knowledge base",
-      "s1": "Open workspace"
+      "s1": "Open workspace",
+      "s2": "Start building your",
+      "s3": "Start free — no credit card required. Your first knowledge base is ready in minutes.",
+      "s4": "Create your free knowledge base"
     },
     "layout": {
       "s0": "System maintenance",
@@ -827,27 +995,47 @@
       "capability": "Capability",
       "noAudit": "No audit records",
       "invited": "Invited",
-      "banned": "Banned"
+      "banned": "Banned",
+      "s25": "{total} members · {active} active · {invited} pending",
+      "s26": "{owner} · {docs} documents",
+      "s27": "{name} ({role})"
     },
     "verify-email": {
       "s0": "Verify your email",
-      "s1": "Resend ({s}s)"
+      "s1": "Resend ({s}s)",
+      "s2": "We have sent",
+      "s3": "a verification email.",
+      "s4": "Click the link in the email to complete verification.",
+      "s5": "I've verified — enter workspace",
+      "s6": "Resend email",
+      "s7": "Didn't get the email? Check your spam folder or",
+      "s8": "contact support"
     },
     "maintenance": {
       "s3": "Refresh page",
       "s0": "System maintenance",
       "s1": "Estimated recovery: ~30 minutes",
-      "s2": "Contact support"
+      "s2": "Contact support",
+      "s4": "We're upgrading KnowledgeAI to serve you better. Maintenance should finish soon — please try again later."
     },
     "team-settings-dialog": {
       "s0": "Team settings",
       "s1": "Edit basic info such as the team name.",
       "s2": "Team name",
       "s3": "Current plan",
-      "s4": "Cancel"
+      "s4": "Cancel",
+      "s5": "Team settings",
+      "s6": "{plan} · Manage in Billing"
     },
     "auth-layout": {
-      "s0": "← Back to home"
+      "s0": "← Back to home",
+      "s1": "Turn every team document",
+      "s2": "into a queryable intelligent asset.",
+      "s3": "RAG Q&A, multi-agent research, and enterprise-grade security — all in one platform.",
+      "s4": "\"After connecting our knowledge base, new-hire onboarding time was cut in half — and answers come with citations.\"",
+      "s5": "Li",
+      "s6": "Li Mingxuan · Tech Lead, Acme",
+      "s7": "GDPR compliant"
     },
     "login": {
       "s0": "Two-factor authentication",
@@ -875,7 +1063,15 @@
       "s22": "Continue with GitHub",
       "s23": "Social login failed. Please try again or use email login",
       "s24": "This social account is already linked to another user",
-      "s25": "Social login is not configured yet - please use email login"
+      "s25": "Social login is not configured yet - please use email login",
+      "s26": "Enter the 6-digit code from your authenticator app, or use a backup recovery code.",
+      "s27": "Backup codes are formatted XXXX-XXXX and can each be used only once.",
+      "s28": "Back to account entry",
+      "s29": "Sign in to your KnowledgeAI workspace",
+      "s30": "Demo accounts (password for all: password123)",
+      "s31": "Forgot password?",
+      "s32": "Don't have an account?",
+      "s33": "Sign up free"
     },
     "register": {
       "s0": "Create account",
@@ -891,7 +1087,14 @@
       "s10": "Show password",
       "s11": "Creating…",
       "s12": "Continue with Google",
-      "s13": "Continue with GitHub"
+      "s13": "Continue with GitHub",
+      "s14": "Build your first knowledge base in minutes",
+      "s15": "I have read and agree to the",
+      "s16": "Terms of Service",
+      "s17": "and",
+      "s18": "Privacy Policy",
+      "s19": "Already have an account?",
+      "s20": "Sign in"
     },
     "2fa-enroll": {
       "s0": "Set up two-factor authentication",
@@ -905,7 +1108,14 @@
       "s8": "Copied",
       "s9": "Copy",
       "s10": "Verifying…",
-      "s11": "Finish setup and sign in"
+      "s11": "Finish setup and sign in",
+      "s12": "Your administrator has enforced two-factor authentication for your account's role. Complete setup before signing in.",
+      "s13": "Current account: {email}",
+      "s14": "Generating secret key…",
+      "s15": "Scan the QR code with your authenticator app (Google Authenticator / 1Password / Microsoft Authenticator)",
+      "s16": "Can't scan? Enter the key manually:",
+      "s17": "Scanned, next",
+      "s18": "Back"
     },
     "privacy": {
       "s0": "Back to home",
@@ -928,7 +1138,10 @@
       "s17": "We use essential cookies to keep you signed in and remember theme/language preferences. We do not use third-party ad-tracking cookies.",
       "s18": "You can clear cookies in your browser at any time, though some features may be affected.",
       "s19": "6. Retention period",
-      "s20": "Account data is kept until deletion; conversations and call logs are kept 90 days by default (adjustable in settings); after deletion, all data is permanently removed within 30 days."
+      "s20": "Account data is kept until deletion; conversations and call logs are kept 90 days by default (adjustable in settings); after deletion, all data is permanently removed within 30 days.",
+      "s21": "Last updated: July 8, 2026 · This policy applies to all products and services provided by KnowledgeAI.",
+      "s22": "We respect and protect your personal privacy in accordance with the law. Data minimization, end-to-end encryption, and multi-tenant isolation are our core principles. You retain full control over your data.",
+      "s23": "If you have any questions about this Privacy Policy, or wish to exercise your data rights, please contact: "
     },
     "terms": {
       "s0": "Back to home",
@@ -950,7 +1163,10 @@
       "s16": "Documents you upload and content generated are yours. We process your content only as needed to provide the service and never transfer it to third parties.",
       "s17": "5. Service changes and termination",
       "s18": "We reserve the right to modify, suspend or terminate part or all of the service. Plan terms, pricing and features may change with prior notice.",
-      "s19": "You may delete your account at any time. If you violate these terms, we may restrict or terminate your account."
+      "s19": "You may delete your account at any time. If you violate these terms, we may restrict or terminate your account.",
+      "s20": "Last updated: July 8, 2026 · By using KnowledgeAI, you agree to the following terms.",
+      "s21": "This service includes AI-generated content. Such content may be inaccurate and should not be relied upon as the sole basis for any decision.",
+      "s22": "These Terms may be updated from time to time, and continued use after an update constitutes acceptance of the revised Terms. Any dispute shall first be resolved through friendly negotiation between the parties; failing such resolution, the dispute shall be submitted to the people's court with jurisdiction at the domicile of the service provider."
     },
     "share-doc": {
       "s0": "Back to home",
@@ -969,7 +1185,11 @@
       "s13": "Access password",
       "s14": "Web link",
       "s15": "(no text preview available for this document)",
-      "s16": "valid until {date}"
+      "s16": "valid until {date}",
+      "s17": "This shared link is password protected. Enter the password to view the document.",
+      "s18": "{count} views",
+      "s19": "Uploaded {time}",
+      "s20": "Shared by the KnowledgeAI team"
     },
     "report-share": {
       "s0": "This report is encrypted",
@@ -986,7 +1206,12 @@
       "s11": "This share link has expired - contact the report author",
       "s12": "View limit reached",
       "s13": "This share link has been disabled",
-      "s14": "This report may have been deleted or the link is invalid"
+      "s14": "This report may have been deleted or the link is invalid",
+      "s15": "Took {sec}s",
+      "s16": "{count} views",
+      "s17": "Cited sources ({count})",
+      "s18": "Comments ({count})",
+      "s19": "Cites [{n}]"
     },
     "docs": {
       "s0": "API Docs",
@@ -1109,7 +1334,15 @@
       "newKb": "New Knowledge Base",
       "noDesc": "No description",
       "moreActions": "More actions",
-      "deleteKb": "Delete knowledge base"
+      "deleteKb": "Delete knowledge base",
+      "s1": "Shared by {owner}",
+      "s2": "{count} docs",
+      "s3": "{count} chunks",
+      "s4": "Processing",
+      "s5": "Ready",
+      "s6": "Knowledge base settings",
+      "s7": "Delete knowledge base",
+      "s8": "Delete \"{name}\"? All documents and vector indexes in this knowledge base will be permanently deleted and cannot be recovered."
     },
     "usage": {
       "title": "Usage",
@@ -1124,7 +1357,16 @@
       "unitTimes": "times",
       "limitInfinite": "Unlimited",
       "nearLimit": "Near limit",
-      "last14Days": "Last 14 days"
+      "last14Days": "Last 14 days",
+      "s0": "Usage trend",
+      "s1": "Daily Q&A"
+    },
+    "coming-soon": {
+      "s0": "In development · {week}",
+      "s1": "Back to dashboard"
+    },
+    "logos": {
+      "s0": "Trusted by 200+ teams"
     }
   }
 }

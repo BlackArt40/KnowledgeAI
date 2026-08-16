@@ -35,7 +35,7 @@ export function SourcesPanel({
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {citations.length === 0 ? (
           <p className="px-3 py-10 text-center text-xs text-muted-foreground">
-            AI 回答的引用来源将显示在此处
+            {t("page.chat.s80")}
           </p>
         ) : (
           citations.map((c) => {
@@ -83,7 +83,7 @@ export function SourcesPanel({
                     {isWeb ? `🌐 ${host}` : t("page.chat.s67", { idx: c.chunkIndex + 1 })}
                   </span>
                   <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                    相似度 {(c.score * 100).toFixed(0)}%
+                    {t("page.chat.s81", { pct: (c.score * 100).toFixed(0) })}
                   </span>
                 </div>
               </button>

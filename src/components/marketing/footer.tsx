@@ -55,8 +55,7 @@ export function Footer() {
           <div className="col-span-2">
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              上传文档，AI 构建知识库，团队智能问答，自动生成调研报告。
-              一站式企业级 AI 知识平台。
+              {t("page.footer.s19")}
             </p>
             <div className="mt-5 flex items-center gap-2">
               {[Github, Twitter, Linkedin].map((Icon, i) => (
@@ -95,11 +94,11 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} KnowledgeAI. 保留所有权利。
+            © {new Date().getFullYear()} KnowledgeAI. {t("page.footer.s20")}
           </p>
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex h-2 w-2 rounded-full bg-success" />
-            所有系统运行正常 · 数据符合 GDPR 合规
+            {t("page.footer.s21")}
           </p>
         </div>
       </div>

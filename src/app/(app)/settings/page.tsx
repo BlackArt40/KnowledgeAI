@@ -334,24 +334,24 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                开启两步验证后，登录时需输入手机验证器（Google Authenticator / 1Password / Microsoft Authenticator）生成的动态验证码，为账户增加一层保护。
+                {t("page.settings.s81")}
               </p>
 
               {twoFactor.enabled ? (
                 <>
                   {twoFactor.enrolledAt && (
                     <p className="text-xs text-muted-foreground">
-                      绑定时间：{formatRelative(twoFactor.enrolledAt)}
+                      {t("page.settings.s82", { time: formatRelative(twoFactor.enrolledAt) })}
                     </p>
                   )}
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <p className="text-xs font-medium">备用恢复码剩余：{twoFactor.backupCodesRemaining} 枚</p>
+                    <p className="text-xs font-medium">{t("page.settings.s83", { count: twoFactor.backupCodesRemaining })}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      恢复码在丢失验证器时使用，每枚仅可使用一次，使用后自动作废。绑定时仅显示一次，请妥善保存。
+                      {t("page.settings.s84")}
                     </p>
                   </div>
                   <Button variant="outline" onClick={() => { setDisableError(null); setDisableCode(""); setDisableOpen(true); }}>
-                    关闭两步验证
+                    {t("page.settings.s13")}
                   </Button>
                 </>
               ) : (
@@ -363,7 +363,7 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <Button variant="gradient" onClick={startEnroll}>
-                    <ShieldCheck className="h-4 w-4" /> 开启两步验证
+                    <ShieldCheck className="h-4 w-4" /> {t("page.settings.s85")}
                   </Button>
                 </>
               )}
@@ -406,13 +406,13 @@ export default function SettingsPage() {
                         <Label htmlFor="enroll-code" className="text-xs">{t("page.settings.s12")}</Label>
                         <Input id="enroll-code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={enrollCode} onChange={(e) => setEnrollCode(e.target.value)} className="text-center tracking-[0.3em]" required />
                         <Button type="submit" variant="gradient" className="w-full" disabled={enrollBusy}>
-                          {enrollBusy && <Loader2 className="h-4 w-4 animate-spin" />} 完成绑定
+                          {enrollBusy && <Loader2 className="h-4 w-4 animate-spin" />} {t("page.settings.s86")}
                         </Button>
                       </form>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 正在生成验证密钥…
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("page.settings.s87")}
                     </div>
                   )}
                 </DialogContent>
@@ -433,7 +433,7 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">{t("page.settings.s14")}</p>
                     <Input inputMode="numeric" autoComplete="one-time-code" placeholder={t("page.settings.s53")} value={disableCode} onChange={(e) => setDisableCode(e.target.value)} autoFocus required />
                     <Button type="submit" variant="destructive" className="w-full" disabled={disableBusy}>
-                      {disableBusy && <Loader2 className="h-4 w-4 animate-spin" />} 确认关闭
+                      {disableBusy && <Loader2 className="h-4 w-4 animate-spin" />} {t("page.settings.s88")}
                     </Button>
                   </form>
                 </DialogContent>
@@ -634,7 +634,7 @@ export default function SettingsPage() {
               )}
               <Button onClick={saveProfile} disabled={savingProfile}>
                 {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}
-                保存更改
+                {t("page.settings.s89")}
               </Button>
             </CardContent>
           </Card>
@@ -642,7 +642,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bell className="h-4 w-4" /> 通知偏好
+                <Bell className="h-4 w-4" /> {t("page.settings.s90")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -721,26 +721,26 @@ export default function SettingsPage() {
             <CardHeader><CardTitle>{t("page.settings.s33")}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                根据 GDPR（通用数据保护条例）与《个人信息保护法》，您有权访问、导出和删除您的个人数据。
+                {t("page.settings.s91")}
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" onClick={exportData}>
-                  <Download className="h-4 w-4" /> 导出我的数据
+                  <Download className="h-4 w-4" /> {t("page.settings.s92")}
                 </Button>
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="destructive">
-                      <Trash2 className="h-4 w-4" /> 删除账户与数据
+                      <Trash2 className="h-4 w-4" /> {t("page.settings.s93")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{t("page.settings.s9")}</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                       <p className="text-sm text-muted-foreground">
-                        此操作将永久删除您的账户、知识库、会话历史及所有相关数据，且<strong className="text-foreground">{t("page.settings.s35")}</strong>。
+                        {t("page.settings.s94")}<strong className="text-foreground">{t("page.settings.s35")}</strong>。
                       </p>
                       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                        ⚠️ 删除后您将无法登录，所有 API 密钥将立即失效。
+                        {t("page.settings.s95")}
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs">{t("page.settings.s10")}<strong>DELETE</strong>{t("page.settings.s11")}</Label>
@@ -765,7 +765,7 @@ export default function SettingsPage() {
                         disabled={deleting || deleteConfirm !== "DELETE"}
                       >
                         {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
-                        确认永久删除
+                        {t("page.settings.s96")}
                       </Button>
                     </DialogFooter>
                   </DialogContent>

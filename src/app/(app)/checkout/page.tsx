@@ -65,7 +65,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <Link href="/billing" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3.5 w-3.5" /> 返回计费
+        <ArrowLeft className="h-3.5 w-3.5" /> {t("page.checkout.s19")}
       </Link>
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -81,7 +81,7 @@ export default function CheckoutPage() {
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold tracking-tight">
-              {plan.price === null ? "定制" : plan.price === 0 ? "免费" : `¥${plan.price}`}
+              {plan.price === null ? t("page.checkout.s20") : plan.price === 0 ? t("page.checkout.s21") : `¥${plan.price}`}
             </p>
             <p className="text-xs text-muted-foreground">/{plan.period}</p>
           </div>
@@ -131,10 +131,10 @@ export default function CheckoutPage() {
 
             <Button variant="gradient" size="lg" className="mt-6 w-full" onClick={confirm}>
               <ShieldCheck className="h-4 w-4" />
-              确认支付 ¥{plan.price}
+              {t("page.checkout.s22", { price: plan.price ?? 0 })}
             </Button>
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              支付即表示同意 <Link href="/terms" className="text-primary hover:underline">{t("page.checkout.s2")}</Link> · 安全加密
+              {t("page.checkout.s23")} <Link href="/terms" className="text-primary hover:underline">{t("page.checkout.s2")}</Link> · {t("page.checkout.s24")}
             </p>
           </>
         )}
@@ -156,9 +156,9 @@ function ProcessingView({ method, amount }: { method: PayMethod; amount: number 
       </div>
       <p className="mt-5 flex items-center gap-2 text-sm font-medium">
         <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        等待{label}支付确认…
+        {t("page.checkout.s25", { method: label })}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">应付 ¥{amount} · 请在手机端完成支付</p>
+      <p className="mt-1 text-xs text-muted-foreground">{t("page.checkout.s26", { amount })}</p>
     </div>
   );
 }
@@ -172,10 +172,10 @@ function SuccessView({ planName, onDone }: { planName: string; onDone: () => voi
       </span>
       <h3 className="mt-4 text-lg font-semibold">{t("page.checkout.s4")}</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        已升级至 <span className="font-medium text-foreground">{planName}</span>，订阅立即生效。
+        {t("page.checkout.s27")} <span className="font-medium text-foreground">{planName}</span>{t("page.checkout.s28")}
       </p>
       <Button variant="gradient" className="mt-5" onClick={onDone}>
-        <Sparkles className="h-4 w-4" /> 查看账单
+        <Sparkles className="h-4 w-4" /> {t("page.checkout.s29")}
       </Button>
     </div>
   );

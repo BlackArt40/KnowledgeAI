@@ -177,11 +177,11 @@ export default function DashboardPage() {
             {loading ? (
               <Skeleton className="inline-block h-7 w-48" />
             ) : (
-              <>欢迎回来，{user?.name ?? t("page.dashboard.s26")} 👋</>
+              <>{t("page.dashboard.s29", { name: user?.name ?? t("page.dashboard.s26") })} 👋</>
             )}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            这是你的知识工作台概览。
+            {t("page.dashboard.s30")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -241,10 +241,10 @@ export default function DashboardPage() {
             <CardTitle className="text-base">{t("page.dashboard.s0")}</CardTitle>
             <div className="flex items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-primary" /> 每日问答
+                  <span className="h-2 w-2 rounded-full bg-primary" /> {t("page.dashboard.s31")}
               </span>
               <Badge variant="success" className="text-[11px]">
-                近 {trend.length || 14} 天
+                {t("page.dashboard.s32", { days: trend.length || 14 })}
               </Badge>
             </div>
           </CardHeader>
@@ -266,12 +266,12 @@ export default function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">
               <span className="inline-flex items-center gap-2">
-                <Bot className="h-4 w-4 text-primary" /> Agent 任务
+                <Bot className="h-4 w-4 text-primary" /> {t("page.dashboard.s33")}
               </span>
             </CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/agent">
-                全部 <ArrowUpRight className="h-3.5 w-3.5" />
+                {t("page.dashboard.s34")} <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </CardHeader>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                 <p className="text-sm">{t("page.dashboard.s1")}</p>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/agent">
-                    <Bot className="h-4 w-4" /> 发起调研
+                    <Bot className="h-4 w-4" /> {t("page.dashboard.s35")}
                   </Link>
                 </Button>
               </div>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
           <CardTitle className="text-base">{t("page.dashboard.s2")}</CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/chat">
-              查看全部 <ArrowUpRight className="h-3.5 w-3.5" />
+              {t("page.dashboard.s36")} <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </CardHeader>

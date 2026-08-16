@@ -82,7 +82,7 @@ export function NewKbDialog({
         <DialogHeader>
           <DialogTitle>{t("page.new-kb-dialog.s0")}</DialogTitle>
           <DialogDescription>
-            创建一个知识库，随后上传文档即可开始向量化。
+            {t("page.new-kb-dialog.s8")}
           </DialogDescription>
         </DialogHeader>
 
@@ -128,11 +128,11 @@ export function NewKbDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button variant="gradient" onClick={create} disabled={saving || !name.trim()}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            创建
+            {t("common.create")}
           </Button>
         </DialogFooter>
       </DialogContent>

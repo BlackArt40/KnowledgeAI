@@ -130,7 +130,7 @@ export default function TeamPage() {
               <Badge variant="default">{team.plan}</Badge>
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {stats.total} 位成员 · {stats.active} 活跃 · {stats.invited} 待接受
+              {t("page.team.s25", { total: stats.total, active: stats.active, invited: stats.invited })}
             </p>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function TeamPage() {
                           {k.isOwner && <span className="ml-2 text-[10px] font-normal text-muted-foreground">{t("page.team.mineMarker")}</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {k.ownerName} · {k.docs} 篇文档
+                          {t("page.team.s26", { owner: k.ownerName, docs: k.docs })}
                         </p>
                       </div>
                       {canManage ? (
@@ -299,7 +299,7 @@ export default function TeamPage() {
                             </SelectTrigger>
                             <SelectContent>
                               {candidates.map((m) => (
-                                <SelectItem key={m.id} value={m.email}>{m.name}（{ROLE_LABEL[m.role]}）</SelectItem>
+                                <SelectItem key={m.id} value={m.email}>{t("page.team.s27", { name: m.name, role: ROLE_LABEL[m.role] })}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>

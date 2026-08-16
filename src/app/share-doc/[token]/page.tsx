@@ -115,7 +115,7 @@ export default function ShareDocPage() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{t("page.share-doc.s1")}</h1>
         <p className="max-w-md text-sm text-muted-foreground">
-          该文档分享链接受密码保护，请输入密码查看内容
+          {t("page.share-doc.s17")}
         </p>
         <form onSubmit={submitPassword} className="mt-2 flex w-full max-w-xs flex-col gap-2">
           <Input
@@ -140,14 +140,14 @@ export default function ShareDocPage() {
           <FileText className="h-4 w-4" />
           <span>{t("page.share-doc.s4")}</span>
           <Badge variant="secondary" className="ml-auto font-normal">
-            {data.views} 次访问{data.maxViews ? ` / ${data.maxViews}` : ""}
+            {t("page.share-doc.s18", { count: data.views })}{data.maxViews ? ` / ${data.maxViews}` : ""}
           </Badge>
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card p-6">
           <h1 className="break-all text-2xl font-bold tracking-tight">{data.name}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {data.type === "web" ? t("page.share-doc.s14") : formatSize(data.size)} · 上传于 {formatRelative(data.uploadedAt)}
+            {data.type === "web" ? t("page.share-doc.s14") : formatSize(data.size)} · {t("page.share-doc.s19", { time: formatRelative(data.uploadedAt) })}
             {data.expiresAt && ` · ${t("page.share-doc.s16", { date: new Date(data.expiresAt).toLocaleDateString() })}`}
           </p>
           <pre className="mt-5 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl bg-muted/40 p-4 font-mono text-sm leading-relaxed">
@@ -156,7 +156,7 @@ export default function ShareDocPage() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          由 KnowledgeAI 团队共享 · <Link href="/" className="underline">{t("page.share-doc.s5")}</Link>
+          {t("page.share-doc.s20")} · <Link href="/" className="underline">{t("page.share-doc.s5")}</Link>
         </p>
       </div>
     </div>

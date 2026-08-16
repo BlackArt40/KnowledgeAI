@@ -102,20 +102,18 @@ async function main() {
     }
     // count t("...") call sites
     tCallSites += (clean.match(/t\("([^"]+)"\)/g) ?? []).length;
-    // residual Chinese outside t() args. Lines containing a backtick
-    // (template strings) are scanned only for their JSX text nodes - their
-    // "..." literals are part of interpolation.
+    // residual Chinese outside t() args. Quoted literals are checked on
+    // every line: backtick segments are removed first, so a "..." literal
+    // sitting next to a template expression is still inspected (the old
+    // blanket skip of backtick lines hid labels like "月收入").
     for (const line of clean.split("\n")) {
-      const inTemplate = line.includes("`");
-      // quoted literals containing CJK (skip template-string lines)
-      if (!inTemplate) {
-        for (const m of line.matchAll(/"([^"\n<>]*[\u4e00-\u9fff][^"\n<>]*)"/g)) {
-          const lit = m[1];
-          const before = line.slice(Math.max(0, m.index - 40), m.index);
-          if (/t\($/.test(before.replace(/\s/g, ""))) continue;
-          if (lit.length > 0 && /[\u4e00-\u9fff]/.test(lit)) {
-            offenders.push(`${f}: "${lit.slice(0, 60)}"`);
-          }
+      const noTemplates = line.replace(/`[^`]*`/g, "");
+      for (const m of noTemplates.matchAll(/"([^"\n<>]*[\u4e00-\u9fff][^"\n<>]*)"/g)) {
+        const lit = m[1];
+        const before = noTemplates.slice(Math.max(0, m.index - 40), m.index);
+        if (/t\($/.test(before.replace(/\s/g, ""))) continue;
+        if (lit.length > 0 && /[\u4e00-\u9fff]/.test(lit)) {
+          offenders.push(`${f}: "${lit.slice(0, 60)}"`);
         }
       }
       // JSX text nodes (any line)
@@ -126,6 +124,18 @@ async function main() {
       // template literals with CJK
       for (const m of line.matchAll(/`([^`\n]*[\u4e00-\u9fff][^`\n]*)`/g)) {
         offenders.push(`${f}: tmpl> ${m[1].slice(0, 60)}`);
+      }
+      // raw CJK anywhere else on the line (strings/templates/comments
+      // removed above). Catches multi-line JSX text nodes - text sitting on
+      // its own line between tags - which the `>text<` same-line pattern
+      // above cannot see, including `标签：{expr}` mixed nodes.
+      const stripped = line
+        .replace(/`[^`]*`/g, "")
+        .replace(/"[^"]*"/g, "")
+        .replace(/'[^']*'/g, "")
+        .replace(/\/\/.*$/, "");
+      if (/[\u4e00-\u9fff]/.test(stripped)) {
+        offenders.push(`${f}: raw> ${stripped.trim().slice(0, 60)}`);
       }
     }
   }

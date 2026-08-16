@@ -24,15 +24,15 @@ export default function VerifyEmailPage() {
 
       <h1 className="mt-6 text-2xl font-bold tracking-tight">{t("page.verify-email.s0")}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        我们已向 <span className="font-medium text-foreground">you@company.com</span>{" "}
-        发送了一封验证邮件。
+        {t("page.verify-email.s2")} <span className="font-medium text-foreground">you@company.com</span>{" "}
+        {t("page.verify-email.s3")}
         <br />
-        请点击邮件中的链接完成验证。
+        {t("page.verify-email.s4")}
       </p>
 
       <div className="mt-8 space-y-3">
         <Button variant="gradient" size="lg" className="w-full">
-          我已验证，进入工作台
+          {t("page.verify-email.s5")}
         </Button>
         <Button
           variant="outline"
@@ -41,14 +41,14 @@ export default function VerifyEmailPage() {
           onClick={() => setCountdown(60)}
         >
           <RefreshCw className={countdown > 0 ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          {countdown > 0 ? `{t("page.verify-email.s1", { s: countdown })}` : "重新发送邮件"}
+          {countdown > 0 ? t("page.verify-email.s1", { s: countdown }) : t("page.verify-email.s6")}
         </Button>
       </div>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        没有收到邮件？请检查垃圾邮件文件夹，或{" "}
+        {t("page.verify-email.s7")}{" "}
         <a href="#" className="text-primary hover:underline">
-          联系支持
+          {t("page.verify-email.s8")}
         </a>
       </p>
     </div>

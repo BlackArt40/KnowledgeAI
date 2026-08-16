@@ -100,7 +100,7 @@ export function DocShareDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-4 w-4" /> 分享文档
+            <Share2 className="h-4 w-4" /> {t("page.doc-share-dialog.s18")}
           </DialogTitle>
           <DialogDescription className="truncate">{doc.name}</DialogDescription>
         </DialogHeader>
@@ -118,11 +118,11 @@ export function DocShareDialog({
               </div>
               <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
                 <span>{share.expiresAt ? `${t("page.doc-share-dialog.s16", { date: new Date(share.expiresAt).toLocaleDateString() })}` : t("page.doc-share-dialog.s17")}</span>
-                {share.maxViews !== null && <span>已访问 {share.views} / {share.maxViews} 次</span>}
+                {share.maxViews !== null && <span>{t("page.doc-share-dialog.s19", { views: share.views, max: share.maxViews })}</span>}
               </div>
             </div>
             <Button variant="destructive" size="sm" className="w-full" onClick={revoke}>
-              <Trash2 className="h-3.5 w-3.5" /> 撤销分享
+              <Trash2 className="h-3.5 w-3.5" /> {t("page.doc-share-dialog.s20")}
             </Button>
           </div>
         ) : (
@@ -149,7 +149,7 @@ export function DocShareDialog({
           {!share && (
             <Button variant="gradient" onClick={create} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              生成分享链接
+              {t("page.doc-share-dialog.s21")}
             </Button>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("page.doc-share-dialog.s5")}</Button>

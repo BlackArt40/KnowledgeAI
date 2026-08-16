@@ -22,7 +22,7 @@ export default function MaintenancePage() {
         </div>
         <h1 className="mt-6 text-2xl font-bold">{t("page.maintenance.s0")}</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          我们正在对 KnowledgeAI 进行升级维护，以提供更好的服务体验。维护预计很快完成，请稍后重试。
+          {t("page.maintenance.s4")}
         </p>
         <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-4 w-4" />

@@ -274,7 +274,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
               {recent.length > 0 && (
                 <div className="p-1">
                   <p className="flex items-center gap-1 px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Clock className="h-3 w-3" /> 最近搜索
+                    <Clock className="h-3 w-3" /> {t("page.global-search.s22")}
                   </p>
                   <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                     {recent.map((r) => (
@@ -292,7 +292,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
               )}
               <div className="border-t border-border p-1 pt-2">
                 <p className="flex items-center gap-1 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Sparkles className="h-3 w-3" /> 快捷操作
+                  <Sparkles className="h-3 w-3" /> {t("page.global-search.s23")}
                 </p>
                 <QuickAction icon={Plus} label={t("page.global-search.s19")} hint={t("page.global-search.s20")} href="/knowledge-base?new=1" onGo={() => { onOpenChange(false); router.push("/knowledge-base?new=1"); }} />
                 <QuickAction icon={MessageSquareText} label={t("page.global-search.s21")} hint={t("page.global-search.s16")} href="/chat" onGo={() => { onOpenChange(false); router.push("/chat"); }} />
@@ -302,7 +302,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
           ) : loading && !results ? (
             <p className="py-10 text-center text-xs text-muted-foreground">{t("page.global-search.s1")}</p>
           ) : flat.length === 0 ? (
-            <p className="py-10 text-center text-xs text-muted-foreground">未找到「{query.trim()}」相关结果</p>
+            <p className="py-10 text-center text-xs text-muted-foreground">{t("page.global-search.s24", { query: query.trim() })}</p>
           ) : (
             <ul className="space-y-0.5">
               {flat.map((item, i) => (

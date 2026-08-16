@@ -86,7 +86,7 @@ export function Pricing() {
               {p.featured && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-brand-gradient px-3 py-1 text-white shadow-md">
-                    <Sparkles className="h-3 w-3" /> 最受欢迎
+                    <Sparkles className="h-3 w-3" /> {t("page.pricing.s28")}
                   </Badge>
                 </div>
               )}

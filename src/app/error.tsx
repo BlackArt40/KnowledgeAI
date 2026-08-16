@@ -46,18 +46,18 @@ export default function Error({
         </p>
         <h1 className="mt-4 text-xl font-semibold">{t("page.error.s0")}</h1>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-          抱歉，处理您的请求时发生了内部错误。我们的团队已收到通知，正在紧急修复。
+          {t("page.error.s3")}
         </p>
         {error.digest && (
           <p className="mt-3 inline-block rounded-md bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
-            错误码：{error.digest}
+            {t("page.error.s4", { code: error.digest })}
           </p>
         )}
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button variant="gradient" onClick={reset}>
-          <RefreshCw className="h-4 w-4" /> 重试
+          <RefreshCw className="h-4 w-4" /> {t("page.error.s5")}
         </Button>
         <Button variant="outline" asChild>
           <Link href="/"><Home className="h-4 w-4" />{t("page.error.s1")}</Link>

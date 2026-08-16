@@ -94,12 +94,12 @@ export function Navbar() {
           <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
             <Button variant="outline" asChild>
               <Link href="/login" onClick={() => setOpen(false)}>
-                登录
+                {t("page.navbar.s0")}
               </Link>
             </Button>
             <Button variant="gradient" asChild>
               <Link href="/register" onClick={() => setOpen(false)}>
-                免费开始
+                {t("page.navbar.s1")}
               </Link>
             </Button>
           </div>

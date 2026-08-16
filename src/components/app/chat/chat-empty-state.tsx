@@ -53,10 +53,11 @@ export function FollowUpSuggestions({
   suggestions: string[];
   onPick: (q: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-2 pl-11">
       <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-        <Sparkles className="h-3 w-3" /> 追问建议
+        <Sparkles className="h-3 w-3" /> {t("page.chat.s82")}
       </span>
       {suggestions.map((s, i) => (
         <button

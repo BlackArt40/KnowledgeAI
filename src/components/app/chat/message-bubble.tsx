@@ -136,14 +136,14 @@ export function MessageBubble({
                   }}
                   className="h-8 rounded-lg bg-brand-gradient px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
                 >
-                  提交
+                  {t("common.submit")}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setNoteOpen(false); setNote(""); noteRef.current = ""; }}
                   className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  取消
+                  {t("common.cancel")}
                 </button>
               </div>
             )}
