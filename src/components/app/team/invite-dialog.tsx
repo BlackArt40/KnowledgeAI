@@ -52,7 +52,7 @@ export function InviteDialog({ onInvited }: { onInvited: () => void }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="gradient" size="sm">
-          <UserPlus className="h-4 w-4" /> 邀请成员
+          <UserPlus className="h-4 w-4" /> {t("page.invite-dialog.s11")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -86,7 +86,7 @@ export function InviteDialog({ onInvited }: { onInvited: () => void }) {
           <Button variant="outline" onClick={() => setOpen(false)}>{t("page.invite-dialog.s8")}</Button>
           <Button variant="gradient" onClick={submit} disabled={saving || !email.trim()}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-            发送邀请
+            {t("page.invite-dialog.s12")}
           </Button>
         </DialogFooter>
       </DialogContent>

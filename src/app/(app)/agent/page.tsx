@@ -275,10 +275,10 @@ export default function AgentPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <Sparkles className="h-5 w-5 text-primary" /> Agent 调研
+          <Sparkles className="h-5 w-5 text-primary" /> {t("page.agent.s62")}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          多 Agent 协作（规划→检索→分析→撰写），自动产出带引用的调研报告。
+          {t("page.agent.s63")}
         </p>
       </div>
 
@@ -331,7 +331,7 @@ export default function AgentPage() {
           {/* depth */}
           <div className="min-w-[160px]">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              检索深度 <span className="text-primary">{depth}</span>
+              {t("page.agent.s64")} <span className="text-primary">{depth}</span>
             </label>
             <Slider value={[depth]} onValueChange={(v) => setDepth(v[0])} min={3} max={10} step={1} className="w-[160px]" />
           </div>
@@ -406,20 +406,20 @@ export default function AgentPage() {
           {showTimeline && (
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-                <ListChecks className="h-4 w-4 text-primary" /> 执行过程
+                <ListChecks className="h-4 w-4 text-primary" /> {t("page.agent.s65")}
                 {task?.parallelExecuted && (
                   <Badge variant="secondary" className="ml-2 gap-1 font-normal">
-                    <Sparkles className="h-3 w-3" /> 并行
+                    <Sparkles className="h-3 w-3" /> {t("page.agent.s66")}
                   </Badge>
                 )}
                 {task?.branchTriggered && (
                   <Badge variant="secondary" className="ml-1 gap-1 font-normal">
-                    <ChevronRight className="h-3 w-3" /> 条件分支
+                    <ChevronRight className="h-3 w-3" /> {t("page.agent.s67")}
                   </Badge>
                 )}
                 {running && (
                   <Badge variant="default" className="ml-auto">
-                    <Loader2 className="h-3 w-3 animate-spin" /> 进行中
+                    <Loader2 className="h-3 w-3 animate-spin" /> {t("page.agent.s68")}
                   </Badge>
                 )}
               </h3>
@@ -437,30 +437,30 @@ export default function AgentPage() {
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <FileText className="h-4 w-4 text-primary" /> 调研结果
+                  <FileText className="h-4 w-4 text-primary" /> {t("page.agent.s69")}
                 </h3>
                 <div className="ml-auto flex flex-wrap gap-1.5">
                   {editing ? (
                     <>
                       <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                        <X className="h-3.5 w-3.5" /> 取消
+                        <X className="h-3.5 w-3.5" /> {t("common.cancel")}
                       </Button>
                       <Button variant="gradient" size="sm" onClick={saveEdit} disabled={saving}>
                         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                        保存
+                        {t("common.save")}
                       </Button>
                     </>
                   ) : (
                     <>
                       <Button variant="outline" size="sm" onClick={() => copyText(task!.report!, "report")}>
                         {copied === "report" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                        复制
+                        {t("common.copy")}
                       </Button>
                       <Button variant="outline" size="sm" onClick={startEdit}>
-                        <Pencil className="h-3.5 w-3.5" /> 编辑
+                        <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
-                        <Share2 className="h-3.5 w-3.5" /> 分享设置
+                        <Share2 className="h-3.5 w-3.5" /> {t("page.agent.s70")}
                       </Button>
                       <DropdownMenu
                         trigger={
@@ -484,8 +484,8 @@ export default function AgentPage() {
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-2">
                   <TabsList>
                     <TabsTrigger value="report"><FileText className="h-3.5 w-3.5" />{t("page.agent.s1")}</TabsTrigger>
-                    <TabsTrigger value="versions"><GitBranch className="h-3.5 w-3.5" /> 版本 ({task!.versions!.length})</TabsTrigger>
-                    <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> 评论 ({task!.comments?.length ?? 0})</TabsTrigger>
+                    <TabsTrigger value="versions"><GitBranch className="h-3.5 w-3.5" /> {t("page.agent.s71")} ({task!.versions!.length})</TabsTrigger>
+                    <TabsTrigger value="comments"><MessageSquare className="h-3.5 w-3.5" /> {t("page.agent.s72")} ({task!.comments?.length ?? 0})</TabsTrigger>
                   </TabsList>
                 </Tabs>
               )}
@@ -522,7 +522,7 @@ export default function AgentPage() {
         <div className="space-y-6">
           <div className="rounded-2xl border border-border bg-card p-4">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <History className="h-4 w-4 text-muted-foreground" /> 历史任务
+              <History className="h-4 w-4 text-muted-foreground" /> {t("page.agent.s73")}
             </h3>
             {history.length === 0 ? (
               <p className="py-6 text-center text-xs text-muted-foreground">{t("page.agent.s9")}</p>
@@ -547,7 +547,7 @@ export default function AgentPage() {
 
           <div className="rounded-2xl border border-border bg-card p-4">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <Search className="h-4 w-4 text-muted-foreground" /> 引用来源
+              <Search className="h-4 w-4 text-muted-foreground" /> {t("page.agent.s74")}
               {task && <Badge variant="secondary" className="ml-auto">{task.citations.length}</Badge>}
             </h3>
             {!task || task.citations.length === 0 ? (
@@ -568,7 +568,7 @@ export default function AgentPage() {
                       <span className="line-clamp-1 text-xs font-medium">{c.title}</span>
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-[11px] text-muted-foreground">{c.snippet}</p>
-                    <span className="mt-1 block text-[10px] text-muted-foreground">{c.source} · 相似度 {(c.score * 100).toFixed(0)}%</span>
+                    <span className="mt-1 block text-[10px] text-muted-foreground">{c.source} · {t("page.agent.s75", { pct: (c.score * 100).toFixed(0) })}</span>
                   </div>
                 ))}
               </div>
@@ -777,10 +777,10 @@ function VersionsPanel({
               </div>
             </div>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => showDiff(v)}>
-              对比当前
+              {t("page.agent.s76")}
             </Button>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => restore(v)} disabled={busy}>
-              <RotateCcw className="h-3 w-3" /> 恢复
+              <RotateCcw className="h-3 w-3" /> {t("page.agent.s77")}
             </Button>
           </div>
         ))}
@@ -790,10 +790,10 @@ function VersionsPanel({
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs font-medium">
-              「{selected.label}」→ 当前 的差异
+              {t("page.agent.s78", { label: selected.label })}
             </span>
             <button className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setDiffVid(null)}>
-              <X className="h-3 w-3" /> 关闭
+              <X className="h-3 w-3" /> {t("common.close")}
             </button>
           </div>
           <DiffView diff={diff} />
@@ -813,8 +813,8 @@ function DiffView({ diff }: { diff: DiffLine[] }) {
   return (
     <div>
       <div className="mb-1.5 flex gap-3 text-[11px]">
-        <span className="text-green-600">+{added} 新增</span>
-        <span className="text-red-600">-{removed} 删除</span>
+        <span className="text-green-600">+{added} {t("page.agent.s79")}</span>
+        <span className="text-red-600">-{removed} {t("page.agent.s80")}</span>
       </div>
       <div className="max-h-80 overflow-auto rounded-lg border border-border bg-muted/20 p-2 font-mono text-[11px] leading-relaxed">
         {diff.map((d, i) => (
@@ -913,7 +913,7 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
         className="mt-1 text-[11px] text-muted-foreground hover:text-primary"
         onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
       >
-        回复
+        {t("page.agent.s81")}
       </button>
       {replyTo === c.id && (
         <div className="mt-2 flex gap-1.5">
@@ -943,7 +943,7 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
             <SelectContent>
               <SelectItem value="general">{t("page.agent.s17")}</SelectItem>
               {citations.map((c) => (
-                <SelectItem key={c.n} value={String(c.n)}>引用 [{c.n}]</SelectItem>
+                <SelectItem key={c.n} value={String(c.n)}>{t("page.agent.s82", { n: c.n })}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -969,7 +969,7 @@ function CommentsPanel({ taskId, citations }: { taskId: string; citations: Agent
             <div key={n}>
               <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <span className="flex h-4 min-w-4 items-center justify-center rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary">{n}</span>
-                引用 [{n}] 的批注
+                {t("page.agent.s83", { n })}
               </div>
               <div className="space-y-1.5">
                 {list.filter((c) => !c.parentId).map(renderComment)}
@@ -1045,7 +1045,7 @@ function ShareDialog({
       <DialogContent className="max-w-md">
         <DialogTitle className="flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" />{t("page.agent.s2")}</DialogTitle>
         <DialogDescription className="text-xs">
-          控制公开分享链接的访问权限：有效期、密码、访问次数。
+          {t("page.agent.s84")}
         </DialogDescription>
 
         <div className="space-y-3">
@@ -1101,7 +1101,7 @@ function ShareDialog({
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t("page.agent.s28")}</Button>
           <Button size="sm" onClick={save} disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} 保存
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} {t("common.save")}
           </Button>
         </div>
       </DialogContent>

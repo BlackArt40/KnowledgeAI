@@ -22,24 +22,25 @@ import { DOC_ACCESS_LABEL, type DocAccess } from "@/lib/team/types";
 const IN_FLIGHT: DocStatus[] = ["queued", "parsing", "chunking", "vectorizing"];
 
 function StatusBadge({ status }: { status: DocStatus }) {
+  const t = useT();
   switch (status) {
     case "ready":
       return (
         <Badge variant="success">
-          <CheckCircle2 className="h-3 w-3" /> 就绪
+          <CheckCircle2 className="h-3 w-3" /> {t("page.document-list.s11")}
         </Badge>
       );
     case "failed":
       return (
         <Badge variant="destructive">
-          <AlertCircle className="h-3 w-3" /> 失败
+          <AlertCircle className="h-3 w-3" /> {t("page.document-list.s12")}
         </Badge>
       );
     case "vectorizing":
       return (
         <Badge variant="default">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-          向量化中
+          {t("page.document-list.s13")}
         </Badge>
       );
     case "parsing":
@@ -93,7 +94,7 @@ export function DocumentList({
         </span>
         <p className="mt-3 text-sm font-medium">{t("page.document-list.s0")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          上传文件或添加网页链接，AI 将自动解析与向量化
+          {t("page.document-list.s14")}
         </p>
       </div>
     );
@@ -164,7 +165,7 @@ export function DocumentList({
                 <span className="md:hidden">{t("page.document-list.s5")} </span>
                 {doc.type === "web" ? t("page.document-list.s7") : formatSize(doc.size)}
                 {doc.chunks > 0 && (
-                  <span className="mt-0.5 block text-[11px]">{doc.chunks} 个切片</span>
+                  <span className="mt-0.5 block text-[11px]">{t("page.document-list.s15", { count: doc.chunks })}</span>
                 )}
               </div>
 

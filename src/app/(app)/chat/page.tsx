@@ -776,7 +776,7 @@ export default function ChatPage() {
               <SelectContent>
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>
-                    {kb.name} · {kb.stats.ready} 篇就绪{kb.shared ? t("page.chat.s57", { name: kb.ownerName ?? "" }) : ""}
+                    {kb.name} · {t("page.chat.s70", { count: kb.stats.ready })}{kb.shared ? t("page.chat.s57", { name: kb.ownerName ?? "" }) : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -785,7 +785,7 @@ export default function ChatPage() {
           {selectedKbObj && (
             <Badge variant="success" className="ml-auto hidden md:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              {selectedKbObj.stats.ready} 篇可检索
+              {t("page.chat.s71", { count: selectedKbObj.stats.ready })}
             </Badge>
           )}
           {/* P5-1: citation sources drawer trigger (desktop panel is xl-only).
@@ -861,7 +861,7 @@ export default function ChatPage() {
             <div className="pl-1 sm:pl-11">
               <div className="rounded-xl border border-border bg-card/60 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" /> 相关知识库推荐
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> {t("page.chat.s72")}
                 </p>
                 <div className="mt-2 space-y-1.5">
                   {recommendations.map((r) => (
@@ -882,7 +882,7 @@ export default function ChatPage() {
                         </span>
                       </span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {r.matched.join("、")}匹配
+                        {t("page.chat.s73", { terms: r.matched.join(t("page.chat.s77")) })}
                       </span>
                     </button>
                   ))}
@@ -908,7 +908,7 @@ export default function ChatPage() {
               title={webSearch ? t("page.chat.s26") : t("page.chat.s27")}
             >
               <Globe className="h-3.5 w-3.5" />
-              联网搜索
+              {t("page.chat.s74")}
             </button>
             {webSearch && (
               <span className="text-[11px] text-muted-foreground">{t("page.chat.s4")}</span>
@@ -1052,7 +1052,7 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle>{t("page.chat.s6")}</DialogTitle>
             <DialogDescription>
-              为会话「{tagTarget?.title ?? ""}」添加标签，便于分类查找。
+              {t("page.chat.s75", { title: tagTarget?.title ?? "" })}
             </DialogDescription>
           </DialogHeader>
           {tagTarget && (
@@ -1074,12 +1074,12 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle>{t("page.chat.s7")}</DialogTitle>
             <DialogDescription>
-              确定删除此会话？该会话的所有消息将被永久删除，且无法恢复。
+              {t("page.chat.s76")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -1088,7 +1088,7 @@ export default function ChatPage() {
                 setConfirmDeleteId(null);
               }}
             >
-              <Trash2 className="h-4 w-4" /> 删除
+              <Trash2 className="h-4 w-4" /> {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

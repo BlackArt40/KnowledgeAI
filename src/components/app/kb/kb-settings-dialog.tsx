@@ -131,7 +131,7 @@ export function KbSettingsDialog({
       {!isControlled && (
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
-            <Settings2 className="h-4 w-4" /> 设置
+            <Settings2 className="h-4 w-4" /> {t("page.kb-settings-dialog.s13")}
           </Button>
         </DialogTrigger>
       )}
@@ -139,7 +139,7 @@ export function KbSettingsDialog({
         <DialogHeader>
           <DialogTitle>{t("page.kb-settings-dialog.s0")}</DialogTitle>
           <DialogDescription>
-            调整切片与检索参数。修改后新文档将按新参数处理。
+            {t("page.kb-settings-dialog.s14")}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,7 +217,7 @@ export function KbSettingsDialog({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              自带预设 {presetModels(t).length} 个 · 用户配置 {userEmbModels.length} 个（来自 设置 → AI 模型）
+              {t("page.kb-settings-dialog.s15", { presets: presetModels(t).length, user: userEmbModels.length })}
             </p>
           </div>
 
@@ -241,16 +241,16 @@ export function KbSettingsDialog({
         <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           {conflict && (
             <p className="text-xs text-destructive">
-              设置已被其他成员修改（版本冲突），请关闭后重新打开以加载最新设置。
+              {t("page.kb-settings-dialog.s16")}
             </p>
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button variant="gradient" onClick={save} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              保存设置
+              {t("page.kb-settings-dialog.s17")}
             </Button>
           </div>
         </DialogFooter>

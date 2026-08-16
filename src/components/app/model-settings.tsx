@@ -91,15 +91,15 @@ export function ModelSettings() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Bot className="h-4 w-4 text-primary" /> 外部 AI 模型
+            <Bot className="h-4 w-4 text-primary" /> {t("page.model-settings.s29")}
           </CardTitle>
           <Button size="sm" variant="gradient" onClick={() => setShowAdd(true)}>
-            <Plus className="h-4 w-4" /> 添加模型
+            <Plus className="h-4 w-4" /> {t("page.model-settings.s30")}
           </Button>
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-sm text-muted-foreground">
-            导入 OpenAI / DeepSeek / Moonshot / 硅基流动 / Ollama 等 OpenAI 兼容模型，启用后驱动智能问答与 Agent 调研。未配置时使用本地演示模式。
+            {t("page.model-settings.s31")}
           </p>
 
           {loading ? (
@@ -117,7 +117,7 @@ export function ModelSettings() {
                 <p className="mt-1 text-xs text-muted-foreground">{t("page.model-settings.s1")}</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setShowAdd(true)}>
-                <Plus className="h-4 w-4" /> 添加模型
+                <Plus className="h-4 w-4" /> {t("page.model-settings.s30")}
               </Button>
             </div>
           ) : (
@@ -145,7 +145,7 @@ export function ModelSettings() {
                             <p className="text-sm font-semibold">{m.name}</p>
                             {m.isDefault && (
                               <Badge variant="default" className="gap-0.5 text-[10px]">
-                                <Star className="h-2.5 w-2.5" /> 默认
+                                <Star className="h-2.5 w-2.5" /> {t("page.model-settings.s32")}
                               </Badge>
                             )}
                             {m.enabled ? (
@@ -159,7 +159,7 @@ export function ModelSettings() {
                           </p>
                           {m.embeddingModel && (
                             <p className="text-xs text-muted-foreground">
-                              嵌入: {m.embeddingModel}
+                              {t("page.model-settings.s33", { model: m.embeddingModel })}
                             </p>
                           )}
                           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -193,20 +193,20 @@ export function ModelSettings() {
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" onClick={() => test(m.id)} disabled={testingId === m.id}>
                         {testingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                        测试连接
+                        {t("page.model-settings.s34")}
                       </Button>
                       {!m.isDefault && (
                         <Button size="sm" variant="outline" onClick={() => patch(m.id, { isDefault: true })}>
-                          <Star className="h-3.5 w-3.5" /> 设为默认
+                          <Star className="h-3.5 w-3.5" /> {t("page.model-settings.s35")}
                         </Button>
                       )}
                       {m.isDefault && (
                         <Button size="sm" variant="ghost" onClick={() => patch(m.id, { isDefault: false })}>
-                          <StarOff className="h-3.5 w-3.5" /> 取消默认
+                          <StarOff className="h-3.5 w-3.5" /> {t("page.model-settings.s36")}
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => remove(m.id)}>
-                        <Trash2 className="h-3.5 w-3.5" /> 删除
+                        <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
                       </Button>
                     </div>
                   </div>
@@ -347,7 +347,7 @@ function AddModelDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" /> 添加外部模型
+            <Bot className="h-5 w-5 text-primary" /> {t("page.model-settings.s37")}
           </DialogTitle>
         </DialogHeader>
 
@@ -366,7 +366,7 @@ function AddModelDialog({
             {preset?.docsUrl && (
               <a href={preset.docsUrl} target="_blank" rel="noreferrer"
                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <ExternalLink className="h-3 w-3" /> 获取 API Key
+                <ExternalLink className="h-3 w-3" /> {t("page.model-settings.s38")}
               </a>
             )}
           </div>
@@ -494,7 +494,7 @@ function AddModelDialog({
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                         )}>
-                  不使用
+                  {t("page.model-settings.s39")}
                 </button>
                 {preset.embeddingModels.map((m) => (
                   <button key={m} type="button" onClick={() => setEmbeddingModel(m)}
@@ -528,12 +528,12 @@ function AddModelDialog({
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={doTest} disabled={testing || !baseUrl || !chatModel}>
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            测试连接
+            {t("page.model-settings.s34")}
           </Button>
           <Button variant="ghost" onClick={onClose}>{t("page.model-settings.s13")}</Button>
           <Button variant="gradient" onClick={save} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            保存
+            {t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

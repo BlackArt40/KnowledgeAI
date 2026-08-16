@@ -186,7 +186,7 @@ function WorkspaceSwitcher() {
                   onClick={createWs}
                   className="h-7 rounded-lg bg-brand-gradient px-2.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
                 >
-                  创建
+                  {t("common.create")}
                 </button>
               </div>
             ) : (
@@ -195,7 +195,7 @@ function WorkspaceSwitcher() {
                 onClick={() => setCreating(true)}
                 className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
-                <Plus className="h-3.5 w-3.5" /> 新建工作区
+                <Plus className="h-3.5 w-3.5" /> {t("page.app-shell.s30")}
               </button>
             )}
           </div>
@@ -268,13 +268,13 @@ function SidebarContent({ onNavigate, role, plan }: { onNavigate?: () => void; r
           <span className="text-sm font-semibold">{t("page.app-shell.s0")}</span>
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
-          解锁 Agent 调研与无限问答
+          {t("page.app-shell.s31")}
         </p>
         <Link
           href="/checkout?plan=pro"
           className="mt-3 inline-flex h-8 w-full items-center justify-center rounded-lg bg-brand-gradient text-xs font-medium text-white transition hover:brightness-105"
         >
-          立即升级
+          {t("page.app-shell.s32")}
         </Link>
       </div>
       )}
@@ -531,7 +531,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <span className="text-sm font-semibold">{t("page.app-shell.s3")}</span>
                       {unread > 0 && (
                         <button onClick={markAllRead} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                          <CheckCheck className="h-3 w-3" /> 全部已读
+                          <CheckCheck className="h-3 w-3" /> {t("page.app-shell.s33")}
                         </button>
                       )}
                     </div>
@@ -642,7 +642,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       onClick={logout}
                       className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/5"
                     >
-                      <LogOut className="h-4 w-4" /> 退出登录
+                      <LogOut className="h-4 w-4" /> {t("page.app-shell.s34")}
                     </button>
                   </div>
                 </>

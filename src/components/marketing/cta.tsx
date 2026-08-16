@@ -16,16 +16,16 @@ export function CTA() {
           <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-[42rem] -translate-x-1/2 -translate-y-1/2 aurora opacity-40" />
 
           <h2 className="mx-auto max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            现在就开始构建你的
+            {t("page.cta.s2")}
             <span className="text-gradient">{t("page.cta.s0")}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-pretty text-muted-foreground">
-            免费开始，无需信用卡。几分钟内完成第一个知识库的搭建。
+            {t("page.cta.s3")}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button variant="gradient" size="lg" asChild>
               <Link href="/register">
-                免费创建知识库
+                {t("page.cta.s4")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

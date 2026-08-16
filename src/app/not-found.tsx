@@ -25,7 +25,7 @@ export default function NotFound() {
           <h1 className="text-xl font-semibold">{t("page.not-found.s0")}</h1>
         </div>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-          您访问的页面不存在或已被移动。请检查链接是否正确，或返回首页继续探索。
+          {t("page.not-found.s3")}
         </p>
       </div>
 

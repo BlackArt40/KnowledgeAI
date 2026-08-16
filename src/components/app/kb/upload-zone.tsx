@@ -135,7 +135,7 @@ export function UploadZone({
             mode === "file" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <UploadCloud className="h-3.5 w-3.5" /> 上传文件
+          <UploadCloud className="h-3.5 w-3.5" /> {t("page.upload-zone.s8")}
         </button>
         <button
           onClick={() => setMode("link")}
@@ -144,7 +144,7 @@ export function UploadZone({
             mode === "link" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Link2 className="h-3.5 w-3.5" /> 网页链接
+          <Link2 className="h-3.5 w-3.5" /> {t("page.upload-zone.s9")}
         </button>
       </div>
 
@@ -194,17 +194,17 @@ export function UploadZone({
               <p className="text-sm font-medium">
                 {chunkedFile
                   ? chunked.state.status === "completing"
-                    ? `合并中… ${chunkedFile}`
-                    : `分片上传… ${chunkedFile} ${chunked.state.progress}%`
-                  : `上传中… ${progress}%`}
+                    ? t("page.upload-zone.s10", { name: chunkedFile })
+                    : t("page.upload-zone.s11", { name: chunkedFile, progress: chunked.state.progress })
+                  : t("page.upload-zone.s12", { progress })}
               </p>
               <div className="w-full max-w-xs">
                 <Progress value={chunkedFile ? chunked.state.progress : progress} />
               </div>
               {chunkedFile ? (
                 <p className="text-xs text-muted-foreground">
-                  {chunked.state.receivedChunks}/{chunked.state.totalChunks} 分片
-                  {chunked.state.status === "uploading" && " · 支持断点续传"}
+                  {t("page.upload-zone.s13", { received: chunked.state.receivedChunks, total: chunked.state.totalChunks })}
+                  {chunked.state.status === "uploading" && t("page.upload-zone.s14")}
                 </p>
               ) : pending.length > 0 ? (
                 <p className="line-clamp-1 text-xs text-muted-foreground">
@@ -218,10 +218,10 @@ export function UploadZone({
                 <UploadCloud className="h-6 w-6" />
               </span>
               <p className="text-sm font-medium">
-                拖拽文件到此处，或<span className="text-primary">点击上传</span>
+                {t("page.upload-zone.s15")}<span className="text-primary">{t("page.upload-zone.s16")}</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                支持 PDF / Word / Markdown / TXT / CSV / 图片（OCR）· 大文件自动分片上传（≤ 500MB）
+                {t("page.upload-zone.s17")}
               </p>
             </>
           )}
@@ -233,7 +233,7 @@ export function UploadZone({
             onClick={() => cameraRef.current?.click()}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-60 md:hidden"
           >
-            <Camera className="h-3.5 w-3.5" /> 拍照上传（OCR 识别文字）
+            <Camera className="h-3.5 w-3.5" /> {t("page.upload-zone.s18")}
           </button>
         </div>
       ) : (
@@ -247,7 +247,7 @@ export function UploadZone({
           />
           <Button variant="gradient" onClick={addLink} disabled={uploading || !url.trim()}>
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            添加
+            {t("page.upload-zone.s19")}
           </Button>
         </div>
       )}

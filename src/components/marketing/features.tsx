@@ -142,13 +142,13 @@ function MiniChat() {
     <div className="space-y-2.5 rounded-xl border border-border bg-muted/30 p-4">
       <div className="flex justify-end">
         <span className="rounded-xl rounded-br-sm bg-primary px-3 py-1.5 text-xs text-primary-foreground">
-          本季度核心指标？
+          {t("page.features.s25")}
         </span>
       </div>
       <div className="flex gap-2">
         <span className="mt-0.5 h-6 w-6 rounded-md bg-brand-gradient" />
         <span className="rounded-xl rounded-tl-sm bg-background px-3 py-1.5 text-xs">
-          营收同比增长 38%，RAG 调用量翻倍
+          {t("page.features.s26")}
           <sup className="ml-1 text-primary">[1]</sup>
         </span>
       </div>
@@ -184,7 +184,7 @@ function MiniTimeline() {
           {!s.done && i === 2 && (
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary">
               <span className="h-1.5 w-1.5 animate-ping rounded-full bg-primary" />
-              进行中
+              {t("page.features.s27")}
             </span>
           )}
         </div>

@@ -190,8 +190,8 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
         <h1 className="text-2xl font-bold tracking-tight">{data!.topic}</h1>
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatRelative(data!.createdAt)}</span>
-          {data!.durationMs && <span>耗时 {(data!.durationMs / 1000).toFixed(1)}s</span>}
-          {data!.views !== undefined && data!.views > 0 && <span>访问 {data!.views} 次</span>}
+          {data!.durationMs && <span>{t("page.report-share.s15", { sec: (data!.durationMs / 1000).toFixed(1) })}</span>}
+          {data!.views !== undefined && data!.views > 0 && <span>{t("page.report-share.s16", { count: data!.views })}</span>}
         </div>
       </div>
 
@@ -200,7 +200,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
           <h2 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" />{t("page.report-share.s8")}</h2>
           <div className="flex gap-1.5">
             <Button variant="outline" size="sm" onClick={copyReport}>
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} 复制
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {t("common.copy")}
             </Button>
             <Button variant="outline" size="sm" onClick={downloadMd}>
               <Download className="h-3.5 w-3.5" /> MD
@@ -215,7 +215,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
 
       {data!.citations.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold">引用来源 ({data!.citations.length})</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("page.report-share.s17", { count: data!.citations.length })}</h3>
           <div className="space-y-2">
             {data!.citations.map((c) => (
               <div key={c.n} className="rounded-lg border border-border p-2.5">
@@ -235,7 +235,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
       {data!.comments && data!.comments.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-4">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <MessageSquare className="h-4 w-4 text-muted-foreground" /> 协作评论 ({data!.comments.length})
+            <MessageSquare className="h-4 w-4 text-muted-foreground" /> {t("page.report-share.s18", { count: data!.comments.length })}
           </h3>
           <div className="space-y-2">
             {data!.comments.map((c) => (
@@ -246,7 +246,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
                   </span>
                   <span className="text-xs font-medium">{c.userName}</span>
                   {c.citeN !== undefined && (
-                    <Badge variant="secondary" className="h-4 px-1 text-[9px]">引用 [{c.citeN}]</Badge>
+                    <Badge variant="secondary" className="h-4 px-1 text-[9px]">{t("page.report-share.s19", { n: c.citeN })}</Badge>
                   )}
                   <span className="text-[10px] text-muted-foreground">{formatRelative(c.createdAt)}</span>
                 </div>

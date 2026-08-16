@@ -64,7 +64,7 @@ export default function RegisterPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">{t("page.register.s0")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          几分钟内开始构建你的第一个知识库
+          {t("page.register.s14")}
         </p>
       </div>
 
@@ -148,13 +148,13 @@ export default function RegisterPage() {
             className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
           />
           <span className="text-muted-foreground">
-            我已阅读并同意{" "}
+            {t("page.register.s15")}{" "}
             <Link href="/terms" className="text-primary hover:underline">
-              服务条款
+              {t("page.register.s16")}
             </Link>{" "}
-            与{" "}
+            {t("page.register.s17")}{" "}
             <Link href="/privacy" className="text-primary hover:underline">
-              隐私政策
+              {t("page.register.s18")}
             </Link>
           </span>
         </label>
@@ -177,9 +177,9 @@ export default function RegisterPage() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        已有账户？{" "}
+        {t("page.register.s19")}{" "}
         <Link href="/login" className="font-medium text-primary hover:underline">
-          登录
+          {t("page.register.s20")}
         </Link>
       </p>
     </div>

@@ -105,8 +105,8 @@ export default function TwoFactorEnrollPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">{t("page.2fa-enroll.s0")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          管理员已为你的账号角色开启两步验证强制策略，请先完成绑定才能登录。
-          {email && <span className="block">当前账号：{email}</span>}
+          {t("page.2fa-enroll.s12")}
+          {email && <span className="block">{t("page.2fa-enroll.s13", { email })}</span>}
         </p>
       </div>
 
@@ -120,13 +120,13 @@ export default function TwoFactorEnrollPage() {
         <div className="space-y-4">
           {loading && !enrollData ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 正在生成验证密钥…
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("page.2fa-enroll.s14")}
             </div>
           ) : enrollData ? (
             <>
               <div className="flex flex-col items-center rounded-xl border border-border bg-card p-4">
                 <p className="mb-3 text-xs font-medium text-muted-foreground">
-                  使用验证器 App（Google Authenticator / 1Password / Microsoft Authenticator）扫描二维码
+                  {t("page.2fa-enroll.s15")}
                 </p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -137,7 +137,7 @@ export default function TwoFactorEnrollPage() {
                   className="rounded-lg border border-border bg-white p-1"
                 />
                 <p className="mt-3 text-center text-xs text-muted-foreground">
-                  无法扫码？手动输入密钥：
+                  {t("page.2fa-enroll.s16")}
                 </p>
                 <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-xs break-all">
                   {enrollData.secret}
@@ -160,7 +160,7 @@ export default function TwoFactorEnrollPage() {
               </div>
 
               <Button variant="gradient" size="lg" className="w-full" onClick={() => setPhase("verify")}>
-                <ShieldCheck className="h-4 w-4" /> 已扫码，下一步
+                <ShieldCheck className="h-4 w-4" /> {t("page.2fa-enroll.s17")}
               </Button>
             </>
           ) : null}
@@ -192,7 +192,7 @@ export default function TwoFactorEnrollPage() {
             onClick={() => { setPhase("setup"); setCode(""); setError(null); }}
             className="block w-full text-center text-sm text-muted-foreground hover:text-foreground"
           >
-            返回上一步
+            {t("page.2fa-enroll.s18")}
           </button>
         </form>
       )}

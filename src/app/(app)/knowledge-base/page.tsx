@@ -136,7 +136,7 @@ export default function KnowledgeBasePage() {
                     <h3 className="mt-3 flex min-w-0 items-center gap-2 text-base font-semibold">
                       <span className="truncate">{kb.name}</span>
                       {kb.shared && (
-                        <Badge variant="secondary" className="shrink-0 text-[10px]">{kb.ownerName} 共享</Badge>
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">{t("page.kb.s1", { owner: kb.ownerName ?? "" })}</Badge>
                       )}
                     </h3>
                     <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
@@ -147,22 +147,22 @@ export default function KnowledgeBasePage() {
                     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5" />
-                        {kb.stats.total} 篇
+                        {t("page.kb.s2", { count: kb.stats.total })}
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <Layers className="h-3.5 w-3.5" />
-                        {kb.stats.chunks} 切片
+                        {t("page.kb.s3", { count: kb.stats.chunks })}
                       </span>
                       <span>·</span>
                       <span>{formatRelative(kb.updatedAt)}</span>
                       {kb.stats.processing > 0 ? (
                         <Badge variant="warning" className="ml-auto">
                           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />
-                          处理中
+                          {t("page.kb.s4")}
                         </Badge>
                       ) : (
                         <Badge variant="success" className="ml-auto">
-                          就绪
+                          {t("page.kb.s5")}
                         </Badge>
                       )}
                     </div>
@@ -184,13 +184,13 @@ export default function KnowledgeBasePage() {
                   }
                 >
                   <DropdownMenuItem onClick={() => setSettingsKb(kb)}>
-                    <Settings className="h-4 w-4" /> 知识库设置
+                    <Settings className="h-4 w-4" /> {t("page.kb.s6")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setDeleteKb(kb)}
                     className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Trash2 className="h-4 w-4" /> 删除知识库
+                    <Trash2 className="h-4 w-4" /> {t("page.kb.s7")}
                   </DropdownMenuItem>
                 </DropdownMenu>
               </div>
@@ -219,12 +219,12 @@ export default function KnowledgeBasePage() {
           <DialogHeader>
             <DialogTitle>{t("page.kb.deleteKb")}</DialogTitle>
             <DialogDescription>
-              确定删除「{deleteKb?.name}」？该知识库的所有文档与向量索引将被永久删除，且无法恢复。
+              {t("page.kb.s8", { name: deleteKb?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteKb(null)} disabled={deleting}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               {deleting ? (
@@ -232,7 +232,7 @@ export default function KnowledgeBasePage() {
               ) : (
                 <Trash2 className="h-4 w-4" />
               )}{" "}
-              删除
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

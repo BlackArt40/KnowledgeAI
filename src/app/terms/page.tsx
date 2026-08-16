@@ -70,14 +70,14 @@ export default async function TermsPage() {
         <div className="border-b border-border pb-8">
           <h1 className="text-3xl font-bold tracking-tight">{t("page.terms.s1")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            最后更新：2026 年 7 月 8 日 · 使用 KnowledgeAI 即表示您同意以下条款。
+            {t("page.terms.s20")}
           </p>
         </div>
 
         <div className="mt-8 rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm">
           <p className="font-medium text-warning">{t("page.terms.s2")}</p>
           <p className="mt-1 text-muted-foreground">
-            本服务包含 AI 自动生成内容。AI 生成内容可能不准确，请勿将其作为唯一决策依据。
+            {t("page.terms.s21")}
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export default async function TermsPage() {
         <div className="mt-12 rounded-xl border border-border bg-muted/50 p-5 text-sm">
           <p className="font-medium">{t("page.terms.s3")}</p>
           <p className="mt-1 text-muted-foreground">
-            本条款可能不时更新，更新后继续使用即视为同意。如有争议，双方应友好协商；协商不成的，提交服务提供方所在地有管辖权的人民法院诉讼解决。
+            {t("page.terms.s22")}
           </p>
         </div>
       </article>

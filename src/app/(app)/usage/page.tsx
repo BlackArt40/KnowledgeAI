@@ -123,11 +123,11 @@ export default function UsagePage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
-            <TrendingUp className="h-4 w-4 text-primary" /> 用量趋势
+            <TrendingUp className="h-4 w-4 text-primary" /> {t("page.usage.s0")}
           </CardTitle>
           <div className="flex items-center gap-3 text-xs">
             <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-primary" /> 每日问答
+              <span className="h-2 w-2 rounded-full bg-primary" /> {t("page.usage.s1")}
             </span>
             <Badge variant="secondary" className="text-[11px]">{t("page.usage.last14Days")}</Badge>
           </div>

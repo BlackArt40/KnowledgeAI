@@ -29,25 +29,24 @@ export function Hero() {
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
           >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            全新 Agent 调研已上线
+            {t("page.hero.s11")}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
           <h1 className="mt-6 text-balance text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-            把文档变成团队的
+            {t("page.hero.s12")}
             <br className="hidden sm:block" />
             <span className="text-gradient">{t("page.hero.s0")}</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-            上传文档，AI 自动构建知识库；团队基于知识库智能问答，
-            并由多 Agent 协作自动生成调研报告。
+            {t("page.hero.s13")}
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button variant="gradient" size="lg" asChild>
               <Link href="/register">
-                免费开始
+                {t("page.hero.s14")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -86,11 +85,11 @@ function ProductPreview() {
         <span className="h-3 w-3 rounded-full bg-warning/70" />
         <span className="h-3 w-3 rounded-full bg-success/70" />
         <span className="ml-3 text-xs font-medium text-muted-foreground">
-          KnowledgeAI · 智能问答
+          KnowledgeAI · {t("page.hero.s15")}
         </span>
         <Badge variant="default" className="ml-auto">
           <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-          产品文档知识库
+          {t("page.hero.s16")}
         </Badge>
       </div>
 
@@ -99,7 +98,7 @@ function ProductPreview() {
         <div className="space-y-4 p-5">
           <div className="flex justify-end">
             <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-              2026 年 AI 工程师的就业趋势如何？
+              {t("page.hero.s17")}
             </div>
           </div>
           <div className="flex gap-3">
@@ -108,8 +107,7 @@ function ProductPreview() {
             </span>
             <div className="max-w-[85%] space-y-2">
               <div className="rounded-2xl rounded-tl-md bg-muted px-4 py-2.5 text-sm leading-relaxed">
-                根据知识库文档，2026 年 AI 工程师需求持续增长，
-                RAG、Agent 与 MLOps 方向尤为紧缺。
+                {t("page.hero.s18")}
                 <span className="mt-2 inline-flex flex-wrap gap-1.5">
                   <Cite n={1} />
                   <Cite n={2} />
@@ -117,10 +115,10 @@ function ProductPreview() {
               </div>
               <div className="flex items-center gap-3 px-1 text-xs text-muted-foreground">
                 <button className="inline-flex items-center gap-1 hover:text-foreground">
-                  <FileText className="h-3 w-3" /> 复制
+                  <FileText className="h-3 w-3" /> {t("common.copy")}
                 </button>
                 <button className="inline-flex items-center gap-1 hover:text-foreground">
-                  重新生成
+                  {t("page.hero.s19")}
                 </button>
               </div>
             </div>
@@ -129,7 +127,7 @@ function ProductPreview() {
           {/* input */}
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-background p-2 pl-4">
             <span className="flex-1 text-sm text-muted-foreground">
-              基于知识库提问…
+              {t("page.hero.s20")}
             </span>
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gradient text-white">
               <ArrowRight className="h-4 w-4" />
@@ -140,7 +138,7 @@ function ProductPreview() {
         {/* sources panel */}
         <div className="hidden flex-col gap-3 border-l border-border bg-muted/30 p-4 md:flex">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Search className="h-3.5 w-3.5 text-primary" /> 引用来源
+            <Search className="h-3.5 w-3.5 text-primary" /> {t("page.hero.s21")}
           </div>
           {[
             { t: t("page.hero.s5"), p: t("page.hero.s6") },

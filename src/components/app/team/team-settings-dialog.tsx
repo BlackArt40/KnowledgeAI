@@ -48,7 +48,7 @@ export function TeamSettingsDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Settings2 className="h-4 w-4" /> 团队设置
+          <Settings2 className="h-4 w-4" /> {t("page.team-settings-dialog.s5")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -64,14 +64,14 @@ export function TeamSettingsDialog({
           <div className="space-y-2">
             <Label>{t("page.team-settings-dialog.s3")}</Label>
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-              {team.plan} · 前往「订阅计费」管理
+              {t("page.team-settings-dialog.s6", { plan: team.plan })}
             </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("page.team-settings-dialog.s4")}</Button>
           <Button variant="gradient" onClick={save} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />} 保存
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

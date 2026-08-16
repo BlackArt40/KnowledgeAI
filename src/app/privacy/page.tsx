@@ -76,14 +76,14 @@ export default async function PrivacyPage() {
         <div className="border-b border-border pb-8">
           <h1 className="text-3xl font-bold tracking-tight">{t("page.privacy.s1")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            最后更新：2026 年 7 月 8 日 · 本政策适用于 KnowledgeAI 提供的所有产品与服务。
+            {t("page.privacy.s21")}
           </p>
         </div>
 
         <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
           <p className="font-medium text-primary">{t("page.privacy.s2")}</p>
           <p className="mt-1 text-muted-foreground">
-            我们尊重并依法保护您的个人隐私。数据最小化、端到端加密、多租户隔离是我们的核心原则。您对自己的数据拥有完全控制权。
+            {t("page.privacy.s22")}
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export default async function PrivacyPage() {
         <div className="mt-12 rounded-xl border border-border bg-muted/50 p-5 text-sm">
           <p className="font-medium">{t("page.privacy.s3")}</p>
           <p className="mt-1 text-muted-foreground">
-            如您对本隐私政策有任何疑问，或需行使数据权利，请联系：
+            {t("page.privacy.s23")}
             <a href="mailto:privacy@knowledgeai.dev" className="text-primary hover:underline"> privacy@knowledgeai.dev</a>
           </p>
         </div>

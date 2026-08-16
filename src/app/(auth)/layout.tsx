@@ -22,31 +22,31 @@ export default async function AuthLayout({
 
           <div className="max-w-md">
             <h2 className="text-balance text-3xl font-bold leading-tight">
-              把团队的每一份文档，
+              {t("page.auth-layout.s1")}
               <br />
-              都变成可问答的智能资产。
+              {t("page.auth-layout.s2")}
             </h2>
             <p className="mt-4 text-white/80">
-              RAG 智能问答、多 Agent 调研、企业级安全合规——一个平台搞定。
+              {t("page.auth-layout.s3")}
             </p>
 
             <figure className="mt-10 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur">
               <blockquote className="text-sm leading-relaxed text-white/90">
-                “接入知识库后，新人 onboarding 时间缩短了一半，问答还带引用来源。”
+                {t("page.auth-layout.s4")}
               </blockquote>
               <figcaption className="mt-3 flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
-                  李
+                  {t("page.auth-layout.s5")}
                 </span>
                 <span className="text-xs text-white/80">
-                  李明轩 · Acme 技术负责人
+                  {t("page.auth-layout.s6")}
                 </span>
               </figcaption>
             </figure>
           </div>
 
           <p className="text-xs text-white/60">
-            © {new Date().getFullYear()} KnowledgeAI · GDPR 合规
+            © {new Date().getFullYear()} KnowledgeAI · {t("page.auth-layout.s7")}
           </p>
         </div>
       </div>

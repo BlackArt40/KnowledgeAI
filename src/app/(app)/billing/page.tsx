@@ -90,28 +90,28 @@ export default function BillingPage() {
                   {subscription.cancelAtPeriodEnd && <Badge variant="warning">{t("page.billing.s0")}</Badge>}
                 </div>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  {currentPlan.price === null ? "定制报价" : `¥${currentPlan.price}/${currentPlan.period}`} ·
-                  {subscription.seats} 席位 ·
-                  支付方式 {subscription.paymentMethod ? METHOD_LABEL[subscription.paymentMethod.type] : "—"}
+                  {currentPlan.price === null ? t("page.billing.s12") : `¥${currentPlan.price}/${currentPlan.period}`} ·
+                  {t("page.billing.s20", { count: subscription.seats })} ·
+                  {t("page.billing.s11")} {subscription.paymentMethod ? METHOD_LABEL[subscription.paymentMethod.type] : "—"}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  当前周期：{new Date(subscription.periodStart).toLocaleDateString("zh-CN")} ~ {new Date(subscription.periodEnd).toLocaleDateString("zh-CN")}
+                  {t("page.billing.s21")}{new Date(subscription.periodStart).toLocaleDateString("zh-CN")} ~ {new Date(subscription.periodEnd).toLocaleDateString("zh-CN")}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {subscription.status === "canceled" ? (
                 <Button variant="gradient" onClick={() => toggleCancel("resume")} disabled={canceling}>
-                  {canceling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} 恢复订阅
+                  {canceling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} {t("page.billing.s22")}
                 </Button>
               ) : subscription.plan !== "enterprise" ? (
                 <Button variant="gradient" onClick={() => router.push(`/checkout?plan=enterprise`)}>
-                  <Sparkles className="h-4 w-4" /> 升级企业版
+                  <Sparkles className="h-4 w-4" /> {t("page.billing.s23")}
                 </Button>
               ) : null}
               {subscription.status !== "canceled" && subscription.plan !== "free" && (
                 <Button variant="outline" onClick={() => toggleCancel("cancel")} disabled={canceling}>
-                  取消订阅
+                  {t("page.billing.s24")}
                 </Button>
               )}
             </div>
@@ -135,7 +135,7 @@ export default function BillingPage() {
                         {p.id === subscription.plan && <Badge variant="default" className="ml-1.5 text-[10px]">{t("page.billing.s3")}</Badge>}
                       </div>
                       <div className="mt-0.5 text-xs font-normal text-muted-foreground">
-                        {p.price === null ? "定制" : p.price === 0 ? "免费" : `¥${p.price}/${p.period}`}
+                        {p.price === null ? t("page.billing.s13") : p.price === 0 ? t("page.billing.s14") : `¥${p.price}/${p.period}`}
                       </div>
                     </th>
                   ))}
@@ -182,10 +182,10 @@ export default function BillingPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Receipt className="h-4 w-4 text-primary" /> 账单历史
+            <Receipt className="h-4 w-4 text-primary" /> {t("page.billing.s25")}
           </CardTitle>
           <Button variant="outline" size="sm" onClick={downloadInvoices}>
-            <Download className="h-3.5 w-3.5" /> 导出 CSV
+            <Download className="h-3.5 w-3.5" /> {t("page.billing.s26")}
           </Button>
         </CardHeader>
         <CardContent className="divide-y divide-border">

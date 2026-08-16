@@ -86,7 +86,7 @@ export function ConversationList({
               !archivedView ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            我的会话
+            {t("page.chat.s10")}
           </button>
           <button
             type="button"
@@ -96,7 +96,7 @@ export function ConversationList({
               archivedView ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            已归档
+            {t("page.chat.s78")}
           </button>
         </div>
       </div>
@@ -244,7 +244,7 @@ function ConversationItem({
               }}
               className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-accent"
             >
-              <Tag className="h-3 w-3" /> 编辑标签
+              <Tag className="h-3 w-3" /> {t("page.chat.s6")}
             </button>
             <button
               type="button"
@@ -255,7 +255,7 @@ function ConversationItem({
               }}
               className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
             >
-              <Trash2 className="h-3 w-3" /> 删除会话
+              <Trash2 className="h-3 w-3" /> {t("page.chat.s7")}
             </button>
           </div>
         </>
@@ -322,10 +322,10 @@ export function TagEditor({
       </div>
       <DialogFooter className="mt-3">
         <Button variant="outline" onClick={onCancel}>
-          取消
+          {t("common.cancel")}
         </Button>
         <Button variant="gradient" onClick={() => onSave(draft)}>
-          保存标签
+          {t("page.chat.s79")}
         </Button>
       </DialogFooter>
     </div>

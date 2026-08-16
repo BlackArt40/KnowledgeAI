@@ -136,7 +136,7 @@ export default function LoginPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">{t("page.login.s0")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            请输入验证器 App 生成的 6 位动态验证码，或使用备用恢复码。
+            {t("page.login.s26")}
           </p>
         </div>
         <form className="space-y-4" onSubmit={handle2FA}>
@@ -154,7 +154,7 @@ export default function LoginPage() {
               className="text-center text-lg tracking-[0.3em]"
             />
             <p className="text-xs text-muted-foreground">
-              恢复码格式为 XXXX-XXXX，每枚仅可使用一次。
+              {t("page.login.s27")}
             </p>
           </div>
           {error && (
@@ -171,7 +171,7 @@ export default function LoginPage() {
             onClick={() => { setStep("credentials"); setTotpCode(""); setError(null); }}
             className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> 返回重新输入账号
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("page.login.s28")}
           </button>
         </form>
       </div>
@@ -183,14 +183,14 @@ export default function LoginPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">{t("page.login.s2")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          登录你的 KnowledgeAI 工作台
+          {t("page.login.s29")}
         </p>
       </div>
 
       {/* Demo accounts */}
       <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-3">
         <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-primary">
-          <Info className="h-3.5 w-3.5" /> 演示账号（密码均为 password123）
+          <Info className="h-3.5 w-3.5" /> {t("page.login.s30")}
         </div>
         <div className="grid grid-cols-2 gap-1.5">
           {demoAccounts(t).map((a) => (
@@ -255,7 +255,7 @@ export default function LoginPage() {
               href="/verify-email"
               className="text-xs font-medium text-primary hover:underline"
             >
-              忘记密码？
+              {t("page.login.s31")}
             </Link>
           </div>
           <div className="relative">
@@ -293,9 +293,9 @@ export default function LoginPage() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        还没有账户？{" "}
+        {t("page.login.s32")}{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
-          免费注册
+          {t("page.login.s33")}
         </Link>
       </p>
     </div>

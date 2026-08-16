@@ -111,7 +111,7 @@ export default function KbDetailPage() {
         <p className="text-lg font-semibold">{error}</p>
         <Button variant="outline" className="mt-4" asChild>
           <Link href="/knowledge-base">
-            <ArrowLeft className="h-4 w-4" /> 返回知识库列表
+            <ArrowLeft className="h-4 w-4" /> {t("page.knowledge-base-[id].s31")}
           </Link>
         </Button>
       </div>
@@ -125,7 +125,7 @@ export default function KbDetailPage() {
       {/* breadcrumb / back */}
       <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
         <Link href="/knowledge-base" className="inline-flex shrink-0 items-center gap-1 hover:text-foreground">
-          <ArrowLeft className="h-3.5 w-3.5" /> 知识库
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("page.knowledge-base-[id].s32")}
         </Link>
         <span>/</span>
         <span className="truncate text-foreground">{kb.name}</span>
@@ -143,10 +143,10 @@ export default function KbDetailPage() {
             <p className="mt-1 text-sm text-muted-foreground">{kb.desc || t("page.knowledge-base-[id].s4")}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge variant="secondary" className="font-normal">
-                切片 {kb.settings.chunkSize}
+                {t("page.knowledge-base-[id].s33", { n: kb.settings.chunkSize })}
               </Badge>
               <Badge variant="secondary" className="font-normal">
-                重叠 {kb.settings.chunkOverlap}
+                {t("page.knowledge-base-[id].s34", { n: kb.settings.chunkOverlap })}
               </Badge>
               <Badge variant="secondary" className="font-normal">
                 Top-K {kb.settings.topK}
@@ -160,7 +160,7 @@ export default function KbDetailPage() {
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link href="/chat">
-              <MessagesSquare className="h-4 w-4" /> 去问答
+              <MessagesSquare className="h-4 w-4" /> {t("page.knowledge-base-[id].s35")}
             </Link>
           </Button>
           {/* P7-3: knowledge-graph visualization entry */}
@@ -191,13 +191,13 @@ export default function KbDetailPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">
-            文档列表
+            {t("page.knowledge-base-[id].s36")}
             <span className="ml-1.5 text-muted-foreground">({docs.length})</span>
           </h2>
           {stats.processing > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs text-primary">
               <Loader2 className="h-3 w-3 animate-spin" />
-              {stats.processing} 个文档处理中
+              {t("page.knowledge-base-[id].s37", { count: stats.processing })}
             </span>
           )}
         </div>
