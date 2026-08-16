@@ -441,6 +441,39 @@ export async function persistInvoice(invoice: {
   }
 }
 
+/** Persist an order to DB (upsert - checkout creates pending, payment flips it to paid). */
+export async function persistOrder(order: {
+  id: string;
+  userId: string;
+  plan: string;
+  amount: number;
+  method: string;
+  status: string;
+  createdAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { order: { upsert: (o: unknown) => Promise<unknown> } })
+      .order.upsert({
+        where: { id: order.id },
+        update: { status: order.status },
+        create: {
+          id: order.id,
+          userId: order.userId,
+          plan: order.plan,
+          amount: order.amount,
+          method: order.method,
+          status: order.status,
+          createdAt: new Date(order.createdAt),
+        },
+      });
+  } catch (err) {
+    log.error({ err }, "[db] persistOrder error");
+  }
+}
+
 // ── Security: Sessions + Login Events ────────────────────────────────────
 
 /** Persist a login event to DB. */

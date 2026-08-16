@@ -115,16 +115,14 @@ export interface PrismaInvoice {
   date: Date;
 }
 
-export interface PrismaSession {
+export interface PrismaOrder {
   id: string;
   userId: string;
-  token: string;
-  device: string;
-  browser: string;
-  ip: string;
-  location: string | null;
-  lastActive: Date;
-  expiresAt: Date;
+  plan: string;
+  amount: number;
+  method: string;
+  status: string;
+  createdAt: Date;
 }
 
 export interface PrismaLoginEvent {
@@ -211,10 +209,10 @@ export interface PrismaClient {
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaInvoice[]>;
     create(opts: { data: unknown }): Promise<PrismaInvoice>;
   };
-  session: {
-    findMany(opts?: { where?: unknown }): Promise<PrismaSession[]>;
-    create(opts: { data: unknown }): Promise<PrismaSession>;
-    delete(opts: { where: { id?: string; token?: string } }): Promise<PrismaSession>;
+  order: {
+    findUnique(opts: { where: { id: string } }): Promise<PrismaOrder | null>;
+    findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaOrder[]>;
+    upsert(opts: { where: { id: string }; update: unknown; create: unknown }): Promise<unknown>;
   };
   loginEvent: {
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaLoginEvent[]>;

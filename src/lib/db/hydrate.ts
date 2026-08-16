@@ -962,6 +962,32 @@ export async function loadTaskFromDb(taskId: string): Promise<boolean> {
   }
 }
 
+export async function loadOrderFromDb(orderId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    const row = await db.order.findUnique({ where: { id: orderId } });
+    if (!row) return false;
+    const g = globalThis as unknown as {
+      __KAI_BILLING_STORE__?: { orders: Map<string, unknown> };
+    };
+    if (!g.__KAI_BILLING_STORE__) return false;
+    g.__KAI_BILLING_STORE__.orders.set(row.id, {
+      id: row.id,
+      userId: row.userId,
+      plan: row.plan,
+      amount: row.amount,
+      method: row.method,
+      status: row.status,
+      createdAt: row.createdAt.getTime(),
+    });
+    return true;
+  } catch (err) {
+    log.warn({ err }, "[db] loadOrderFromDb failed");
+    return false;
+  }
+}
+
 export async function loadWebhookFromDb(subscriptionId: string): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
