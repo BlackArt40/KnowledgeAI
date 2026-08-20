@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { getTrace, listTraces } from "@/lib/obs/trace";
 
 export const dynamic = "force-dynamic";

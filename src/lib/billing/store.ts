@@ -2,6 +2,7 @@ import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod
 import { getPlan } from "./plans";
 import { getUserById, updateUserPlan } from "@/lib/auth/store";
 import { persistInvoice, persistOrder, persistSubscription } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
 
 
@@ -47,7 +48,6 @@ function monthStart() {
 function monthEnd() {
   const d = new Date(); d.setMonth(d.getMonth() + 1, 1); d.setHours(0, 0, 0, 0); return d.getTime();
 }
-function uid(p: string) { return `${p}_${Math.random().toString(36).slice(2, 10)}`; }
 
 function dayLabel(offset = 0): string {
   const d = new Date(); d.setDate(d.getDate() - offset);
@@ -318,6 +318,9 @@ export function payOrder(orderId: string, userId: string): { order: Order; succe
   const s = store();
   const order = s.orders.get(orderId);
   if (!order || order.userId !== userId) return { order: {} as Order, success: false };
+  // M-11: idempotency - a Stripe webhook retry (or a double simulate-pay)
+  // must not re-charge / re-write the subscription a second time.
+  if (order.status === "paid") return { order, success: true };
   order.status = "paid";
 
   const planDef = getPlan(order.plan);

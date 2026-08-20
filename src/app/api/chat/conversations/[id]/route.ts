@@ -27,7 +27,7 @@ function owns(conv: { userId?: string; workspaceId: string } | undefined, uid: s
 function canReadShared(conv: { kbId: string; shared?: boolean; workspaceId: string }, uid: string, workspaceId: string): boolean {
   if (!conv.shared || conv.workspaceId !== workspaceId) return false;
   const kb = getKb(conv.kbId);
-  return !!kb && canViewKb(kb.id, kb.name, uid, kb.ownerId);
+  return !!kb && canViewKb(kb.id, kb.name, uid, kb.ownerId, { callerWorkspaceId: workspaceId, kbWorkspaceId: kb.workspaceId });
 }
 
 // GET /api/chat/conversations/[id] - owner, or team members for shared ones

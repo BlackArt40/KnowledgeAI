@@ -1,5 +1,5 @@
 // P6-3 unit tests: auth/session (jose JWT + Web Crypto PBKDF2).
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   createToken,
   verifyToken,
@@ -8,10 +8,16 @@ import {
   getUserFromRequest,
   hashPassword,
   verifyPassword,
+  revokeJti,
   type AuthUser,
 } from "./session";
 
 const user: AuthUser = { id: "usr_1", email: "a@b.dev", name: "A", role: "editor" };
+
+beforeEach(() => {
+  // P1-3: fresh revocation blacklist per test.
+  delete (globalThis as Record<string, unknown>).__KAI_REVOKED_JTI__;
+});
 
 describe("session JWT", () => {
   it("round-trips a signed token", async () => {
@@ -19,6 +25,18 @@ describe("session JWT", () => {
     expect(token.split(".")).toHaveLength(3);
     const payload = await verifyToken(token);
     expect(payload).toMatchObject({ id: "usr_1", email: "a@b.dev", role: "editor" });
+  });
+
+  it("carries a jti tied to the session and revokes it on demand (P1-3)", async () => {
+    // login flow: session id -> jti
+    const token = await createToken(user, 7 * 86400, { jti: "ses_abc123" });
+    expect(await verifyToken(token)).toMatchObject({ id: "usr_1" });
+    // settings -> 注销设备: jti blacklisted -> token rejected immediately
+    revokeJti("ses_abc123");
+    expect(await verifyToken(token)).toBeNull();
+    // other tokens (different jti) remain valid
+    const other = await createToken(user, 7 * 86400, { jti: "ses_other" });
+    expect(await verifyToken(other)).toMatchObject({ id: "usr_1" });
   });
 
   it("verifies tokens signed by the pre-jose implementation (wire compat)", async () => {

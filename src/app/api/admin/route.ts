@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOverview } from "@/lib/admin/store";
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const guard = await requireRole(req, ["owner", "admin"]);

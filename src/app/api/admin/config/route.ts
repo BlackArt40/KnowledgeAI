@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfig, updateConfig } from "@/lib/admin/store";
 import { getProviderStatus, getEnabledCount } from "@/lib/config";
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
 export const dynamic = "force-dynamic";
 

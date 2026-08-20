@@ -9,6 +9,8 @@
 // format is a documented public protocol.
 // ---------------------------------------------------------------------------
 
+import { uid } from "@/lib/ids";
+
 export interface ObsError {
   id: string;
   message: string;
@@ -26,17 +28,12 @@ declare global {
   var __KAI_ERROR_STORE__: ObsError[] | undefined;
 }
 
-function errors(): ObsError[] {
-  if (!globalThis.__KAI_ERROR_STORE__) globalThis.__KAI_ERROR_STORE__ = [];
+function errors(): ObsError[] {  if (!globalThis.__KAI_ERROR_STORE__) globalThis.__KAI_ERROR_STORE__ = [];
   return globalThis.__KAI_ERROR_STORE__;
 }
 
 export function listErrors(limit = 50): ObsError[] {
   return errors().slice(0, limit);
-}
-
-function uid(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /** Record an error + forward to Sentry when configured. Never throws. */
@@ -145,7 +142,7 @@ export function buildSentryEvent(record: ObsError): SentryEvent {
 
 /** 32-char lowercase hex event id (Sentry requirement). */
 function randomUUIDHex(): string {
-  const uuid = globalThis.crypto?.randomUUID?.() ?? `${Math.random().toString(36)}${Date.now().toString(36)}`;
+  const uuid = globalThis.crypto.randomUUID();
   return uuid.replace(/-/g, "").slice(0, 32).padEnd(32, "0");
 }
 

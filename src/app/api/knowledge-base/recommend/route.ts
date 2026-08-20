@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
   for (const kb of listAllKbs(u.workspaceId)) {
     if (kb.id === excludeKbId) continue;
-    if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId)) continue;
+    if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) continue;
     const texts: [string, string][] = [[kb.name, "名称"], [kb.desc, "描述"]];
     for (const d of listDocuments(kb.id)) texts.push([d.name, "文档"]);
 

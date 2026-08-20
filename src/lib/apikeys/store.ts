@@ -1,6 +1,7 @@
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
 import { encryptToString, decryptFromString, isEncrypted } from "@/lib/crypto";
+import { uid, genSecret } from "@/lib/ids";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };
@@ -12,14 +13,6 @@ function store(): Store {
   return g.__KAI_APIKEY_STORE__;
 }
 
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 10)}`;
-}
-function genSecret() {
-  return "kai_sk_" + Array.from({ length: 32 }, () =>
-    "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]
-  ).join("");
-}
 function mask(s: string) {
   return s.slice(0, 12) + "…" + s.slice(-4);
 }

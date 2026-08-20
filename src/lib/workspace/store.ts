@@ -16,6 +16,7 @@
 import { recordAudit } from "@/lib/security/audit";
 import { DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
 import { persistWorkspace } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
 
 export type WorkspacePlan = "free" | "pro" | "enterprise";
 
@@ -55,10 +56,6 @@ function store(): Store {
     g.__KAI_WORKSPACE_STORE__ = new Map([[ws.id, ws]]);
   }
   return g.__KAI_WORKSPACE_STORE__;
-}
-
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /** Workspaces the user (by email) is a member of. */

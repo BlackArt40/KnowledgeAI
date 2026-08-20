@@ -21,7 +21,7 @@ async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> })
   if (kb.workspaceId !== u.workspaceId) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId)) {
+  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
   const rl = await kbRateLimit(id);

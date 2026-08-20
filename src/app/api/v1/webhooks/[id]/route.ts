@@ -9,6 +9,7 @@ import {
   listDeliveryRecords,
   auditWebhook,
 } from "@/lib/webhooks/store";
+import { resolveSafeUrl } from "@/lib/security/ssrf";
 import { WEBHOOK_EVENTS, type WebhookEvent } from "@/lib/webhooks/types";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -20,6 +21,11 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
   if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
+  // bypass requireApiKeyScope and were previously let through unchecked.
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
   const { id } = await ctx.params;
 
   const sub = getWebhookSubscription(id);
@@ -35,6 +41,14 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   if (body.url !== undefined && !isValidWebhookUrl(body.url)) {
     return NextResponse.json({ error: "Webhook 地址必须是 http/https URL" }, { status: 400 });
+  }
+  // P1-4: SSRF - a subscription URL must never point at internal targets.
+  if (body.url !== undefined) {
+    try {
+      await resolveSafeUrl(body.url);
+    } catch {
+      return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
+    }
   }
   if (body.events !== undefined) {
     const events = body.events as WebhookEvent[];
@@ -58,6 +72,11 @@ async function handleDELETE(req: Request, ctx: { params: Promise<{ id: string }>
   if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
+  // bypass requireApiKeyScope and were previously let through unchecked.
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
   const { id } = await ctx.params;
 
   const sub = getWebhookSubscription(id);
@@ -83,6 +102,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (scope.error) return scope.error;
     const u = await getRequestUser(req);
     if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
+  // bypass requireApiKeyScope and were previously let through unchecked.
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
     const { id } = await ctx.params;
     const sub = getWebhookSubscription(id);
     if (!sub || sub.workspaceId !== u.workspaceId) {

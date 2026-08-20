@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Notification, NotificationPrefs, NotifType } from "./types";
+import { uid } from "@/lib/ids";
 
 interface Store {
   prefsByUser: Map<string, NotificationPrefs>;
@@ -25,10 +26,6 @@ function store(): Store {
     };
   }
   return g.__KAI_NOTIF_STORE__;
-}
-
-function uid() {
-  return `ntf_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function defaultPrefs(): NotificationPrefs {
@@ -88,7 +85,7 @@ export function notify(
   ensureSeed(userId);
   if (!isChannelEnabled(userId, type)) return null;
   const n: Notification = {
-    id: uid(),
+    id: uid("ntf"),
     type,
     title,
     body,
@@ -183,6 +180,6 @@ function ensureSeed(userId: string) {
   ];
 
   const list: Notification[] = [];
-  for (const d of demos) list.push({ ...d, id: uid(), read: false });
+  for (const d of demos) list.push({ ...d, id: uid("ntf"), read: false });
   s.notificationsByUser.set(userId, list);
 }

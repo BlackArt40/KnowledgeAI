@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listKeys, createKey } from "@/lib/apikeys/store";
+import { SCOPES } from "@/lib/apikeys/types";
 import { getRequestUser } from "@/lib/auth/guard";
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,21 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
-  const key = createKey(body.name ?? "未命名密钥", body.scopes ?? [], u.id);
+  // P1-7: only whitelisted scopes may be granted - an arbitrary string was
+  // previously stored verbatim, letting a user self-sign any scope (e.g.
+  // webhooks:write) and widen their own attack surface.
+  const validScopes = new Set<string>(SCOPES.map((s) => s.id));
+  const scopes = body.scopes ?? [];
+  if (scopes.some((s) => !validScopes.has(s))) {
+    return NextResponse.json(
+      { error: `非法 scope，可选值: ${Array.from(validScopes).join(", ")}` },
+      { status: 400 }
+    );
+  }
+  const name = body.name?.trim();
+  if (!name) {
+    return NextResponse.json({ error: "名称不能为空" }, { status: 400 });
+  }
+  const key = createKey(name, scopes, u.id);
   return NextResponse.json({ key }, { status: 201 });
 }

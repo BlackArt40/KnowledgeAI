@@ -18,7 +18,7 @@ async function loadAccessible(req: Request, id: string) {
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
   if (kb.workspaceId !== u.workspaceId)
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId))
+  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   // P3-3: per-KB tier (proxy can't see path params) - covers GET/PATCH/DELETE/upload.
   const rl = await kbRateLimit(id);
@@ -43,7 +43,7 @@ export async function GET(req: Request, { params }: Params) {
   }
   // P4-2: document-level permissions - hide private docs from non-owners and
   // carry each doc's access override so the UI can render per-doc controls.
-  const visible = listDocuments(id).filter((d) => canViewDoc(r.kb, d, r.u.id));
+  const visible = listDocuments(id).filter((d) => canViewDoc(r.kb, d, r.u.id, r.u.workspaceId));
   const docs = visible.map((d) => ({ ...d, access: d.access ?? null }));
   const stats = {
     total: docs.length,
@@ -64,7 +64,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadAccessible(req, id);
   if ("error" in r) return r.error;
-  if (!canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId))
+  if (!canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId, { callerWorkspaceId: r.u.workspaceId, kbWorkspaceId: r.kb.workspaceId }))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   let body: { baseVersion?: number } & Record<string, unknown>;
   try {

@@ -17,6 +17,7 @@
 import { randomUUID } from "node:crypto";
 import { runWithTrace, traceAls } from "./context";
 import { recordRequest } from "./metrics";
+import { uid } from "@/lib/ids";
 import { log } from "./log";
 
 export type SpanKind = "api" | "rag" | "llm" | "doc" | "agent" | "external";
@@ -72,10 +73,6 @@ declare global {
 function traces(): TraceRecord[] {
   if (!globalThis.__KAI_TRACE_STORE__) globalThis.__KAI_TRACE_STORE__ = [];
   return globalThis.__KAI_TRACE_STORE__;
-}
-
-function uid(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function pushTrace(record: TraceRecord): void {

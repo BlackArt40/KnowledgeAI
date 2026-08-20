@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { setUserStatus } from "@/lib/admin/store";
 import type { UserStatus } from "@/lib/admin/types";
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };

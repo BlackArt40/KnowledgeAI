@@ -8,6 +8,7 @@ import crypto from "crypto";
 import type { Role } from "@/lib/roles";
 import { persistUser } from "@/lib/db/persist";
 import { hashPassword, verifyPassword } from "@/lib/auth/session";
+import { uid } from "@/lib/ids";
 import { ROLE_LABEL, ROLE_DESC } from "@/lib/roles";
 
 export interface User {
@@ -43,10 +44,6 @@ function legacyHash(password: string): string {
 async function passwordMatches(password: string, stored: string): Promise<boolean> {
   if (stored.startsWith("pbkdf2$")) return verifyPassword(password, stored);
   return stored === legacyHash(password);
-}
-
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 type Store = { users: Map<string, User>; emailIndex: Map<string, string>; seeded: boolean };

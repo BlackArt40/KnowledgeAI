@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { listAllKbs } from "@/lib/kb/store";
 import { getActiveUploadIds } from "@/lib/upload/store";
 import { runCleanup } from "@/lib/storage/cleanup";

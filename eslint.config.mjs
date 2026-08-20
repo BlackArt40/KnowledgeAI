@@ -25,6 +25,9 @@ const eslintConfig = defineConfig([
     // P7-2: standalone integration products (VS Code extension uses CommonJS
     // require - VS Code host API; Chrome extension + widget are plain JS).
     "integrations/**",
+    // P0-7: vitepress build artifacts (generated .vue files) - local `pnpm
+    // lint` used to fail with 1000+ errors from this dir on a clean checkout.
+    ".vitepress/**",
   ]),
   // Manual smoke scripts + seed use @ts-nocheck (per AGENTS.md convention).
   // These are standalone tsx scripts, not app code, so relax type-strictness rules.

@@ -87,7 +87,7 @@ async function handleSearch(req: Request) {
   if (q) {
     // ── knowledge bases (workspace-scoped + team visibility) ────────────
     const kbs = sortScored(
-      listAllKbs(u.workspaceId).filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId)),
+      listAllKbs(u.workspaceId).filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })),
       (kb) => rankOf(q, kb.name),
       (kb) => kb.updatedAt
     ).slice(0, LIMIT);
@@ -106,7 +106,7 @@ async function handleSearch(req: Request) {
     const docs: { d: ReturnType<typeof listDocuments>[number]; kbName: string }[] = [];
     for (const kb of listAllKbs(u.workspaceId)) {
       for (const d of listDocuments(kb.id)) {
-        if (canViewDoc(kb, d, u.id) && (matches(q, d.name) || (d.url && matches(q, d.url)))) {
+        if (canViewDoc(kb, d, u.id, u.workspaceId) && (matches(q, d.name) || (d.url && matches(q, d.url)))) {
           docs.push({ d, kbName: kb.name });
         }
       }

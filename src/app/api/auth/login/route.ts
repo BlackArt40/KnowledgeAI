@@ -85,7 +85,9 @@ export async function POST(req: Request) {
   }
 
   // Record this real login: an active session + a login-history entry.
-  addSession(user.id, info);
+  // P1-3: sessions[0].id doubles as the JWT's jti - revoking the session
+  // from settings invalidates the 7-day token immediately.
+  const sessions = addSession(user.id, info);
   recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: true });
   recordAudit({
     actorId: user.id,
@@ -110,7 +112,7 @@ export async function POST(req: Request) {
     email: user.email,
     name: user.name,
     role: user.role,
-  });
+  }, 7 * 86400, { jti: sessions[0]?.id });
 
   const res = NextResponse.json({ user: sanitize(user), token });
   res.cookies.set("kai-token", token, {

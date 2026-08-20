@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { createToken } from "@/lib/auth/session";
+import { getAuthSecret } from "@/lib/secrets";
 import { getUserById } from "@/lib/auth/store";
 import { upsertOauthUser, linkOauthToUser, type OAuthProfile } from "@/lib/auth/oauth-link";
 import { getRequestUser } from "@/lib/auth/guard";
@@ -43,7 +44,7 @@ export async function GET(req: Request) {
   // is not guaranteed (the app falls back to the dev secret otherwise).
   const authJsToken = await getToken({
     req,
-    secret: process.env.AUTH_SECRET || "dev-secret-change-in-production",
+    secret: getAuthSecret("dev-secret-change-in-production"),
   });
   const info = clientInfoFromRequest(req);
   const login = () => new URL(`/login?error=oauth_failed`, req.url);
@@ -107,7 +108,9 @@ export async function GET(req: Request) {
   const user = result.user;
   user.lastLoginAt = Date.now();
 
-  addSession(user.id, info);
+  // P1-3: tie the JWT's jti to the session record so revoking this session
+  // from settings immediately invalidates the token.
+  const sessions = addSession(user.id, info);
   recordLogin(user.id, { device: info.device, ip: info.ip, location: info.location, success: true });
   recordAudit({
     actorId: user.id,
@@ -130,7 +133,7 @@ export async function GET(req: Request) {
     email: user.email,
     name: user.name,
     role: user.role,
-  });
+  }, 7 * 86400, { jti: sessions[0]?.id });
 
   const res = NextResponse.redirect(new URL(safeCallback(req, "/dashboard"), req.url));
   res.cookies.set("kai-token", token, {

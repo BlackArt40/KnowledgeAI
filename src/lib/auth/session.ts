@@ -7,8 +7,11 @@
 // ---------------------------------------------------------------------------
 
 import { SignJWT, jwtVerify, base64url } from "jose";
+import { getAuthSecret } from "@/lib/secrets";
 
-const SECRET = process.env.AUTH_SECRET || "dev-secret-change-in-production";
+// P0-2: production refuses to start without AUTH_SECRET - never fall back to
+// a hardcoded signing key in prod (would let anyone forge sessions).
+const SECRET = getAuthSecret("dev-secret-change-in-production");
 const secretKey = new TextEncoder().encode(SECRET);
 
 export interface AuthUser {
@@ -18,9 +21,21 @@ export interface AuthUser {
   role: "owner" | "admin" | "editor" | "viewer";
 }
 
-/** Create a signed JWT for a user. */
-export async function createToken(user: AuthUser, expiresInSeconds = 7 * 86400): Promise<string> {
-  return new SignJWT({ id: user.id, email: user.email, name: user.name, role: user.role })
+/** Create a signed JWT for a user. `opts.jti` (default: random UUID) lets
+ *  callers tie the token to an active session record so revoking that session
+ *  (settings -> 注销设备) also invalidates the token (P1-3). */
+export async function createToken(
+  user: AuthUser,
+  expiresInSeconds = 7 * 86400,
+  opts: { jti?: string } = {}
+): Promise<string> {
+  return new SignJWT({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    jti: opts.jti ?? crypto.randomUUID(),
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
     .sign(secretKey);
@@ -76,6 +91,47 @@ export async function verifyPreAuthToken(token: string): Promise<PreAuthPayload 
   }
 }
 
+// ── P1-3: JWT revocation (jti blacklist) ──────────────────────────────────
+//
+// Revoking a session used to only delete the in-memory session record - the
+// 7-day JWT stayed valid (a stolen token kept working). Now every token
+// carries a `jti` tied to its session id; revokeSession() / revokeAllSessions()
+// add the jti to a global revocation set and verifyToken() rejects them.
+//
+// The set lives on globalThis as a Map<jti, revokedAt> with an 8-day TTL
+// (tokens live 7 days; entries older than that can never match). NOTE: the
+// Next.js Edge proxy runs in a separate isolate, so its globalThis is empty
+// here - the proxy's verifyToken() call (rate-limit tiering only) stays
+// permissive, while the real authorization in getRequestUser() (Node runtime,
+// same process as the security store) enforces the blacklist.
+
+declare global {
+  var __KAI_REVOKED_JTI__: Map<string, number> | undefined;
+}
+
+const JTI_TTL_MS = 8 * 86400_000;
+
+function revokedJtis(): Map<string, number> {
+  if (!globalThis.__KAI_REVOKED_JTI__) globalThis.__KAI_REVOKED_JTI__ = new Map();
+  return globalThis.__KAI_REVOKED_JTI__;
+}
+
+/** Mark a jti as revoked (called by revokeSession / revokeAllSessions). */
+export function revokeJti(jti: string): void {
+  revokedJtis().set(jti, Date.now());
+}
+
+/** True when the jti is on the blacklist (and not yet expired). */
+export function isJtiRevoked(jti: string): boolean {
+  const ts = revokedJtis().get(jti);
+  if (ts === undefined) return false;
+  if (Date.now() - ts > JTI_TTL_MS) {
+    revokedJtis().delete(jti); // expired - can never match a live token
+    return false;
+  }
+  return true;
+}
+
 /** Verify a JWT and return the user, or null if invalid/expired. */
 export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
@@ -90,6 +146,9 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
     if (typeof payload.id !== "string" || typeof payload.email !== "string" || typeof payload.role !== "string") {
       return null;
     }
+    // P1-3: a revoked jti (session terminated from settings) invalidates the
+    // token even though its signature + expiry are still valid.
+    if (typeof payload.jti === "string" && isJtiRevoked(payload.jti)) return null;
     return {
       id: payload.id,
       email: payload.email,
