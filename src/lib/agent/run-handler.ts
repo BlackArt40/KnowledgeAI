@@ -14,6 +14,7 @@ import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
 import { enqueue, subscribeAgentEvents } from "@/lib/queue";
+import { agentRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/obs/errors";
 import { log } from "@/lib/obs/log";
 
@@ -21,6 +22,14 @@ import { log } from "@/lib/obs/log";
 export async function handleAgentRun(req: Request): Promise<Response> {
   const authUser = await getRequestUser(req);
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
+
+  // P1-2: agent runs enqueue expensive multi-step LLM tasks. The proxy skips
+  // /api/agent/run (SSE), so enforce a dedicated per-user quota here before
+  // any task is created or charged - otherwise any logged-in user could
+  // trigger unlimited cost DoS. Checked after auth, before body parsing /
+  // task creation so rejected requests don't burn queue or metering state.
+  const rl = await agentRateLimit(authUser.id);
+  if (!rl.allowed) return rateLimitResponse(rl, "agent");
 
   let body: {
     topic?: string; kbId?: string; outputFormat?: OutputFormat;

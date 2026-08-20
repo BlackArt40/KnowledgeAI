@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
   const kb = getKb(id);
   if (!kb) return Response.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId))
+  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
     return Response.json({ error: "无权访问" }, { status: 403 });
   const rl = await kbRateLimit(id);
   if (!rl.allowed) return rateLimitResponse(rl, "kb");

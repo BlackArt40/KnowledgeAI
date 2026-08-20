@@ -10,11 +10,17 @@
 // ---------------------------------------------------------------------------
 
 import { getDb, isDbEnabled } from "./client";
-import { decryptFromString, isEncrypted } from "@/lib/crypto";
+import { decryptFromString } from "@/lib/crypto";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 import { log } from "@/lib/obs/log";
 
 let _hydrated = false;
+// P1-9: coalesce concurrent first-request calls (the proxy fires
+// ensureHydrated() fire-and-forget on every request) into a single in-flight
+// hydration promise - the old code ran hydrateFromDb() N times in parallel,
+// duplicating rows in the in-memory stores. Reset on settle so a FAILED
+// hydration (see P1-10) retries on the next request.
+let _hydrating: Promise<void> | null = null;
 
 /** Whether hydration has been completed. */
 export function isHydrated(): boolean {
@@ -309,10 +315,17 @@ function hydrateTask(t: PrismaAgentTask): void {
   });
 }
 
-/** Ensure hydration has run. Call from API route middleware. */
+/** Ensure hydration has run. Call from API route middleware.
+ *  P1-9: concurrent callers share one in-flight hydration; a failed run
+ *  clears the memo so the next request retries (P1-10). */
 export async function ensureHydrated(): Promise<void> {
   if (!isDbEnabled() || _hydrated) return;
-  await hydrateFromDb();
+  if (!_hydrating) {
+    _hydrating = hydrateFromDb().finally(() => {
+      _hydrating = null;
+    });
+  }
+  await _hydrating;
 }
 
 // ── Extended hydration for additional models ─────────────────────────────
@@ -366,7 +379,7 @@ async function hydrateConversations(): Promise<number> {
     return convs.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateConversations error");
-    return 0;
+    throw err;
   }
 }
 
@@ -412,7 +425,7 @@ async function hydrateModelConfigs(): Promise<number> {
     return count;
   } catch (err) {
     log.error({ err }, "[db] hydrateModelConfigs error");
-    return 0;
+    throw err;
   }
 }
 
@@ -448,7 +461,7 @@ async function hydrateAudit(): Promise<number> {
     return events.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateAudit error");
-    return 0;
+    throw err;
   }
 }
 
@@ -483,7 +496,7 @@ async function hydrateNotifications(): Promise<number> {
     return count;
   } catch (err) {
     log.error({ err }, "[db] hydrateNotifications error");
-    return 0;
+    throw err;
   }
 }
 
@@ -601,7 +614,7 @@ async function hydrateWorkspace(): Promise<number> {
     return rows.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateWorkspace error");
-    return 0;
+    throw err;
   }
 }
 
@@ -651,7 +664,7 @@ async function hydrateWebhookSubscriptions(): Promise<number> {
     return rows.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateWebhookSubscriptions error");
-    return 0;
+    throw err;
   }
 }
 
@@ -680,7 +693,8 @@ async function hydrateSystemConfig(): Promise<boolean> {
     return true;
   } catch (err) {
     log.error({ err }, "[db] hydrateSystemConfig error");
-    return false;
+    // P1-10: propagate - a transient failure must retry on the next request.
+    throw err;
   }
 }
 
@@ -724,7 +738,7 @@ async function hydrateBotIntegrations(): Promise<number> {
     return rows.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateBotIntegrations error");
-    return 0;
+    throw err;
   }
 }
 
@@ -792,7 +806,7 @@ async function hydrateKnowledgeGraph(): Promise<number> {
     return entityRows.length + relationRows.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateKnowledgeGraph error");
-    return 0;
+    throw err;
   }
 }
 
@@ -809,7 +823,7 @@ async function hydrateApiKeys(): Promise<number> {
     const store = g.__KAI_APIKEY_STORE__;
     const seen = new Set(store.keys.map((k) => k.id));
     for (const r of rows as unknown as {
-      id: string; userId: string; name: string; secret: string; prefix: string;
+      id: string; userId: string; name: string; keyHash: string; prefix: string;
       scopes: string[]; status: string; calls: number; lastUsed: Date | null; createdAt: Date;
     }[]) {
       if (seen.has(r.id)) continue;
@@ -817,7 +831,13 @@ async function hydrateApiKeys(): Promise<number> {
         id: r.id,
         userId: r.userId,
         name: r.name,
-        secret: isEncrypted(r.secret) ? decryptFromString(r.secret) : r.secret,
+        // P0-5: persistApiKey stores the AES-256-GCM ciphertext in the
+        // `keyHash` column (schema has no `secret` column). Loading the
+        // ciphertext as-is keeps the in-memory store consistent with
+        // createKey() (secret = ciphertext; validateApiKey decrypts on
+        // compare). The old code read a non-existent `r.secret` -> undefined
+        // -> every key became invalid after a DB-mode restart.
+        secret: r.keyHash,
         prefix: r.prefix,
         scopes: r.scopes,
         status: r.status,
@@ -829,7 +849,7 @@ async function hydrateApiKeys(): Promise<number> {
     return store.keys.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateApiKeys error");
-    return 0;
+    throw err;
   }
 }
 
@@ -899,7 +919,7 @@ async function hydrateBilling(): Promise<number> {
     return subs.length + invoices.length + orders.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateBilling error");
-    return 0;
+    throw err;
   }
 }
 

@@ -62,8 +62,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "验证码不正确，请重试" }, { status: 400 });
       }
       // Enrollment complete: create the real session now.
+      // P1-3: session id = JWT jti (revoking the session kills the token).
       const info = clientInfoFromRequest(req);
-      addSession(preAuth.id, info);
+      const sessions = addSession(preAuth.id, info);
       recordLogin(preAuth.id, { device: info.device, ip: info.ip, location: info.location, success: true });
       notify(
         preAuth.id,
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
         email: preAuth.email,
         name: preAuth.name,
         role: preAuth.role as "owner" | "admin" | "editor" | "viewer",
-      });
+      }, 7 * 86400, { jti: sessions[0]?.id });
       const user = {
         id: preAuth.id,
         email: preAuth.email,

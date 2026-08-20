@@ -18,6 +18,8 @@
 
 import crypto from "crypto";
 import { persistAuditEvent } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
+import { getAuthSecret } from "@/lib/secrets";
 import { log } from "@/lib/obs/log";
 
 const GENESIS_HASH = "genesis";
@@ -55,12 +57,8 @@ function store(): Store {
   return g.__KAI_AUDIT_STORE__;
 }
 
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function hmacSecret(): string {
-  return process.env.AUTH_SECRET || "knowledgeai-dev-secret-change-me";
+  return getAuthSecret("knowledgeai-dev-secret-change-me");
 }
 
 /** Hash an audit event (all fields except prevHash/hash). */

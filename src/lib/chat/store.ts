@@ -1,5 +1,6 @@
 import type { Citation } from "@/lib/rag/types";
 import { persistConversation, persistMessageFeedback, deleteConversationFromDb } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
 import { publish } from "@/lib/realtime/bus";
 
 export interface ChatMessage {
@@ -40,10 +41,6 @@ const g = globalThis as unknown as { __KAI_CHAT_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_CHAT_STORE__) g.__KAI_CHAT_STORE__ = { conversations: new Map() };
   return g.__KAI_CHAT_STORE__;
-}
-
-function uid(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function deriveTitle(text: string): string {

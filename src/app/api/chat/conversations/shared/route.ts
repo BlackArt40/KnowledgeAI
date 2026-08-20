@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   const convs = listSharedConversations().filter((c) => {
     const kb = getKb(c.kbId);
-    return kb && canViewKb(kb.id, kb.name, u.id, kb.ownerId);
+    return kb && canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId });
   });
 
   return Response.json({

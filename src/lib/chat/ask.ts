@@ -92,7 +92,7 @@ export async function handleChatRequest(
 
   const kb = getKb(kbId);
   if (!kb) return early(Response.json({ error: "知识库不存在" }, { status: 404 }));
-  if (!canViewKb(kb.id, kb.name, authUser.id, kb.ownerId))
+  if (!canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, { callerWorkspaceId: authUser.workspaceId, kbWorkspaceId: kb.workspaceId }))
     return early(Response.json({ error: "无权访问该知识库" }, { status: 403 }));
 
   // P3-3: chat routes are skipped by the proxy (SSE), so enforce the user + KB
@@ -104,7 +104,29 @@ export async function handleChatRequest(
   const kbRl = await kbRateLimit(kbId);
   if (!kbRl.allowed) return early(rateLimitResponse(kbRl, "kb"));
 
+  // P0-3: conversationId ownership check - never let a caller read / write
+  // another user's private conversation. Without this, passing a foreign
+  // conversation id would leak its chat history through the LLM context,
+  // inject messages into it, and let `regenerate` delete other users' answers
+  // (the conversations/[id] route already enforces owns(); /api/chat did not).
   let conv = body.conversationId ? getConversation(body.conversationId) : undefined;
+  if (conv) {
+    const isOwner = conv.userId === authUser.id && conv.workspaceId === authUser.workspaceId;
+    if (!isOwner) {
+      // Shared conversations (P4-1) are accessible via KB permissions - but
+      // only within the caller's workspace and for the KB being queried.
+      const sharedOk =
+        !!conv.shared &&
+        conv.kbId === kbId &&
+        conv.workspaceId === authUser.workspaceId &&
+        canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, { callerWorkspaceId: authUser.workspaceId, kbWorkspaceId: kb.workspaceId });
+      if (!sharedOk) {
+        return early(Response.json({ error: "无权访问该会话" }, { status: 403 }));
+      }
+    } else if (conv.kbId !== kbId) {
+      return early(Response.json({ error: "会话与知识库不匹配" }, { status: 400 }));
+    }
+  }
   if (!conv) conv = createConversation(kbId, query.slice(0, 24), authUser.id, authUser.workspaceId);
   // P5-3: regenerate - drop the previous assistant answer (memory + DB) so it
   // does not leak into the new generation's history, and skip adding another

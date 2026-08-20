@@ -21,7 +21,7 @@ async function handlePOST(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const kb = getKb(id);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId)) {
+  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   }
 

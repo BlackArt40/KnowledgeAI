@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import {
   getRateLimitLimits,
   isDistributedRateLimit,

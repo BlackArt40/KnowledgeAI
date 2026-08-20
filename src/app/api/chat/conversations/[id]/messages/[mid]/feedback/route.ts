@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: Params) {
   if (!conv) return NextResponse.json({ error: "会话不存在" }, { status: 404 });
   const owned = conv.workspaceId === u.workspaceId && (!conv.userId || conv.userId === u.id);
   const sharedReadable = conv.shared && conv.workspaceId === u.workspaceId &&
-    (() => { const kb = getKb(conv.kbId); return !!kb && canViewKb(kb.id, kb.name, u.id, kb.ownerId); })();
+    (() => { const kb = getKb(conv.kbId); return !!kb && canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }); })();
   if (!owned && !sharedReadable) return NextResponse.json({ error: "无权访问" }, { status: 403 });
 
   const msg = setMessageFeedback(id, mid, body.value, body.note);

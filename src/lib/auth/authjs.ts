@@ -21,6 +21,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
+import { getAuthSecret } from "@/lib/secrets";
 
 function envUrl(...names: string[]): string | undefined {
   for (const n of names) {
@@ -89,7 +90,8 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Same secret as the kai-token HMAC - the Auth.js JWT (JWE) is encrypted
   // with it, and the bridge decrypts via getToken().
-  secret: process.env.AUTH_SECRET || "dev-secret-change-in-production",
+  // P0-2: production must set AUTH_SECRET (getAuthSecret throws otherwise).
+  secret: getAuthSecret("dev-secret-change-in-production"),
   // Required without a stable AUTH_URL in dev/containers.
   trustHost: true,
   session: { strategy: "jwt", maxAge: 30 * 86400 },

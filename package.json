@@ -11,7 +11,10 @@
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "test:unit": "vitest run --coverage",
     "test:integration": "node tests/functional/functional-test.mjs && node tests/api/api-test.mjs && node tests/performance/performance-test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.40",
@@ -33,7 +36,7 @@
     "lucide-react": "^1.23.0",
     "mammoth": "^1.8.0",
     "minisearch": "^7.2.0",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "next-auth": "5.0.0-beta.32",
     "otplib": "^13.4.1",
     "pdfjs-dist": "^4.8.69",
@@ -63,12 +66,15 @@
     "@vitest/coverage-v8": "^4.1.10",
     "esbuild": "0.28.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.2.11",
+    "mermaid": "^11.16.1",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.0.0",
     "typescript": "^5",
     "unified": "^11.0.5",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.7.0",

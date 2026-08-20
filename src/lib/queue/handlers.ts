@@ -174,8 +174,23 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
   const body = JSON.stringify(eventPayload);
   const start = Date.now();
   try {
+    // P1-4: re-validate the target at delivery time - the subscription URL
+    // was checked at creation, but DNS can be rebound / the row may predate
+    // the check. Never POST to a private / loopback / link-local address.
+    const { resolveSafeUrl } = await import("@/lib/security/ssrf");
+    let target: URL;
+    try {
+      target = await resolveSafeUrl(sub.url);
+    } catch {
+      recordDelivery({
+        subscriptionId, workspaceId: sub.workspaceId, event: eventPayload.event as never,
+        status: "error", latencyMs: Date.now() - start, detail: "目标地址被禁止（内网/回环）",
+      });
+      markDeliveryOutcome(subscriptionId, false, "SSRF blocked");
+      return { ok: false, error: "SSRF blocked" };
+    }
     const signature = await signWebhookPayload(sub.secret, body);
-    const res = await fetch(sub.url, {
+    const res = await fetch(target, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

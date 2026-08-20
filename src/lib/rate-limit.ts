@@ -23,6 +23,10 @@ const ANON_LIMIT = parseInt(process.env.RATE_LIMIT_ANON_PER_MIN || "20", 10);
 const KEY_LIMIT = parseInt(process.env.RATE_LIMIT_KEY_PER_MIN || "500", 10);
 const KB_LIMIT = parseInt(process.env.RATE_LIMIT_KB_PER_MIN || "60", 10);
 const INTEGRATION_LIMIT = parseInt(process.env.RATE_LIMIT_INTEGRATION_PER_MIN || "120", 10);
+// P1-2: agent runs spawn expensive multi-step LLM tasks (searcher/analyzer/
+// writer). The proxy skips /api/agent/run (SSE), so a dedicated in-route
+// quota is the only guard against cost DoS. Deliberately low vs the API tier.
+const AGENT_LIMIT = parseInt(process.env.RATE_LIMIT_AGENT_PER_MIN || "10", 10);
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -34,7 +38,7 @@ export interface RateLimitResult {
 
 /** All tier limits - single source of truth for proxy / routes / admin panel. */
 export function getRateLimitLimits() {
-  return { base: DEFAULT_LIMIT, anon: ANON_LIMIT, key: KEY_LIMIT, kb: KB_LIMIT, integration: INTEGRATION_LIMIT };
+  return { base: DEFAULT_LIMIT, anon: ANON_LIMIT, key: KEY_LIMIT, kb: KB_LIMIT, integration: INTEGRATION_LIMIT, agent: AGENT_LIMIT };
 }
 
 // ── Memory rate limiter (fallback) ───────────────────────────────────────
@@ -162,7 +166,7 @@ async function redisRateLimit(key: string, limit: number): Promise<RateLimitResu
 
 export interface RateLimitStat {
   key: string;
-  kind: "ip" | "user" | "apikey" | "kb" | "integration" | "other";
+  kind: "ip" | "user" | "apikey" | "kb" | "integration" | "agent" | "other";
   limit: number;
   count: number;
   remaining: number;
@@ -191,6 +195,7 @@ function kindOf(key: string): RateLimitStat["kind"] {
   if (key.startsWith("apikey:")) return "apikey";
   if (key.startsWith("kb:")) return "kb";
   if (key.startsWith("integration:")) return "integration";
+  if (key.startsWith("agent:")) return "agent";
   return "other";
 }
 
@@ -256,6 +261,15 @@ export function integrationRateLimit(
   limit: number = INTEGRATION_LIMIT
 ): Promise<RateLimitResult> {
   return rateLimit(`integration:${integrationId}`, limit);
+}
+
+/** Per-user agent-run tier (P1-2). Agent runs are expensive LLM pipelines;
+ *  enforced in-route because /api/agent/run is an SSE stream the proxy skips. */
+export function agentRateLimit(
+  userId: string,
+  limit: number = AGENT_LIMIT
+): Promise<RateLimitResult> {
+  return rateLimit(`agent:user:${userId}`, limit);
 }
 
 /** Standard 429 response for route-level limits (same shape as the proxy's). */

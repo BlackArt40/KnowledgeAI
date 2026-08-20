@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
 import { requireApiKeyScope } from "@/lib/apikeys/scopes";
+import { resolveSafeUrl } from "@/lib/security/ssrf";
 import {
   createWebhookSubscription,
   listWebhookSubscriptions,
@@ -25,6 +26,11 @@ async function handleGET(req: Request) {
   if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
+  // bypass requireApiKeyScope and were previously let through unchecked.
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
   const subs = listWebhookSubscriptions(u.workspaceId);
   return NextResponse.json({
     webhooks: subs,
@@ -38,6 +44,11 @@ async function handlePOST(req: Request) {
   if (scope.error) return scope.error;
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
+  // bypass requireApiKeyScope and were previously let through unchecked.
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
 
   let body: { name?: string; url?: string; secret?: string; events?: string[] };
   try {
@@ -47,6 +58,13 @@ async function handlePOST(req: Request) {
   }
   if (!body.url || !isValidWebhookUrl(body.url)) {
     return NextResponse.json({ error: "Webhook 地址必须是 http/https URL" }, { status: 400 });
+  }
+  // P1-4: reject private / loopback / link-local targets (SSRF via webhook
+  // delivery - the server would POST to an internal service on every event).
+  try {
+    await resolveSafeUrl(body.url);
+  } catch {
+    return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
   }
   const events = (body.events ?? []) as WebhookEvent[];
   if (events.length === 0 || events.some((e) => !WEBHOOK_EVENTS.includes(e))) {

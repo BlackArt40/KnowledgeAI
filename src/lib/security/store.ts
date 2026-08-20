@@ -1,8 +1,10 @@
 import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types";
 import type { ClientInfo } from "./ua";
 import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
+import { revokeJti } from "@/lib/auth/session";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 import { getConfig } from "@/lib/admin/store";
+import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
@@ -19,10 +21,6 @@ function store(): Store {
     g.__KAI_SECURITY_STORE__ = { byUser: new Map() };
   }
   return g.__KAI_SECURITY_STORE__;
-}
-
-function uid(p: string) {
-  return `${p}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function blank(): UserState {
@@ -242,14 +240,21 @@ export function disable2FA(userId: string): TwoFactor {
 export function revokeSession(userId: string, id: string): Session[] {
   seed(userId);
   const st = stateFor(userId);
+  const removed = st.sessions.find((x) => x.id === id);
   st.sessions = st.sessions.filter((x) => x.id !== id);
+  // P1-3: the session id doubles as the JWT's jti - blacklist it so the
+  // 7-day token is invalidated immediately (previously it stayed valid).
+  if (removed) revokeJti(removed.id);
   return st.sessions;
 }
 
 export function revokeAllSessions(userId: string): Session[] {
   seed(userId);
   const st = stateFor(userId);
+  const removed = st.sessions.filter((x) => !x.current);
   st.sessions = st.sessions.filter((x) => x.current);
+  // P1-3: blacklist every revoked session's jti (keeps the current one live).
+  for (const s of removed) revokeJti(s.id);
   return st.sessions;
 }
 

@@ -53,9 +53,13 @@ function readCookie(req: Request, name: string): string | null {
 /** Extract + verify the authenticated user from a Request (cookie or Bearer).
  *  Returns the user (id/email/name/role/workspaceId) or null if not
  *  authenticated. The workspace comes from the `kai-workspace` cookie; an
- *  unknown / non-member workspace falls back to the default one. */
+ *  unknown / non-member workspace falls back to the default one.
+ *  `opts.allowApiKey` (default true): internal/legacy routes pass false so a
+ *  kai_sk_ Bearer is NEVER accepted there (P1-6) - an API key scoped to
+ *  kb:read must not reach /api/admin/* even though the key owner is admin. */
 export async function getRequestUser(
-  req: Request
+  req: Request,
+  opts?: { allowApiKey?: boolean }
 ): Promise<RequestUser | null> {
   const cookieToken = readCookie(req, "kai-token");
   const authHeader = req.headers.get("authorization");
@@ -63,7 +67,7 @@ export async function getRequestUser(
 
   // If the Bearer token looks like an API key (kai_sk_...), validate it as such
   // and resolve the key owner's identity.
-  if (bearerToken && bearerToken.startsWith("kai_sk_")) {
+  if (opts?.allowApiKey !== false && bearerToken && bearerToken.startsWith("kai_sk_")) {
     const apiKey = validateApiKey(bearerToken);
     if (!apiKey) return null;
     const owner = getUserById(apiKey.userId);
@@ -76,6 +80,11 @@ export async function getRequestUser(
   const payload = await verifyToken(token);
   if (!payload) return null;
   return requestUserFromUser(payload, readCookie(req, "kai-workspace"));
+}
+
+/** JWT-session-only variant for internal routes (P1-6). */
+export function getRequestUserJwtOnly(req: Request): Promise<RequestUser | null> {
+  return getRequestUser(req, { allowApiKey: false });
 }
 
 /** Require one of the given roles for an API route.
@@ -91,6 +100,32 @@ export async function requireRole(
   { user: RequestUser; error: null } | { user: null; error: Response }
 > {
   const u = await getRequestUser(req);
+  if (!u) {
+    return {
+      user: null,
+      error: NextResponse.json({ error: "未登录" }, { status: 401 }),
+    };
+  }
+  if (!roles.includes(u.role as Role)) {
+    return {
+      user: null,
+      error: NextResponse.json({ error: "权限不足" }, { status: 403 }),
+    };
+  }
+  return { user: u, error: null };
+}
+
+/** P1-6: role gate for internal / legacy routes that must NEVER accept API
+ *  keys - only a real JWT session (cookie/Bearer JWT) satisfies it. An API
+ *  key authenticates as its owner, so an admin-owned key with kb:read scope
+ *  would otherwise pass requireRole and reach /api/admin/*. */
+export async function requireRoleJwt(
+  req: Request,
+  roles: Role[]
+): Promise<
+  { user: RequestUser; error: null } | { user: null; error: Response }
+> {
+  const u = await getRequestUserJwtOnly(req);
   if (!u) {
     return {
       user: null,

@@ -2,7 +2,14 @@
 // Web page fetcher - retrieves a URL and extracts readable text for indexing.
 // Best-effort: strips HTML to plain text so web-link documents can be chunked
 // and embedded just like uploaded text files.
+//
+// P0-4 SSRF: user-controlled URLs are validated by resolveSafeUrl() (private
+// / loopback / link-local IPs blocked, DNS-rebinding-safe) and redirects are
+// followed MANUALLY with every hop re-validated - a redirect to an internal
+// address is just as dangerous as the original URL.
 // ---------------------------------------------------------------------------
+
+import { resolveSafeUrl, MAX_SSRF_REDIRECTS } from "@/lib/security/ssrf";
 
 const TIMEOUT_MS = 15_000;
 const MAX_TEXT = 200_000; // cap indexed text per page
@@ -29,38 +36,50 @@ export async function fetchUrlContent(
   url: string
 ): Promise<FetchedPage | null> {
   try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": UA,
-        Accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("text/html") && !ct.includes("xhtml")) return null;
+    let current = await resolveSafeUrl(url);
+    for (let hop = 0; hop <= MAX_SSRF_REDIRECTS; hop++) {
+      const res = await fetch(current, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml",
+        },
+        // manual redirects so every hop is SSRF-re-validated below
+        redirect: "manual",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (!loc) return null;
+        // P0-4: re-validate the redirect target (IP literal, DNS, scheme).
+        current = await resolveSafeUrl(new URL(loc, current).toString());
+        continue;
+      }
+      if (!res.ok) return null;
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("text/html") && !ct.includes("xhtml")) return null;
 
-    const html = await res.text();
+      const html = await res.text();
 
-    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    const title = titleMatch
-      ? decodeEntities(titleMatch[1].trim()).slice(0, 120)
-      : null;
+      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const title = titleMatch
+        ? decodeEntities(titleMatch[1].trim()).slice(0, 120)
+        : null;
 
-    // Drop non-content blocks, then strip all tags.
-    let body = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-      .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
-      .replace(/<!--[\s\S]*?-->/g, " ");
-    body = body.replace(/<[^>]+>/g, " ");
-    body = decodeEntities(body);
-    body = body.replace(/\s+/g, " ").trim();
+      // Drop non-content blocks, then strip all tags.
+      let body = html
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+        .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+        .replace(/<!--[\s\S]*?-->/g, " ");
+      body = body.replace(/<[^>]+>/g, " ");
+      body = decodeEntities(body);
+      body = body.replace(/\s+/g, " ").trim();
 
-    if (body.length < 40) return null;
-    return { text: body.slice(0, MAX_TEXT), title };
+      if (body.length < 40) return null;
+      return { text: body.slice(0, MAX_TEXT), title };
+    }
+    return null; // too many redirects
   } catch {
     return null;
   }

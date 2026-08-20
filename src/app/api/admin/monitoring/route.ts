@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/guard";
+import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { getMetricsSnapshot } from "@/lib/obs/metrics";
 import { listErrors } from "@/lib/obs/errors";
 import { listTraces } from "@/lib/obs/trace";

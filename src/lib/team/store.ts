@@ -1,6 +1,7 @@
 import type { Team, Member, AuditEntry, Role, KbAccess, KbMemberRole } from "./types";
 import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFromDb } from "@/lib/db/persist";
 import { getUserById } from "@/lib/auth/store";
+import { uid } from "@/lib/ids";
 
 type Store = {
   team: Team;
@@ -31,10 +32,6 @@ function store(): Store {
   return g.__KAI_TEAM_STORE__;
 }
 
-function uid() {
-  return `m_${Math.random().toString(36).slice(2, 10)}`;
-}
-
 // default access by KB name (applied when no explicit per-id access set)
 const DEFAULT_ACCESS_BY_NAME: Record<string, KbAccess> = {
   "财务报告": "private",
@@ -62,7 +59,7 @@ function seed() {
     { name: "张伟", email: "zhangwei@knowledgeai.dev", role: "viewer", status: "invited", lastActiveAt: now - 1000 * 60 * 60 * 6, joinedAt: now - 1000 * 60 * 60 * 6 },
   ];
   for (const m of members) {
-    const member: Member = { ...m, id: uid() };
+    const member: Member = { ...m, id: uid("m") };
     s.members.set(member.id, member);
   }
 
@@ -76,7 +73,7 @@ function seed() {
     { actor: "王同学", action: "团队设置", target: "团队信息", detail: "套餐升级为专业版", createdAt: now - 10 * day },
     { actor: "王同学", action: "创建团队", target: "KnowledgeAI 团队", detail: "创建团队并完成初始化", createdAt: now - 90 * day },
   ];
-  for (const a of audit) s.audit.push({ ...a, id: uid() });
+  for (const a of audit) s.audit.push({ ...a, id: uid("m") });
 }
 
 export function getTeam(): Team {
@@ -106,7 +103,7 @@ export function inviteMember(input: { name: string; email: string; role: Role },
   seed();
   const s = store();
   const member: Member = {
-    id: uid(),
+    id: uid("m"),
     name: input.name || input.email.split("@")[0],
     email: input.email,
     role: input.role,
@@ -116,7 +113,7 @@ export function inviteMember(input: { name: string; email: string; role: Role },
   };
   s.members.set(member.id, member);
   const entry: AuditEntry = {
-    id: uid(),
+    id: uid("m"),
     actor,
     action: "邀请成员",
     target: member.name,
@@ -137,7 +134,7 @@ export function updateMemberRole(id: string, role: Role, actor = "系统"): Memb
   const prev = m.role;
   m.role = role;
   const entry: AuditEntry = {
-    id: uid(),
+    id: uid("m"),
     actor,
     action: "修改角色",
     target: m.name,
@@ -156,7 +153,7 @@ export function removeMember(id: string, actor = "系统"): boolean {
   const m = s.members.get(id);
   if (!m) return false;
   const entry: AuditEntry = {
-    id: uid(),
+    id: uid("m"),
     actor,
     action: "移除成员",
     target: m.name,
@@ -212,9 +209,31 @@ export function listKbMemberRoles(kbId: string): Record<string, KbMemberRole> {
   return { ...(store().kbMemberRoles.get(kbId) ?? {}) };
 }
 
+/** Access-check options (P1-1): when both are provided, the caller must be
+ *  in the KB's workspace - a tenant-boundary check that closes the
+ *  cross-workspace read/write hole in permission helpers. */
+export interface KbAccessCheckOpts {
+  /** The requesting user's resolved workspace (RequestUser.workspaceId). */
+  callerWorkspaceId?: string;
+  /** The KB's owning workspace (KnowledgeBase.workspaceId). */
+  kbWorkspaceId?: string;
+}
+
 /** Can the user VIEW (read) this KB? Owner always; a per-KB role grants
- *  viewer/editor; otherwise falls back to the shared access (P4-2). */
-export function canViewKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
+ *  viewer/editor; otherwise falls back to the shared access (P4-2).
+ *  P1-1: when callerWorkspaceId + kbWorkspaceId are supplied, a mismatch
+ *  denies access outright (cross-tenant isolation). */
+export function canViewKb(
+  kbId: string,
+  kbName: string,
+  userId: string,
+  ownerId: string,
+  opts?: KbAccessCheckOpts
+): boolean {
+  if (opts?.callerWorkspaceId !== undefined && opts.kbWorkspaceId !== undefined &&
+      opts.callerWorkspaceId !== opts.kbWorkspaceId) {
+    return false;
+  }
   if (ownerId === userId) return true;
   const user = getUserById(userId);
   const role = user ? getKbMemberRole(kbId, user.email) : null;
@@ -223,8 +242,19 @@ export function canViewKb(kbId: string, kbName: string, userId: string, ownerId:
 }
 
 /** Can the user EDIT (upload/modify) this KB? Owner always; per-KB editor
- *  role grants edit; otherwise only when the shared access is "edit". */
-export function canEditKb(kbId: string, kbName: string, userId: string, ownerId: string): boolean {
+ *  role grants edit; otherwise only when the shared access is "edit".
+ *  P1-1: workspace mismatch denies access (see canViewKb). */
+export function canEditKb(
+  kbId: string,
+  kbName: string,
+  userId: string,
+  ownerId: string,
+  opts?: KbAccessCheckOpts
+): boolean {
+  if (opts?.callerWorkspaceId !== undefined && opts.kbWorkspaceId !== undefined &&
+      opts.callerWorkspaceId !== opts.kbWorkspaceId) {
+    return false;
+  }
   if (ownerId === userId) return true;
   const user = getUserById(userId);
   const role = user ? getKbMemberRole(kbId, user.email) : null;

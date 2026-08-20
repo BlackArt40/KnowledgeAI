@@ -6,6 +6,7 @@
 
 import type { ModelConfig, ModelConfigSafe, ProviderPreset, ProviderId } from "./types";
 import { deleteModelConfigFromDb } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
 
 // ── Provider presets ────────────────────────────────────────────────────
 
@@ -104,10 +105,6 @@ function userModels(userId: string): Map<string, ModelConfig> {
   return m;
 }
 
-function uid() {
-  return `mdl_${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function maskKey(key: string): string {
   if (!key) return "";
   if (key.length <= 8) return "•".repeat(key.length);
@@ -157,7 +154,7 @@ export function createModel(
   }
 
   const m: ModelConfig = {
-    id: uid(),
+    id: uid("mdl"),
     userId,
     name,
     provider: input.provider,

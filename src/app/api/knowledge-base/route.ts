@@ -14,7 +14,7 @@ async function handleGET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const kbs = listAllKbs(u.workspaceId)
-    .filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId))
+    .filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
     .map((kb) => {
       const docs = listDocuments(kb.id);
       const owner = getUserById(kb.ownerId);

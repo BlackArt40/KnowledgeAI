@@ -50,6 +50,7 @@ function rlKind(t: (k: string) => string): Record<RateLimitStat["kind"], { label
     apikey: { label: "API Key", variant: "outline" },
     kb: { label: t("page.admin.s6"), variant: "warning" },
     integration: { label: t("page.admin.s48"), variant: "secondary" },
+    agent: { label: "Agent", variant: "warning" }, // P1-2: agent-run tier
     other: { label: t("page.admin.s47"), variant: "outline" },
   };
 }

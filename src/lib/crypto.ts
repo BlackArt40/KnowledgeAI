@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import crypto from "crypto";
+import { getAuthSecret } from "@/lib/secrets";
 
 const ALGORITHM = "aes-256-gcm";
 const KEY_LENGTH = 32; // 256 bits
@@ -18,7 +19,7 @@ const IV_LENGTH = 12;  // 96 bits (recommended for GCM)
 
 /** Derive a 256-bit encryption key from AUTH_SECRET using HKDF. */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.AUTH_SECRET || "knowledgeai-dev-secret-change-me";
+  const secret = getAuthSecret("knowledgeai-dev-secret-change-me");
   return crypto.hkdfSync("sha256", secret, Buffer.from("knowledgeai"), "encryption-key", KEY_LENGTH) as unknown as Buffer;
 }
 

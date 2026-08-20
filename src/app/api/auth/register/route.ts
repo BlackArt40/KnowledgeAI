@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createUser, sanitize } from "@/lib/auth/store";
 import { getConfig } from "@/lib/admin/store";
 import { createToken } from "@/lib/auth/session";
+import { addSession, recordLogin } from "@/lib/security/store";
+import { clientInfoFromRequest } from "@/lib/security/ua";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/register { name, email, password }
@@ -34,13 +36,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }
 
+  // P1-3: register the session + tie the JWT jti to it (consistent with the
+  // login flow) so "注销设备" revokes this token too.
+  const info = clientInfoFromRequest(req);
+  const sessions = addSession(result.id, info);
+  recordLogin(result.id, { device: info.device, ip: info.ip, location: info.location, success: true });
+
   const token = await createToken({
     id: result.id,
     email: result.email,
     name: result.name,
     role: result.role,
-  });
-
+  }, 7 * 86400, { jti: sessions[0]?.id });
   const res = NextResponse.json({ user: sanitize(result), token }, { status: 201 });
   res.cookies.set("kai-token", token, {
     httpOnly: true,

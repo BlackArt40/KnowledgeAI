@@ -16,7 +16,7 @@ async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> })
 
   const kb = getKb(id);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (kb.workspaceId !== u.workspaceId || !canViewKb(kb.id, kb.name, u.id, kb.ownerId)) {
+  if (kb.workspaceId !== u.workspaceId || !canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
   const q = new URL(req.url).searchParams.get("q") ?? "";

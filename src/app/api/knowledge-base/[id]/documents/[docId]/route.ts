@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const { docId } = await params;
   const r = await loadDoc(req, docId);
   if ("error" in r) return r.error;
-  if (!canEditDoc(r.kb, r.doc, r.u.id))
+  if (!canEditDoc(r.kb, r.doc, r.u.id, r.u.workspaceId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   let body: { access?: DocAccess | null };
   try { body = await req.json(); } catch {
@@ -63,7 +63,7 @@ export async function DELETE(req: Request, { params }: Params) {
   const { docId } = await params;
   const r = await loadDoc(req, docId);
   if ("error" in r) return r.error;
-  if (!canEditDoc(r.kb, r.doc, r.u.id))
+  if (!canEditDoc(r.kb, r.doc, r.u.id, r.u.workspaceId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   const ok = await deleteDocument(docId);
   if (!ok) return NextResponse.json({ error: "文档不存在" }, { status: 404 });

@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: Params) {
   if (!conv) return Response.json({ error: "会话不存在" }, { status: 404 });
   if (!conv.shared) return Response.json({ error: "该会话未共享" }, { status: 403 });
   const kb = getKb(conv.kbId);
-  if (!kb || !canViewKb(kb.id, kb.name, u.id, kb.ownerId))
+  if (!kb || !canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
     return Response.json({ error: "无权访问" }, { status: 403 });
 
   const enc = new TextEncoder();

@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: Params) {
   const doc = getDocument(docId);
   if (!doc) return NextResponse.json({ error: "文档不存在" }, { status: 404 });
   const kb = getKb(doc.kbId);
-  if (!kb || !canEditDoc(kb, doc, u.id))
+  if (!kb || !canEditDoc(kb, doc, u.id, u.workspaceId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   const share = getDocShareByDoc(docId);
   return NextResponse.json({ share: share ? { ...share, passwordHash: undefined } : null });
@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: Params) {
   const doc = getDocument(docId);
   if (!doc) return NextResponse.json({ error: "文档不存在" }, { status: 404 });
   const kb = getKb(doc.kbId);
-  if (!kb || !canEditDoc(kb, doc, u.id))
+  if (!kb || !canEditDoc(kb, doc, u.id, u.workspaceId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
 
   let body: { expiresAt?: number | null; password?: string | null; maxViews?: number | null };
@@ -67,7 +67,7 @@ export async function DELETE(req: Request, { params }: Params) {
   const doc = getDocument(docId);
   if (!doc) return NextResponse.json({ error: "文档不存在" }, { status: 404 });
   const kb = getKb(doc.kbId);
-  if (!kb || !canEditDoc(kb, doc, u.id))
+  if (!kb || !canEditDoc(kb, doc, u.id, u.workspaceId))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   const ok = revokeDocShareByDoc(docId);
   recordAudit({

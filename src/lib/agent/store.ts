@@ -1,16 +1,13 @@
 import { createHash, randomUUID } from "crypto";
 import type { AgentTask, ShareConfig, ReportVersion, Comment } from "./types";
 import { persistTask } from "@/lib/db/persist";
+import { uid } from "@/lib/ids";
 
 type Store = { tasks: Map<string, AgentTask> };
 const g = globalThis as unknown as { __KAI_AGENT_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_AGENT_STORE__) g.__KAI_AGENT_STORE__ = { tasks: new Map() };
   return g.__KAI_AGENT_STORE__;
-}
-
-function uid() {
-  return `task_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function listTasks(userId?: string, workspaceId?: string): AgentTask[] {
@@ -35,7 +32,7 @@ export function createTask(input: {
 }, userId?: string, workspaceId: string = "ws_default"): AgentTask {
   const now = Date.now();
   const task: AgentTask = {
-    id: uid(),
+    id: uid("task"),
     topic: input.topic,
     kbId: input.kbId,
     kbName: input.kbName,
