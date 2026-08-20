@@ -1,4 +1,17 @@
 ---
+title: 产品文档
+description: KnowledgeAI 产品规划，7 大模块 25 页面清单与技术选型
+type: explanation
+category: getting-started
+level: L1
+version: 1.0.0
+authors: [product-team]
+owner: 产品负责人
+reviewed_at: 2026-08-20
+review_interval: 180
+status: published
+applies_to: ">=1.2.0"
+---
 
 ## 产品定位
 
@@ -437,5 +450,6 @@
 
 ### 相关文档
 
-- [设计说明.md](设计说明.md) — UI 设计体系、各模块技术实现、生产化接入详情
-- [README.md](README.md) — 快速开始、Docker 部署、生产化配置指南
+- [UI 设计体系](../architecture/design-system.md) — 设计令牌 / 组件库 / 页面清单
+- [设计与实现记录（归档）](../archive/design-and-implementation-log.md) — 各模块实现细节（历史追溯）
+- README.md（仓库根，[GitHub](https://github.com/)）— 快速开始、Docker 部署、生产化配置指南
