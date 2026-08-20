@@ -272,13 +272,16 @@ async function parsePptx(buf: Buffer): Promise<ParsedDocument | null> {
   }
 }
 
+// M-9: per-slide decompressed cap (zip-bomb guard) - a real slide XML is a
+// few hundred KB at most; anything claiming more is a bomb and is skipped.
+const MAX_SLIDE_XML = 1_000_000;
+
 /** Extract text from PPTX by finding <a:t> elements in the ZIP binary. */
 function extractPptxText(buf: Buffer): string {
   // PPTX uses ZIP compression; we need to decompress.
   // Look for slide XML entries and extract <a:t> text.
   // This is a best-effort approach using regex on decompressed data.
   const str = buf.toString("latin1");
-
   // Find local file headers for slide XMLs (PK\x03\x04)
   const texts: string[] = [];
   const slidePattern = /ppt\/slides\/slide\d+\.xml/g;
@@ -297,17 +300,25 @@ function extractPptxText(buf: Buffer): string {
     const extraLen = buf.readUInt16LE(pos + 28);
     const compStart = pos + 30 + nameLen + extraLen;
     const compMethod = buf.readUInt16LE(pos + 8);
+    // M-9: zip-bomb guard - the local header declares the compressed and
+    // uncompressed sizes; a hostile file can declare a tiny compSize but
+    // inflate to gigabytes. Cap both the slice AND the decompressed output.
+    const compSize = buf.readUInt32LE(pos + 18);
+    const uncompSize = buf.readUInt32LE(pos + 22);
 
     try {
       let xml: string;
       if (compMethod === 8) {
         // Deflate
-        const compData = buf.subarray(compStart);
-        const decompressed = zlib.inflateSync(compData);
+        if (uncompSize > MAX_SLIDE_XML) continue; // declared expansion too big
+        const compData = buf.subarray(compStart, compStart + compSize);
+        // maxOutputLength throws ERR_BUFFER_TOO_LARGE / aborts inflate when the
+        // output exceeds the cap - a compressed-bomb entry can't OOM the worker.
+        const decompressed = zlib.inflateSync(compData, { maxOutputLength: MAX_SLIDE_XML });
         xml = decompressed.toString("utf-8");
       } else {
         // Stored (no compression)
-        const compSize = buf.readUInt32LE(pos + 18);
+        if (compSize > MAX_SLIDE_XML) continue;
         xml = buf.subarray(compStart, compStart + compSize).toString("utf-8");
       }
       // Extract <a:t> text runs

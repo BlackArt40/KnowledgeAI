@@ -218,7 +218,9 @@ function hydrateUser(u: PrismaUser): void {
     name: u.name,
     passwordHash: u.passwordHash || "",
     role: u.role.toLowerCase(),
-    plan: "free" as const,
+    // M-1: restore the persisted plan tier (was hardcoded "free", silently
+    // downgrading paid users after every restart).
+    plan: ((u as unknown as { plan?: string | null }).plan || "free").toLowerCase(),
     status: u.status.toLowerCase(),
     createdAt: u.createdAt.getTime(),
     lastLoginAt: null as number | null,
@@ -511,6 +513,7 @@ async function hydrateTeam(): Promise<{ team: number; members: number; audit: nu
       members: Map<string, unknown>;
       audit: unknown[];
       kbAccess: Map<string, string>;
+      kbMemberRoles: Map<string, Record<string, string>>;
       seeded: boolean;
     };
   };
@@ -532,6 +535,14 @@ async function hydrateTeam(): Promise<{ team: number; members: number; audit: nu
       const ka = teamRow.kbAccess as Record<string, string> | null;
       if (ka && typeof ka === "object") {
         for (const [k, v] of Object.entries(ka)) store.kbAccess.set(k, v);
+      }
+      // M-7: restore per-KB member role overrides (kbId -> email -> role) -
+      // they used to be memory-only and vanished on restart (P4-2 drift).
+      const kmr = teamRow.kbMemberRoles as Record<string, Record<string, string>> | null;
+      if (kmr && typeof kmr === "object") {
+        for (const [kbId, roles] of Object.entries(kmr)) {
+          if (roles && typeof roles === "object") store.kbMemberRoles.set(kbId, roles);
+        }
       }
     }
 

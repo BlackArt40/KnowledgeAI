@@ -7,6 +7,7 @@
 
 import crypto from "crypto";
 import { getDocument } from "./store";
+import { hashSharePassword, verifySharePassword } from "@/lib/security/share-password";
 
 export interface DocShare {
   token: string;
@@ -14,7 +15,7 @@ export interface DocShare {
   createdBy: string;
   createdAt: number;
   expiresAt?: number;   // epoch ms; undefined = never expires
-  passwordHash?: string; // SHA-256; undefined = no password
+  passwordHash?: string; // L-2: PBKDF2+salt (see share-password.ts); undefined = no password
   maxViews?: number;    // undefined = unlimited
   views: number;
 }
@@ -31,13 +32,9 @@ function genToken(): string {
   return "sh_" + crypto.randomBytes(12).toString("hex");
 }
 
-export function hashSharePassword(pwd: string): string {
-  return crypto.createHash("sha256").update(pwd).digest("hex");
-}
-
-export function verifySharePassword(pwd: string, hash: string): boolean {
-  return hashSharePassword(pwd) === hash;
-}
+// L-2: hash/verify moved to src/lib/security/share-password.ts (PBKDF2+salt).
+// Re-exported so existing call sites keep their imports.
+export { hashSharePassword, verifySharePassword };
 
 /** Create (or replace) the share link of a document - one per document. */
 export function createDocShare(input: {

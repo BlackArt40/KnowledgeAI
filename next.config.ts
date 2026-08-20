@@ -26,6 +26,26 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          // L-10: Content-Security-Policy - restrict where scripts/styles/
+          // connections can load from. Next.js dev needs unsafe-inline +
+          // unsafe-eval (Turbopack HMR); production keeps them for Next's
+          // inline runtime but connect-src is locked to self + the LLM /
+          // payment / CDN backends actually used. frame-ancestors = none
+          // (X-Frame-Options DENY already set, CSP reinforces it).
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://api.openai.com https://*.openai.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
+          },
         ],
       },
     ];

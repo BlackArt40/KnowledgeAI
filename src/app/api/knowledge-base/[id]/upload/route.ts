@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
+import { getKb, addDocument, deleteDocument } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
 import { canEditKb } from "@/lib/team/store";
 import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
-import { parseDocument } from "@/lib/rag/parser";
 import { withApiTrace } from "@/lib/obs/trace";
-import { recordDoc } from "@/lib/obs/metrics";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads");
-const MAX_TEXT = 2 * 1024 * 1024; // 2 MB of text indexed per file
 
 async function ensureDir(p: string) {
   await fs.mkdir(p, { recursive: true });
@@ -60,9 +57,9 @@ async function handleUpload(req: Request, { params }: Params) {
     notify(
       u.id,
       "kbReady",
-      `知识库「${kb.name}」新增文档`,
+      `知识库「${kb.name}」已添加网页`,
       fetched
-        ? `${doc.name} 已添加并处理完成。`
+        ? `${doc.name} 已添加，正在后台解析与索引。`
         : `${link} 已添加，但未能抓取页面内容（可能需要稍后重试）。`,
       "/knowledge-base"
     );
@@ -97,49 +94,48 @@ async function handleUpload(req: Request, { params }: Params) {
       errors.push(`${file.name} 超过 ${getConfig().maxUploadMb}MB 限制`);
       continue;
     }
-    let buf: Buffer;
+    // M-3: read the file as a stream instead of one big arrayBuffer() so a
+    // large upload never balloons the request thread's memory (OOM guard).
+    const chunks: Buffer[] = [];
     try {
-      buf = Buffer.from(await file.arrayBuffer());
+      const reader = file.stream().getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(Buffer.from(value));
+      }
     } catch {
       errors.push(`${file.name} 读取失败`);
       continue;
     }
+    const buf = Buffer.concat(chunks);
     const safeName = file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fa5]/g, "_");
+    // M-3: create the doc FIRST (skip the auto-enqueue) so the background
+    // doc-process worker can locate the file by docId, then write the file,
+    // then enqueue - parsing now happens in the queue, not the request thread.
+    const doc = addDocument({ kbId: id, name: file.name, size: file.size, skipEnqueue: true });
     try {
-      await fs.writeFile(path.join(kbDir, `${Date.now()}-${safeName}`), buf);
+      await fs.writeFile(path.join(kbDir, `${doc.id}-${safeName}`), buf);
     } catch {
       errors.push(`${file.name} 保存失败`);
+      await deleteDocument(doc.id).catch(() => {});
       continue;
     }
-    // extract text for indexing via multi-format parser
-    const dtype = docTypeFromName(file.name);
-    let content: string | undefined;
-    if (isTextLike(dtype)) {
-      content = buf.toString("utf-8").slice(0, MAX_TEXT);
-    } else {
-      // P6-1: document-parse duration is one of the key SLIs - time it.
-      const parseStart = Date.now();
-      let parsed: Awaited<ReturnType<typeof parseDocument>> = null;
-      try {
-        // Parse PDF/Word/Excel/PPT using the multi-format parser
-        parsed = await parseDocument(buf, file.name, dtype);
-      } finally {
-        recordDoc(Date.now() - parseStart, !!parsed);
-      }
-      if (parsed) {
-        content = parsed.text.slice(0, MAX_TEXT);
-      }
-    }
-    const doc = addDocument({ kbId: id, name: file.name, size: file.size, content });
+    // Enqueue only after the file is on disk (no parse race).
+    void import("@/lib/queue").then(({ enqueue }) => enqueue("doc-process", { docId: doc.id }));
     created.push(doc);
   }
 
   if (created.length > 0) {
+    // L-3: M-3 moved parsing into the background queue, so the upload route
+    // only confirms the files were accepted + enqueued - NOT that they are
+    // ready to query. The kb.ready webhook + the doc status SSE still fire
+    // when indexing actually completes (or fails).
     notify(
       u.id,
       "kbReady",
-      `知识库「${kb.name}」处理完成`,
-      `${created.length} 篇文档已成功处理${errors.length > 0 ? `（${errors.length} 篇失败）` : ""}，可以开始问答了。`,
+      `知识库「${kb.name}」已接收上传`,
+      `${created.length} 篇文档已上传，正在后台解析与索引${errors.length > 0 ? `（${errors.length} 篇失败）` : ""}，完成后即可问答。`,
       "/knowledge-base"
     );
   }

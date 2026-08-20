@@ -89,7 +89,10 @@ export function validateApiKey(secret: string): ApiKey | null {
   return k ?? null;
 }
 
-/** Record a real API call and increment the key's counter. */
+/** Record a real API call and increment the key's counter.
+ *  M-6: counters were memory-only - a restart rolled every key back to 0
+ *  calls. Now they are written through to the DB throttled (at most once per
+ *  interval or every N calls) so hot keys don't hammer the DB on every call. */
 export function logCall(
   keyId: string,
   endpoint: string,
@@ -102,6 +105,7 @@ export function logCall(
   if (k) {
     k.calls++;
     k.lastUsed = Date.now();
+    maybePersistKey(k);
   }
   s.logs.unshift({
     id: uid("log"),
@@ -114,4 +118,22 @@ export function logCall(
   });
   // Keep max 500 logs total
   if (s.logs.length > 500) s.logs.length = 500;
+}
+
+// ── M-6: throttled write-through for call counters ────────────────────────
+
+const PERSIST_INTERVAL_MS = 30_000;
+const PERSIST_EVERY_N = 50;
+const persistState = new Map<string, { lastPersistAt: number; countSincePersist: number }>();
+
+function maybePersistKey(k: ApiKey): void {
+  const st = persistState.get(k.id) ?? { lastPersistAt: 0, countSincePersist: 0 };
+  st.countSincePersist++;
+  const now = Date.now();
+  if (st.countSincePersist >= PERSIST_EVERY_N || now - st.lastPersistAt >= PERSIST_INTERVAL_MS) {
+    st.lastPersistAt = now;
+    st.countSincePersist = 0;
+    void persistApiKey(k);
+  }
+  persistState.set(k.id, st);
 }
