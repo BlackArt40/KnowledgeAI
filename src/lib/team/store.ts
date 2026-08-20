@@ -85,7 +85,7 @@ export function updateTeam(patch: Partial<Pick<Team, "name" | "logoInitial" | "p
   seed();
   const s = store();
   s.team = { ...s.team, ...patch };
-  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess), kbMemberRoles: Object.fromEntries(s.kbMemberRoles) });
   return s.team;
 }
 
@@ -200,7 +200,7 @@ export function setKbMemberRole(kbId: string, email: string, role: KbMemberRole 
   }
   if (Object.keys(roles).length === 0) s.kbMemberRoles.delete(kbId);
   else s.kbMemberRoles.set(kbId, roles);
-  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess), kbMemberRoles: Object.fromEntries(s.kbMemberRoles) });
 }
 
 /** All per-KB member role overrides for a KB (keyed by email, team panel). */
@@ -266,5 +266,5 @@ export function setKbAccess(kbId: string, access: KbAccess): void {
   seed();
   const s = store();
   s.kbAccess.set(kbId, access);
-  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess) });
+  void persistTeam({ ...s.team, kbAccess: Object.fromEntries(s.kbAccess), kbMemberRoles: Object.fromEntries(s.kbMemberRoles) });
 }

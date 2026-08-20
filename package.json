@@ -77,6 +77,10 @@
     "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.10"
   },
+  "optionalDependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0"
+  },
   "packageManager": "pnpm@11.7.0",
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

@@ -41,10 +41,14 @@ export class BullMQQueue implements JobQueue {
   private worker: BullMQWorkerType | null = null;
   private handlers = new Map<JobType, JobHandler>();
   private mod: QueueModule | null = null;
-  private connection: Record<string, unknown>;
+  /** L-9: parsed once in ensureConnected(), reused by start() - was recomputed
+   *  in two places and a third dead `this.connection` field stored the raw
+   *  URL but was never read. */
+  private parsedConnection: Record<string, unknown> | null = null;
 
-  constructor(redisUrl: string) {
-    this.connection = { host: redisUrl };
+  constructor(_redisUrl: string) {
+    // L-9: the raw URL was stored but never used (ensureConnected parses
+    // REDIS_URL directly); parameter kept for API stability.
   }
 
   private async ensureConnected(): Promise<QueueModule> {
@@ -52,8 +56,8 @@ export class BullMQQueue implements JobQueue {
     try {
       const bullmq = await import("bullmq");
       this.mod = bullmq as unknown as QueueModule;
-      const connection = this.parseRedisUrl(process.env.REDIS_URL!);
-      this.queue = new this.mod.Queue(QUEUE_NAME, { connection });
+      this.parsedConnection = this.parseRedisUrl(process.env.REDIS_URL!);
+      this.queue = new this.mod.Queue(QUEUE_NAME, { connection: this.parsedConnection });
       return this.mod;
     } catch {
       throw new Error("bullmq not installed - run: pnpm add bullmq ioredis");
@@ -104,7 +108,7 @@ export class BullMQQueue implements JobQueue {
   start(): void {
     this.ensureConnected()
       .then(() => {
-        const connection = this.parseRedisUrl(process.env.REDIS_URL!);
+        // L-9: reuse the connection parsed in ensureConnected (was re-parsed here).
         this.worker = new this.mod!.Worker(
           QUEUE_NAME,
           async (job: BullMQJobType) => {
@@ -114,7 +118,7 @@ export class BullMQQueue implements JobQueue {
             if (!result.ok) throw new Error(result.error || "Job failed");
             return result;
           },
-          { connection, concurrency: 3 }
+          { connection: this.parsedConnection, concurrency: 3 }
         );
         this.worker.on("failed", (_job: unknown, err: unknown) => {
           log.error({ err }, "[queue] job failed");

@@ -265,6 +265,8 @@ export async function* chatStream(
       temperature: opts?.temperature ?? 0.3,
       maxOutputTokens: opts?.maxTokens,
       allowSystemInMessages: true,
+      // M-10: abort the upstream fetch when the client disconnects (SSE).
+      abortSignal: opts?.signal,
     });
 
     // textStream is an async iterable of deltas; usage resolves when the

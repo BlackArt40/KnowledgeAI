@@ -56,16 +56,20 @@ enum UserStatus {
 
 // ── Teams ─────────────────────────────────────────────────
 model Team {
-  id          String          @id @default(cuid())
-  name        String
-  logoInitial String          @default("K")
-  plan        String          @default("专业版")
-  kbAccess    Json            @default("{}")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  members     TeamMember[]
-  kbs         KnowledgeBase[]
-  auditLogs   AuditLog[]
+  id             String          @id @default(cuid())
+  name           String
+  logoInitial    String          @default("K")
+  plan           String          @default("专业版")
+  kbAccess       Json            @default("{}")
+  // M-7: per-KB member role overrides (kbId -> email -> role). Used to live
+  // only in memory (setKbMemberRole persisted just kbAccess) so overrides
+  // were lost on restart - the P4-2 permission drift bug.
+  kbMemberRoles  Json            @default("{}")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  members        TeamMember[]
+  kbs            KnowledgeBase[]
+  auditLogs      AuditLog[]
 }
 
 model TeamMember {

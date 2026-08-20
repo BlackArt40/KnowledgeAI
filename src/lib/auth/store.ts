@@ -94,13 +94,57 @@ export function getUserById(id: string): User | null {
   return store().users.get(id) ?? null;
 }
 
+// ── L-10: account lockout (brute-force protection) ───────────────────────
+// Track failed-login attempts per user. After 5 consecutive failures the
+// account is locked for 15 minutes (the lock auto-clears on a successful
+// login). Lives on globalThis like every other store; multi-instance would
+// need Redis but the single-instance demo benefits from the guard.
+
+declare global {
+  var __KAI_LOGIN_LOCKOUT__: Map<string, { fails: number; lockedUntil: number }> | undefined;
+}
+
+const MAX_LOGIN_FAILS = 5;
+const LOCKOUT_MS = 15 * 60_000;
+
+function lockoutStore(): Map<string, { fails: number; lockedUntil: number }> {
+  if (!globalThis.__KAI_LOGIN_LOCKOUT__) globalThis.__KAI_LOGIN_LOCKOUT__ = new Map();
+  return globalThis.__KAI_LOGIN_LOCKOUT__;
+}
+
+/** Is the account currently locked out? (L-10) */
+export function isAccountLocked(email: string): boolean {
+  const st = lockoutStore().get(email);
+  if (!st) return false;
+  if (st.lockedUntil > Date.now()) return true;
+  if (st.lockedUntil > 0 && st.lockedUntil <= Date.now()) {
+    // lock expired - reset fail counter but keep the entry
+    st.fails = 0;
+    st.lockedUntil = 0;
+  }
+  return false;
+}
+
 export async function verifyCredentials(email: string, password: string): Promise<User | null> {
+  // L-10: refuse the attempt before even checking the password when the
+  // account is locked - prevents the attacker from burning more attempts.
+  if (isAccountLocked(email)) return null;
   const user = findUserByEmail(email);
   if (!user) return null;
   // OAuth-only accounts have no password - they can't use password login.
   const hash = user.passwordHash;
   if (!hash) return null;
-  if (!(await passwordMatches(password, hash))) return null;
+  if (!(await passwordMatches(password, hash))) {
+    // L-10: count the failure and lock at the threshold.
+    const ls = lockoutStore();
+    const st = ls.get(email) ?? { fails: 0, lockedUntil: 0 };
+    st.fails++;
+    if (st.fails >= MAX_LOGIN_FAILS) st.lockedUntil = Date.now() + LOCKOUT_MS;
+    ls.set(email, st);
+    return null;
+  }
+  // L-10: success clears the fail counter.
+  lockoutStore().delete(email);
   // P3-4: migrate legacy SHA-256 hashes to PBKDF2 on successful login.
   if (!hash.startsWith("pbkdf2$")) {
     user.passwordHash = await hashPassword(password);

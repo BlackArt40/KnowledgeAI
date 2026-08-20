@@ -148,10 +148,39 @@ export async function cleanupOrphanedKbDirs(
 /**
  * Clean up old files within KB directories.
  * Removes individual files older than FILE_TTL_MS.
+ * L-4: files still referenced by a non-terminal document (content not yet
+ * extracted by the doc-process queue, i.e. the worker hasn't parsed it) are
+ * ALWAYS kept - deleting them would make the doc un-indexable forever.
  */
 export async function cleanupOldFiles(): Promise<CleanupStats> {
   const stats = emptyStats();
   const now = Date.now();
+
+  // L-4: best-effort import to check whether a file is still needed by its
+  // document. A file named `<docId>-*` is kept while the doc exists and its
+  // content has not been extracted yet (processDocInQueue still needs it).
+  let getDocument: ((id: string) => { content?: string; status?: string } | undefined) | null = null;
+  try {
+    const mod = await import("@/lib/kb/store");
+    getDocument = (mod as unknown as { getDocument: (id: string) => { content?: string; status?: string } | undefined }).getDocument;
+  } catch {
+    // kb store not available (Edge / circular) - fall back to mtime-only.
+  }
+
+  const stillNeeded = (filename: string): boolean => {
+    if (!getDocument) return false;
+    // M-3 naming: `<docId>-<safeName>` -> take everything up to the first `-`
+    // after the doc id prefix. doc ids are `doc_XXXXXXXX`.
+    const m = filename.match(/^(doc_[a-f0-9]+)-/);
+    if (!m) return false;
+    const doc = getDocument(m[1]);
+    // Keep the file while the doc exists but content is empty AND it is not
+    // in a terminal state (ready/failed means parsing is done, content set).
+    if (!doc) return false;
+    if (doc.content) return false;
+    if (doc.status === "ready" || doc.status === "failed") return false;
+    return true;
+  };
 
   try {
     const entries = await fs.readdir(UPLOAD_DIR, { withFileTypes: true });
@@ -167,7 +196,7 @@ export async function cleanupOldFiles(): Promise<CleanupStats> {
           const filePath = path.join(kbDir, file.name);
           try {
             const stat = await fs.stat(filePath);
-            if (now - stat.mtimeMs > FILE_TTL_MS) {
+            if (now - stat.mtimeMs > FILE_TTL_MS && !stillNeeded(file.name)) {
               stats.freedBytes += stat.size;
               await fs.unlink(filePath);
               stats.oldFiles++;

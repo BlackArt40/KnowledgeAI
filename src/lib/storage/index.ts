@@ -69,6 +69,11 @@ export async function saveFile(
   await fs.mkdir(uploadsDir, { recursive: true });
   const filepath = path.join(uploadsDir, key);
   await fs.writeFile(filepath, data);
+  // L-4: the returned URL `/api/files/<key>` is now a real fetchable endpoint
+  // served by src/app/api/files/[key]/route.ts (added in the L-4 fix) - it
+  // streams the locally-stored file back to authenticated callers. The
+  // doc-process queue still reads the file directly from .uploads/<kbId>/<docId>-*
+  // (no HTTP round-trip); readFile() remains the in-process path.
   return { key, url: `/api/files/${key}`, size: data.byteLength };
 }
 

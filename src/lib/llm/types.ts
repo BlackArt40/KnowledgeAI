@@ -18,6 +18,9 @@ export interface ChatMessage {
 export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
+  /** M-10: client-disconnect abort - propagated to the underlying LLM fetch
+   *  so a dropped SSE connection stops burning tokens immediately. */
+  signal?: AbortSignal;
 }
 
 export interface EmbeddingOptions {

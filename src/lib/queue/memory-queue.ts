@@ -23,6 +23,9 @@ interface Job {
 
 const MAX_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 2000;
+// M-4: bound the jobs map - terminal jobs (and their payloads, which can be
+// large, e.g. uploaded doc buffers) used to live for the process lifetime.
+const MAX_JOBS = 100;
 
 function backoffDelay(attempt: number): number {
   // Exponential: 2s, 4s, 8s, ... (mirrors BullMQ exponential backoff).
@@ -123,6 +126,7 @@ export class MemoryQueue implements JobQueue {
         if (result.ok) {
           job.status = "completed";
           job.result = result;
+          this.trimJobs();
         } else {
           this.handleFailure(job, result.error || "Job failed");
         }
@@ -156,6 +160,23 @@ export class MemoryQueue implements JobQueue {
         { jobId: job.id, attempts: job.attempts, err: redactText(errorMessage) },
         "[queue] job permanently failed"
       );
+      this.trimJobs();
+    }
+  }
+
+  /**
+   * M-4: drop the oldest terminal jobs once the map exceeds MAX_JOBS so job
+   * payloads don't stay resident for the process lifetime. Queued/active jobs
+   * are never touched.
+   */
+  private trimJobs(): void {
+    if (this.jobs.size <= MAX_JOBS) return;
+    const terminal = [...this.jobs.values()]
+      .filter((j) => j.status === "completed" || j.status === "failed")
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const excess = this.jobs.size - MAX_JOBS;
+    for (const j of terminal.slice(excess)) {
+      this.jobs.delete(j.id);
     }
   }
 

@@ -21,7 +21,18 @@ export function useSpeechRecognition(opts: {
   const [interim, setInterim] = React.useState("");
   const stopRef = React.useRef<{ stop: () => void } | null>(null);
 
-  const supported = React.useMemo(() => isSttSupported(), []);
+  // M-12: `supported` must be false on BOTH the server render and the
+  // client's first paint - isSttSupported() reads `window`, which SSR lacks.
+  // useSyncExternalStore is the canonical fix: the server snapshot is always
+  // false (hydration matches), and the client snapshot runs only after
+  // hydration so the value flips false -> true without a mismatch. (The naive
+  // useState(false)+useEffect is rejected by the react-hooks lint rule for
+  // synchronous setState-in-effect cascading renders.)
+  const supported = React.useSyncExternalStore(
+    () => () => {},
+    () => isSttSupported(),
+    () => false
+  );
 
   React.useEffect(() => {
     return () => stopRef.current?.stop();

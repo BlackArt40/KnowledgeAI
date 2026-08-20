@@ -1,7 +1,11 @@
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import type { AgentTask, ShareConfig, ReportVersion, Comment } from "./types";
-import { persistTask } from "@/lib/db/persist";
+import { persistTask, deleteAgentTaskFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
+import {
+  hashSharePassword as hashPassword,
+  verifySharePassword as verifyPassword,
+} from "@/lib/security/share-password";
 
 type Store = { tasks: Map<string, AgentTask> };
 const g = globalThis as unknown as { __KAI_AGENT_STORE__?: Store };
@@ -61,6 +65,9 @@ export function saveTask(task: AgentTask) {
 }
 
 export function deleteTask(id: string): boolean {
+  // M-8: also delete the DB row - previously the task resurrected after a
+  // restart (memory-only delete).
+  void deleteAgentTaskFromDb(id);
   return store().tasks.delete(id);
 }
 
@@ -79,15 +86,10 @@ export function deleteAllTasks(userId: string): number {
 
 // ── P2-3: Share link permissions (criterion #2) ──────────────────────────
 
-/** SHA-256 hash a share password (no external deps). */
-export function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
-
-/** Verify a plaintext password against a stored hash. */
-export function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
-}
+// L-2: hash/verify moved to src/lib/security/share-password.ts (PBKDF2+salt).
+// Re-exported as hashPassword/verifyPassword for the existing share route
+// imports; legacy unsalted SHA-256 hashes still verify (compat) until reset.
+export { hashPassword, verifyPassword };
 
 /** Patch shape for share config (null clears an optional field). */
 export interface SharePatch {

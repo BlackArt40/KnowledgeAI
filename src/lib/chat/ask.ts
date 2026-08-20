@@ -263,7 +263,9 @@ export async function handleChatRequest(
           let fullText = "";
           let citations: Citation[] = [];
 
-          const gen = generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages);
+          // M-10: pass the request's abort signal so a client disconnect
+          // cancels the underlying LLM fetch (not just this loop).
+          const gen = generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages, req.signal);
           let result;
           while (true) {
             // Stop generating as soon as the client disconnects / aborts.

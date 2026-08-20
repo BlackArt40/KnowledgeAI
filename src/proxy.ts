@@ -87,20 +87,23 @@ export async function proxy(req: NextRequest) {
   startCleanupTimer();
 
   // Hydrate in-memory stores from DB on first API request (fire-and-forget).
+  // NOTE: the proxy only matches /api/* (see config.matcher below), so this
+  // guard is effectively always true - kept as a cheap safety net.
   if (!pathname.startsWith("/_next")) {
     void ensureHydrated();
   }
 
-  // Only rate-limit API routes
-  if (!pathname.startsWith("/api/")) {
-    return NextResponse.next();
-  }
+  // L-9: the old `if (!pathname.startsWith("/api/")) return next()` branch was
+  // dead code - config.matcher already limits this proxy to /api/*. Removed.
 
-  // P7-2: CORS for the public API surface. Auth is header-based (Bearer
-  // kai_sk_... / JWT), never cookies, so the API is safe to call from any
-  // origin - the embedded widget and the Chrome extension are cross-origin
-  // clients. Handle preflight + attach headers to the (possibly modified)
-  // response below.
+  // P7-2 / L-1: CORS for the public API surface. Auth is header-based
+  // (Bearer kai_sk_... / JWT), never cookies, so the API can be called
+  // cross-origin by the embedded widget + the Chrome extension. Handle
+  // preflight + attach headers to the (possibly modified) response below.
+  // L-1: instead of echoing any Origin (cache-poisoning risk via a CDN),
+  // only reflect Origins on an explicit allowlist (CORS_ALLOWED_ORIGINS).
+  // When unset, fall back to reflecting the Origin (dev/demo convenience)
+  // but ALWAYS send Vary: Origin so caches key by it.
   const origin = req.headers.get("origin");
   if (origin) {
     if (req.method === "OPTIONS") {
@@ -167,14 +170,25 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next({ request: { headers: requestHeaders }, headers: withCors });
 }
 
-/** P7-2: permissive CORS for the header-auth public API (no cookies involved,
- *  so echoing any origin is safe for the embedded widget / extension). */
+/** P7-2 / L-1: CORS for the header-auth public API.
+ *  L-1: reflect the Origin only when it's on the allowlist
+ *  (CORS_ALLOWED_ORIGINS, comma-separated). With no allowlist configured,
+ *  fall back to reflecting any Origin (dev/widget convenience) - but always
+ *  send Vary: Origin so a shared CDN cache can't poison a cross-origin
+ *  response onto a same-origin request. */
 function corsHeaders(origin: string): Record<string, string> {
+  const allowed = (process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowOrigin = allowed.length === 0 || allowed.includes(origin) ? origin : allowed[0];
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Trace-Id, X-KAI-Required-Scope",
     "Access-Control-Max-Age": "86400",
+    // L-1: prevent cache poisoning - the response varies by Origin.
+    Vary: "Origin",
   };
 }
 

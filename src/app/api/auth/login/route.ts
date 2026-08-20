@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyCredentials, sanitize } from "@/lib/auth/store";
+import { verifyCredentials, sanitize, isAccountLocked } from "@/lib/auth/store";
 import { createToken, createPreAuthToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
 import { addSession, recordLogin, is2FAEnabled, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
@@ -41,6 +41,11 @@ export async function POST(req: Request) {
       detail: "密码错误",
       ip: info.ip,
     });
+    // L-10: surface the lockout so the client can tell the user to wait
+    // instead of retrying (which would just extend the lock window).
+    if (isAccountLocked(email)) {
+      return NextResponse.json({ error: "账户已被暂时锁定，请 15 分钟后重试", locked: true }, { status: 429 });
+    }
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
   }
 

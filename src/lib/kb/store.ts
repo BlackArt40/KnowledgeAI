@@ -81,6 +81,22 @@ function estimateChunks(doc: KbDocument, settings: KbSettings): number {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// M-3: max text indexed per file (mirrors the upload route cap).
+const MAX_TEXT = 2 * 1024 * 1024;
+
+/** Locate + read the uploaded file for a doc (.uploads/<kbId>/<docId>-*). */
+async function readUploadedFile(doc: KbDocument): Promise<Buffer | null> {
+  const dir = path.join(process.cwd(), ".uploads", doc.kbId);
+  try {
+    const entries = await fs.readdir(dir);
+    const match = entries.find((f) => f.startsWith(`${doc.id}-`));
+    if (!match) return null;
+    return fs.readFile(path.join(dir, match));
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Processing pipeline.
 //
@@ -155,6 +171,27 @@ export async function processDocInQueue(docId: string): Promise<void> {
   };
 
   try {
+    // M-3: REAL parse - the upload route used to parse PDF/Word/PPT in the
+    // request thread (blocking it for seconds on OCR-heavy files) and this
+    // queue stage only simulated ticks. Now the queue worker reads the
+    // persisted file (.uploads/<kbId>/<docId>-*) and extracts text here.
+    // NOTE: with a separate BullMQ worker process, .uploads must be a shared
+    // volume (docker-compose mounts it into both web and worker services).
+    if (!doc.content && doc.type !== "web") {
+      const buf = await readUploadedFile(doc);
+      if (buf) {
+        if (isTextLike(doc.type)) {
+          doc.content = buf.toString("utf-8").slice(0, MAX_TEXT);
+        } else {
+          const { parseDocument } = await import("@/lib/rag/parser");
+          const parsed = await parseDocument(buf, doc.name, doc.type);
+          if (parsed) doc.content = parsed.text.slice(0, MAX_TEXT);
+        }
+        store.docs.set(docId, doc);
+        void persistDoc(doc);
+      }
+    }
+
     await tick("parsing", 2, 30, 1400);
 
     const kb = store.kbs.get(doc.kbId);
@@ -485,6 +522,9 @@ export function addDocument(input: {
   size: number;
   url?: string;
   content?: string;
+  /** M-3: skip the auto-enqueue so the caller can persist the file to disk
+   *  FIRST (avoiding a parse race), then enqueue doc-process explicitly. */
+  skipEnqueue?: boolean;
 }): KbDocument {
   seed();
   const store = getStore();
@@ -515,7 +555,7 @@ export function addDocument(input: {
     kbId: input.kbId,
     doc: { id: doc.id, kbId: doc.kbId, name: doc.name, type: doc.type, size: doc.size, status: doc.status, progress: doc.progress, uploadedAt: doc.uploadedAt },
   });
-  startProcessing(doc.id);
+  if (!input.skipEnqueue) startProcessing(doc.id);
   return doc;
 }
 

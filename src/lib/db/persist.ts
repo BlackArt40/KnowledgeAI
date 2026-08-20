@@ -43,6 +43,10 @@ export async function persistUser(user: {
       passwordHash: user.passwordHash,
       role: user.role.toUpperCase(),
       status: user.status.toUpperCase(),
+      // M-1: the plan tier used to be dropped here, so after a restart
+      // hydrateUser defaulted everyone to "free" - paid features (unlimited
+      // QA / Agent / API keys) silently downgraded. Persist it with the user.
+      plan: user.plan ?? "free",
       locale: user.locale ?? "zh-CN",
       // OAuth links: JSONB column; null keeps rows backwards compatible.
       oauthLinks: user.oauthLinks ?? null,
@@ -207,6 +211,19 @@ export async function persistTask(task: {
   }
 }
 
+/** M-8: delete an agent task row (deleteTask() used to only drop the
+ *  in-memory entry, so deleted tasks resurrected after a restart). */
+export async function deleteAgentTaskFromDb(taskId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.agentTask.delete({ where: { id: taskId } }).catch(() => {});
+  } catch (err) {
+    log.error({ err }, "[db] deleteAgentTaskFromDb error");
+  }
+}
+
 /** Persist an API key to DB. */
 export async function persistApiKey(key: {
   id: string;
@@ -294,23 +311,48 @@ export async function persistConversation(conv: {
         update: data,
         create: { id: conv.id, ...data, createdAt: new Date(conv.createdAt) },
       });
-    // Persist latest message only (fire-and-forget, avoid full resync)
-    const lastMsg = conv.messages[conv.messages.length - 1];
-    if (lastMsg) {
-      await (db as unknown as { message: { create: (o: unknown) => Promise<unknown> } })
-        .message.create({
-          data: {
-            id: lastMsg.id,
-            conversationId: conv.id,
-            role: lastMsg.role,
-            content: lastMsg.content,
-            citations: lastMsg.citations ?? null,
-            createdAt: new Date(lastMsg.createdAt),
-          },
-        }).catch(() => {});
-    }
+    // L-5: messages are persisted individually by persistMessage() (called from
+    // addMessage) so concurrent Q&A never loses history. The old "write only
+    // the last message here" path raced: two concurrent addMessage calls each
+    // saw the OTHER's message as messages[last] and wrote that, dropping their
+    // own. persistConversation now only upserts the conversation row itself.
   } catch (err) {
     log.error({ err }, "[db] persistConversation error");
+  }
+}
+
+/** L-5: persist a single message (upsert by id). Called from addMessage so
+ *  concurrent Q&A each persist their own message without racing on the
+ *  "last message" slot. */
+export async function persistMessage(
+  convId: string,
+  msg: { id: string; role: string; content: string; citations?: unknown; createdAt: number }
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } })
+      .message.upsert({
+        where: { id: msg.id },
+        update: {
+          conversationId: convId,
+          role: msg.role,
+          content: msg.content,
+          citations: msg.citations ?? null,
+          createdAt: new Date(msg.createdAt),
+        },
+        create: {
+          id: msg.id,
+          conversationId: convId,
+          role: msg.role,
+          content: msg.content,
+          citations: msg.citations ?? null,
+          createdAt: new Date(msg.createdAt),
+        },
+      });
+  } catch (err) {
+    log.error({ err }, "[db] persistMessage error");
   }
 }
 
@@ -610,6 +652,8 @@ export async function persistTeam(team: {
   logoInitial: string;
   plan: string;
   kbAccess: Record<string, string>;
+  /** M-7: per-KB member role overrides (kbId -> email -> role). */
+  kbMemberRoles?: Record<string, Record<string, string>>;
   createdAt: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
@@ -621,6 +665,7 @@ export async function persistTeam(team: {
       logoInitial: team.logoInitial,
       plan: team.plan,
       kbAccess: team.kbAccess as unknown,
+      kbMemberRoles: (team.kbMemberRoles ?? {}) as unknown,
       updatedAt: new Date(),
     };
     const t = db as unknown as {

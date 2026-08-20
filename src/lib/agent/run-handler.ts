@@ -10,6 +10,7 @@
 import { createTask, saveTask, getTask } from "@/lib/agent/store";
 import { recordAgentTask } from "@/lib/billing/store";
 import { getKb } from "@/lib/kb/store";
+import { canViewKb } from "@/lib/team/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
@@ -40,8 +41,18 @@ export async function handleAgentRun(req: Request): Promise<Response> {
   }
   if (!body.topic?.trim()) return Response.json({ error: "调研主题不能为空" }, { status: 400 });
 
+  // M-2: any team member with KB view permission (same workspace) can run an
+  // Agent against a shared KB - the old owner-only check blocked members from
+  // using Agent on shared knowledge bases.
   const kb = body.kbId ? getKb(body.kbId) : undefined;
-  if (body.kbId && (!kb || kb.ownerId !== authUser.id))
+  if (
+    body.kbId &&
+    (!kb ||
+      !canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, {
+        callerWorkspaceId: authUser.workspaceId,
+        kbWorkspaceId: kb.workspaceId,
+      }))
+  )
     return Response.json({ error: "无权访问该知识库" }, { status: 403 });
 
   const task = createTask(

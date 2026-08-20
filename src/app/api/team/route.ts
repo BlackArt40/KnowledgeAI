@@ -24,7 +24,9 @@ export async function GET(req: Request) {
   };
   // Show ALL team KBs: the user's own KBs plus KBs shared by other
   // members (access != "private"). Private KBs are only visible to their owner.
-  const sharedKbs = listAllKbs()
+  // M-12: scope to the caller's workspace - without it, a multi-tenant deploy
+  // leaked every workspace's KB names through this endpoint.
+  const sharedKbs = listAllKbs(u.workspaceId)
     .filter((kb) => {
       if (kb.ownerId === u.id) return true; // always see your own KBs
       const access = getKbAccess(kb.id, kb.name);

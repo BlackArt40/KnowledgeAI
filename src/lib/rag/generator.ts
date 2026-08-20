@@ -205,7 +205,10 @@ export async function* generateStream(
   chunks: RetrievedChunk[],
   history?: ChatMessage[],
   temperature = 0.3,
-  images?: ChatImage[]
+  images?: ChatImage[],
+  /** M-10: client-disconnect abort signal - forwarded to the LLM stream so a
+   *  dropped SSE connection cancels the underlying fetch (no token burn). */
+  signal?: AbortSignal
 ): AsyncGenerator<StreamEvent, StreamResult> {
   if (chunks.length === 0) {
     const text = "未在当前知识库中检索到相关内容。可以尝试换一种问法，或为该知识库上传更多文档。";
@@ -216,7 +219,7 @@ export async function* generateStream(
   if (await isLLMEnabled()) {
     const messages = buildRagPrompt(query, chunks, history, images);
     let full = "";
-    for await (const delta of chatStream(messages, { temperature, maxTokens: 800 })) {
+    for await (const delta of chatStream(messages, { temperature, maxTokens: 800, signal })) {
       full += delta;
       yield { type: "token", text: delta };
     }

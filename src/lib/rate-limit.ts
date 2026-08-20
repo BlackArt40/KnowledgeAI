@@ -36,9 +36,34 @@ export interface RateLimitResult {
   count: number;
 }
 
-/** All tier limits - single source of truth for proxy / routes / admin panel. */
+/** All tier limits - single source of truth for proxy / routes / admin panel.
+ *  The user tier (base) is M-5: admin SystemConfig.rateLimitPerMin wins when
+ *  present (DB-backed, runtime changes take effect without a restart); the
+ *  env default is the fallback (the Edge proxy has no access to the Node-side
+ *  admin store, so it always reads the env/static value). */
 export function getRateLimitLimits() {
-  return { base: DEFAULT_LIMIT, anon: ANON_LIMIT, key: KEY_LIMIT, kb: KB_LIMIT, integration: INTEGRATION_LIMIT, agent: AGENT_LIMIT };
+  return {
+    base: getBaseLimit(),
+    anon: ANON_LIMIT,
+    key: KEY_LIMIT,
+    kb: KB_LIMIT,
+    integration: INTEGRATION_LIMIT,
+    agent: AGENT_LIMIT,
+  };
+}
+
+/** Resolve the per-user tier limit: admin config (when hydrated) else env. */
+export function getBaseLimit(): number {
+  try {
+    const g = globalThis as unknown as {
+      __KAI_ADMIN_STORE__?: { config?: { rateLimitPerMin?: number } };
+    };
+    const v = g.__KAI_ADMIN_STORE__?.config?.rateLimitPerMin;
+    if (typeof v === "number" && v > 0) return v;
+  } catch {
+    /* Edge isolate or not-yet-hydrated store - fall through to env */
+  }
+  return DEFAULT_LIMIT;
 }
 
 // ── Memory rate limiter (fallback) ───────────────────────────────────────
@@ -123,7 +148,10 @@ async function getRedisClient(): Promise<unknown | null> {
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,
       lazyConnect: true,
-      retryStrategy: () => null,
+      // L-6: was `null` (one hiccup = permanent memory fallback). A few
+      // retries let a transient blip self-heal; exhausting them still falls
+      // back to memory (so a truly-down Redis doesn't block requests).
+      retryStrategy: (times) => (times < 3 ? Math.min(times * 500, 2000) : null),
     });
     log.info("[ratelimit] Redis client initialized");
     return redisClient;
@@ -237,7 +265,7 @@ export function rateLimitStats(): { live: RateLimitStat[]; recent: RateLimitStat
  */
 export async function rateLimit(
   key: string,
-  limit: number = DEFAULT_LIMIT
+  limit: number = getBaseLimit()
 ): Promise<RateLimitResult> {
   // Try Redis first
   const redisResult = await redisRateLimit(key, limit);
