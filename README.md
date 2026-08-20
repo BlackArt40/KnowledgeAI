@@ -81,10 +81,10 @@ prisma/              # 数据库 schema + 迁移 + 种子
 scripts/             # 运维脚本（清理/迁移/CI 检查）
 └── smoke/           # 手动冒烟测试
 tests/               # 集成测试（需 dev server）
-docs/                # 产品文档 / 设计说明 / 路线图
+docs/                # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
 ```
 
-> 完整目录说明见 [docs/项目结构.md](docs/项目结构.md)。
+> 完整目录说明见 [docs/getting-started/project-structure.md](docs/getting-started/project-structure.md)。
 
 ## 🐳 Docker 部署
 
@@ -176,8 +176,9 @@ pnpm dev
 
 ## 📄 文档
 
-- [产品文档.md](产品文档.md) — 完整产品规划（7 模块 25 页面）
-- [设计说明.md](设计说明.md) — UI 设计体系与实现进度
+- [产品概述](docs/getting-started/product-overview.md) — 完整产品规划（7 模块 25 页面）
+- [UI 设计体系](docs/architecture/design-system.md) — 设计令牌 / 组件 / 页面清单
+- [开发路线图（归档）](docs/archive/ROADMAP.md) — 12 周计划与实现记录
 
 ## 📜 许可
 

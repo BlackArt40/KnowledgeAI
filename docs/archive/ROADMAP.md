@@ -1,3 +1,18 @@
+---
+title: 开发路线图 ROADMAP
+description: KnowledgeAI 开发路线图：12 周计划与 P0-P7 实现记录（全部完成，已归档）
+type: explanation
+category: architecture
+level: L1
+version: 1.0.0
+authors: [product-team]
+owner: 技术负责人
+reviewed_at: 2026-08-20
+review_interval: 180
+status: archived
+applies_to: ">=1.2.0"
+---
+
 # KnowledgeAI · 后续路线图
 
 > **文档定位**：基于当前已完成的全功能演示版本（7 大模块 / 25 页面 / 12 周开发），规划功能增强与生产化优化的后续演进方向。

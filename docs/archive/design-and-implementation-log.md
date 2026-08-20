@@ -1,77 +1,24 @@
-# KnowledgeAI · UI 设计说明
-
-> 本文档记录已确认的后续开发计划，以及为 KnowledgeAI 设计的简洁美观 UI 体系与已实现的功能。
-
+---
+title: 设计与实现记录（归档）
+description: KnowledgeAI 各模块后端实现与 P4-P7 功能实现记录（原《设计说明.md》第二~十八部分，已归档）
+type: explanation
+category: architecture
+level: L1
+version: 1.0.0
+authors: [product-team]
+owner: 技术负责人
+reviewed_at: 2026-08-20
+review_interval: 365
+status: archived
+applies_to: ">=1.2.0"
+related: [../architecture/overview.md, ../architecture/design-system.md]
 ---
 
-## 一、已确认的后续开发计划
+# KnowledgeAI 设计与实现记录（已归档）
 
-依据《产品文档.md》，KnowledgeAI 共 **7 大模块、25 个页面**，建议 8–12 周完成。当前进度：
-
-| 阶段 | 内容 | 状态 |
-| --- | --- | :---: |
-| 第 1–2 周 | 落地页 + 登录注册 + 基础框架 + 设计系统 | ✅ 已完成 |
-| 第 3–4 周 | 知识库管理 + 文档上传 + 向量化 | ✅ 已完成 |
-| 第 5–6 周 | 智能问答（RAG 核心功能） | ✅ 已完成 |
-| 第 7–8 周 | Agent 调研 + 任务队列 | ✅ 已完成 |
-| 第 9–10 周 | 团队协作 + 权限系统 | ✅ 已完成 |
-| 第 10–11 周 | 订阅计费 + 支付集成 | ✅ 已完成 |
-| 第 12 周 | 管理后台 + 安全加固 + 部署上线 | ✅ 已完成 |
-
-**🎉 全部 12 周开发计划 + 生产化接入已完成！** 7 大模块 25 个页面均已实现，且核心模块已具备生产适配层：配置环境变量即可切换至真实 LLM / PostgreSQL / S3 / Stripe，无需改动业务代码。所有适配层均带优雅降级——未配置时自动回退到本地演示模式。
+> **归档说明**：本文由原《设计说明.md》拆分归档（2026-08-20）。当前模块设计与实现以 [总体架构](../architecture/overview.md)、[RAG 引擎架构](../architecture/rag-engine.md)、[Agent 编排架构](../architecture/agent-orchestration.md) 及 [API 文档](../api/guide.md) 为准；本文仅作历史追溯，可能过时。
 
 ---
-
-## 二、技术栈
-
-- **框架**：Next.js 16（App Router、Turbopack、Route Handlers、SSE 流式）
-- **样式**：Tailwind CSS v4 + CSS 变量设计令牌
-- **组件**：shadcn 风格自建组件库 16 个（Button / Card / Input / Label / Badge / Separator / Skeleton / Avatar / Dialog / Select / Slider / Progress / Tabs / Switch / Table / DropdownMenu）
-- **图标**：lucide-react + 自绘品牌图标
-- **字体**：Geist Sans / Geist Mono；**主题**：系统 / 亮 / 暗三模式 + 高对比度（WCAG AA）+ Workspace 品牌色（P5-5）
-
----
-
-## 三、设计系统
-
-围绕**靛蓝（Indigo）**品牌色构建，辅以紫罗兰渐变高亮。
-- 主色 `--primary`：亮 `hsl(243 75% 59%)` / 暗 `hsl(243 80% 67%)`；品牌渐变 `bg-brand-gradient`
-- 语义色 `success` / `warning` / `destructive`；圆角 `0.75rem`；柔和阴影；`max-w-6xl`
-- 动效：aurora 极光、marquee 跑马灯、打字机流式、处理进度条、卡片 hover 上浮
-
----
-
-## 四、已实现页面
-
-### 公开区
-- `/` 落地页
-- `/login` 登录页：邮箱密码登录 + 4 个演示账号一键填充（Owner/Admin/Editor/Viewer）+ Google/GitHub 按钮
-- `/register` 注册页：昵称/邮箱/密码注册 + 服务条款同意 + Google/GitHub 按钮
-- `/verify-email` 邮箱验证（双栏分屏）
-
-### 工作台（统一 AppShell：侧边栏 + 顶栏）
-- `/dashboard` 仪表盘：统计卡 + 用量趋势图（自绘 SVG）+ Agent 任务 + 最近问答（均从 API 实时拉取：`/api/auth/me` + `/api/knowledge-base` + `/api/usage` + `/api/chat/conversations` + `/api/agent/tasks`）
-- `/knowledge-base` 知识库列表：卡片网格、新建弹窗、处理中徽标、实时轮询
-- `/knowledge-base/[id]` 知识库详情：拖拽上传（XHR 进度）+ 网页链接、文档列表（状态管线+进度条）、设置弹窗、统计概览
-- `/chat` **智能问答**（第 5–6 周核心）：知识库选择、会话列表、SSE 流式渲染、引用角标（点击高亮右侧来源）、引用来源面板联动、快捷操作
-- `/agent` **Agent 调研**（第 7–8 周核心）：任务输入 + 配置（数据来源/输出格式/检索深度）+ 执行时间线（规划→检索→分析→撰写，SSE 实时）+ Markdown 报告渲染（引用角标）+ 历史任务
-- `/team` **团队管理**（第 9–10 周核心）：成员表（角色/状态/最近活跃）+ 邀请弹窗 + 权限矩阵 + 操作日志 + 共享知识库访问权限
-- `/billing` **订阅计费**（第 10–11 周核心）：当前套餐卡（取消/恢复订阅）+ 三档套餐对比表 + 账单历史（CSV 导出）→ 选择套餐跳转收银台
-- `/usage` **用量监控**（第 10–11 周）：用量计量卡（问答 / API / 存储 / Agent，Progress 进度条）+ 14 天用量趋势图（自绘 SVG）
-- `/checkout` **收银台**（第 10–11 周）：套餐确认 + 支付方式（微信/支付宝/信用卡）→ 二维码/处理中 → 支付成功
-- `/api-keys` **API 密钥**（第 12 周核心）：密钥列表（创建/禁用/删除）+ 权限范围 + 调用示例（curl/Python/JS）+ 调用日志
-- `/settings` **设置**（第 12 周核心）：Tabs 三栏——安全（2FA + 设备管理 + 登录历史）/ 个人信息（密码 + 通知偏好）/ 数据隐私（GDPR 导出 + 删除账户）
-- `/admin` **管理后台**（第 12 周核心，仅 Owner/Admin）：系统统计 8 卡 + 收入趋势 + 用户管理（封禁/解封）+ 知识库监控 + 系统配置（模型/限流/维护模式）
-
-### 特殊页面
-- `/privacy` 隐私政策（数据收集/使用/安全/用户权利/COOKIE/保留期限）
-- `/terms` 服务条款（使用规则 + AI 生成内容免责声明 + 知识产权）
-- `/maintenance` 维护中页面
-- `not-found.tsx` 404 页面（渐变大字 + 返回首页）
-- `error.tsx` 500 错误页（错误码 + 重试 + 联系支持）
-
----
-
 ## 五、认证与用户系统
 
 ### 用户存储 `src/lib/auth/`
@@ -1041,7 +988,7 @@
 | Markdown 渲染 | `src/components/app/chat-markdown.tsx` 手写 tokenizer（440 行） | **react-markdown + remark-gfm + rehype-highlight** | `[n]` 引用 chip 改为 rehype 插件（文本节点 → `<button data-cite>`，容器 onClick 委托）；mermaid `graph LR` chip 流保留（`-->(?!>)` 边界）；fenced 代码块经 `pre` 组件提取 language/代码 + 复制按钮；`tok-*` 高亮类 → `hljs-*`（globals.css 新增深色主题） |
 | 力导向布局 | `knowledge-graph.tsx` 手写斥力/弹簧迭代 | **d3-force** | 布局抽为纯函数 `src/lib/kg/layout.ts`（`forceSimulation.tick(300)` 同步、确定性 → SSR/客户端同坐标）；边保持 label 引用 |
 | 代码高亮 | 关键词 tokenizer（5 语言子集） | **rehype-highlight**（highlight.js） | 随 Markdown 渲染器一并替换，`hljs-*` 类 + 深色 token 主题 |
-| i18n 核心 | `src/lib/i18n/translate.ts` 手写点路径解析 | **i18next v26** | 消息包原样作 resources；`{var}` 单大括号插值（自定义 prefix/suffix）；`escapeValue:false`（React 文本节点已转义，避免双重转义）；缺 key 回退 key 本身、缺 var 保留占位符（n8n 模板 `{{ $json.question }}` 不受影响）；`useT`/`serverT`/`t(locale)`/`normalizeLocale` API 不变（`getFixedT` 绑定 locale） |
+| i18n 核心 | `src/lib/i18n/translate.ts` 手写点路径解析 | **i18next v26** | 消息包原样作 resources；`{var}` 单大括号插值（自定义 prefix/suffix）；`escapeValue:false`（React 文本节点已转义，避免双重转义）；缺 key 回退 key 本身、缺 var 保留占位符（n8n 模板 `&#123;&#123; $json.question &#125;&#125;` 不受影响）；`useT`/`serverT`/`t(locale)`/`normalizeLocale` API 不变（`getFixedT` 绑定 locale） |
 | LLM 客户端层 | `src/lib/llm/provider.ts` 手写 fetch + SSE 解析 | **Vercel AI SDK（`ai` + `@ai-sdk/openai`）** | `generateText`/`streamText`/`embed`/`embedMany`；图片消息 → AI SDK image part；`allowSystemInMessages:true`（generator 以 messages[0] 传 system）；`maxOutputTokens`（v7 命名）；usage 字段 `inputTokens`/`outputTokens`；HTTP 错误（带 statusCode）优雅降级、网络错误照常抛出；demo fallback 与 SSE 协议（`sources`/`token`/`done`）不变 |
 
 ### 架构解耦（随附修复，2026-08-13）
@@ -1051,7 +998,7 @@
 
 ### 验收标准与结果
 - **`npx tsc --noEmit`** ✅ 零错误；**`pnpm lint`** ✅ 零告警；**`pnpm test:unit`** ✅ 40 文件 / 292 测试全绿，覆盖率 lines 83.8% / branches 72.1%（门槛 70%/60%）。
-- **适配层新测试**：`totp.test.ts`（RFC 6238 附录 B 全 6 组向量，锁定 epoch 秒/位数/周期语义）、`translate.test.ts`（i18next 契约：点路径/插值/缺 key/缺 var/`{count}`/`{{ }}` 存活）、`layout.test.ts`（确定性/边界钳制/节点边上限/按 label 解析）、`provider.test.ts`（mock `ai`+`@ai-sdk/openai`：文本/系统消息/图片/HTTP 错误优雅降级/网络错误重抛/demo 模式/embeddings 回退）、`session.test.ts` 新增 wire-compat（旧格式 HS256 token 仍可验证）。
+- **适配层新测试**：`totp.test.ts`（RFC 6238 附录 B 全 6 组向量，锁定 epoch 秒/位数/周期语义）、`translate.test.ts`（i18next 契约：点路径/插值/缺 key/缺 var/`{count}`/`&#123;&#123; &#125;&#125;` 存活）、`layout.test.ts`（确定性/边界钳制/节点边上限/按 label 解析）、`provider.test.ts`（mock `ai`+`@ai-sdk/openai`：文本/系统消息/图片/HTTP 错误优雅降级/网络错误重抛/demo 模式/embeddings 回退）、`session.test.ts` 新增 wire-compat（旧格式 HS256 token 仍可验证）。
 - **smoke**：`test-chat-markdown.tsx` 24/24（hljs 断言）、`test-i18n-coverage.ts` 4/4（key 树一致 + 零残留中文）。
 - **向后兼容**：JWT 旧格式可验证（部署不停机）；i18n 消息包与 key 树未动（685 keys 原样加载）；SSE 事件名未改（集成测试断言不变）。
 

@@ -157,3 +157,29 @@ jobs:
             test-results/
             playwright-report/
           retention-days: 7
+
+  # ── 文档门禁：docs 站点构建（死链即失败）+ Frontmatter 校验 + OpenAPI 参考漂移 ──
+  docs:
+    name: Docs check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build docs site (dead links fail the build)
+        run: pnpm docs:build
+      - name: Validate Frontmatter metadata
+        run: npx tsx scripts/tools/check-docs-frontmatter.ts
+      - name: API reference drift check
+        run: |
+          npx tsx scripts/tools/gen-api-reference.ts
+          git diff --exit-code -- docs/api/reference.md

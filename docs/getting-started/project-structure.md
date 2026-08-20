@@ -1,3 +1,18 @@
+---
+title: 项目结构
+description: KnowledgeAI 目录组织与代码导览，帮助新成员快速定位代码
+type: explanation
+category: getting-started
+level: L1
+version: 1.0.0
+authors: [product-team]
+owner: 技术负责人
+reviewed_at: 2026-08-20
+review_interval: 180
+status: published
+applies_to: ">=1.2.0"
+---
+
 # 📁 项目结构
 
 > 本文档说明 KnowledgeAI 的目录组织，帮助新成员快速定位代码。
