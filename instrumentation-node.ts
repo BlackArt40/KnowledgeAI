@@ -9,6 +9,16 @@
 import { startQueue, stopQueue } from "@/lib/queue";
 import { log } from "./src/lib/obs/log";
 
+// P0-2 fail-fast: getAuthSecret() skips its throw during `next build`, so
+// production boot must assert the secret here - before any queue job can
+// sign / encrypt with the hardcoded dev fallback.
+if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
+  log.error("[instrumentation] AUTH_SECRET 未配置：生产环境拒绝启动");
+  throw new Error(
+    "AUTH_SECRET 未配置：生产环境拒绝启动（JWT 签名 / AES 加密 / 审计 HMAC 共用该密钥，缺省回退硬编码密钥可导致任意账号伪造与敏感数据解密）"
+  );
+}
+
 log.info("[instrumentation] Starting background queue worker...");
 startQueue();
 

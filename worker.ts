@@ -21,6 +21,13 @@ import { startQueue, stopQueue, isQueueExternal } from "@/lib/queue";
 import { log } from "./src/lib/obs/log";
 
 async function main() {
+  // P0-2 fail-fast, same rationale as instrumentation-node.ts: the worker
+  // signs webhook HMACs / audit entries with AUTH_SECRET in production.
+  if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
+    log.error("[worker] AUTH_SECRET 未配置：生产环境拒绝启动");
+    process.exit(1);
+  }
+
   if (!isQueueExternal()) {
     log.warn("[worker] REDIS_URL not set. Worker process is only useful with BullMQ (Redis). Exiting.");
     process.exit(0);
