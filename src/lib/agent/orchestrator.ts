@@ -14,9 +14,9 @@ import type {
 } from "./types";
 import type { RetrievedChunk } from "@/lib/rag/types";
 import { GraphBuilder, runGraph } from "./graph";
-import type { GraphState } from "./graph";
+import type { GraphState, GraphEvent } from "./graph";
 import { getTemplate } from "./templates";
-import type { TemplateId } from "./templates";
+import type { TemplateId, WorkflowTemplate } from "./templates";
 import { saveVersion } from "./store";
 
 export interface AgentEvent {
@@ -90,113 +90,20 @@ function buildGraph(templateId: TemplateId) {
     };
     state.steps.push(searcherStep);
 
-    const sectionChunks = new Map<string, RetrievedChunk[]>();
-    const citeKey = new Map<string, number>();
-    const citations: AgentCitation[] = [];
-    const kbId = state.kbId;
-    const topic = state.topic;
-    const externalResults = new Map<string, ExternalResult[]>();
+    // 1. Gather internal KB + external results for each outline section.
+    const { sectionChunks, externalResults, parallelExecuted } =
+      await gatherSources(state, SECTIONS, tpl.parallelSearch, emit);
 
-    // Determine which sources to query.
-    const hasKb = !!kbId;
-    const hasExternal = isExternalEnabled() || !hasKb; // external is always available (demo fallback)
-
-    if (hasKb) {
-      const kb = getKb(kbId!);
-      const topK = kb?.settings.topK ?? 5;
-
-      if (tpl.parallelSearch) {
-        await emit?.({ type: "parallel_start", nodeId: "searcher", targets: SECTIONS.map(s => s.id), detail: `${SECTIONS.length} sections in parallel` });
-        const results = await Promise.all(
-          SECTIONS.map((s) => retrieve(kbId!, `${topic} ${s.title}`, topK))
-        );
-        SECTIONS.forEach((s, i) => sectionChunks.set(s.id, results[i]));
-        await emit?.({ type: "parallel_end", nodeId: "searcher", targets: SECTIONS.map(s => s.id) });
-      } else {
-        for (const s of SECTIONS) {
-          const chunks = await retrieve(kbId!, `${topic} ${s.title}`, topK);
-          sectionChunks.set(s.id, chunks);
-        }
-      }
-    }
-
-    // External search (criterion #1: Agent 同时检索内部 KB + 外部 Web).
-    if (hasExternal) {
-      const extQuery = `${topic}`;
-      const extResults = await searchExternal(extQuery, { maxPerSource: 4, deepCrawlTopN: 0 });
-      externalResults.set("global", extResults);
-
-      // Also search per-section for more targeted external results.
-      if (tpl.parallelSearch) {
-        const sectionExt = await Promise.all(
-          SECTIONS.map((s) => searchExternal(`${topic} ${s.title}`, { maxPerSource: 3, deepCrawlTopN: 0 }))
-        );
-        SECTIONS.forEach((s, i) => {
-          const existing = externalResults.get(s.id) ?? [];
-          externalResults.set(s.id, [...existing, ...sectionExt[i]]);
-        });
-      }
-    }
+    // 2. Build deduplicated citations across KB + external sources.
+    const { citations, internalCount, externalCount } =
+      buildCitations(state, SECTIONS, sectionChunks, externalResults);
 
     await animateProgress(searcherStep, 1500);
 
-    // Build citations from internal KB chunks + external results.
-    for (const s of SECTIONS) {
-      // Internal KB citations.
-      const chunks = sectionChunks.get(s.id) ?? [];
-      for (const c of chunks.slice(0, 3)) {
-        const key = `${c.docId}:${c.chunkIndex}`;
-        if (!citeKey.has(key)) {
-          const n = citations.length + 1;
-          citeKey.set(key, n);
-          citations.push({
-            n, title: c.docName,
-            source: state.kbName ?? "知识库",
-            snippet: c.text.slice(0, 140),
-            score: c.score,
-          });
-        }
-      }
-      // External citations (criterion #2: source type + URL).
-      const extR = externalResults.get(s.id) ?? [];
-      for (const r of extR.slice(0, 2)) {
-        const key = r.id;
-        if (!citeKey.has(key)) {
-          const n = citations.length + 1;
-          citeKey.set(key, n);
-          citations.push({
-            n, title: r.title,
-            source: r.sourceType === "web" ? `🌐 ${r.url}` :
-                    r.sourceType === "arxiv" ? `📄 ArXiv: ${r.url}` :
-                    r.sourceType === "github" ? `🐙 GitHub: ${r.url}` : r.url,
-            snippet: r.snippet.slice(0, 140),
-            score: r.score,
-          });
-        }
-      }
-    }
-    // Also add global external results.
-    const globalExt = externalResults.get("global") ?? [];
-    for (const r of globalExt.slice(0, 3)) {
-      if (!citeKey.has(r.id)) {
-        const n = citations.length + 1;
-        citeKey.set(r.id, n);
-        citations.push({
-          n, title: r.title,
-          source: r.sourceType === "web" ? `🌐 ${r.url}` :
-                  r.sourceType === "arxiv" ? `📄 ArXiv: ${r.url}` :
-                  r.sourceType === "github" ? `🐙 GitHub: ${r.url}` : r.url,
-          snippet: r.snippet.slice(0, 140),
-          score: r.score,
-        });
-      }
-    }
-
-    const kbCount = citations.filter((c) => !c.source.startsWith("🌐") && !c.source.startsWith("📄") && !c.source.startsWith("🐙")).length;
-    const extCount = citations.length - kbCount;
-    searcherStep.detail = `共检索到 ${citations.length} 条引用来源（内部 ${kbCount} + 外部 ${extCount}）`;
+    searcherStep.detail =
+      `共检索到 ${citations.length} 条引用来源（内部 ${internalCount} + 外部 ${externalCount}）`;
     searcherStep.status = "done";
-    return { sectionChunks, citeKey, citations, parallelExecuted: tpl.parallelSearch };
+    return { sectionChunks, citeKey: state.citeKey, citations, parallelExecuted };
   });
 
   // Analyzer node
@@ -263,6 +170,118 @@ function buildGraph(templateId: TemplateId) {
   builder.addEdge("analyzer", "writer");
 
   return { graph: builder.build(), sections: SECTIONS, template: tpl };
+}
+
+// ── Searcher internals ─────────────────────────────────────────────────
+// Extracted from the "searcher" node so the graph reads as a stepwise
+// pipeline (gather → cite) instead of one ~115-line function mixing
+// retrieval, dedupe, formatting and counting at several abstraction levels.
+
+type Section = WorkflowTemplate["sections"][number];
+
+/** Fetch internal KB chunks + external web results for each outline section. */
+async function gatherSources(
+  state: AgentGraphState,
+  sections: Section[],
+  parallelSearch: boolean,
+  emit?: (e: GraphEvent) => Promise<void>
+): Promise<{
+  sectionChunks: Map<string, RetrievedChunk[]>;
+  externalResults: Map<string, ExternalResult[]>;
+  parallelExecuted: boolean;
+}> {
+  const hasKb = !!state.kbId;
+  const hasExternal = isExternalEnabled() || !hasKb; // external is always available (demo fallback)
+  const topic = state.topic;
+  const sectionChunks = new Map<string, RetrievedChunk[]>();
+  const externalResults = new Map<string, ExternalResult[]>();
+
+  if (hasKb) {
+    const kb = getKb(state.kbId!);
+    const topK = kb?.settings.topK ?? 5;
+
+    if (parallelSearch) {
+      await emit?.({ type: "parallel_start", nodeId: "searcher", targets: sections.map(s => s.id), detail: `${sections.length} sections in parallel` });
+      const results = await Promise.all(
+        sections.map((s) => retrieve(state.kbId!, `${topic} ${s.title}`, topK))
+      );
+      sections.forEach((s, i) => sectionChunks.set(s.id, results[i]));
+      await emit?.({ type: "parallel_end", nodeId: "searcher", targets: sections.map(s => s.id) });
+    } else {
+      for (const s of sections) {
+        const chunks = await retrieve(state.kbId!, `${topic} ${s.title}`, topK);
+        sectionChunks.set(s.id, chunks);
+      }
+    }
+  }
+
+  // External search (criterion #1: Agent 同时检索内部 KB + 外部 Web).
+  if (hasExternal) {
+    const globalResults = await searchExternal(`${topic}`, { maxPerSource: 4, deepCrawlTopN: 0 });
+    externalResults.set("global", globalResults);
+
+    // Also search per-section for more targeted external results.
+    if (parallelSearch) {
+      const sectionExt = await Promise.all(
+        sections.map((s) => searchExternal(`${topic} ${s.title}`, { maxPerSource: 3, deepCrawlTopN: 0 }))
+      );
+      sections.forEach((s, i) => {
+        const existing = externalResults.get(s.id) ?? [];
+        externalResults.set(s.id, [...existing, ...sectionExt[i]]);
+      });
+    }
+  }
+
+  return { sectionChunks, externalResults, parallelExecuted: parallelSearch };
+}
+
+/** Single source of truth for how a source type is rendered in citations. */
+function sourceLabel(sourceType: string, url: string): string {
+  return sourceType === "web" ? `🌐 ${url}` :
+         sourceType === "arxiv" ? `📄 ArXiv: ${url}` :
+         sourceType === "github" ? `🐙 GitHub: ${url}` : url;
+}
+
+/** Build deduplicated citations across internal KB + external results. */
+function buildCitations(
+  state: AgentGraphState,
+  sections: Section[],
+  sectionChunks: Map<string, RetrievedChunk[]>,
+  externalResults: Map<string, ExternalResult[]>
+): { citations: AgentCitation[]; internalCount: number; externalCount: number } {
+  const citations: AgentCitation[] = [];
+  const citeKey = state.citeKey;
+  let internalCount = 0;
+  let externalCount = 0;
+
+  const add = (
+    key: string, title: string, sourceType: string, label: string,
+    snippet: string, score: number
+  ): void => {
+    if (citeKey.has(key)) return;
+    const n = citations.length + 1;
+    citeKey.set(key, n);
+    // Count by the actual source type, not by emoji prefix heuristics.
+    citations.push({ n, title, source: sourceLabel(sourceType, label), snippet, score });
+    if (sourceType === "kb") internalCount += 1; else externalCount += 1;
+  };
+
+  for (const s of sections) {
+    // Internal KB citations.
+    for (const c of (sectionChunks.get(s.id) ?? []).slice(0, 3)) {
+      add(`${c.docId}:${c.chunkIndex}`, c.docName, "kb", state.kbName ?? "知识库", c.text.slice(0, 140), c.score);
+    }
+    // External citations (criterion #2: source type + URL).
+    for (const r of (externalResults.get(s.id) ?? []).slice(0, 2)) {
+      add(r.id, r.title, r.sourceType, r.url, r.snippet.slice(0, 140), r.score);
+    }
+  }
+  // Also add global external results.
+  for (const r of (externalResults.get("global") ?? []).slice(0, 3)) {
+    add(r.id, r.title, r.sourceType, r.url, r.snippet.slice(0, 140), r.score);
+  }
+
+  return { citations, internalCount, externalCount };
 }
 
 async function animateProgress(step: AgentStep, durationMs: number) {
