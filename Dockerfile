@@ -26,11 +26,16 @@ RUN pnpm build
 # Bundle the worker entrypoint into a standalone worker.js that resolves the
 # @/ path alias via tsconfig and marks bullmq/ioredis/prisma as external
 # (they are provided by the standalone node_modules at runtime).
+# @napi-rs/canvas is external too: bundling it would pull its native .node
+# binary into the bundle ("No loader is configured for .node files"), while
+# Next's standalone trace already ships it in node_modules for the worker's
+# dynamic import in src/lib/rag/ocr.ts.
 RUN pnpm exec esbuild worker.ts --bundle --platform=node --format=cjs \
     --outfile=worker.js \
     --alias:@=./src \
     --external:bullmq --external:ioredis --external:@prisma/client \
-    --external:@aws-sdk/client-s3 --external:@aws-sdk/s3-request-presigner
+    --external:@aws-sdk/client-s3 --external:@aws-sdk/s3-request-presigner \
+    --external:@napi-rs/canvas
 # Next 16 (Turbopack) standalone 输出会把整个项目源码一并复制（框架行为）。
 # 生成一个只含运行时文件的干净副本，runner 从它 COPY——直接把源码层带进
 # 镜像的话，后续 RUN rm 无法释放分层空间（镜像会大几百 MB）。
