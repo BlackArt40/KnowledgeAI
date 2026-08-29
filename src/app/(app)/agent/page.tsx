@@ -567,8 +567,8 @@ export default function AgentPage() {
                       <FileText className="h-3 w-3 text-muted-foreground" />
                       <span className="line-clamp-1 text-xs font-medium">{c.title}</span>
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-[11px] text-muted-foreground">{c.snippet}</p>
-                    <span className="mt-1 block text-[10px] text-muted-foreground">{c.source} · {t("page.agent.s75", { pct: (c.score * 100).toFixed(0) })}</span>
+                    <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{c.snippet}</p>
+                    <span className="mt-1 block text-xs text-muted-foreground">{c.source} · {t("page.agent.s75", { pct: (c.score * 100).toFixed(0) })}</span>
                   </div>
                 ))}
               </div>

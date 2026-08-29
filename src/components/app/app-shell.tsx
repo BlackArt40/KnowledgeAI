@@ -562,7 +562,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                   <p className="truncate text-sm font-medium">{n.title}</p>
                                 </div>
                                 <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
-                                <p className="mt-0.5 text-[11px] text-muted-foreground">{formatRelative(n.createdAt)}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">{formatRelative(n.createdAt)}</p>
                               </div>
                             </button>
                           );

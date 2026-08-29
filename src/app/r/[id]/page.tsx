@@ -136,7 +136,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
         </span>
         <h1 className="text-xl font-bold">{t("page.report-share.s0")}</h1>
         <p className="text-sm text-muted-foreground">{t("page.report-share.s1")}</p>
-        {pwdError && <p className="text-xs text-red-500">{t("page.report-share.s2")}</p>}
+        {pwdError && <p className="text-xs text-destructive">{t("page.report-share.s2")}</p>}
         <form
           className="flex w-full max-w-xs gap-2"
           onSubmit={(e) => {
@@ -224,8 +224,8 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
                   <FileText className="h-3 w-3 text-muted-foreground" />
                   <span className="line-clamp-1 text-xs font-medium">{c.title}</span>
                 </div>
-                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{c.snippet}</p>
-                <span className="mt-1 block break-all text-[10px] text-muted-foreground">{c.source}</span>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{c.snippet}</p>
+                <span className="mt-1 block break-all text-xs text-muted-foreground">{c.source}</span>
               </div>
             ))}
           </div>
@@ -248,7 +248,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
                   {c.citeN !== undefined && (
                     <Badge variant="secondary" className="h-4 px-1 text-[9px]">{t("page.report-share.s19", { n: c.citeN })}</Badge>
                   )}
-                  <span className="text-[10px] text-muted-foreground">{formatRelative(c.createdAt)}</span>
+                  <span className="text-xs text-muted-foreground">{formatRelative(c.createdAt)}</span>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-xs text-foreground/90">{c.text}</p>
               </div>

@@ -816,7 +816,7 @@ export default function ChatPage() {
             <Button
               variant="outline"
               size="sm"
-              className={cn("ml-2 h-8 gap-1.5", activeIsShared && "border-sky-500/40 text-sky-600")}
+              className={cn("ml-2 h-8 gap-1.5", activeIsShared && "border-sky-500/40 text-sky-700")}
               onClick={toggleShare}
               aria-label={activeIsShared ? t("page.chat.s19") : t("page.chat.s20")}
               title={activeIsShared ? t("page.chat.s21") : t("page.chat.s22")}
@@ -877,11 +877,11 @@ export default function ChatPage() {
                       <Library className="h-3.5 w-3.5 shrink-0 text-primary" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-medium">{r.name}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
+                        <span className="block truncate text-xs text-muted-foreground">
                           {r.desc || t("page.chat.s25")}
                         </span>
                       </span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {t("page.chat.s73", { terms: r.matched.join(t("page.chat.s77")) })}
                       </span>
                     </button>

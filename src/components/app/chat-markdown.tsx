@@ -158,7 +158,7 @@ function CodeBlock({ lang, code, children }: { lang: string; code: string; child
           {copied ? t("page.chat-markdown.s2") : t("page.chat-markdown.s3")}
         </button>
       </div>
-      <pre className="overflow-x-auto bg-zinc-950/90 p-3 font-mono text-[12.5px] leading-relaxed text-zinc-100">
+      <pre className="overflow-x-auto bg-zinc-950/90 p-3 font-mono text-[13px] leading-relaxed text-zinc-100">
         {children ?? code}
       </pre>
     </div>

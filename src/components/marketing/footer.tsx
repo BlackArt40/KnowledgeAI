@@ -13,25 +13,15 @@ function columns(t: (k: string) => string) {
     links: [
       { label: t("page.footer.s1"), href: "/#features" },
       { label: t("page.footer.s2"), href: "/#pricing" },
-      { label: t("page.footer.s3"), href: "/#features" },
-      { label: t("page.footer.s4"), href: "/#docs" },
+      { label: t("page.footer.s3"), href: "/#workflow" },
+      { label: t("page.footer.s4"), href: "/docs" },
     ],
   },
   {
     title: t("page.footer.s5"),
     links: [
-      { label: t("page.footer.s6"), href: "/#docs" },
-      { label: t("page.footer.s7"), href: "/#docs" },
-      { label: t("page.footer.s8"), href: "/#docs" },
-      { label: t("page.footer.s9"), href: "/#" },
-    ],
-  },
-  {
-    title: t("page.footer.s10"),
-    links: [
-      { label: t("page.footer.s11"), href: "/#" },
-      { label: t("page.footer.s12"), href: "/#" },
-      { label: t("page.footer.s13"), href: "/#" },
+      { label: t("page.footer.s6"), href: "/docs" },
+      { label: t("page.footer.s7"), href: "/docs" },
     ],
   },
   {
@@ -58,12 +48,19 @@ export function Footer() {
               {t("page.footer.s19")}
             </p>
             <div className="mt-5 flex items-center gap-2">
-              {[Github, Twitter, Linkedin].map((Icon, i) => (
+              {/* P1-4: 不再用 "#" 死链;指向平台主页(未挂真实账号);标签各不相同 */}
+              {[
+                { Icon: Github, href: "https://github.com/", label: "GitHub" },
+                { Icon: Twitter, href: "https://x.com/", label: "X (Twitter)" },
+                { Icon: Linkedin, href: "https://www.linkedin.com/", label: "LinkedIn" },
+              ].map(({ Icon, href, label }) => (
                 <a
-                  key={i}
-                  href="#"
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  aria-label="social"
+                  aria-label={label}
                 >
                   <Icon className="h-4 w-4" />
                 </a>

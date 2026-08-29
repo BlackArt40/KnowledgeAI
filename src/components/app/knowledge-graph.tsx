@@ -11,6 +11,7 @@ import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   computeGraphLayout,
   type GraphNodeData,
@@ -19,11 +20,21 @@ import {
 
 export type { GraphNodeData, GraphEdgeData };
 
-const TYPE_COLORS: Record<string, string> = {
-  person: "#6366f1",
-  organization: "#10b981",
-  concept: "#f59e0b",
-  event: "#ef4444",
+// P1-2: 图表颜色改为语义令牌(Tailwind fill/stroke/bg 工具类)。令牌自身的
+// 暗色/高对比覆盖会自动翻转(如 --success 浅色 32% ↔ 暗色 50%),因此实体色、
+// 连线、标签在两种主题与高对比模式下都保持可读,无需 dark: 变体。
+// 注意:类名必须是完整字面量,否则 Tailwind JIT 不会生成对应样式。
+const TYPE_FILL: Record<string, string> = {
+  person: "fill-primary",
+  organization: "fill-success",
+  concept: "fill-warning",
+  event: "fill-destructive",
+};
+const TYPE_DOT: Record<string, string> = {
+  person: "bg-primary",
+  organization: "bg-success",
+  concept: "bg-warning",
+  event: "bg-destructive",
 };
 
 const TYPE_KEYS: Record<string, string> = {
@@ -106,7 +117,7 @@ export function KnowledgeGraph({
         <div className="flex flex-wrap gap-1.5">
           {Object.entries(TYPE_KEYS).map(([type, key]) => (
             <Badge key={type} variant="outline" className="gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[type] }} />
+              <span className={cn("h-2 w-2 rounded-full", TYPE_DOT[type])} />
               {t(key)}
             </Badge>
           ))}
@@ -142,7 +153,7 @@ export function KnowledgeGraph({
                 <line
                   key={e.id}
                   x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                  stroke={active ? "#6366f1" : "#94a3b8"}
+                  className={active ? "stroke-primary" : "stroke-border/80"}
                   strokeWidth={active ? 2.5 : Math.min(3, 0.6 + e.weight * 0.5)}
                   opacity={active ? 1 : selected ? 0.12 : 0.35}
                 />
@@ -169,16 +180,15 @@ export function KnowledgeGraph({
                   />
                   <circle
                     r={radiusOf(n.mentions)}
-                    fill={TYPE_COLORS[n.type] ?? "#94a3b8"}
+                    className={cn(TYPE_FILL[n.type] ?? "fill-border", isSel ? "stroke-primary" : "stroke-border")}
                     fillOpacity={dim ? 0.2 : isNeighbor ? 0.9 : 0.75}
-                    stroke={isSel ? "#6366f1" : "#0f172a"}
                     strokeWidth={isSel ? 2 : 1}
                   />
                   <text
                     textAnchor="middle"
                     dy={radiusOf(n.mentions) + 12}
                     fontSize={n.label.length > 8 ? 9 : 11}
-                    fill={dim ? "#94a3b8" : "#1e293b"}
+                    className={dim ? "fill-muted-foreground" : "fill-foreground"}
                     style={{ pointerEvents: "none" }}
                   >
                     {n.label.length > 14 ? n.label.slice(0, 13) + "…" : n.label}
@@ -193,7 +203,7 @@ export function KnowledgeGraph({
       {selectedNode && (
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[selectedNode.type] }} />
+            <span className={cn("h-2.5 w-2.5 rounded-full", TYPE_DOT[selectedNode.type] ?? "bg-border")} />
             <span className="font-medium">{selectedNode.label}</span>
             <Badge variant="secondary" className="text-xs">{t(TYPE_KEYS[selectedNode.type] ?? "page.knowledge-graph.s16")}</Badge>
           </div>
