@@ -8,6 +8,7 @@ import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
+import { isEmailEnabled } from "@/lib/email";
 import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/rate-limit";
 import { getLogLevel, isLokiEnabled, lokiUrl } from "@/lib/obs/log";
 
@@ -77,6 +78,13 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
         ? `pino ${getLogLevel()} · Loki ${lokiUrl()}`
         : `pino ${getLogLevel()} · stdout（演示模式）`,
       envVars: ["LOG_LEVEL", "LOG_LOKI_URL", "LOG_REDACT_KEYS"],
+    },
+    {
+      id: "email",
+      label: "邮件发送",
+      enabled: isEmailEnabled(),
+      detail: isEmailEnabled() ? "Resend API（密码重置邮件）" : "演示模式（重置链接直接返回）",
+      envVars: ["RESEND_API_KEY", "EMAIL_FROM"],
     },
     {
       id: "external",

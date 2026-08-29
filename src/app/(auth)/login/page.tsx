@@ -252,7 +252,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <Label htmlFor="password">{t("page.login.s5")}</Label>
             <Link
-              href="/verify-email"
+              href="/forgot-password"
               className="text-xs font-medium text-primary hover:underline"
             >
               {t("page.login.s31")}

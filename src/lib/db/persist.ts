@@ -30,6 +30,13 @@ export async function persistUser(user: {
   locale?: string;
   /** P3-2: OAuth provider links (provider -> providerAccountId). */
   oauthLinks?: Record<string, string>;
+  /** P8: password reset token hash + expiry (epoch ms). */
+  passwordResetTokenHash?: string;
+  passwordResetExpires?: number;
+  /** P8: email verification state. */
+  emailVerifiedAt?: number;
+  verificationTokenHash?: string;
+  verificationExpires?: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();
@@ -50,6 +57,15 @@ export async function persistUser(user: {
       locale: user.locale ?? "zh-CN",
       // OAuth links: JSONB column; null keeps rows backwards compatible.
       oauthLinks: user.oauthLinks ?? null,
+      // P8: only the token HASH is persisted; null after use/expiry.
+      passwordResetTokenHash: user.passwordResetTokenHash ?? null,
+      passwordResetExpires: user.passwordResetExpires
+        ? new Date(user.passwordResetExpires)
+        : null,
+      // P8: email verification state (timestamp + token hash + expiry).
+      emailVerifiedAt: user.emailVerifiedAt ? new Date(user.emailVerifiedAt) : null,
+      verificationTokenHash: user.verificationTokenHash ?? null,
+      verificationExpires: user.verificationExpires ? new Date(user.verificationExpires) : null,
     };
     await db.user.upsert({
       where: { id: user.id },

@@ -32,6 +32,16 @@ model User {
   // (e.g. {"google":"1177...","github":"4821..."}). Null when the user has
   // no linked OAuth identity. OAuth-only accounts keep passwordHash null.
   oauthLinks       Json?
+  // P8: password reset - SHA-256 hash of the raw token + expiry (single-use).
+  // Only the hash is stored so a DB leak never exposes usable reset links.
+  passwordResetTokenHash String?
+  passwordResetExpires   DateTime?
+  // P8: email verification - verified timestamp + SHA-256 hash of the
+  // verification token + its expiry (single-use, 24h). Same token hygiene as
+  // the password-reset fields above.
+  emailVerifiedAt       DateTime?
+  verificationTokenHash String?
+  verificationExpires   DateTime?
 
   teamMemberships TeamMember[]
   apiKeys         ApiKey[]

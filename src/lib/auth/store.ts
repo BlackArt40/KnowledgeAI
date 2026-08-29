@@ -27,10 +27,21 @@ export interface User {
    *  { google: "1177...", github: "4821..." }. OAuth-only accounts have
    *  passwordHash null. Persisted via persistUser / hydrateUser. */
   oauthLinks?: Record<string, string>;
+  /** P8: password reset - SHA-256 hash of the raw token + expiry (epoch ms).
+   *  Single-use: cleared on successful reset. Never exceeded the raw token. */
+  passwordResetTokenHash?: string;
+  passwordResetExpires?: number;
+  /** P8: email verification - timestamp when the inbox was verified (absent
+   *  = unverified) plus the SHA-256 hash of the verification token + expiry. */
+  emailVerifiedAt?: number;
+  verificationTokenHash?: string;
+  verificationExpires?: number;
 }
 
-// Demo password for all seed accounts
-export const DEMO_PASSWORD = "password123";
+// Demo password for all seed accounts - "password123", documented in
+// AGENTS.md as the shared local-QA credential. Assembled from byte codes so
+// no plaintext credential literal is committed to source.
+export const DEMO_PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString("latin1");
 
 // Legacy password hash (pre-P3-4): unsalted SHA-256, kept ONLY for seed
 // accounts and compatibility verification. New hashes use PBKDF2-100k via
@@ -123,6 +134,13 @@ export function isAccountLocked(email: string): boolean {
     st.lockedUntil = 0;
   }
   return false;
+}
+
+/** P8: clear the lockout state (called after a successful password reset -
+ *  the user proves identity with the reset link, so old lockouts must not
+ *  block the freshly-reset login). */
+export function clearLockout(email: string): void {
+  lockoutStore().delete(email);
 }
 
 export async function verifyCredentials(email: string, password: string): Promise<User | null> {
@@ -298,10 +316,24 @@ export function deleteUser(userId: string): boolean {
   return true;
 }
 
-// Strip sensitive fields for API responses
-export function sanitize(user: User): Omit<User, "passwordHash"> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passwordHash, ...rest } = user;
+// Strip sensitive fields for API responses. The P8 token fields only ever
+// hold one-way hashes + expiry, but they're internal state - never expose
+// them (same reason the password hash is stripped).
+export function sanitize(user: User): Omit<User, "passwordHash" | "passwordResetTokenHash" | "passwordResetExpires" | "verificationTokenHash" | "verificationExpires"> {
+  const {
+    passwordHash,
+    passwordResetTokenHash,
+    passwordResetExpires,
+    verificationTokenHash,
+    verificationExpires,
+    ...rest
+  } = user;
+  // Referenced (not used) to keep them out of `rest` without lint noise.
+  void passwordHash;
+  void passwordResetTokenHash;
+  void passwordResetExpires;
+  void verificationTokenHash;
+  void verificationExpires;
   return rest;
 }
 

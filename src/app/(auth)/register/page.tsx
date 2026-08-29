@@ -51,7 +51,16 @@ export default function RegisterPage() {
         return;
       }
       if (data.token) localStorage.setItem("kai-token", data.token);
-      router.push("/dashboard");
+      // P8: if the registration route returned a verification link, go to
+      // the verify-email page instead of directly to the dashboard. The
+      // email is passed via query param so the verify page can show it.
+      if (data.needsVerification) {
+        const emailParam = encodeURIComponent(data.user?.email ?? email);
+        const demoToken = data.demoVerifyUrl ? `&demoUrl=${encodeURIComponent(data.demoVerifyUrl)}` : "";
+        router.push(`/verify-email?email=${emailParam}${demoToken}`);
+      } else {
+        router.push("/dashboard");
+      }
     } catch {
       setError(t("page.register.s6"));
     } finally {

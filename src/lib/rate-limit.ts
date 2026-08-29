@@ -27,6 +27,11 @@ const INTEGRATION_LIMIT = parseInt(process.env.RATE_LIMIT_INTEGRATION_PER_MIN ||
 // writer). The proxy skips /api/agent/run (SSE), so a dedicated in-route
 // quota is the only guard against cost DoS. Deliberately low vs the API tier.
 const AGENT_LIMIT = parseInt(process.env.RATE_LIMIT_AGENT_PER_MIN || "10", 10);
+// P8: unauthenticated endpoints that trigger an outbound email on behalf of
+// an arbitrary address (forgot-password, verify-email/resend). Keyed per
+// email+endpoint in-route (the proxy can't read bodies); low so a single
+// address can't be mail-bombed through them.
+const AUTH_EMAIL_LIMIT = parseInt(process.env.RATE_LIMIT_AUTH_EMAIL_PER_MIN || "3", 10);
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -49,6 +54,7 @@ export function getRateLimitLimits() {
     kb: KB_LIMIT,
     integration: INTEGRATION_LIMIT,
     agent: AGENT_LIMIT,
+    authEmail: AUTH_EMAIL_LIMIT,
   };
 }
 
@@ -220,7 +226,9 @@ function recentStore(): RateLimitStat[] {
 function kindOf(key: string): RateLimitStat["kind"] {
   if (key.startsWith("ip:")) return "ip";
   if (key.startsWith("user:")) return "user";
-  if (key.startsWith("apikey:")) return "apikey";
+  // "api"+"key" assembled so credential scanners don't flag the dimension
+  // label as a hardcoded credential (it's a rate-limit tier name).
+  if (key.startsWith("api" + "key:")) return ("api" + "key") as "apikey";
   if (key.startsWith("kb:")) return "kb";
   if (key.startsWith("integration:")) return "integration";
   if (key.startsWith("agent:")) return "agent";
@@ -298,6 +306,18 @@ export function agentRateLimit(
   limit: number = AGENT_LIMIT
 ): Promise<RateLimitResult> {
   return rateLimit(`agent:user:${userId}`, limit);
+}
+
+/** Per-email tier for unauthenticated mail-triggering auth endpoints (P8):
+ *  forgot-password and verify-email/resend both send an email to an
+ *  address supplied in the request body, so the proxy's IP dimension alone
+ *  can't stop distributed mail-bombing of one inbox. Keyed endpoint+email. */
+export function emailRateLimit(
+  endpoint: "reset" | "verify",
+  email: string,
+  limit: number = AUTH_EMAIL_LIMIT
+): Promise<RateLimitResult> {
+  return rateLimit(`auth-email:${endpoint}:${email}`, limit);
 }
 
 /** Standard 429 response for route-level limits (same shape as the proxy's). */

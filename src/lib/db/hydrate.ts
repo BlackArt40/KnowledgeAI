@@ -228,6 +228,24 @@ function hydrateUser(u: PrismaUser): void {
     locale: (u as unknown as { locale?: string | null }).locale ?? "zh-CN",
     // P3-2: OAuth provider links (provider -> providerAccountId).
     oauthLinks: (u as unknown as { oauthLinks?: Record<string, string> | null }).oauthLinks ?? undefined,
+    // P8: password reset state (hash + expiry). Absent on legacy rows.
+    passwordResetTokenHash:
+      (u as unknown as { passwordResetTokenHash?: string | null }).passwordResetTokenHash ?? undefined,
+    passwordResetExpires: (() => {
+      const e = (u as unknown as { passwordResetExpires?: Date | null }).passwordResetExpires;
+      return e ? e.getTime() : undefined;
+    })(),
+    // P8: email verification state. Absent on legacy rows.
+    emailVerifiedAt: (() => {
+      const e = (u as unknown as { emailVerifiedAt?: Date | null }).emailVerifiedAt;
+      return e ? e.getTime() : undefined;
+    })(),
+    verificationTokenHash:
+      (u as unknown as { verificationTokenHash?: string | null }).verificationTokenHash ?? undefined,
+    verificationExpires: (() => {
+      const e = (u as unknown as { verificationExpires?: Date | null }).verificationExpires;
+      return e ? e.getTime() : undefined;
+    })(),
   };
   store.users.set(u.id, user);
   store.emailIndex.set(u.email.toLowerCase(), u.id);

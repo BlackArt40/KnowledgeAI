@@ -1000,6 +1000,31 @@
       "s26": "{owner} · {docs} documents",
       "s27": "{name} ({role})"
     },
+    "forgot-password": {
+      "s0": "Reset your password",
+      "s1": "Enter your registered email and we'll send you a reset link.",
+      "s2": "Email",
+      "s3": "Send reset link",
+      "s4": "Back to sign in",
+      "s5": "Reset link sent",
+      "s6": "If that email is registered, you'll receive an email with a reset link. The link expires in 30 minutes and can only be used once.",
+      "s7": "Demo mode (no email service configured)",
+      "s8": "Submitting…"
+    },
+    "reset-password": {
+      "s0": "Set a new password",
+      "s1": "New password",
+      "s2": "Confirm new password",
+      "s3": "Confirm reset",
+      "s4": "Password reset",
+      "s5": "Your password has been updated. Every device has been signed out - please sign in again with the new password.",
+      "s6": "Go to sign in",
+      "s7": "The two passwords don't match",
+      "s8": "Submitting…",
+      "s9": "Invalid link",
+      "s10": "The reset link is missing or has already been used. Please request a new password reset.",
+      "s11": "Request a new link"
+    },
     "verify-email": {
       "s0": "Verify your email",
       "s1": "Resend ({s}s)",
@@ -1009,7 +1034,11 @@
       "s5": "I've verified — enter workspace",
       "s6": "Resend email",
       "s7": "Didn't get the email? Check your spam folder or",
-      "s8": "contact support"
+      "s8": "contact support",
+      "s9": "Demo mode (no email service configured)",
+      "s10": "Email verified",
+      "s11": "Your email has been verified.",
+      "s12": "Verification email resent"
     },
     "maintenance": {
       "s3": "Refresh page",

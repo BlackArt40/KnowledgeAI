@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { createUser, sanitize } from "@/lib/auth/store";
 import { getConfig } from "@/lib/admin/store";
 import { createToken } from "@/lib/auth/session";
+import { issueEmailVerification } from "@/lib/auth/email-verify";
 import { addSession, recordLogin } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
+import { isEmailEnabled } from "@/lib/email";
+import { authLink, demoLinksAllowed, enqueueEmailSend } from "@/lib/email/deliver";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/register { name, email, password }
@@ -48,7 +51,32 @@ export async function POST(req: Request) {
     name: result.name,
     role: result.role,
   }, 7 * 86400, { jti: sessions[0]?.id });
-  const res = NextResponse.json({ user: sanitize(result), token }, { status: 201 });
+
+  // P8: issue + deliver the email-verification link. This is a SOFT gate -
+  // signup fully succeeds (session issued) and verification proves inbox
+  // ownership as a trust signal. Demo mode (no mailer) returns the link in
+  // the response outside production (demoLinksAllowed - same enumeration
+  // reasoning as forgot-password; the just-registered caller is the account
+  // owner, but the gate keeps the rule uniform).
+  let needsVerification = false;
+  let demoVerifyUrl: string | undefined;
+  const verifyToken = issueEmailVerification(result.email);
+  if (verifyToken) {
+    needsVerification = true;
+    const verifyUrl = authLink(req, "/verify-email", verifyToken);
+    if (!isEmailEnabled()) {
+      if (demoLinksAllowed()) {
+        demoVerifyUrl = verifyUrl;
+      }
+    } else {
+      enqueueEmailSend({ to: result.email, url: verifyUrl, kind: "verify" });
+    }
+  }
+
+  const res = NextResponse.json(
+    { user: sanitize(result), token, needsVerification, ...(demoVerifyUrl ? { demoVerifyUrl } : {}) },
+    { status: 201 }
+  );
   res.cookies.set("kai-token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

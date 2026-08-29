@@ -221,11 +221,65 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
   }
 };
 
+// ── Email Delivery Handler ────────────────────────────────────────────────
+//
+// Sends ONE email (password-reset link or email-verification link, P8).
+// Enqueued by the auth routes so requests never block on the SMTP/API call.
+// Queue retries (3 attempts, exponential backoff - memory mode; BullMQ retry
+// + DLQ with Redis) provide the reliability layer:
+//   - retryable failures (network error / 429 / 5xx) return `ok:false` so the
+//     queue backs off and retries;
+//   - non-retryable failures (4xx: invalid sender, rejected recipient) will
+//     never succeed on retry - report + mark completed to avoid wasted attempts.
+// Payload: { to: string, url: string, kind: "reset" | "verify", traceId?: string }
+
+const emailSendHandler: JobHandler = async (payload) => {
+  const to = payload.to as string;
+  const url = payload.url as string;
+  const kind = payload.kind === "verify" ? "verify" : "reset";
+  if (!to || !url) return { ok: true, data: { skipped: "missing-params" } };
+
+  const { log, redactText } = await import("@/lib/obs/log");
+  const { isEmailEnabled, sendResetEmail, sendVerificationEmail } = await import("@/lib/email");
+  const { runWithTraceId } = await import("@/lib/obs/trace");
+  const { reportError } = await import("@/lib/obs/errors");
+
+  // Unconfigured transport: nothing to retry. (The routes only enqueue when
+  // the transport is configured, but a worker may boot before env lands.)
+  if (!isEmailEnabled()) {
+    log.warn({ to }, "[queue] email-send skipped: mailer not configured");
+    return { ok: true, data: { skipped: "no-mailer" } };
+  }
+
+  const attempt = () => (kind === "verify" ? sendVerificationEmail(to, url) : sendResetEmail(to, url));
+  try {
+    const r = await runWithTraceId(payload.traceId as string | undefined, `email-send:${kind}`, attempt);
+    if (r.ok) {
+      log.info({ to, kind, code: r.code }, "[queue] email-send ok");
+      return { ok: true };
+    }
+    if (r.retryable) {
+      // Transient: the queue retries with backoff up to maxAttempts.
+      log.warn({ to, kind, err: redactText(r.reason) }, "[queue] email-send transient failure, will retry");
+      return { ok: false, error: r.reason };
+    }
+    // Permanent (e.g. 4xx): report and dead-letter without retrying.
+    log.error({ to, kind, err: redactText(r.reason) }, "[queue] email-send permanent failure");
+    reportError(new Error(r.reason), { source: "queue", context: `email-send ${to}` });
+    return { ok: true, data: { skipped: "non-retryable" } };
+  } catch (err) {
+    log.error({ to, kind, err }, "[queue] email-send unexpected error");
+    reportError(err, { source: "queue", context: `email-send ${to}` });
+    return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+};
+
 /** Register all job handlers with the given queue instance. */
 export function registerAllHandlers(queue: JobQueue): void {
   queue.registerHandler("doc-process", docProcessHandler);
   queue.registerHandler("agent-run", agentRunHandler);
   queue.registerHandler("index-cleanup", indexCleanupHandler);
   queue.registerHandler("webhook-deliver", webhookDeliverHandler);
-  log.info("[queue] Handlers registered: doc-process, agent-run, index-cleanup, webhook-deliver");
+  queue.registerHandler("email-send", emailSendHandler);
+  log.info("[queue] Handlers registered: doc-process, agent-run, index-cleanup, webhook-deliver, email-send");
 }
