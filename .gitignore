@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# the template IS the env reference (AGENTS.md) - commit it
+!.env.example
 
 # vercel
 .vercel
@@ -80,3 +82,8 @@ __pycache__/
 /.vitepress/cache/
 # vitepress build generates timestamped config shims - never commit them
 /.vitepress/*.timestamp-*.mjs
+
+# agent tooling state / scratch artifacts (session-local, never source)
+.mimosa/
+.workbuddy/
+_tmp_*
