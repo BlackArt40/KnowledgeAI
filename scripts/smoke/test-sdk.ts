@@ -9,9 +9,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -37,7 +39,7 @@ async function main() {
   // ── 0. 准备: 登录 + API key ──────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
   const login = await req("POST", "/api/auth/login", {
-    body: { email: "owner@knowledgeai.dev", password: "password123" },
+    body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD },
   });
   const token = login.data?.token;
   check("login: owner token", !!token);
@@ -57,31 +59,20 @@ async function main() {
   console.log("\n── 1. JavaScript SDK ──");
   const jsSdk = join(ROOT, "sdk", "javascript", "kai-sdk.mjs");
   check("js sdk file exists", existsSync(jsSdk));
-  const jsScript = `
-    import { KnowledgeAI } from ${JSON.stringify(`file://${jsSdk}`)};
-    const kai = new KnowledgeAI({ apiKey: ${JSON.stringify(apiKey)}, baseUrl: ${JSON.stringify(BASE)} });
-    const me = await kai.me();
-    if (!me.user?.id) throw new Error("me failed: " + JSON.stringify(me));
-    const list = await kai.listKnowledgeBases();
-    if (!Array.isArray(list.kbs)) throw new Error("list failed");
-    const created = await kai.createKnowledgeBase({ name: "SDK JS 测试库" });
-    if (!created.kb?.id) throw new Error("create failed");
-    let tokens = "";
-    const done = await kai.ask(${JSON.stringify(kbId)}, "介绍一下这个知识库的内容", { onToken: (t) => (tokens += t) });
-    if (!done.conversationId) throw new Error("ask failed: " + JSON.stringify(done));
-    if (tokens.length < 1) throw new Error("no tokens");
-    const task = await kai.runAgent("一句话总结：大模型的发展", {});
-    if (!task || task.status !== "done") throw new Error("agent failed: " + JSON.stringify(task));
-    const whs = await kai.listWebhooks();
-    if (!Array.isArray(whs.webhooks)) throw new Error("webhooks failed");
-    const wh = await kai.createWebhook({ name: "sdk", url: "https://example.com/hook", events: ["kb.ready"] });
-    if (!wh.webhook?.id) throw new Error("webhook create failed");
-    await kai.deleteWebhook(wh.webhook.id);
-    console.log("JS_OK me=" + me.user.id + " kbs=" + list.kbs.length + " tokens=" + tokens.length + " task=" + task.status);
-  `;
+  // Fixed, committed exercise scripts (no interpreter input from here) -
+  // all runtime config flows through the child env, never through
+  // interpolated codegen.
+  const SMOKE_DIR = dirname(fileURLToPath(import.meta.url));
+  const sdkEnv = {
+    ...process.env,
+    KAI_SDK_PATH: `file://${jsSdk}`,
+    KAI_BASE_URL: BASE,
+    KAI_KB_ID: kbId,
+    KAI_API_KEY: apiKey,
+  };
   try {
-    const out = execFileSync("node", ["--input-type=module", "-e", jsScript], {
-      encoding: "utf-8", timeout: 120_000,
+    const out = execFileSync("node", [join(SMOKE_DIR, "sdk-smoke-js.mjs")], {
+      encoding: "utf-8", timeout: 120_000, env: sdkEnv,
     });
     check("js sdk: full flow", out.includes("JS_OK"), out.trim().slice(-200));
   } catch (e) {
@@ -92,32 +83,11 @@ async function main() {
   console.log("\n── 2. Python SDK ──");
   const pySdk = join(ROOT, "sdk", "python", "kai_sdk.py");
   check("py sdk file exists", existsSync(pySdk));
-  const pyScript = `
-import sys
-sys.path.insert(0, ${JSON.stringify(join(ROOT, "sdk", "python"))})
-from kai_sdk import KnowledgeAI
-kai = KnowledgeAI(${JSON.stringify(apiKey)}, base_url=${JSON.stringify(BASE)})
-me = kai.me()
-assert me["user"]["id"], "me failed"
-kbs = kai.list_knowledge_bases()
-assert isinstance(kbs["kbs"], list), "list failed"
-created = kai.create_knowledge_base("SDK Py 测试库")
-assert created["kb"]["id"], "create failed"
-tokens = []
-done = kai.ask(${JSON.stringify(kbId)}, "介绍一下这个知识库的内容", on_token=tokens.append)
-assert done["conversationId"], "ask failed"
-assert len(tokens) > 0, "no tokens"
-task = kai.run_agent("一句话总结：大模型的发展")
-assert task and task["status"] == "done", "agent failed"
-whs = kai.list_webhooks()
-assert isinstance(whs["webhooks"], list), "webhooks failed"
-wh = kai.create_webhook("https://example.com/hook", ["kb.ready"], name="sdk")
-assert wh["webhook"]["id"], "webhook create failed"
-kai.delete_webhook(wh["webhook"]["id"])
-print("PY_OK me=" + me["user"]["id"] + " kbs=" + str(len(kbs["kbs"])) + " tokens=" + str(len(tokens)) + " task=" + task["status"])
-`;
   try {
-    const out = execFileSync("python3", ["-c", pyScript], { encoding: "utf-8", timeout: 120_000 });
+    const out = execFileSync("python3", [join(SMOKE_DIR, "sdk-smoke-py.py")], {
+      encoding: "utf-8", timeout: 120_000,
+      env: { ...sdkEnv, KAI_SDK_DIR: join(ROOT, "sdk", "python") },
+    });
     check("py sdk: full flow", out.includes("PY_OK"), out.trim().slice(-200));
   } catch (e) {
     check("py sdk: full flow", false, String(e.message || e).slice(0, 300));

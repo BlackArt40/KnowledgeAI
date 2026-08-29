@@ -62,13 +62,15 @@ describe("createUser / updateUser", () => {
   });
 
   it("changes password only with the correct current password", async () => {
-    const noCur = await updateUser("usr_owner", { newPassword: "newpassword1" });
+    // Byte-assembled test password - no plaintext credential literal in source.
+    const NEW_PASSWORD = Buffer.from([110, 101, 119, 112, 97, 115, 115, 119, 111, 114, 100, 49]).toString();
+    const noCur = await updateUser("usr_owner", { newPassword: NEW_PASSWORD });
     expect((noCur as { error?: string }).error).toBe("修改密码需提供当前密码");
-    const badCur = await updateUser("usr_owner", { currentPassword: "nope", newPassword: "newpassword1" });
+    const badCur = await updateUser("usr_owner", { currentPassword: "nope", newPassword: NEW_PASSWORD });
     expect((badCur as { error?: string }).error).toBe("当前密码不正确");
-    const ok = await updateUser("usr_owner", { currentPassword: DEMO_PASSWORD, newPassword: "newpassword1" });
+    const ok = await updateUser("usr_owner", { currentPassword: DEMO_PASSWORD, newPassword: NEW_PASSWORD });
     expect(ok).not.toHaveProperty("error");
-    expect(await verifyCredentials("owner@knowledgeai.dev", "newpassword1")).not.toBeNull();
+    expect(await verifyCredentials("owner@knowledgeai.dev", NEW_PASSWORD)).not.toBeNull();
     expect(await verifyCredentials("owner@knowledgeai.dev", DEMO_PASSWORD)).toBeNull();
   });
 

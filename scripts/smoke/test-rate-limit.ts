@@ -7,7 +7,10 @@
 // kb:<id>), so no window reset waits are needed between tiers.
 // Expected env (see .env.example): anon < user and kb < user limits.
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -74,7 +77,7 @@ async function main() {
 
   // ── 0. Login helpers ──────────────────────────────────────────────────
   async function login(email: string): Promise<string> {
-    const r = await req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    const r = await req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
     if (!r.data?.token) throw new Error(`login failed for ${email}: ${r.status} ${JSON.stringify(r.data)}`);
     return r.data.token;
   }

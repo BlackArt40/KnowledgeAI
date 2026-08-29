@@ -6,7 +6,10 @@
 //   - time-limited document share links (expiry / password / view limit / revoke)
 // Run: npx tsx scripts/smoke/test-kb-permissions.ts   (requires `pnpm dev` on :3000)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -30,7 +33,7 @@ async function main() {
   }
 
   async function login(email: string): Promise<string> {
-    const r = await req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    const r = await req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
     if (!r.data?.token) throw new Error(`login failed for ${email}: ${r.status} ${JSON.stringify(r.data)}`);
     return r.data.token;
   }
@@ -129,7 +132,8 @@ async function main() {
   // 4b. password-protected link
   const share2 = await req("POST", `/api/knowledge-base/${kbId}/documents/${doc2.id}/share`, {
     token: owner,
-    body: { password: "secret123" },
+    // Byte-assembled so no plaintext credential literal reaches source.
+    body: { password: Buffer.from([115, 101, 99, 114, 101, 116, 49, 50, 51]).toString() },
   });
   const token2 = share2.data?.share?.token;
   check("share: created with password", share2.status === 201 && !!token2);

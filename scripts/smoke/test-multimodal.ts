@@ -11,8 +11,10 @@
 
 import { createCanvas } from "@napi-rs/canvas";
 import { writeFileSync } from "node:fs";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -71,7 +73,7 @@ async function main() {
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
   const login = await req("POST", "/api/auth/login", {
-    body: { email: "owner@knowledgeai.dev", password: "password123" },
+    body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD },
   });
   const token = login.data?.token;
   check("login: owner token", !!token);

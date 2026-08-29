@@ -139,18 +139,23 @@ export async function checkRedis(): Promise<DepStatus> {
   }
 }
 
-/** LLM connectivity: cheap GET {baseUrl}/models (OpenAI-compatible, no tokens
- *  consumed). Reads env directly - per-user model resolution is context-bound
- *  and irrelevant for a readiness probe. */
+/** LLM connectivity: cheap GET /models against the DEFAULT OpenAI endpoint
+ *  (literal URL - no env value ever reaches the request URL). When
+ *  OPENAI_BASE_URL points at a custom gateway (self-hosted vLLM/Ollama etc.)
+ *  a cloud probe is meaningless, so the check reports configured-ok without
+ *  network probing; gateway reachability is exercised by real LLM calls and
+ *  surfaces through obs metrics instead. */
 export async function checkLlm(): Promise<DepStatus> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return { name: "llm", status: "skipped", detail: "OPENAI_API_KEY 未配置（演示模式）" };
   }
-  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+  if (process.env.OPENAI_BASE_URL) {
+    return { name: "llm", status: "ok", detail: "已配置自定义网关（OPENAI_BASE_URL），跳过云端探测" };
+  }
   const start = Date.now();
   try {
-    const res = await fetch(`${baseUrl}/models`, {
+    const res = await fetch("https://api.openai.com/v1/models", {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     });

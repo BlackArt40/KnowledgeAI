@@ -6,7 +6,7 @@ KnowledgeAI Python SDK (P7-1) - zero dependencies (stdlib only).
 Usage:
     from kai_sdk import KnowledgeAI, KnowledgeAIError
 
-    kai = KnowledgeAI(api_key="kai_sk_...", base_url="http://localhost:3000")
+    kai = KnowledgeAI(api_key=YOUR_API_KEY, base_url="http://localhost:3000")
     data = kai.list_knowledge_bases()
     result = kai.ask("kb_xxx", "产品支持哪些格式？", on_token=lambda t: print(t, end=""))
 """
@@ -29,8 +29,19 @@ class KnowledgeAIError(Exception):
 
 class KnowledgeAI:
     def __init__(self, api_key, base_url="http://localhost:3000", timeout=60):
+        # Pin the base URL to an http(s) origin: parse, validate the scheme
+        # and port, rebuild from components - the raw argument never reaches
+        # a request URL unvalidated.
+        from urllib.parse import urlparse
+        u = urlparse(base_url)
+        if u.scheme not in ("http", "https") or not u.hostname:
+            raise KnowledgeAIError("base_url must be an http(s) URL: %r" % base_url)
+        port = int(u.port) if u.port else (443 if u.scheme == "https" else 80)
+        if not 1 <= port <= 65535:
+            raise KnowledgeAIError("base_url port out of range: %r" % base_url)
+        host_port = u.hostname if port in (80, 443) else "%s:%d" % (u.hostname, port)
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
+        self.base_url = "%s://%s%s" % (u.scheme, host_port, u.path.rstrip("/"))
         self.timeout = timeout
 
     # ── internal ──────────────────────────────────────────────────────────

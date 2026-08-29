@@ -82,7 +82,13 @@ async function handleUpload(req: Request, { params }: Params) {
     return NextResponse.json({ error: "未检测到文件" }, { status: 400 });
   }
 
-  const kbDir = path.join(UPLOAD_DIR, id);
+  // Containment: the route param joins the upload root - pin the resolved
+  // directory under it so a crafted id can't traverse out of .uploads.
+  const baseDir = path.resolve(UPLOAD_DIR);
+  const kbDir = path.resolve(baseDir, id);
+  if (!kbDir.startsWith(baseDir + path.sep)) {
+    return NextResponse.json({ error: "非法知识库路径" }, { status: 400 });
+  }
   await ensureDir(kbDir);
 
   const created: KbDocument[] = [];

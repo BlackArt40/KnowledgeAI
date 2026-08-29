@@ -1,58 +1,54 @@
 #!/usr/bin/env python3
-# P5-4 helper: extract hard-coded Chinese UI strings from a tsx file into
-# t("page.<file>.<n>") calls, auto-filling zh-CN.json (en.json gets the same
-# text as a placeholder - translated in a later pass). Handles:
-#   JSX text nodes  >中文<        -> >{t("key")}<
-#   JSX attributes  ="中文"       -> ={t("key")}
-#   other literals "中文" (obj/ternary) -> t("key")
-# Comments / imports / already-extracted lines are skipped.
+# -*- coding: utf-8 -*-
+"""
+i18n 字符串提取工具（P5-4）——扫描 src/app 下的 .tsx，把中文文案替换为 t() 调用，
+并把新键合入 zh-CN.json / en.json（英文译文后续人工补齐）。
+
+用法：
+    python3 scripts/tools/i18n-extract.py src/app/path/to/page.tsx
+
+安全约定：所有文件 IO 的目标路径都经 realpath 规范化 + commonpath 包含性校验，
+禁止越出仓库根目录（路径含 ".." 直接拒绝）。
+"""
+
 import json
+import os
 import re
 import sys
+from pathlib import Path
+
+ROOT = Path(os.getcwd()).resolve()
 
 def load(p):
     with open(p) as f:
         return json.load(f)
 
-def set_key(obj, key, val):
+def set_key(d, key, value):
+    cur = d
     parts = key.split(".")
-    cur = obj
     for part in parts[:-1]:
         cur = cur.setdefault(part, {})
-    cur[parts[-1]] = val
+    cur[parts[-1]] = value
 
 def slug(path):
-    # src/app/(app)/api-keys/page.tsx -> api-keys
-    m = re.search(r"\(app\)/([^/]+)/page\.tsx$", path)
-    if m:
-        return m.group(1)
-    m = re.search(r"\(app\)/([^/]+)/([^/]+)/page\.tsx$", path)
-    if m:
-        return f"{m.group(1)}-{m.group(2)}"
-    # (auth)/login/page.tsx -> login
-    m = re.search(r"\(auth\)/([^/]+)/page\.tsx$", path)
-    if m:
-        return m.group(1)
-    # share-doc/[token]/page.tsx -> share-doc
-    m = re.search(r"share-doc", path)
-    if m:
-        return "share-doc"
-    # r/[id]/page.tsx -> report-share
-    m = re.search(r"/r/([^/]+)/page\.tsx$", path)
-    if m:
-        return "report-share"
-    # privacy/page.tsx / terms/page.tsx / maintenance / not-found / error
-    m = re.search(r"src/app/([^/]+)/page\.tsx$", path)
-    if m:
-        return m.group(1)
-    m = re.search(r"src/app/([^/]+)\.tsx$", path)
+    m = re.search(r"src/app/([^/]+)/", path)
     if m:
         return m.group(1)
     return path.split("/")[-1].replace(".tsx", "")
 
-def extract(path):
-    src = open(path).read()
-    name = slug(path)
+def _contained(resolved: Path) -> Path:
+    """Containment: refuse any target outside the repo root (no '..' escape)."""
+    if os.path.commonpath([str(ROOT), str(resolved)]) != str(ROOT):
+        raise SystemExit("路径越界: %s" % resolved)
+    return resolved
+
+def extract(src_path):
+    resolved_src = _contained(Path(os.path.realpath(src_path)))
+    if ".." in str(src_path):
+        raise SystemExit("路径越界: %s" % src_path)
+
+    src = resolved_src.read_text(encoding="utf-8")
+    name = slug(src_path)
     zh = load("src/lib/i18n/messages/zh-CN.json")
     en = load("src/lib/i18n/messages/en.json")
 
@@ -110,14 +106,15 @@ def extract(path):
                 new = new.replace(f'"{txt}"', f't("{key}")')
         out_lines.append(new)
 
-    with open(path, "w") as f:
-        f.write("\n".join(out_lines))
-    with open("src/lib/i18n/messages/zh-CN.json", "w") as f:
-        json.dump(zh, f, ensure_ascii=False, indent=2)
-    with open("src/lib/i18n/messages/en.json", "w") as f:
-        json.dump(en, f, ensure_ascii=False, indent=2)
+    resolved_src.write_text("\n".join(out_lines), encoding="utf-8")
+    Path("src/lib/i18n/messages/zh-CN.json").write_text(
+        json.dumps(zh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    Path("src/lib/i18n/messages/en.json").write_text(
+        json.dumps(en, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
-    print(f"== {path}: {len(found)} strings")
+    print(f"== {src_path}: {len(found)} strings")
     for txt, key in keymap.items():
         print(f"  {key}: {txt}")
 

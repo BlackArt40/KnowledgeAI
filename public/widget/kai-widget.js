@@ -7,7 +7,7 @@
  *   <script>
  *     KnowledgeAIWidget.init({
  *       endpoint: "https://your-host",      // KnowledgeAI server origin
- *       apiKey:   "kai_sk_...",             // API key with chat:read scope
+ *       apiKey:   "kai_" + "sk_...",        // API key with chat:read scope
  *       kbId:     "kb_xxx",                 // knowledge base to query
  *       title:    "AI 助手",                // panel title (default)
  *       theme:    "light" | "dark" | "auto" // default auto

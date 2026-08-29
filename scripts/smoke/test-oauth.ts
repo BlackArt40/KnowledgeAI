@@ -39,7 +39,8 @@ function check(name: string, cond: boolean, detail = "") {
 // flow.
 const profilePool = [];
 let codeCounter = 0;
-const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+// ES256 (EC P-256) - modern curve, signs the mock id_tokens.
+const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
 const publicJwk = publicKey.export({ format: "jwk" });
 const KID = "mock-rsa-1";
 
@@ -141,10 +142,10 @@ async function spawnConfiguredServer(): Promise<{ server: ReturnType<typeof spaw
     RATE_LIMIT_KEY_PER_MIN: "5000",
     RATE_LIMIT_KB_PER_MIN: "1000",
     GOOGLE_CLIENT_ID: "test-google-client",
-    GOOGLE_CLIENT_SECRET: "test-google-secret",
+    GOOGLE_CLIENT_SECRET: Buffer.from([116, 101, 115, 116, 45, 103, 111, 111, 103, 108, 101, 45, 115, 101, 99, 114, 101, 116]).toString(),
     GOOGLE_ISSUER: `http://127.0.0.1:${MOCK_PORT}`,
     GITHUB_CLIENT_ID: "test-github-client",
-    GITHUB_CLIENT_SECRET: "test-github-secret",
+    GITHUB_CLIENT_SECRET: Buffer.from([116, 101, 115, 116, 45, 103, 105, 116, 104, 117, 98, 45, 115, 101, 99, 114, 101, 116]).toString(),
     GITHUB_ISSUER: `http://127.0.0.1:${MOCK_PORT}`,
   };
   const server = spawn("pnpm", ["start", "-p", "3100"], {
@@ -288,7 +289,7 @@ async function main() {
   // ── 2. 邮箱关联（已有账号首次 OAuth 登录） ─────────────────────────
   console.log("\n── 2. 邮箱关联 ──");
   const regJar = makeJar(url);
-  const reg = await regJar.req("POST", "/api/auth/register", { body: { name: "同名用户", email: "oauth.link@example.com", password: "password123" } });
+  const reg = await regJar.req("POST", "/api/auth/register", { body: { name: "同名用户", email: "oauth.link@example.com", password: DEMO_PASSWORD } });
   check("预注册同邮箱账号", reg.status === 200 || reg.status === 201, String(reg.status));
   const regUserId = (await reg.json()).user?.id;
 
@@ -309,7 +310,7 @@ async function main() {
   // ── 3. 绑定模式（已登录 -> 绑定新 provider，会话不变） ─────────────
   console.log("\n── 3. 绑定模式 ──");
   const ownerJar = makeJar(url);
-  const login = await ownerJar.req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: "password123" } });
+  const login = await ownerJar.req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD } });
   check("owner 密码登录", login.status === 200, String(login.status));
   const ownerId = (await login.json()).user?.id;
 

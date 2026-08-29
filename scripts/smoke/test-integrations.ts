@@ -15,9 +15,12 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+// Local-only origin (validated port, no other URL component honored).
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -44,7 +47,7 @@ async function main() {
   };
 
   const login = await req("POST", "/api/auth/login", {
-    body: { email: "owner@knowledgeai.dev", password: "password123" },
+    body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD },
   });
   const token = login.data?.token;
   check("login: owner token", !!token);
@@ -159,7 +162,7 @@ async function main() {
     const login3100 = await fetch("http://localhost:3100/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "owner@knowledgeai.dev", password: "password123" }),
+      body: JSON.stringify({ email: "owner@knowledgeai.dev", password: DEMO_PASSWORD }),
     }).then((r) => r.json());
     const kbs3100 = await fetch("http://localhost:3100/api/v1/knowledge-bases", {
       headers: { Authorization: `Bearer ${login3100.token}` },

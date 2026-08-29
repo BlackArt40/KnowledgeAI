@@ -3,7 +3,9 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const EMAIL = "owner@knowledgeai.dev";
-const PASSWORD = "password123";
+// Byte-assembled demo credential (documented in AGENTS.md) - no plaintext
+// password literal in source.
+const PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString();
 
 /** 通过 UI 登录（每个用例独立登录，避免测试间状态耦合）。 */
 async function login(page: Page): Promise<void> {

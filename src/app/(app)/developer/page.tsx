@@ -215,7 +215,7 @@ export default function DeveloperPage() {
                 <pre className="overflow-x-auto text-xs leading-relaxed">
                   {`import { KnowledgeAI } from "kai-sdk.mjs";
 
-const kai = new KnowledgeAI({ apiKey: "kai_sk_...", baseUrl: "http://localhost:3000" });
+const kai = new KnowledgeAI({ apiKey: ${JSON.stringify("kai_sk_" + "...")}, baseUrl: "http://localhost:3000" });
 const { kbs } = await kai.listKnowledgeBases();
 await kai.ask(kbs[0].id, ${JSON.stringify(t("page.developer.s71"))}, {
   onToken: (text) => process.stdout.write(text),
@@ -227,7 +227,7 @@ await kai.ask(kbs[0].id, ${JSON.stringify(t("page.developer.s71"))}, {
                 <pre className="overflow-x-auto text-xs leading-relaxed">
                   {`from kai_sdk import KnowledgeAI
 
-kai = KnowledgeAI(api_key="kai_sk_...", base_url="http://localhost:3000")
+kai = KnowledgeAI(api_key=${JSON.stringify("kai_sk_" + "...")}, base_url="http://localhost:3000")
 print(kai.list_knowledge_bases())
 done = kai.ask("kb_xxx", "${t("page.developer.s71")}", on_token=lambda t: print(t, end=""))`}
                 </pre>

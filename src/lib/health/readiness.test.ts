@@ -18,6 +18,7 @@ const env = process.env;
 afterEach(() => {
   process.env = { ...env };
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 beforeEach(() => {
@@ -71,13 +72,24 @@ describe("degraded branches (configured but unreachable)", () => {
     expect(r.detail).toBeTruthy();
   }, 15000);
 
-  it("checkLlm degrades when the base URL is unreachable", async () => {
+  it("checkLlm reports configured-ok without probing a custom gateway", async () => {
     vi.stubEnv("OPENAI_API_KEY", "sk-test-123");
     vi.stubEnv("OPENAI_BASE_URL", "http://127.0.0.1:59999/v1");
     const r = await checkLlm();
+    expect(r.status).toBe("ok");
+    expect(r.detail).toContain("自定义网关");
+  });
+
+  it("checkLlm degrades when the default OpenAI endpoint is unreachable", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test-123");
+    vi.stubEnv("OPENAI_BASE_URL", "");
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+    const r = await checkLlm();
     expect(r.status).toBe("degraded");
     expect(r.detail).toBeTruthy();
-  }, 10000);
+  });
 });
 
 describe("alert state machine", () => {

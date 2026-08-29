@@ -159,10 +159,9 @@ async function arxivSearch(query: string, maxResults = 5): Promise<ExternalResul
 
 function parseArxivXml(xml: string): ExternalResult[] {
   const results: ExternalResult[] = [];
-  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
-  let match: RegExpExecArray | null;
-  while ((match = entryRegex.exec(xml))) {
-    const entry = match[1];
+  // Split-based parse (no stateful regex exec over the raw feed).
+  for (const chunk of xml.split("<entry>").slice(1)) {
+    const entry = chunk.split("</entry>")[0] ?? "";
     const title = entry.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() ?? "";
     const url = entry.match(/<id>([\s\S]*?)<\/id>/)?.[1]?.trim() ?? "";
     const summary = entry.match(/<summary>([\s\S]*?)<\/summary>/)?.[1]?.trim() ?? "";

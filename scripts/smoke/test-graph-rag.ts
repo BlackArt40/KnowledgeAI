@@ -6,7 +6,10 @@
 //      ordering must beat the plain retrieval (precision@1/@2 comparison)
 // Run: npx tsx scripts/smoke/test-graph-rag.ts   (requires `pnpm dev`)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -64,7 +67,7 @@ async function main() {
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
   const login = await req("POST", "/api/auth/login", {
-    body: { email: "owner@knowledgeai.dev", password: "password123" },
+    body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD },
   });
   const token = login.data?.token;
   check("login: owner token", !!token);
@@ -140,7 +143,7 @@ async function main() {
   // 匿名/越权
   const anon = await req("GET", `/api/knowledge-base/${kbId}/graph`);
   check("graph 匿名: 401", anon.status === 401, `status=${anon.status}`);
-  const viewer = await req("POST", "/api/auth/login", { body: { email: "viewer@knowledgeai.dev", password: "password123" } });
+  const viewer = await req("POST", "/api/auth/login", { body: { email: "viewer@knowledgeai.dev", password: DEMO_PASSWORD } });
   const viewerToken = viewer.data?.token;
   const viewerOk = await req("GET", `/api/knowledge-base/${kbId}/graph`, { token: viewerToken });
   check("graph 公开库 viewer: 200", viewerOk.status === 200, `status=${viewerOk.status}`);

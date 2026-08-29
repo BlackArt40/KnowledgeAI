@@ -7,7 +7,10 @@
 // Mix of HTTP flows (sensitive operations produce audit entries) and direct
 // store-level checks (crypto round-trip, hash-chain tamper detection, trim).
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -31,7 +34,7 @@ async function main() {
   }
 
   async function login(email: string): Promise<string> {
-    const r = await req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    const r = await req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
     if (!r.data?.token) throw new Error(`login failed for ${email}: ${r.status} ${JSON.stringify(r.data)}`);
     return r.data.token;
   }
@@ -79,7 +82,7 @@ async function main() {
   check("auth: seed login works (legacy hash accepted)", !!ownerToken);
   // Second login goes through the PBKDF2 verify path - success proves the
   // migrated hash is usable (no store peeking across processes).
-  const secondLogin = await req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: "password123" } });
+  const secondLogin = await req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD } });
   check("auth: login works with migrated PBKDF2 hash", secondLogin.status === 200 && !!secondLogin.data?.token, `${secondLogin.status}`);
   const badLogin = await req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: "wrong-password" } });
   check("auth: wrong password rejected (401)", badLogin.status === 401);

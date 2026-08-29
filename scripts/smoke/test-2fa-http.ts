@@ -2,6 +2,7 @@
 // P3-1 HTTP integration test: full login -> 2FA -> session flow against a live dev server.
 // Run: npx tsx scripts/smoke/test-2fa-http.ts   (requires `pnpm dev` running on :3000)
 import { generateTOTP } from "../../src/lib/security/totp";
+import { DEMO_PASSWORD } from "./lib/demo";
 
 const BASE = "http://localhost:3000";
 let failures = 0;
@@ -29,7 +30,7 @@ async function patch(path: string, body: unknown, token: string) {
 
 async function main() {
   const email = "admin@knowledgeai.dev";
-  const password = "password123";
+  const password = DEMO_PASSWORD;
 
   // 1. Login as admin (no policy yet) -> session token
   let r = await post("/api/auth/login", { email, password });

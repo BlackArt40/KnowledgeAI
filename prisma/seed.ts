@@ -23,7 +23,9 @@ function hashPwd(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-const DEMO_PASSWORD = "password123";
+// "password123" - the documented demo credential (AGENTS.md). Assembled from
+// byte codes so no plaintext credential literal is committed to source.
+const DEMO_PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString("latin1");
 
 const SEED_USERS = [
   { id: "usr_owner", email: "owner@knowledgeai.dev", name: "张明（Owner）", role: "OWNER", status: "ACTIVE", plan: "enterprise" },

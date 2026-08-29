@@ -16,6 +16,16 @@ export interface OAuthSignInOptions {
 }
 
 export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAuthSignInOptions): Promise<void> {
+  // Provider allowlist: the value is interpolated into the signin URL path,
+  // so anything beyond the configured providers is rejected up front.
+  if (provider !== "google" && provider !== "github") {
+    window.location.href = `/login?error=oauth_failed`;
+    return;
+  }
+  // Open-redirect guard: the callback must be an in-app absolute path
+  // (Auth.js treats it as the post-bridge redirect target).
+  const safeCallback =
+    callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/dashboard";
   let csrf: { csrfToken?: string };
   try {
     csrf = await fetch("/api/auth/csrf").then((r) => r.json());
@@ -23,7 +33,10 @@ export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAut
     window.location.href = `/login?error=oauth_failed`;
     return;
   }
-  const target = `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  // Literal signin paths per provider (the provider value never reaches the
+  // request URL - unknown providers are rejected by the allowlist above).
+  const providerPath = provider === "google" ? "/api/auth/signin/google" : "/api/auth/signin/github";
+  const target = `${providerPath}?callbackUrl=${encodeURIComponent(safeCallback)}`;
   const res = await fetch(target, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -33,7 +46,10 @@ export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAut
   if (res.status === 302) {
     const loc = res.headers.get("location");
     if (loc) {
-      window.location.assign(loc);
+      // Normalize through URL so the redirect target is a parsed URL object,
+      // not the raw response header string (Auth.js returns the provider's
+      // authorize URL here - cross-origin by design, so no origin pinning).
+      window.location.assign(new URL(loc, window.location.origin).href);
       return;
     }
   }

@@ -7,7 +7,10 @@
 //     covered by the persist/hydrate write-through in DB mode)
 // Run: npx tsx scripts/smoke/test-theme.ts   (requires `pnpm dev`)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -33,7 +36,7 @@ async function main() {
   }
 
   const login = (email) =>
-    req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
 
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");

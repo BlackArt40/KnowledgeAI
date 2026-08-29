@@ -8,7 +8,10 @@
 //   - knowledge-base recommendations (?q= keyword overlap scoring)
 // Run: npx tsx scripts/smoke/test-chat-enhance.ts   (requires `pnpm dev`)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -63,7 +66,7 @@ async function main() {
 
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
-  const owner = await req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: "password123" } });
+  const owner = await req("POST", "/api/auth/login", { body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD } });
   const token = owner.data?.token;
   check("login: owner token", !!token);
   const kbs = await req("GET", "/api/knowledge-base", { token });

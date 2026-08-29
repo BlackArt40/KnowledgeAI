@@ -9,7 +9,10 @@
 //     (demo mode records "demo" calls) are populated
 // Run: npx tsx scripts/smoke/test-monitoring.ts   (requires `pnpm dev`)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -66,7 +69,7 @@ async function main() {
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
   const login = (email) =>
-    req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
   const owner = await login("owner@knowledgeai.dev");
   const token = owner.data?.token;
   check("login: owner token", !!token);

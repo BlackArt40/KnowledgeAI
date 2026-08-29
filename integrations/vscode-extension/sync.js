@@ -45,7 +45,9 @@ async function collectFiles(root, { include = DEFAULT_INCLUDE, maxFiles = MAX_FI
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const e of entries) {
       if (out.length >= maxFiles) return;
-      const full = path.join(dir, e.name);
+      const full = path.resolve(dir, e.name);
+      // Containment: never walk outside the workspace root.
+      if (full !== root && !full.startsWith(root + path.sep)) continue;
       const rel = path.relative(root, full);
       if (e.isDirectory()) {
         if (IGNORE_DIRS.has(e.name)) continue;

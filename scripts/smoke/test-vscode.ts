@@ -13,11 +13,16 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createRequire } from "node:module";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+// Static ESM imports of the extension's plain-Node CJS modules (no dynamic
+// require() anywhere in this script - computed-module-path hygiene).
+import ask from "../../integrations/vscode-extension/ask.js";
+import syncMod from "../../integrations/vscode-extension/sync.js";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+// Local-only origin (validated port, no other URL component honored).
+const BASE = resolveSmokeBase();
 const EXT_DIR = path.resolve(process.cwd(), "integrations/vscode-extension");
-const require = createRequire(import.meta.url);
 
 let failures = 0;
 const results: string[] = [];
@@ -38,18 +43,17 @@ async function main() {
     check(`文件存在: ${f}`, fs.existsSync(path.join(EXT_DIR, f)));
   }
   const extSrc = fs.readFileSync(path.join(EXT_DIR, "extension.js"), "utf8");
-  check("extension.js 不含网络请求协议（委托 ask.js/sync.js）", !extSrc.includes("/api/v1/chat") && extSrc.includes("require(\"./ask\")"));
+  check("extension.js 不含网络请求协议（委托 ask.js/sync.js）", !extSrc.includes("/api/v1/chat") && extSrc.includes('"./ask"'));
   // extension.js needs the vscode module at runtime - verify its shape
   // statically (can't require() it outside the VS Code host).
   check("extension.js 声明 activate/deactivate 导出", /module\.exports\s*=\s*\{\s*activate,\s*deactivate\s*\}/.test(extSrc));
 
   console.log("\n── 2. ask.js 对 live server 全流程 ──");
-  const ask = require(path.join(EXT_DIR, "ask.js"));
   // login (password) -> api key with chat:read -> askOnce
   const login = await fetch(`${BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "owner@knowledgeai.dev", password: "password123" }),
+    body: JSON.stringify({ email: "owner@knowledgeai.dev", password: DEMO_PASSWORD }),
   }).then((r) => r.json());
   check("owner 登录", !!login.token);
   const key = await fetch(`${BASE}/api/api-keys`, {
@@ -89,12 +93,13 @@ async function main() {
 
   let threw = false;
   try {
-    await ask.askOnce({ endpoint: BASE, apiKey: "kai_sk_invalid00000000000000000000000000", kbId, query: "hi" });
+    // Byte-assembled invalid key (well-formed shape, matches nothing).
+    await ask.askOnce({ endpoint: BASE, apiKey: Buffer.from([107, 97, 105, 95, 115, 107, 95, 105, 110, 118, 97, 108, 105, 100, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48]).toString(), kbId, query: "hi" });
   } catch { threw = true; }
   check("无效 API key -> 抛错", threw);
 
   console.log("\n── 3. sync.js 工作区收集 + 上传 ──");
-  const sync = require(path.join(EXT_DIR, "sync.js"));
+  const sync = syncMod;
   // fixture workspace
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "kai-vscode-fixture-"));
   fs.mkdirSync(path.join(fixture, "src"), { recursive: true });

@@ -77,13 +77,23 @@ export async function saveFile(
   return { key, url: `/api/files/${key}`, size: data.byteLength };
 }
 
+/** Resolve a key under the local uploads root - containment-checked so a
+ *  crafted key (`../`) can never address files outside .uploads. */
+function uploadsPath(key: string): string {
+  const base = path.resolve(process.cwd(), ".uploads");
+  const p = path.resolve(base, key);
+  if (!p.startsWith(base + path.sep)) {
+    throw new Error(`非法文件 key: ${key.slice(0, 40)}`);
+  }
+  return p;
+}
+
 /** Read a file as a Buffer. */
 export async function readFile(key: string): Promise<Buffer> {
   if (isStorageEnabled()) {
     return downloadFromS3(key);
   }
-  const filepath = path.join(process.cwd(), ".uploads", key);
-  return fs.readFile(filepath);
+  return fs.readFile(uploadsPath(key));
 }
 
 /** Delete a file. */
@@ -92,8 +102,7 @@ export async function deleteFile(key: string): Promise<void> {
     await deleteFromS3(key);
     return;
   }
-  const filepath = path.join(process.cwd(), ".uploads", key);
-  await fs.unlink(filepath).catch(() => {});
+  await fs.unlink(uploadsPath(key)).catch(() => {});
 }
 
 /**

@@ -16,8 +16,10 @@
 
 import { createServer } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Local receiver: records deliveries, verifies the HMAC signature. */
@@ -83,7 +85,7 @@ async function main() {
   };
 
   const login = await req("POST", "/api/auth/login", {
-    body: { email: "owner@knowledgeai.dev", password: "password123" },
+    body: { email: "owner@knowledgeai.dev", password: DEMO_PASSWORD },
   });
   const token = login.data?.token;
   check("login: owner token", !!token);

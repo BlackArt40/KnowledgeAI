@@ -5,7 +5,10 @@
 //   - independent workspace billing & usage meters
 // Run: npx tsx scripts/smoke/test-workspaces.ts   (requires `pnpm dev` on :3000)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;
@@ -32,7 +35,7 @@ async function main() {
   }
 
   async function login(email: string): Promise<string> {
-    const r = await req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+    const r = await req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
     if (!r.data?.token) throw new Error(`login failed for ${email}: ${r.status} ${JSON.stringify(r.data)}`);
     return r.data.token;
   }

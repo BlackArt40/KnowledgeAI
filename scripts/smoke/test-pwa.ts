@@ -7,7 +7,9 @@
 //   - core pages respond 200 (375px usability is verified in-browser)
 // Run: npx tsx scripts/smoke/test-pwa.ts   (requires `pnpm dev` on :3000)
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+
+const BASE = resolveSmokeBase();
 
 async function main() {
   let failures = 0;

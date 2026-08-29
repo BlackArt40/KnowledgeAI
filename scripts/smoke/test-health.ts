@@ -15,8 +15,10 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = resolveSmokeBase();
 const BROKEN_PORT = 3100;
 const BROKEN = `http://localhost:${BROKEN_PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -131,7 +133,7 @@ async function main() {
     const login = await fetch(`${BROKEN}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "owner@knowledgeai.dev", password: "password123" }),
+      body: JSON.stringify({ email: "owner@knowledgeai.dev", password: DEMO_PASSWORD }),
     }).then((r) => r.json());
     check("坏依赖实例可登录（内存存储）", !!login.token);
     if (login.token) {

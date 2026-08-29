@@ -86,12 +86,16 @@ const MAX_TEXT = 2 * 1024 * 1024;
 
 /** Locate + read the uploaded file for a doc (.uploads/<kbId>/<docId>-*). */
 async function readUploadedFile(doc: KbDocument): Promise<Buffer | null> {
-  const dir = path.join(process.cwd(), ".uploads", doc.kbId);
+  const base = path.resolve(process.cwd(), ".uploads");
+  const dir = path.resolve(base, doc.kbId);
+  if (!dir.startsWith(base + path.sep)) return null; // containment: never leave .uploads
   try {
     const entries = await fs.readdir(dir);
     const match = entries.find((f) => f.startsWith(`${doc.id}-`));
     if (!match) return null;
-    return fs.readFile(path.join(dir, match));
+    const file = path.resolve(dir, match);
+    if (!file.startsWith(dir + path.sep)) return null;
+    return fs.readFile(file);
   } catch {
     return null;
   }

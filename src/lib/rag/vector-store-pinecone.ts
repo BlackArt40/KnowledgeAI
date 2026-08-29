@@ -48,8 +48,14 @@ async function getHost(): Promise<string> {
       "PINECONE_INDEX_HOST or PINECONE_INDEX_NAME must be set (required for VECTOR_STORE=pinecone)"
     );
   }
+  // Resolve via the control-plane LIST endpoint: the URL is a full literal
+  // (no env input in the request URL at all) and the env-provided name only
+  // filters the response. Index names are pinned to Pinecone's shape.
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,44}$/.test(indexName)) {
+    throw new Error(`PINECONE_INDEX_NAME 含非法字符: ${indexName.slice(0, 20)}`);
+  }
 
-  const res = await fetch(`https://api.pinecone.io/indexes/${encodeURIComponent(indexName)}`, {
+  const res = await fetch("https://api.pinecone.io/indexes", {
     headers: { "Api-Key": getApiKey() },
   });
   if (!res.ok) {
@@ -57,8 +63,10 @@ async function getHost(): Promise<string> {
     throw new Error(`Pinecone resolve host ${res.status}: ${body.slice(0, 200)}`);
   }
   const data = await res.json();
-  const host: string = data.host;
-  if (!host) throw new Error(`Pinecone index "${indexName}" has no host field`);
+  const indexes: Array<{ name?: string; host?: string }> = data.indexes ?? [];
+  const found = indexes.find((i) => i.name === indexName);
+  const host: string | undefined = found?.host;
+  if (!host) throw new Error(`Pinecone index "${indexName}" not found or has no host field`);
   _resolvedHost = `https://${host}`;
   log.info(`[rag] Pinecone index host resolved: ${_resolvedHost}`);
   return _resolvedHost;

@@ -12,8 +12,10 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { resolveSmokeBase } from "./lib/base-url";
+import { DEMO_PASSWORD } from "./lib/demo";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ROOT = process.cwd();
 
@@ -78,7 +80,7 @@ async function main() {
 
   // ── 0. 准备 ───────────────────────────────────────────────────────────
   console.log("\n── 0. 准备 ──");
-  const login = (email) => req("POST", "/api/auth/login", { body: { email, password: "password123" } });
+  const login = (email) => req("POST", "/api/auth/login", { body: { email, password: DEMO_PASSWORD } });
   const owner = await login("owner@knowledgeai.dev");
   const token = owner.data?.token;
   check("login: owner token", !!token);
