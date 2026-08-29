@@ -44,6 +44,7 @@ export default withMermaid(defineConfig({
             { text: '新成员入门指南', link: '/getting-started/onboarding' },
             { text: '贡献指南', link: '/getting-started/contribution-guide' },
             { text: '演示账号', link: '/getting-started/demo-accounts' },
+            { text: '账号与邮箱安全', link: '/getting-started/account-security' },
             { text: '产品概述', link: '/getting-started/product-overview' },
             { text: '项目结构', link: '/getting-started/project-structure' }
           ]
