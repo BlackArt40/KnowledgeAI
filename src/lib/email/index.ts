@@ -70,32 +70,37 @@ function emailFrame(title: string, actions: string[], note: string): string {
   ].join("");
 }
 
+import { getI18nInstance, normalizeLocale } from "@/lib/i18n/translate";
+
 function buttonLink(url: string, label: string): string {
   return `<p><a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${label}</a></p>`;
 }
 
-/** Send the password-reset email (forgot-password flow). */
-export function sendResetEmail(to: string, resetUrl: string): Promise<SendEmailResult> {
+/** Send the password-reset email (forgot-password flow). Locale follows the
+ *  recipient's stored preference (falls back to zh-CN). */
+export function sendResetEmail(to: string, resetUrl: string, locale?: string): Promise<SendEmailResult> {
+  const t = getI18nInstance().getFixedT(normalizeLocale(locale));
   return sendEmail(
     to,
-    "重置你的 KnowledgeAI 密码",
+    t("email.reset.subject"),
     emailFrame(
-      "重置你的 KnowledgeAI 密码",
-      [buttonLink(resetUrl, "重置密码")],
-      "如果这不是你发起的操作，请忽略这封邮件，你的密码不会改变。"
+      t("email.reset.title"),
+      [buttonLink(resetUrl, t("email.reset.action"))],
+      t("email.reset.note")
     )
   );
 }
 
 /** Send the email-verification email (register flow). */
-export function sendVerificationEmail(to: string, verifyUrl: string): Promise<SendEmailResult> {
+export function sendVerificationEmail(to: string, verifyUrl: string, locale?: string): Promise<SendEmailResult> {
+  const t = getI18nInstance().getFixedT(normalizeLocale(locale));
   return sendEmail(
     to,
-    "验证你的 KnowledgeAI 邮箱",
+    t("email.verify.subject"),
     emailFrame(
-      "验证你的邮箱",
-      [buttonLink(verifyUrl, "验证邮箱")],
-      "如果没有注册过 KnowledgeAI，请忽略这封邮件。"
+      t("email.verify.title"),
+      [buttonLink(verifyUrl, t("email.verify.action"))],
+      t("email.verify.note")
     )
   );
 }

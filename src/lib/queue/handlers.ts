@@ -251,7 +251,14 @@ const emailSendHandler: JobHandler = async (payload) => {
     return { ok: true, data: { skipped: "no-mailer" } };
   }
 
-  const attempt = () => (kind === "verify" ? sendVerificationEmail(to, url) : sendResetEmail(to, url));
+  const attempt = async () => {
+    // Localize the template to the recipient's stored preference (the
+    // recipient exists whenever mail is actually sent - tokens are only
+    // issued for known accounts).
+    const { findUserByEmail } = await import("@/lib/auth/store");
+    const locale = findUserByEmail(to)?.locale;
+    return kind === "verify" ? sendVerificationEmail(to, url, locale) : sendResetEmail(to, url, locale);
+  };
   try {
     const r = await runWithTraceId(payload.traceId as string | undefined, `email-send:${kind}`, attempt);
     if (r.ok) {

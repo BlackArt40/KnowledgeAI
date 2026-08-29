@@ -1,4 +1,18 @@
 {
+  "email": {
+    "reset": {
+      "subject": "重置你的 KnowledgeAI 密码",
+      "title": "重置你的 KnowledgeAI 密码",
+      "action": "重置密码",
+      "note": "如果这不是你发起的操作，请忽略这封邮件，你的密码不会改变。"
+    },
+    "verify": {
+      "subject": "验证你的 KnowledgeAI 邮箱",
+      "title": "验证你的邮箱",
+      "action": "验证邮箱",
+      "note": "如果没有注册过 KnowledgeAI，请忽略这封邮件。"
+    }
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",

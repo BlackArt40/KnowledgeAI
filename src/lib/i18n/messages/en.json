@@ -1,4 +1,18 @@
 {
+  "email": {
+    "reset": {
+      "subject": "Reset your KnowledgeAI password",
+      "title": "Reset your KnowledgeAI password",
+      "action": "Reset password",
+      "note": "If you didn't request this, ignore this email - your password won't change."
+    },
+    "verify": {
+      "subject": "Verify your KnowledgeAI email",
+      "title": "Verify your email",
+      "action": "Verify email",
+      "note": "If you never signed up for KnowledgeAI, ignore this email."
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

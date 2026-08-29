@@ -193,6 +193,9 @@ export function removeDocContribution(kbId: string, docId: string): void {
 // ── Reads ─────────────────────────────────────────────────────────────────
 
 export function getGraph(kbId: string): { entities: GraphEntity[]; relations: GraphRelation[] } {
+  // Shape guard: store-generated ids are plain slug tokens - malformed ids
+  // can never match an entry, so reject them before any traversal.
+  if (!/^[A-Za-z0-9_-]+$/.test(kbId)) return { entities: [], relations: [] };
   const s = store();
   return {
     entities: [...s.entities.values()].filter((e) => e.kbId === kbId).sort((a, b) => b.mentions - a.mentions),
