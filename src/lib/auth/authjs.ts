@@ -13,8 +13,8 @@
 // the configured list via GET /api/auth/providers, which the login page uses
 // to hide unconfigured buttons).
 //
-// Endpoint overrides (GOOGLE_AUTH_URL / GOOGLE_TOKEN_URL / GOOGLE_USERINFO_URL
-// and GitHub equivalents) let acceptance tests point Auth.js at a local mock
+// Issuer overrides (GOOGLE_ISSUER / GITHUB_ISSUER, resolved via OIDC
+// discovery) let acceptance tests point Auth.js at a local mock
 // authorization server and support self-hosted proxy deployments.
 // ---------------------------------------------------------------------------
 

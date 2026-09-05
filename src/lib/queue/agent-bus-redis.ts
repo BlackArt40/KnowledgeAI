@@ -41,7 +41,7 @@ async function loadIORedis(): Promise<IORedisCtor | null> {
     const mod = await import("ioredis");
     return (mod.default ?? mod) as unknown as IORedisCtor;
   } catch {
-    log.warn("[agent-bus] ioredis not installed - agent pub/sub disabled");
+    log.warn("[agent-bus] ioredis load failed - agent pub/sub disabled");
     return null;
   }
 }

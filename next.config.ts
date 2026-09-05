@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // Optional production dependencies - not bundled, resolved at runtime.
-  // These are dynamically imported and gracefully fall back when not installed.
+  // Runtime-resolved dependencies - not bundled, loaded via dynamic import at
+  // runtime. Most are hard dependencies; only the two @aws-sdk packages are
+  // optionalDependencies (graceful S3 fallback when absent).
   serverExternalPackages: ["@prisma/client", "bullmq", "ioredis", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "stripe", "mammoth", "xlsx", "tesseract.js", "pdfjs-dist", "@napi-rs/canvas", "qrcode", "pino"],
   // 生产安全响应头
   async headers() {

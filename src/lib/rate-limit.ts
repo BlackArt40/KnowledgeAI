@@ -149,7 +149,7 @@ async function getRedisClient(): Promise<unknown | null> {
   if (!process.env.REDIS_URL) return null;
 
   try {
-    // Dynamic import ioredis (not installed in demo mode)
+    // Dynamic import ioredis (memory fallback when load fails or REDIS_URL unset)
     const Redis = (await import("ioredis")).default;
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,
@@ -162,7 +162,7 @@ async function getRedisClient(): Promise<unknown | null> {
     log.info("[ratelimit] Redis client initialized");
     return redisClient;
   } catch {
-    log.warn("[ratelimit] ioredis not installed - using memory rate limiter");
+    log.warn("[ratelimit] ioredis load failed - using memory rate limiter");
     return null;
   }
 }

@@ -9,9 +9,9 @@
 //   .xlsx / .xls               -> xlsx / SheetJS (dynamic import)
 //   .pptx                      -> zip XML extraction (built-in)
 //
-// Optional packages are dynamically imported with graceful fallback.
-// When a parser is not installed, returns null and the document is marked
-// as "failed" with a helpful error message.
+// Parsers are dynamically imported with graceful fallback.
+// When a parser fails to load or parse, returns null and the document is
+// marked as "failed" with a helpful error message.
 // ---------------------------------------------------------------------------
 
 import zlib from "zlib";
@@ -174,7 +174,7 @@ async function parseWord(buf: Buffer, filename: string): Promise<ParsedDocument 
       if (!text || text.length < 10) return null;
       return { text: text.slice(0, 500_000), title: null };
     } catch {
-      log.warn("[parser] mammoth not installed or .docx parse failed");
+      log.warn("[parser] .docx parse failed (mammoth load error or malformed file)");
       return null;
     }
   }
@@ -251,7 +251,7 @@ async function parseExcel(buf: Buffer): Promise<ParsedDocument | null> {
     if (text.length < 10) return null;
     return { text: text.slice(0, 500_000), title: null, sheets };
   } catch {
-    log.warn("[parser] xlsx not installed - Excel parsing unavailable");
+    log.warn("[parser] xlsx load or Excel parse failed - Excel parsing unavailable");
     return null;
   }
 }

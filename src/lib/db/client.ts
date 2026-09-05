@@ -2,10 +2,11 @@
 // Database Client - lazy Prisma initialization.
 //
 // The in-memory stores (src/lib/*/store.ts) are used by default for the demo.
-// When DATABASE_URL is set and @prisma/client is installed, this provides
-// a Prisma client for production persistence.
+// When DATABASE_URL is set, this provides a Prisma client for production
+// persistence.
 //
-// To enable: pnpm add @prisma/client && npx prisma generate && npx prisma migrate deploy
+// To enable: npx prisma generate && npx prisma migrate deploy (@prisma/client
+// is a hard dependency; DATABASE_URL + AUTH_SECRET come from the environment)
 // ---------------------------------------------------------------------------
 
 import type { PrismaClient } from "./types";
@@ -15,7 +16,7 @@ let _prisma: PrismaClient | null = null;
 
 /**
  * Get the Prisma client (lazy singleton).
- * Returns null if @prisma/client is not installed or DATABASE_URL not set.
+ * Returns null if DATABASE_URL is not set or the client fails to load.
  */
 export async function getDb(): Promise<PrismaClient | null> {
   if (!process.env.DATABASE_URL) return null;
@@ -26,7 +27,7 @@ export async function getDb(): Promise<PrismaClient | null> {
     log.info("[db] Prisma client initialized");
     return _prisma;
   } catch {
-    log.warn("[db] @prisma/client not installed - using in-memory store");
+    log.warn("[db] Prisma client load failed - using in-memory store");
     return null;
   }
 }

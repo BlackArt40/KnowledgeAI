@@ -11,7 +11,7 @@
 //
 // 2FA note: OAuth provider MFA is trusted as the authentication factor, so
 // OAuth logins skip the app-level TOTP step (and the admin forced-enrollment
-// gate). See docs/设计说明.md 十五·二十一.
+// gate). See docs/archive/design-and-implementation-log.md 十五·二十一.
 // ---------------------------------------------------------------------------
 
 import { NextResponse } from "next/server";

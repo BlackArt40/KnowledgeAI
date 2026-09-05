@@ -12,7 +12,7 @@
 import type { JobQueue, JobType, JobHandler, JobResult } from "./interface";
 import { log } from "@/lib/obs/log";
 
-// BullMQ types (dynamic import - not installed in demo mode)
+// BullMQ types (dynamic import - lazily loaded when REDIS_URL is set)
 interface BullMQJobType {
   id: string;
   data: { type: JobType; payload: Record<string, unknown> };
@@ -60,7 +60,7 @@ export class BullMQQueue implements JobQueue {
       this.queue = new this.mod.Queue(QUEUE_NAME, { connection: this.parsedConnection });
       return this.mod;
     } catch {
-      throw new Error("bullmq not installed - run: pnpm add bullmq ioredis");
+      throw new Error("bullmq/ioredis load failed - verify dependencies are installed (pnpm install)");
     }
   }
 
