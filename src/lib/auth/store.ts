@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // User Store - user accounts with role-based access.
 // Seeds 4 demo users (one per role) for testing different permission levels.
-// 🔌 Production: replace with Prisma queries (see src/lib/db/repository.ts)
+// 🔌 Production: reads stay in-memory; Prisma persistence is write-through
+// via src/lib/db/{persist,hydrate}.ts.
 // ---------------------------------------------------------------------------
 
 import crypto from "crypto";

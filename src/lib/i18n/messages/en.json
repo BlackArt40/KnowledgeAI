@@ -1404,10 +1404,6 @@
       "s0": "Usage trend",
       "s1": "Daily Q&A"
     },
-    "coming-soon": {
-      "s0": "In development · {week}",
-      "s1": "Back to dashboard"
-    },
     "logos": {
       "s0": "Trusted by 200+ teams"
     }
