@@ -9,8 +9,10 @@
 // carries them.
 
 export interface OAuthSignInOptions {
-  /** provider id ("google" | "github") */
-  provider: string;
+  /** provider id — narrowed to the configured providers at compile time
+   *  (canonical list: OAUTH_PROVIDERS in oauth-link.ts); the runtime
+   *  allowlist below stays as defense-in-depth. */
+  provider: "google" | "github";
   /** in-app redirect target after the bridge (default /dashboard) */
   callbackUrl?: string;
 }

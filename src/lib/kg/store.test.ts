@@ -113,3 +113,23 @@ describe("searchEntities", () => {
     expect(searchEntities("kb_2", "晨曦")).toEqual([]);
   });
 });
+
+// Read-path security invariants (Mimosa findings on the /graph routes,
+// 2026-09-05): kbId / q never reach a dynamic object key, query expression or
+// sort key — kbId is compared by strict equality behind a shape guard, q only
+// feeds a literal substring match, and the .sort comparators are static
+// closures over store fields.
+describe("security invariants (read paths)", () => {
+  it("getGraph rejects malformed kb ids before any traversal", async () => {
+    await indexDocGraph("kb_1", "doc_a", "晨曦科技与蓝海集团合作。");
+    expect(getGraph("kb_1/../kb_2").entities).toEqual([]);
+    expect(getGraph("kb_1$drop").entities).toEqual([]);
+    expect(getGraph("").entities).toEqual([]);
+  });
+
+  it("over-long search needles never match (bounded per-request work)", async () => {
+    await indexDocGraph("kb_1", "doc_a", "晨曦科技与蓝海集团合作。");
+    const huge = `晨曦科技${"x".repeat(200_000)}`;
+    expect(searchEntities("kb_1", huge)).toEqual([]);
+  });
+});

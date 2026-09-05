@@ -272,7 +272,11 @@ export function clearKbGraph(kbId: string): void {
 /** Entity search within a KB (for the graph search API). */
 export function searchEntities(kbId: string, q: string, limit = 20): GraphEntity[] {
   const s = store();
-  const needle = q.trim().toLowerCase();
+  // Input bound: the needle is capped at 100 chars — extractable labels are
+  // ≤30 chars (extract.ts patterns), so truncation never changes results; it
+  // only bounds the per-request allocation/scan. kbId is compared by strict
+  // equality against store-generated ids (never an object key / query expr).
+  const needle = (q ?? "").trim().toLowerCase().slice(0, 100);
   if (!needle) return [];
   return [...s.entities.values()]
     .filter((e) => e.kbId === kbId && e.label.toLowerCase().includes(needle))
