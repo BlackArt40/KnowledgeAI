@@ -108,11 +108,11 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 ### 本地提交前必须过哪些检查？
 
-`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 四 job：quality（tsc + lint + build + prisma drift）、unit、integration、e2e。
+`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 五 job：quality（tsc + lint + build + prisma drift）、unit、integration、e2e、docs（文档构建死链检查 + Frontmatter 校验 + API 参考漂移 + 环境变量一致性）。
 
 ### 改了 src/lib/ 下代码，文档要同步吗？
 
-要。文档体系约定：**文档随代码走同一 PR**（docs-as-code）。改 `src/lib/` 模块、导出 API 或 schema 时，同步更新 `docs/architecture/`、`docs/api/` 对应文档；CI 的 `docs-check`（规划中）会校验 API 漂移与死链。
+要。文档体系约定：**文档随代码走同一 PR**（docs-as-code）。改 `src/lib/` 模块、导出 API 或 schema 时，同步更新 `docs/architecture/`、`docs/api/` 对应文档；CI 的 `docs` job 会校验 API 漂移、死链、Frontmatter 与环境变量文档一致性。
 
 ## 相关文档
 

@@ -4,7 +4,7 @@ description: KnowledgeAI 技术文档门户，按分类索引检索入门指南�
 type: reference
 category: getting-started
 level: L1
-version: 1.0.0
+version: 1.3.0
 authors: [technical-writer]
 owner: 技术文档负责人
 reviewed_at: 2026-08-20
@@ -57,6 +57,7 @@ applies_to: ">=1.2.0"
 | [新成员入门指南](getting-started/onboarding.md) | 一天上手开发与提交 | L1 · 已发布 |
 | [贡献指南](getting-started/contribution-guide.md) | 分支 / 门禁 / PR / 文档同步 | L1 · 已发布 |
 | [演示账号](getting-started/demo-accounts.md) | 四角色账号与演示数据 | L1 · 已发布 |
+| [账号安全指南](getting-started/account-security.md) | 2FA / 密码重置 / 邮箱验证与邮件服务配置 | L1 · 已发布 |
 | [项目结构](getting-started/project-structure.md) | 目录组织与代码导览 | L1 · 已发布 |
 | [ROADMAP（归档）](archive/ROADMAP.md) | 开发路线图实现记录 | 归档 · 可追溯 |
 | [设计与实现记录（归档）](archive/design-and-implementation-log.md) | 原《设计说明》实现部分 | 归档 · 可追溯 |
@@ -65,7 +66,7 @@ applies_to: ">=1.2.0"
 
 | 类别 | 目录 | 内容 | 状态 |
 |------|------|------|------|
-| 入门指南 | `getting-started/` | 快速开始 / 新成员 / 贡献 / 演示账号 / 产品概述 / 项目结构 | ✅ 已就绪 |
+| 入门指南 | `getting-started/` | 快速开始 / 新成员 / 贡献 / 演示账号 / 账号安全 / 产品概述 / 项目结构 | ✅ 已就绪 |
 | 架构设计 | `architecture/` | 总体架构 / RAG / Agent / 2 项 ADR | ✅ 已就绪 |
 | API 参考 | `api/` | 指南 / 参考（OpenAPI 生成）/ 三语言 SDK / Webhook / 错误码 | ✅ 已就绪 |
 | 开发规范 | `standards/` | 文档规范已就绪；代码 / Git / 测试规范待建 | 部分完成 |
@@ -84,13 +85,14 @@ applies_to: ">=1.2.0"
 ## 文档治理
 
 - 所有文档遵循[文档编写规范](standards/doc-writing-standards.md)，含 Frontmatter 元数据与 180 天复审周期；
-- 变更随代码 PR 走 CI 门禁（`docs-check`）；
-- 发现文档问题：在页面底部提交反馈，或到 [GitHub 仓库](https://github.com/) 直接提 PR。
+- 变更随代码 PR 走 CI 门禁（`docs` job：死链 / Frontmatter / API 漂移 / 环境变量一致性）；
+- 发现文档问题：在页面底部提交反馈，或在代码仓库中直接提 PR。
 
 ## 修订记录
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.3.0 | 2026-09-05 | 清单补充账号安全指南；docs 门禁描述与 CI 对齐；移除 GitHub 占位链接 |
 | 1.2.0 | 2026-08-20 | 存量文档拆分迁移：设计说明拆分为 UI 设计体系 + 归档实现记录；ROADMAP 归档；中文文件名迁移 kebab-case（含旧路径重定向）；新增入门指南（快速开始/新成员/贡献/演示账号） |
 | 1.1.0 | 2026-08-20 | 新增架构设计（overview/RAG/Agent/ADR）与 API（指南/参考/错误码/Webhook/三语言 SDK）文档 |
 | 1.0.0 | 2026-08-20 | 建立文档门户（VitePress 骨架首版） |

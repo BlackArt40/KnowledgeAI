@@ -46,7 +46,7 @@ const kai = new KnowledgeAI({
 await kai.ask("kb_xxxxxx", "产品支持哪些文档格式？", {
   onSources: (sources) => console.log(`检索到 ${sources.length} 条来源`),
   onToken: (token) => process.stdout.write(token), // 增量输出
-  webSearch: false,   // 开启联网搜索
+  webSearch: false,   // 关闭联网搜索（true 开启，来源经 onSources 返回）
   topK: 5,            // 检索条数（1–20）
   conversationId: undefined, // 续接会话
 });

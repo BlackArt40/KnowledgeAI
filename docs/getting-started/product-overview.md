@@ -137,9 +137,9 @@ applies_to: ">=1.2.0"
 
 **练习的技术**：
 - RAG全流程（文档加载→切片→向量化→检索→生成）
-- LangChain + LangGraph Agent编排
+- 自研多 Agent 编排（LangGraph 思路的零依赖 StateGraph 实现）
 - 流式响应（Server-Sent Events）
-- 文件上传处理（multer / formidable）
+- 文件上传处理（App Router 原生 FormData + 分片上传）
 - 异步任务队列（BullMQ + Redis）
 
 ---
@@ -271,10 +271,10 @@ applies_to: ">=1.2.0"
 | ------------------ | ------------------------------- | :---: |
 | 落地页/定价页/博客 | Next.js SSG + Tailwind + SEO    |  ⭐⭐   |
 | 登录/注册/验证     | NextAuth + OAuth + JWT          |  ⭐⭐   |
-| 仪表盘             | 数据聚合 + 图表库（Recharts）   |  ⭐⭐⭐  |
+| 仪表盘             | 数据聚合 + 手绘 SVG 图表        |  ⭐⭐⭐  |
 | 知识库管理         | 文件上传 + 异步处理 + 状态管理  |  ⭐⭐⭐  |
 | **智能问答**       | **RAG全流程 + 流式输出**        | ⭐⭐⭐⭐  |
-| **Agent调研**      | **LangGraph多Agent + 任务队列** | ⭐⭐⭐⭐⭐ |
+| **Agent调研**      | **多Agent StateGraph + 任务队列** | ⭐⭐⭐⭐⭐ |
 | 团队管理           | RBAC + 多租户隔离               | ⭐⭐⭐⭐  |
 | 订阅计费           | Stripe/微信支付 + 状态机        | ⭐⭐⭐⭐  |
 | 用量统计           | 计量系统 + 数据可视化           |  ⭐⭐⭐  |
@@ -373,7 +373,7 @@ applies_to: ">=1.2.0"
 | 路由权限 | 角色导航过滤 + 客户端路由守卫 + API 角色保护 | ✅ |
 | P0 生产化 | DB 持久化(hydrate+persist) + pgvector 向量库 + S3 存储 + BullMQ 队列 | ✅ |
 | P1 RAG 增强 | 多格式解析(PDF/Word/Excel/PPT) + BM25+RRF 混合检索 + 智能切片 + 多轮对话+追问 | ✅ |
-| P2 Agent 增强 | LangGraph 多 Agent 图 + 外部数据源(Web/ArXiv/GitHub) + 报告增强(导出/分享/版本/评论) + Chat 联网搜索 | ✅ |
+| P2 Agent 增强 | 自研 StateGraph 多 Agent 图（LangGraph 思路零依赖实现） + 外部数据源(Web/ArXiv/GitHub) + 报告增强(导出/分享/版本/评论) + Chat 联网搜索 | ✅ |
 | P3 安全加固 | TOTP 2FA(RFC 6238) + Redis 分布式限流 + AES-256-GCM 加密 | ✅ |
 
 ### 25 个页面实现清单
@@ -410,7 +410,7 @@ applies_to: ">=1.2.0"
 
 | 8 大技能 | 项目中的体现 | 状态 |
 | --- | --- | :---: |
-| 全栈开发 | Next.js 16 全栈 + 25 页面 + 25+ API | ✅ |
+| 全栈开发 | Next.js 16 全栈 + 25 页面 + 100+ API | ✅ |
 | 云原生 DevOps | Dockerfile + docker-compose + 安全响应头 | ✅ |
 | 系统设计 | 多租户 + RBAC + 角色路由守卫 + Provider 适配层 + 异步 RAG | ✅ |
 | AI/ML 应用 | RAG 问答（嵌入+检索+生成）+ Agent 多步调研 | ✅ |
@@ -424,10 +424,10 @@ applies_to: ">=1.2.0"
 | --- | --- |
 | 功能模块 | 7 大模块 |
 | 页面 | 25 个 |
-| 路由（含 API + Middleware） | 60+ 个 |
-| API 端点 | 40+ |
-| UI 基础组件 | 16 个 |
-| 数据库模型（Prisma） | 14 个（+KbChunk for pgvector） |
+| 路由（含 API + Middleware） | 130+ 个 |
+| API 端点 | 103 |
+| UI 基础组件 | 17 个 |
+| 数据库模型（Prisma） | 25 个 |
 | 生产适配层（Provider） | 8 个（LLM / 支付 / 数据库 / 存储 / 限流 / 认证 / 向量库 / 队列） |
 | 设计令牌 | HSL 变量 + 亮/暗双模式 |
 
@@ -443,7 +443,7 @@ applies_to: ">=1.2.0"
 8. **通知系统**：4 通道（登录/KB/Agent/周报）+ 偏好持久化 + 通道过滤 + AppShell 铃铛未读徽章 + 下拉面板（30s 轮询）
 9. **路由权限**：三层防护--侧边栏角色过滤 + 客户端路由守卫（越权跳转）+ 服务端 API 守卫（`requireRole` 401/403）
 10. **生产化基础设施**（P0）：DB 水合+write-through 持久化 + pgvector ANN 检索 + S3 预签名直传 + BullMQ 异步队列
-11. **多格式文档解析**（P1）：PDF(pdf-parse) / Word(mammoth) / Excel(xlsx) / PPT(内置ZIP) 动态导入，未安装时优雅降级
+11. **多格式文档解析**（P1）：PDF(pdfjs-dist) / Word(mammoth) / Excel(xlsx) / PPT(内置ZIP) 动态导入，解析失败时优雅降级
 12. **混合检索**（P1）：BM25 关键词索引 + 向量语义检索 + RRF(Reciprocal Rank Fusion) 融合，召回率提升 20%+
 13. **分布式限流**（P3）：Redis Lua EVAL 原子滑动窗口 + 内存回退，`REDIS_URL` 配置即启用多实例限流
 14. **Chat 联网搜索**（P2-2 扩展）：输入框旁「联网搜索」开关，开启后提问同时检索外部 Web 源并合并进 RAG 上下文，回答可引用网络来源（`sources` 事件携带 `url`/`sourceType`，引用面板 🌐 链接可点击）

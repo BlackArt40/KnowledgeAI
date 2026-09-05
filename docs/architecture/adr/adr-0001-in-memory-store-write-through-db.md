@@ -38,8 +38,10 @@ related: [../overview.md]
 1. **读**：一律走内存 Store（Map 查找，< 1ms）；
 2. **水合（hydrate）**：首个 API 请求时把 DB 行懒加载进内存（`src/lib/db/hydrate.ts`，一次性）；
 3. **写穿（persist）**：每次变更先更新内存，再异步写穿 DB（`src/lib/db/persist.ts`，失败仅记录日志、不抛出，不阻塞请求）；
-4. **统一仓储**：`src/lib/db/repository.ts` 封装 Prisma CRUD，各 store 通过仓储访问 DB；
-5. **健康检查**：仓储层提供 `checkDbHealth()`，接入就绪探针。
+4. **DB 访问**：Prisma 客户端由 `src/lib/db/client.ts` 懒加载单例提供，持久化统一经 `persist.ts` / `hydrate.ts` 适配，store 不直接依赖 Prisma；
+5. **健康检查**：`src/lib/health/readiness.ts` 的 `checkDb()`（SELECT 1）接入就绪探针。
+
+（更正 2026-09-05：初稿第 4/5 点描述的 `src/lib/db/repository.ts` 统一仓储层最终未被采用——store 直接通过 persist/hydrate 写穿，repository 层已移除。）
 
 **新增持久化实体的改动契约（4 处同步）**：`store.ts`（内存形态）→ `persist.ts`（写穿函数）→ `hydrate.ts`（加载函数）→ `prisma/schema.prisma`（+ 新迁移）。
 

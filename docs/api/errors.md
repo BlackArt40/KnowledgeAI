@@ -34,7 +34,7 @@ related: [guide.md, reference.md]
 |------|------|:----:|------|
 | `error` | string | ✅ | 人类可读错误信息 |
 | `retryAfter` | number | 仅 429 | 建议重试秒数 |
-| `dimension` | string | 仅 429 | 限流维度：`ip` / `user` / `apikey` / `kb` |
+| `dimension` | string | 仅 429 | 限流维度：`ip` / `user` / `apikey` / `kb` / `integration` / `agent` / `auth-email` |
 
 ## 状态码总表
 
@@ -67,6 +67,9 @@ related: [guide.md, reference.md]
 | `user` | 登录用户 | 可配置（`RATE_LIMIT_PER_MIN`） |
 | `apikey` | API Key | 500 次/分（`RATE_LIMIT_KEY_PER_MIN`） |
 | `kb` | 知识库维度（聊天/加载） | 60 次/分（`RATE_LIMIT_KB_PER_MIN`） |
+| `integration` | 第三方集成（机器人/widget） | 120 次/分（`RATE_LIMIT_INTEGRATION_PER_MIN`） |
+| `agent` | Agent 运行（高成本多步任务） | 10 次/分（`RATE_LIMIT_AGENT_PER_MIN`） |
+| `auth-email` | 触发外发邮件的未认证端点（忘记密码/验证重发，按邮箱+端点键控） | 3 次/分（`RATE_LIMIT_AUTH_EMAIL_PER_MIN`） |
 
 **退避策略**：`sleep(retryAfter)` 后重试；并发突发时指数退避（上限 60s）。SSE 流式端点（`/api/v1/chat`、`/api/v1/agent/run`）已豁免限流，无需处理 429。
 

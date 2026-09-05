@@ -26,8 +26,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: '文档中心', link: '/' },
       { text: '文档规范', link: '/standards/README' },
-      { text: '产品概述', link: '/getting-started/product-overview' },
-      { text: 'GitHub', link: 'https://github.com/' }
+      { text: '产品概述', link: '/getting-started/product-overview' }
     ],
     sidebar: {
       '/': [

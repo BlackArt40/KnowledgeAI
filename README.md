@@ -14,11 +14,11 @@
 | 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 触摸手势（滑开抽屉·滑切会话·长按操作）/ 相机拍照上传 / 可安装 + 离线访问已加载内容 | 手写 Service Worker + Sheet 抽屉 + 手势 hooks（零新依赖） |
 | 全局搜索 | Cmd+K 命令面板 / 覆盖知识库·文档·对话·Agent 任务·设置 / 分类 Tab + 高亮 / 最近搜索 / 快捷操作 / 深链直达（会话·任务·设置区块·新建 KB） | 单端点内存检索（<100ms）+ 键盘导航 + localStorage 历史 |
 | 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | 自研渲染器 + 反馈持久化 + 2-gram 推荐打分（零新依赖） |
-| 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（685 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | 自研轻量 i18n（Context + useT + 静态扫描零残留断言） |
+| 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（1293 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | i18next（Context + useT + 静态扫描零残留断言） |
 | 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量 token + matchMedia 监听 + SSR 品牌注入 |
 | 应用监控 | 分布式追踪（API→RAG→LLM 全链路 span 树）/ QPS·错误率·延迟 P50/P95/P99 仪表盘 / LLM Token·成本·模型分布 / 前端+后端错误自动上报 Sentry | 自研 ALS 追踪 + 内存 SLI 存储 + Sentry Envelope 零依赖直投（SENTRY_DSN 门控） |
 | 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
-| CI/CD | GitHub Actions 四 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 86%）+ Playwright + buildx/GHCR + 蓝绿脚本（secrets 门控） |
+| CI/CD | GitHub Actions 五 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E / 文档门禁）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 86%）+ Playwright + buildx/GHCR + 蓝绿脚本（secrets 门控） |
 | 健康检查 | 存活探针（/api/health，与依赖解耦）/ 就绪探针（DB·Redis·LLM 连通性，不可用返回 503）/ 数据库检查 / 就绪失败自动告警（站内通知 admin + 日志 + Sentry）/ Docker·K8s 三探针配置 | 真实连通性探测（SELECT 1 / Redis connect / /models）+ 转移告警状态机（10 分钟重报去重） |
 | 开放 API | OpenAPI 3.0 规范 + `/docs` Swagger UI 交互式文档 / `/api/v1` 版本化表面（KB·流式问答·Agent·Webhook，API Key scope 强制）/ Webhook 事件推送（kb.ready·agent.completed·usage.alert，HMAC 签名 + 队列重试 + 死信）/ 三语言官方 SDK（JavaScript / Python / Go）/ 开发者门户（用量统计 + Webhook 管理 + 集成市场） | 手写 OpenAPI + swagger-ui-dist + scope 校验 + webhook-deliver 队列 + 零依赖 SDK |
 | 集成市场 | Embeddable Widget（单文件独立部署）/ Slack·飞书·钉钉群机器人（token 哈希鉴权 + 独立限流）/ Chrome 扩展（右键选中即问答）/ n8n·Zapier（API + Webhook 工作流） | 自包含 JS 组件 + 平台消息适配器 + MV3 扩展 + CORS 放行 |
@@ -34,7 +34,7 @@
 
 - **框架**：Next.js 16（App Router · Turbopack · Route Handlers · SSE 流式）
 - **样式**：Tailwind CSS v4 + CSS 变量设计令牌（系统 / 亮 / 暗三模式 + 高对比度 + 品牌色）
-- **组件**：shadcn 风格自建组件库（15 个基础组件）
+- **组件**：shadcn 风格自建组件库（17 个基础组件）
 - **图标**：lucide-react + 自绘品牌图标
 - **语言**：TypeScript 严格模式 · React 19
 - **生产适配**：LLM Provider（含运行时导入外部模型）/ Payment / Database / Storage / Rate Limit / Auth
@@ -69,23 +69,6 @@ pnpm lint
 
 也可自行注册新账户（默认 Editor 角色）。
 
-## 📁 项目结构
-
-```
-src/
-├── app/            # Next.js App Router（页面 + API 路由）
-├── components/      # React 组件（ui 基础库 + app 业务 + marketing）
-├── lib/             # 业务逻辑（auth/kb/rag/agent/queue/db/storage…）
-└── proxy.ts         # 中间件（限流 + DB 水合）
-prisma/              # 数据库 schema + 迁移 + 种子
-scripts/             # 运维脚本（清理/迁移/CI 检查）
-└── smoke/           # 手动冒烟测试
-tests/               # 集成测试（需 dev server）
-docs/                # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
-```
-
-> 完整目录说明见 [docs/getting-started/project-structure.md](docs/getting-started/project-structure.md)。
-
 ## 🐳 Docker 部署
 
 ```bash
@@ -107,7 +90,7 @@ src/
 ├── app/
 │   ├── (app)/          # 工作台页面（AppShell 包裹）
 │   ├── (auth)/         # 登录 / 注册 / 验证
-│   ├── api/            # 40+ Route Handlers
+│   ├── api/            # 100+ Route Handlers
 │   ├── privacy/        # 隐私政策
 │   ├── terms/          # 服务条款
 │   ├── maintenance/    # 维护页
@@ -118,6 +101,7 @@ src/
 │   ├── app/            # 工作台组件
 │   ├── marketing/      # 落地页组件
 │   └── icons/          # 品牌图标
+├── proxy.ts            # 中间件（限流 + DB 水合）
 └── lib/
     ├── rag/             # RAG 引擎（全异步：嵌入/检索/生成）
     ├── llm/             # ⭐ LLM Provider（OpenAI 兼容 + 本地回退）
@@ -132,11 +116,18 @@ src/
     ├── apikeys/         # API 密钥
     ├── security/        # 安全 + GDPR
     ├── admin/           # 管理后台
-    ├── db/              # ⭐ 数据库适配（Prisma + Repository）
+    ├── db/              # ⭐ 数据库适配（Prisma 写穿：client/persist/hydrate）
     ├── storage/         # ⭐ 文件存储适配（S3 / 本地）
     ├── auth/            # ⭐ JWT 认证 + 角色守卫（Web Crypto + guard.ts）
     └── config.ts        # ⭐ Provider 状态聚合
+prisma/                 # 数据库 schema + 迁移 + 种子
+scripts/                # 运维脚本（清理/迁移/CI 检查）
+└── smoke/              # 手动冒烟测试
+tests/                  # 集成测试（需 dev server）
+docs/                   # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
 ```
+
+> 完整目录说明见 [docs/getting-started/project-structure.md](docs/getting-started/project-structure.md)。
 
 ## ⚙️ 生产化接入（配置即切换）
 
@@ -149,7 +140,7 @@ src/
 | 数据库 | `DATABASE_URL` | PostgreSQL (Prisma) | 内存存储 |
 | 文件存储 | `S3_ENDPOINT` `S3_BUCKET` | S3 / MinIO / R2 | 本地文件系统 |
 | 支付 | `STRIPE_SECRET_KEY` | Stripe Checkout | 模拟支付 |
-| 限流 | `RATE_LIMIT_PER_MIN` `RATE_LIMIT_ANON_PER_MIN` `RATE_LIMIT_KEY_PER_MIN` `RATE_LIMIT_KB_PER_MIN` | Redis 滑动窗口（分级：匿名/用户/API Key/KB） | 内存限流 |
+| 限流 | `RATE_LIMIT_PER_MIN` `RATE_LIMIT_ANON_PER_MIN` `RATE_LIMIT_KEY_PER_MIN` `RATE_LIMIT_KB_PER_MIN` `RATE_LIMIT_AGENT_PER_MIN` `RATE_LIMIT_AUTH_EMAIL_PER_MIN` | Redis 滑动窗口（分级：匿名/用户/API Key/KB/Agent/邮件触发端点） | 内存限流 |
 | 外部数据源 | `TAVILY_API_KEY` `SERPAPI_KEY` `BRAVE_SEARCH_KEY` `GITHUB_TOKEN` | Tavily / SerpAPI / Brave / ArXiv / GitHub | 模拟外部结果 |
 | 密钥加密 | `AUTH_SECRET` | AES-256-GCM + HKDF（API Key / 模型 Key 密文落库，密码 PBKDF2） | 固定 dev key |
 
@@ -163,8 +154,8 @@ cp .env.example .env.local
 #    CHAT_MODEL=gpt-4o-mini
 #    EMBEDDING_MODEL=text-embedding-3-small
 
-# 3. （可选）启用数据库
-pnpm add @prisma/client
+# 3. （可选）启用数据库（@prisma/client 已是依赖，无需额外安装）
+npx prisma generate
 npx prisma migrate deploy
 
 # 4. 启动 — 已配置的 Provider 自动激活

@@ -26,9 +26,9 @@ KnowledgeAI/
 ├── scripts/              # 运维脚本（cron/迁移/清理）
 │   └── smoke/            # 手动冒烟测试脚本（npx tsx 运行）
 ├── tests/                # 集成测试（需启动 dev server，用 node 运行）
-├── docs/                 # 产品文档 / 设计说明 / 路线图 / 截图
+├── docs/                 # VitePress 文档中心（入门/架构/API/运维/FAQ/规范，历史文档在 archive/）
 ├── public/               # 静态资源（favicon、SVG 图标）
-├── .github/workflows/    # CI 流水线（tsc + prisma drift + build）
+├── .github/workflows/    # CI 流水线（五 job：quality / unit / integration / e2e / docs）
 ├── .tessdata/            # Tesseract OCR 语言包（首次 OCR 时下载，gitignored）
 └── .uploads/             # 本地上传文件存储（demo 模式，gitignore）
 ```
@@ -109,8 +109,25 @@ src/
 │   ├── upload/                   # 分片上传会话管理 + 前端 hook
 │   ├── storage/                  # 文件存储（本地 / S3）+ 清理任务
 │   ├── queue/                    # 异步任务队列（Memory / BullMQ+Redis）
+│   ├── email/                    # P8 邮件投递（Resend Provider + 模板 + email-send 队列 job）
+│   ├── integrations/             # P7-2 集成（Slack/飞书/钉钉机器人 + Notion/Confluence 同步）
+│   ├── webhooks/                 # P7-1 Webhook 引擎（HMAC 签名 + 重试 + 死信）
+│   ├── openapi/                  # OpenAPI 3.0 规范（/api/openapi.json + /docs）
+│   ├── realtime/                 # P4-1 实时协作（事件总线 + 在线状态）
+│   ├── kg/                       # P7-3 知识图谱（NER 抽取 + GraphRAG + d3-force 布局）
+│   ├── voice/                    # P7-4 语音（STT/TTS 封装）
+│   ├── theme/                    # P5-5 主题（三模式 + 高对比度 + 品牌色）
+│   ├── i18n/                     # P5-4 国际化（i18next + zh-CN/en 语言包）
+│   ├── obs/                      # P6 可观测（指标/追踪/错误上报/结构化日志）
+│   ├── health/                   # P6-4 健康检查（DB/Redis/LLM 连通性 + 告警状态机）
+│   ├── workspace/                # P4-3 多租户 Workspace
 │   ├── db/                       # Prisma 数据库层（client / hydrate / persist）
 │   ├── config.ts                 # Provider 状态聚合（管理面板数据源）
+│   ├── crypto.ts                 # AES-256-GCM + HKDF（密文落库）
+│   ├── secrets.ts                # AUTH_SECRET 解析（生产缺失拒绝启动）
+│   ├── rate-limit.ts             # 分级限流（7 维度 + Redis/内存双后端）
+│   ├── roles.ts                  # RBAC 角色定义
+│   ├── sse.ts                    # SSE 工具
 │   ├── format.ts                 # 格式化工具
 │   └── utils.ts                  # 通用工具
 │
@@ -130,7 +147,7 @@ src/
 | `worker.ts` | 独立 Worker 进程入口（Docker worker 服务） |
 | `proxy.ts`（在 `src/`） | Next.js 16 中间件（原 middleware.ts） |
 | `Dockerfile` | 多阶段构建（deps → build → minimal runner） |
-| `docker-compose.yml` | 编排：app + worker + Redis |
+| `docker-compose.yml` | 编排：app + worker + Redis + PostgreSQL（pgvector） |
 | `AGENTS.md` | AI 编辑会话指南（命令 / 架构 / 约定） |
 | `.env.example` | 环境变量参考（含 demo fallback 文档） |
 
@@ -166,7 +183,7 @@ scripts/
 
 ```
 tests/
-├── api/api-test.mjs             # 38 个 API 路由（含 SSE）
+├── api/api-test.mjs             # API 路由全量覆盖（50+ 请求，含 SSE）
 ├── functional/functional-test.mjs  # 25 个页面 / 流程检查
 └── performance/performance-test.mjs  # 性能 + 限流
 ```
@@ -178,7 +195,8 @@ tests/
 ```
 prisma/
 ├── schema.prisma                # PostgreSQL schema（模型 / 枚举 / 关系）
-├── migrations/                  # 迁移文件（CI 检查漂移）
-│   └── 20260713022119_init/     # 初始迁移
+├── migrations/                  # 迁移文件（16 个，CI 检查漂移）
+│   ├── 20260713022119_init/     # 初始迁移
+│   └── …                        # P2~P8 迁移（2FA/审计/反馈/locale/品牌色/webhook/机器人/图谱/OAuth/密码重置/邮箱验证等）
 └── seed.ts                      # 演示数据（4 用户 + 5 KB + 1 团队）
 ```
