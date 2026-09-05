@@ -179,6 +179,8 @@ jobs:
         run: pnpm docs:build
       - name: Validate Frontmatter metadata
         run: npx tsx scripts/tools/check-docs-frontmatter.ts
+      - name: Env vars doc parity check
+        run: npx tsx scripts/tools/check-env-parity.ts
       - name: API reference drift check
         run: |
           npx tsx scripts/tools/gen-api-reference.ts

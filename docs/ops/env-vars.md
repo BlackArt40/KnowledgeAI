@@ -4,10 +4,10 @@ description: KnowledgeAI 全部环境变量参考：必填项、默认值、演�
 type: reference
 category: ops
 level: L2
-version: 1.0.0
+version: 1.1.0
 authors: [technical-writer]
 owner: devops-owner
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -16,7 +16,7 @@ related: [deployment-guide.md, monitoring.md]
 
 # 环境变量全表
 
-> **单一事实源**：本文档与仓库根 `.env.example` 保持一致。配置项变更时须同步更新两处；CI 会校验 `docs/ops/env-vars.md` 与 `.env.example` 的变量名集合一致（覆盖率指标：环境变量覆盖率 100%）。
+> **单一事实源**：本文档与仓库根 `.env.example` 保持一致。配置项变更时须同步更新两处；CI 通过 `scripts/tools/check-env-parity.ts` 校验两者的变量名集合一致（不一致即门禁失败）。
 >
 > **核心原则**：留空的项自动回退演示模式。复制 `.env.example` 为 `.env.local`（本地）或 `.env`（服务器）后按需填写。
 
@@ -24,8 +24,9 @@ related: [deployment-guide.md, monitoring.md]
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `NEXT_PUBLIC_APP_NAME` | 否 | `KnowledgeAI` | 应用显示名 |
-| `NEXT_PUBLIC_APP_URL` | 否 | `http://localhost:3000` | 对外基础 URL |
+| `NEXT_PUBLIC_APP_URL` | 否 | `http://localhost:3000` | 对外基础 URL（也是密码重置/邮箱验证邮件链接的 base） |
+
+> 历史变量 `NEXT_PUBLIC_APP_NAME` 已废弃：应用显示名现在由管理后台系统设置维护。
 
 ## 数据库
 
@@ -39,9 +40,22 @@ related: [deployment-guide.md, monitoring.md]
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `AUTH_SECRET` | **是（生产）** | `change-me-...` | JWT 签名密钥，**生产必须改为随机 32+ 字符**；同时作为审计链 HMAC 密钥 |
+| `AUTH_SECRET` | **是（生产）** | `change-me-...` | JWT 签名密钥，**生产必须改为随机 32+ 字符**（未配置生产拒绝启动）；同时作为审计链 HMAC 密钥 |
 | `AUDIT_RETENTION_DAYS` | 否 | `90` | 审计日志保留天数 |
 | `AUDIT_MAX_ENTRIES` | 否 | `2000` | 内存审计链上限 |
+
+## 邮件（P8 密码重置 / 邮箱验证）
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `RESEND_API_KEY` | 否 | 空（演示回退） | Resend API Key；配置后密码重置/邮箱验证经后台队列异步投递（固定投递到 Resend 云端 API）。未配置 = 演示模式，重置链接直接返回在响应 body（仅本地开发，生产统一响应防枚举） |
+| `EMAIL_FROM` | 与上方成对 | 空 | 发件地址，如 `KnowledgeAI <noreply@yourdomain.com>` |
+
+## API CORS（P7-2 公共 API）
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `CORS_ALLOWED_ORIGINS` | 否 | 空（反射任意 Origin） | `/api/*` 的 Origin 白名单（逗号分隔完整 origin）。响应始终带 `Vary: Origin` 防共享缓存投毒；生产建议显式设置 |
 
 ## OAuth 社交登录（Auth.js v5）
 
@@ -87,6 +101,11 @@ related: [deployment-guide.md, monitoring.md]
 | `S3_ENDPOINT` | 否 | 空（本地 `.uploads/`） | S3 / MinIO / R2 端点 |
 | `S3_BUCKET` | 否 | `knowledgeai-uploads` | 存储桶 |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | 否 | 空 | 访问密钥 |
+| `S3_REGION` | 否 | `us-east-1` | 区域 |
+| `S3_PUBLIC_URL` | 否 | 空 | 公开访问的 CDN/基础 URL（可选） |
+| `MAX_UPLOAD_MB` | 否 | `50` | 单文件大小上限（MB） |
+| `CHUNK_SIZE_MB` | 否 | `5` | 分片上传单片大小（MB） |
+| `MAX_CHUNKED_UPLOAD_MB` | 否 | `500` | 分片上传文件总量上限（MB） |
 
 ## 限流（分级维度）
 
@@ -98,6 +117,8 @@ related: [deployment-guide.md, monitoring.md]
 | `RATE_LIMIT_KEY_PER_MIN` | 否 | `500` | API Key |
 | `RATE_LIMIT_KB_PER_MIN` | 否 | `60` | 知识库维度（聊天/加载，须低于用户档位） |
 | `RATE_LIMIT_INTEGRATION_PER_MIN` | 否 | `120` | 集成（机器人）维度 |
+| `RATE_LIMIT_AGENT_PER_MIN` | 否 | `10` | Agent 运行维度（P1-2：`/api/agent/run` 是高成本多步 LLM 任务，独立于用户配额） |
+| `RATE_LIMIT_AUTH_EMAIL_PER_MIN` | 否 | `3` | 触发外发邮件的未认证端点（P8：忘记密码/验证邮件重发），按 邮箱+端点 键控防邮件轰炸 |
 
 ## 支付
 
@@ -109,10 +130,7 @@ related: [deployment-guide.md, monitoring.md]
 
 ## 系统配置
 
-| 变量 | 必填 | 默认值 | 说明 |
-|------|:----:|--------|------|
-| `MAINTENANCE_MODE` | 否 | `false` | 维护模式开关 |
-| `ALLOW_SIGNUP` | 否 | `true` | 允许注册 |
+> 维护模式与注册开关已迁移到管理后台（`/admin` 系统设置，DB 持久化、运行时生效），不再通过环境变量配置。历史变量 `MAINTENANCE_MODE` / `ALLOW_SIGNUP` 已废弃。
 
 ## OCR（扫描件 / 图片文字识别）
 
@@ -167,4 +185,5 @@ related: [deployment-guide.md, monitoring.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1.0 | 2026-09-05 | 补 P8 邮件（RESEND/EMAIL_FROM）、AGENT/AUTH_EMAIL 限流档、CORS、S3_REGION/S3_PUBLIC_URL、MAX_UPLOAD_MB；移除废弃的 NEXT_PUBLIC_APP_NAME/MAINTENANCE_MODE/ALLOW_SIGNUP；新增 CI 变量名一致性校验 |
 | 1.0.0 | 2026-08-20 | 初版（与 .env.example 逐项核对） |
