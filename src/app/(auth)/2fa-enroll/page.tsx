@@ -55,7 +55,7 @@ export default function TwoFactorEnrollPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => { if (preAuthToken) void startEnroll(preAuthToken); else router.replace("/login"); }, [preAuthToken, startEnroll, router]);

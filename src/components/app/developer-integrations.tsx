@@ -5,7 +5,7 @@
 // （page.developer.s44+）。
 
 import * as React from "react";
-import { Plus, Trash2, Copy, Check, Power, Bot, Globe, Puzzle, Workflow, RefreshCw, FileDown, Loader2 } from "lucide-react";
+import { Plus, Trash2, Copy, Check, Bot, Globe, Puzzle, Workflow, RefreshCw, FileDown, Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

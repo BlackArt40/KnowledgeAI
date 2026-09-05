@@ -57,10 +57,10 @@ export default function KbDetailPage() {
       setData(json);
     } catch {
       setError(t("page.knowledge-base-[id].s2"));
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+      } finally {
+        setLoading(false);
+      }
+  }, [id, t]);
 
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

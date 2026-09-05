@@ -83,7 +83,7 @@ export function KbSettingsDialog({
         setUserEmbModels(userModels);
       })
       .catch(() => setUserEmbModels([]));
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

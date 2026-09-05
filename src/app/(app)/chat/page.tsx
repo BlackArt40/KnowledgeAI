@@ -40,7 +40,7 @@ import { ConversationList, TagEditor, type ConvLite, type SharedConv } from "@/c
 import { SourcesPanel } from "@/components/app/chat/sources-panel";
 import { EmptyState, FollowUpSuggestions } from "@/components/app/chat/chat-empty-state";
 import { useIsMobile } from "@/hooks/use-media-query";
-import { useHorizontalSwipe, useLongPress } from "@/hooks/use-gestures";
+import { useHorizontalSwipe } from "@/hooks/use-gestures";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { cn } from "@/lib/utils";
 import { useSse } from "@/lib/use-sse";
@@ -259,7 +259,7 @@ export default function ChatPage() {
       .then((r) => r.json())
       .then((d) => setSuggestions(kbSuggestions(d.docs ?? [], d.kb?.name ?? "", t)))
       .catch(() => setSuggestions([]));
-  }, [selectedKb]);
+  }, [selectedKb, t]);
 
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -919,6 +919,9 @@ export default function ChatPage() {
             <div className="mb-2 flex flex-wrap gap-2 px-1">
               {attachments.map((img, i) => (
                 <div key={i} className="group relative">
+                  {/* Base64 attachment preview - next/image cannot optimize
+                      data: URLs, so the native element is intentional here. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`data:${img.mime};base64,${img.data}`}
                     alt={img.name}

@@ -167,7 +167,6 @@ function ProductPreview() {
 }
 
 function Cite({ n }: { n: number }) {
-  const t = useT();
   return (
     <span className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary align-baseline">
       {n}

@@ -12,7 +12,6 @@ export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const keys = listKeys(u.id).map((k) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { secret, ...rest } = k;
     return rest;
   });

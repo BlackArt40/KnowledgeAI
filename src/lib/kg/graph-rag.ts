@@ -37,7 +37,7 @@ export function graphRankChunks(
   chunks: RetrievedChunk[],
   opts: { hops?: number } = {}
 ): GraphRagResult {
-  const queryEntities = extractEntities(query, { llm: false });
+  const queryEntities = extractEntities(query);
   if (queryEntities.length === 0) {
     return { chunks, matchedLabels: [], neighborLabels: [] };
   }

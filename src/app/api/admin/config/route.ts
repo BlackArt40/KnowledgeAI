@@ -28,7 +28,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
   // Don't allow overriding provider fields via PATCH
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { providers, providerSummary, ...configPatch } = body;
   const cfg = updateConfig(configPatch);
   recordAudit({

@@ -29,12 +29,6 @@
   var NS = "kaiw";
   var state = null;
 
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
   function css() {
     return (
       "." + NS + "-fab{position:fixed;z-index:2147483000;bottom:24px;right:24px;" +
@@ -142,7 +136,7 @@
               var line = frame.split("\n").find(function (l) { return l.indexOf("data:") === 0; });
               if (!line) continue;
               var ev;
-              try { ev = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+              try { ev = JSON.parse(line.slice(5).trim()); } catch (_e) { continue; }
               if (ev.type === "token") {
                 if (botEl.firstChild === cursor) botEl.removeChild(cursor);
                 botEl.textContent += ev.text || "";

@@ -29,10 +29,28 @@ const eslintConfig = defineConfig([
     // lint` used to fail with 1000+ errors from this dir on a clean checkout.
     ".vitepress/**",
   ]),
-  // Manual smoke scripts + seed use @ts-nocheck (per AGENTS.md convention).
-  // These are standalone tsx scripts, not app code, so relax type-strictness rules.
+  // Unused-vars policy: keep the warn level but exempt the repo's `_`-prefix
+  // convention (e.g. `_redisUrl` params kept for API stability) and
+  // rest-sibling field stripping (`const { tokenHash: _t, ...rest } = bot`).
   {
-    files: ["scripts/**/*.ts", "scripts/**/*.tsx", "prisma/seed.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
+  // Manual smoke scripts + seed use @ts-nocheck (per AGENTS.md convention).
+  // These are standalone tsx/node scripts, not app code, so relax
+  // type-strictness rules. (*.mjs smoke suites get the same relaxation as
+  // their .ts siblings - they are equally standalone, run only by hand.)
+  {
+    files: ["scripts/**/*.ts", "scripts/**/*.tsx", "scripts/**/*.mjs", "prisma/seed.ts"],
     rules: {
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-explicit-any": "off",

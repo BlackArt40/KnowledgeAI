@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
 import path from "path";
 import { getRequestUser } from "@/lib/auth/guard";
 import { isStorageEnabled, readFile } from "@/lib/storage";

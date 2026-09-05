@@ -98,7 +98,7 @@ export default function SharedReportPage({ params }: { params: Promise<{ id: str
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   function copyReport() {
     if (!data?.report) return;

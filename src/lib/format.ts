@@ -8,7 +8,9 @@ function intlLocale(locale: string): string {
   return normalizeLocale(locale) === "en" ? "en-US" : "zh-CN";
 }
 
-export function formatSize(bytes: number, locale: string = "zh-CN"): string {
+// Units are always SI-style English abbreviations (no localized variants),
+// so formatSize takes no locale - callers pass only the byte count.
+export function formatSize(bytes: number): string {
   if (bytes < 0) return "—";
   if (bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];

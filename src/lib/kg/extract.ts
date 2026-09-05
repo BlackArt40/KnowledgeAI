@@ -44,7 +44,7 @@ const EN_CONCEPT = /"[^"]{2,30}"/g;
 const EN_EVENT = /(?:the\s+)?(?:[A-Z][\w]+\s+)+(?:Summit|Conference|Forum|Expo|Election|Launch|Awards?)/g;
 
 /** Extract entity mentions from a text (pure, deterministic in demo mode). */
-export function extractEntities(text: string, opts: { llm?: boolean } = {}): EntityMention[] {
+export function extractEntities(text: string): EntityMention[] {
   if (!text || text.length < 2) return [];
   const mentions: EntityMention[] = [];
 

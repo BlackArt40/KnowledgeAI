@@ -108,7 +108,6 @@ function FeatureCard({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const t = useT();
   return (
     <div
       className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 ${className ?? ""}`}
@@ -202,7 +201,6 @@ export function SectionHeading({
   title: string;
   desc?: string;
 }) {
-  const t = useT();
   return (
     <div className="mx-auto max-w-2xl text-center">
       <Badge variant="default" className="mb-4">

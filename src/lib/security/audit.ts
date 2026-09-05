@@ -20,7 +20,6 @@ import crypto from "crypto";
 import { persistAuditEvent } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import { getAuthSecret } from "@/lib/secrets";
-import { log } from "@/lib/obs/log";
 
 const GENESIS_HASH = "genesis";
 const AUDIT_MAX_ENTRIES = parseInt(process.env.AUDIT_MAX_ENTRIES || "2000", 10);

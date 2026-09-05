@@ -16,6 +16,6 @@ export function useFormat() {
     formatDate: (ts: number) => formatDate(ts, locale),
     formatDateTime: (ts: number) => formatDateTime(ts, locale),
     formatNumber: (n: number) => formatNumber(n, locale),
-    formatSize: (b: number) => formatSize(b, locale),
+    formatSize: (b: number) => formatSize(b),
   };
 }
