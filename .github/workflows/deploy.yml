@@ -36,7 +36,7 @@ jobs:
     outputs:
       image: ${{ steps.img.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Lowercase image reference
         id: img
@@ -70,7 +70,7 @@ jobs:
     env:
       STAGING_HOST: ${{ secrets.STAGING_HOST }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Deploy over SSH
         if: ${{ env.STAGING_HOST != '' }}

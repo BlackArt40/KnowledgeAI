@@ -38,7 +38,7 @@ jobs:
       image: ${{ steps.img.outputs.value }}
       tag: ${{ steps.tag.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Resolve image tag
         id: tag
@@ -81,7 +81,7 @@ jobs:
     env:
       PROD_HOST: ${{ secrets.PROD_HOST }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Blue/green deploy over SSH
         if: ${{ env.PROD_HOST != '' }}
