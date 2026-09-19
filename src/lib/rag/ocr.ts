@@ -12,10 +12,31 @@
 //   OCR_MAX_PAGES (default 20)    - cap pages OCR'd per scanned PDF
 // ---------------------------------------------------------------------------
 
+import fs from "node:fs";
 import { log } from "@/lib/obs/log";
 
 const MIN_CHARS_PER_PAGE = 20;
 const MIN_CHARS_NO_PAGE_INFO = 50;
+
+/** True when every language pack of `lang` ('+'-joined) is cached under
+ *  .tessdata/. Checked BEFORE createWorker: a missing pack makes the
+ *  tesseract worker throw ENOENT from its own thread, which escapes this
+ *  module's try/catch as an uncaughtException and kills the in-flight
+ *  request (observed 2026-09-05). Missing packs -> skip OCR, caller falls
+ *  back (null contract below). */
+function packsAvailable(lang: string): boolean {
+  const parts = lang.split("+").filter(Boolean);
+  for (const part of parts) {
+    if (!fs.existsSync(`.tessdata/${part}.traineddata`)) {
+      log.warn(
+        { lang: part },
+        "[ocr] language pack missing in .tessdata/ - skipping OCR (run scripts/smoke/test-ocr-image.ts once online to cache packs, or set OCR_ENABLED=false)"
+      );
+      return false;
+    }
+  }
+  return true;
+}
 
 interface PdfCanvas {
   width: number;
@@ -68,12 +89,14 @@ function ocrMaxPages(): number {
 
 export async function ocrImage(buf: Buffer, lang?: string): Promise<string | null> {
   if (!ocrEnabled()) return null;
+  const effectiveLang = lang ?? ocrLang();
+  if (!packsAvailable(effectiveLang)) return null;
   try {
     const { createWorker } = await import("tesseract.js");
     // langPath: keep tesseract language packs in .tessdata/ (project root stays clean)
     // gzip: false — the local .tessdata/*.traineddata files are uncompressed; without
     // this, tesseract.js v5 defaults gzip=true and looks for .traineddata.gz (ENOENT).
-    const worker = await createWorker(lang ?? ocrLang(), 1, { langPath: ".tessdata", gzip: false });
+    const worker = await createWorker(effectiveLang, 1, { langPath: ".tessdata", gzip: false });
     try {
       const { data } = await worker.recognize(buf);
       return data?.text?.trim() || null;
