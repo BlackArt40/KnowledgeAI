@@ -120,6 +120,24 @@ export async function deleteKbFromDb(kbId: string): Promise<void> {
   }
 }
 
+/** Prisma FK violation (P2003) - a referenced row does not exist yet. */
+function isForeignKeyViolation(err: unknown): boolean {
+  return (
+    err !== null &&
+    typeof err === "object" &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "P2003"
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Parent-row FK race: total ~500ms of patience across 4 retries. */
+const DOC_FK_MAX_RETRIES = 4;
+const DOC_FK_RETRY_BASE_MS = 50;
+
 /** Persist a document create/update to DB. */
 export async function persistDoc(doc: {
   id: string;
@@ -137,27 +155,42 @@ export async function persistDoc(doc: {
   if (!isDbEnabled()) return;
   const db = await getDb();
   if (!db) return;
-  try {
-    const data = {
-      name: doc.name,
-      type: doc.type,
-      size: doc.size,
-      status: doc.status,
-      progress: doc.progress,
-      chunks: doc.chunks,
-      url: doc.url ?? null,
-      content: doc.content ?? null,
-      updatedAt: new Date(),
-    };
-    await db.kbDocument.upsert({
+  const data = {
+    name: doc.name,
+    type: doc.type,
+    size: doc.size,
+    status: doc.status,
+    progress: doc.progress,
+    chunks: doc.chunks,
+    url: doc.url ?? null,
+    content: doc.content ?? null,
+    updatedAt: new Date(),
+  };
+  const write = () =>
+    db.kbDocument.upsert({
       where: { id: doc.id },
       update: data,
       create: { id: doc.id, kbId: doc.kbId, ...data, uploadedAt: new Date(doc.uploadedAt) },
     });
-  } catch (err) {
-    log.error({ err }, "[db] persistDoc error");
+
+  // KB creation persists fire-and-forget, and the upload path can persist the
+  // document before that write commits - the FK would reject it (P2003). Retry
+  // briefly instead of dropping the document row.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await write();
+      return;
+    } catch (err) {
+      if (isForeignKeyViolation(err) && attempt < DOC_FK_MAX_RETRIES) {
+        await sleep(DOC_FK_RETRY_BASE_MS * (attempt + 1));
+        continue;
+      }
+      log.error({ err }, "[db] persistDoc error");
+      return;
+    }
   }
 }
+
 
 /** Delete a document from DB. */
 export async function deleteDocFromDb(docId: string): Promise<void> {
