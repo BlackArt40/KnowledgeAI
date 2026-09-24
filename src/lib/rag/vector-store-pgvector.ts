@@ -6,7 +6,7 @@
 //   2. VECTOR_STORE=pgvector + DATABASE_URL in .env.local
 //   3. @prisma/client installed
 //
-// Uses Prisma raw queries for vector operations ($queryRaw / $executeRaw).
+// Uses Prisma raw queries for vector operations ($queryRawUnsafe / $executeRawUnsafe).
 // HNSW index on the embedding column for ANN search.
 //
 // Table schema (auto-created on first use):
@@ -27,8 +27,8 @@ import type { VectorStore, SearchResult } from "./vector-store-interface";
 
 // Prisma client shape for raw queries (avoids importing @prisma/client types)
 interface PrismaClient {
-  $queryRaw<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
-  $executeRaw(sql: string, ...params: unknown[]): Promise<number>;
+  $queryRawUnsafe<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
+  $executeRawUnsafe(sql: string, ...params: unknown[]): Promise<number>;
 }
 
 let initialized = false;
@@ -51,7 +51,7 @@ async function ensureSchema(dim: number): Promise<void> {
   const db = (await getDb()) as PrismaClient | null;
   if (!db) return;
 
-  await db.$executeRaw(`
+  await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS kb_chunks (
       id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       kb_id       TEXT NOT NULL,
@@ -62,14 +62,14 @@ async function ensureSchema(dim: number): Promise<void> {
       embedding   vector(${dim})
     )
   `);
-  await db.$executeRaw(
+  await db.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS idx_kb_chunks_kb ON kb_chunks (kb_id)`
   );
-  await db.$executeRaw(
+  await db.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS idx_kb_chunks_doc ON kb_chunks (doc_id)`
   );
   // HNSW index for ANN cosine search (created once, offline-friendly)
-  await db.$executeRaw(
+  await db.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS idx_kb_chunks_emb ON kb_chunks USING hnsw (embedding vector_cosine_ops)`
   );
   vectorDim = dim;
@@ -101,7 +101,7 @@ export class PgVectorStore implements VectorStore {
     await ensureSchema(dim);
 
     // Remove existing chunks for this doc (re-index safe)
-    await db.$executeRaw(
+    await db.$executeRawUnsafe(
       `DELETE FROM kb_chunks WHERE kb_id = $1 AND doc_id = $2`,
       kbId,
       docId
@@ -109,7 +109,7 @@ export class PgVectorStore implements VectorStore {
 
     // Batch insert
     for (let i = 0; i < chunks.length; i++) {
-      await db.$executeRaw(
+      await db.$executeRawUnsafe(
         `INSERT INTO kb_chunks (kb_id, doc_id, doc_name, chunk_index, text, embedding)
          VALUES ($1, $2, $3, $4, $5, $6::vector)`,
         kbId,
@@ -126,7 +126,7 @@ export class PgVectorStore implements VectorStore {
     if (!isDbEnabled()) return;
     const db = (await getDb()) as PrismaClient | null;
     if (!db) return;
-    await db.$executeRaw(
+    await db.$executeRawUnsafe(
       `DELETE FROM kb_chunks WHERE kb_id = $1 AND doc_id = $2`,
       kbId,
       docId
@@ -137,7 +137,7 @@ export class PgVectorStore implements VectorStore {
     if (!isDbEnabled()) return;
     const db = (await getDb()) as PrismaClient | null;
     if (!db) return;
-    await db.$executeRaw(`DELETE FROM kb_chunks WHERE kb_id = $1`, kbId);
+    await db.$executeRawUnsafe(`DELETE FROM kb_chunks WHERE kb_id = $1`, kbId);
   }
 
   async search(
@@ -153,7 +153,7 @@ export class PgVectorStore implements VectorStore {
     await ensureSchema(dim);
 
     // Cosine distance via pgvector <=> operator (1 - cosine_similarity)
-    const rows = await db.$queryRaw<PgChunkRow>(
+    const rows = await db.$queryRawUnsafe<PgChunkRow>(
       `SELECT doc_id, doc_name, chunk_index, text,
               1 - (embedding <=> $2::vector) AS similarity
        FROM kb_chunks
@@ -178,7 +178,7 @@ export class PgVectorStore implements VectorStore {
     if (!isDbEnabled()) return 0;
     const db = (await getDb()) as PrismaClient | null;
     if (!db) return 0;
-    const rows = await db.$queryRaw<{ count: number }>(
+    const rows = await db.$queryRawUnsafe<{ count: number }>(
       `SELECT COUNT(*)::int AS count FROM kb_chunks WHERE kb_id = $1`,
       kbId
     );

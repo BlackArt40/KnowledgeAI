@@ -64,6 +64,24 @@ describe("skipped branches (demo mode)", () => {
   });
 });
 
+describe("db probe API shape (regression: Prisma $queryRaw is a tag function)", () => {
+  it("checkDb calls $queryRawUnsafe and reports ok", async () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://u:p@127.0.0.1:5432/kai");
+    const client = {
+      $queryRawUnsafe: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
+      // Calling the tag-function form with a plain string throws on the real
+      // client - the probe must never use it.
+      $queryRaw: vi.fn(() => {
+        throw new Error("`$queryRaw` is a tag function");
+      }),
+    };
+    const r = await checkDb(client);
+    expect(r.status).toBe("ok");
+    expect(client.$queryRawUnsafe).toHaveBeenCalledWith("SELECT 1");
+    expect(client.$queryRaw).not.toHaveBeenCalled();
+  });
+});
+
 describe("degraded branches (configured but unreachable)", () => {
   it("checkDb degrades when DATABASE_URL points at a dead port", async () => {
     vi.stubEnv("DATABASE_URL", "postgresql://u:p@127.0.0.1:59999/kai?connect_timeout=1");

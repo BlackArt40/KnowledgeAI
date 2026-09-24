@@ -50,8 +50,12 @@ curl http://localhost:3000/api/health/ready  # 就绪探针：200 ok 或 503 deg
 
 # 4. 启用数据库持久化（可选）
 docker compose exec postgres psql -U user -d knowledgeai -c "CREATE EXTENSION IF NOT EXISTS vector;"
-docker compose exec app npx prisma migrate deploy
-docker compose exec app npx prisma db seed   # 写入演示数据（可选）
+
+# 运行镜像只含 Next standalone 产物（不含 Prisma CLI），迁移与种子在宿主机执行，
+# 通过 compose 暴露的 5432 端口直连（容器内地址是 postgres:5432，宿主机是 localhost:5432）：
+export DATABASE_URL="postgresql://user:knowledgeai-dev@localhost:5432/knowledgeai"
+npx prisma migrate deploy
+npx prisma db seed   # 写入演示数据（可选）
 ```
 
 - `KAI_ENV_FILE` 可指定其他环境文件（如服务器部署用 `.env`）；
@@ -111,7 +115,7 @@ kubectl apply -f k8s/deployment.yaml
 |------|------|
 | 常规升级 | 构建新镜像 → compose 更新（方式一/二）或蓝绿切换（方式三） |
 | 回滚 | 方式三：重新触发 workflow 指定旧 tag；方式一/二：`docker compose up -d <旧镜像>` |
-| 数据库迁移 | 升级前执行 `npx prisma migrate deploy`（迁移文件随镜像内置） |
+| 数据库迁移 | 升级前在宿主机执行 `DATABASE_URL=... npx prisma migrate deploy`（运行镜像不含 Prisma CLI，迁移文件在仓库 `prisma/migrations/`） |
 | 降级处理 | 演示模式与生产模式可随时互切（移除/设置 `DATABASE_URL` 即可） |
 
 ## 部署自检清单
