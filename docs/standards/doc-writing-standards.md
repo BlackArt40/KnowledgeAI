@@ -124,4 +124,4 @@ related: [../standards/glossary.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| 1.0.0 | 2026-08-20 | 初版（依据《技术文档体系方案》第三章，方案现于 standards/technical-docs-strategy.md） |
+| 1.0.0 | 2026-08-20 | 初版（依据《技术文档体系方案》第三章；方案已归档至 archive/technical-docs-strategy.md） |

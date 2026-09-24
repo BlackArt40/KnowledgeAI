@@ -1,22 +1,22 @@
 ---
-title: 常见问题 FAQ
-description: KnowledgeAI 高频问题汇总：环境配置、部署运维、数据库、API 鉴权、性能限流与功能使用
+title: 常见问题与故障排查
+description: KnowledgeAI 高频问题与故障排查：环境配置、部署运维、数据库、API 鉴权、性能限流、功能使用与四段式排障手册
 type: reference
 category: faq
 level: L1
-version: 1.0.0
+version: 1.1.0
 authors: [technical-writer]
 owner: 技术文档负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [troubleshooting.md, ../ops/deployment-guide.md, ../ops/env-vars.md, ../api/guide.md]
+related: [../ops/deployment-guide.md, ../ops/env-vars.md, ../ops/monitoring.md, ../api/guide.md, ../api/errors.md]
 ---
 
-# 常见问题 FAQ
+# 常见问题与故障排查
 
-> 本文按模块沉淀高频问题，内容来源于仓库文档、已知约定与常见误区。**维护机制**：新问题出现后，先在本表登记，确认根因后补入[故障排查](troubleshooting.md)（四段式）。带 ⚠️ 的是新手最容易踩的坑。
+> 本文分两部分：**上半部分**是高频问答（按模块分类），**下半部分**是[四段式故障排查手册](#troubleshooting)（症状 → 原因 → 处理 → 预防）。新问题先在问答区登记，确认根因后补入排障手册。带 ⚠️ 的是新手最容易踩的坑。
 
 ## 环境与运行模式
 
@@ -84,7 +84,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 ### 收到 429 怎么办？
 
-读取响应体的 `retryAfter`（秒）与 `dimension`（限流维度），按指数退避重试（上限 60s）。档位对应环境变量：API Key `RATE_LIMIT_KEY_PER_MIN`（默认 500）、用户 `RATE_LIMIT_PER_MIN`、匿名 `RATE_LIMIT_ANON_PER_MIN`（20）、KB `RATE_LIMIT_KB_PER_MIN`（60）。SSE 流式端点已豁免。
+读取响应体的 `retryAfter`（秒）与 `dimension`（限流维度），按指数退避重试（上限 60s）。档位对应环境变量：匿名 `RATE_LIMIT_ANON_PER_MIN`（20）、用户 `RATE_LIMIT_PER_MIN`（200）、API Key `RATE_LIMIT_KEY_PER_MIN`（500）、KB `RATE_LIMIT_KB_PER_MIN`（60）、第三方集成 `RATE_LIMIT_INTEGRATION_PER_MIN`（120）、Agent `RATE_LIMIT_AGENT_PER_MIN`（10）、认证邮件 `RATE_LIMIT_AUTH_EMAIL_PER_MIN`（3）。SSE 流式端点已豁免。
 
 ### 为什么答非所问 / 检索质量差？
 
@@ -114,9 +114,144 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 要。文档体系约定：**文档随代码走同一 PR**（docs-as-code）。改 `src/lib/` 模块、导出 API 或 schema 时，同步更新 `docs/architecture/`、`docs/api/` 对应文档；CI 的 `docs` job 会校验 API 漂移、死链、Frontmatter 与环境变量文档一致性。
 
+## 故障排查手册 {#troubleshooting}
+
+> 按「症状 → 原因 → 处理 → 预防」四段式组织。**新增条目规范**：先确认根因与可复现步骤，再按本格式补充，防止条目失真。
+
+### 1. 就绪探针 503 degraded
+
+**症状**：`GET /api/health/ready` 返回 503，响应 `degraded` 列表非空；K8s 下实例被摘流量。
+
+**原因**：DB / Redis / LLM 至少一项已配置但不可达（未配置的依赖计 `skipped`，不会触发）。
+
+**处理**：
+1. 读响应 `checks` 逐项定位故障依赖；
+2. 验证连通性：DB `SELECT 1`、Redis `redis-cli ping`、LLM `GET /models`（OpenAI 兼容）；
+3. 检查网络（容器内 `localhost` 陷阱见下）与凭据是否过期；
+4. 修复后探针自动恢复（`ok→degraded` 已告警、恢复自动通知）。
+
+**预防**：依赖就绪后启动应用；K8s 用 `startupProbe` 容错首次启动。
+
+### 2. 容器内连接数据库失败（Connection refused / ECONNREFUSED）
+
+**症状**：启动日志报连接 `postgres:5432` 或 `redis` 失败；`/api/health/ready` 的 db/redis 项 degraded。
+
+**原因**：⚠️ 容器内 `localhost` 指向容器自身。误把宿主机地址写成 `localhost`，或 `DATABASE_URL` 端口与 compose 暴露端口（宿主机 `5432`）混淆。
+
+**处理**：
+1. compose 内用服务名：`postgresql://user:pwd@postgres:5432/knowledgeai`、`redis://redis:6379/0`；
+2. 外部数据库用真实主机地址，不要用 `localhost`。
+
+**预防**：环境变量模板按 compose 服务名填写；生产环境由 `.env` 注入。
+
+### 3. 文档一直「处理中」/ Agent 任务永不完成
+
+**症状**：上传文档后状态长时间不更新；`/api/agent/run` 入队后无进度事件。
+
+**原因**：**worker 未部署或未消费队列**（app 只写不读）；或 `REDIS_URL` 未配置但期望多实例队列。
+
+**处理**：
+1. 确认 worker 进程运行（compose：`docker compose ps` 看 worker 服务；K8s：worker Deployment 副本数 > 0）；
+2. 内存模式下 worker 与 app 同进程（`instrumentation-node.ts` 启动），确认未误禁用；
+3. 检查队列积压：Redis 模式下 `LLEN bull:*:wait` 等队列键。
+
+**预防**：部署自检清单勾选「worker 已部署」（见[部署指南](../ops/deployment-guide.md)）。
+
+### 4. 上传/写入 EACCES 权限错误
+
+**症状**：上传文档失败，日志报 `EACCES: permission denied` 写入 `/app/.uploads`。
+
+**原因**：镜像以非 root `nextjs`（uid 1001）运行，上传卷不可写（卷首次挂载属主不匹配，或 K8s PVC 无 fsGroup）。
+
+**处理**：
+- Docker：确认使用命名卷（Dockerfile 已对 `/app/.uploads` `chown nextjs:nodejs`）；
+- K8s：`securityContext.fsGroup: 1001`；
+- 排查：`kubectl exec <pod> -- ls -ld /app/.uploads` 检查属主。
+
+**预防**：使用 compose 默认卷配置；K8s 清单勿删 fsGroup。
+
+### 5. API 请求 429 限流
+
+**症状**：接口返回 429，响应含 `retryAfter` / `dimension`。
+
+**原因**：命中限流维度配额（匿名 20 / 用户可配 / API Key 500 / KB 60，次/分）。
+
+**处理**：
+1. 读 `dimension` 定位维度，按 `retryAfter` 退避重试；
+2. 高频集成检查是否误用匿名身份（应配 API Key，额度 500）；
+3. 压测/演示场景按需调高档位环境变量（如 `RATE_LIMIT_PER_MIN=2000`）。
+
+**预防**：生产监控 429 比例；SSE 端点已豁免无需处理。
+
+### 6. v1 API 返回 403「缺少 scope」
+
+**症状**：`/api/v1/*` 调用返回 403。
+
+**原因**：API Key 的 scope 与端点要求不匹配（如 `chat:read` 密钥调 `POST /knowledge-bases` 需 `kb:write`）。
+
+**处理**：重建密钥并勾选所需 scope；或用登录 JWT 会话调用（不受 scope 限制）。
+
+**预防**：对照[端点 Scope 表](../api/reference.md)规划密钥 scope。
+
+### 7. 向量检索失败 / 查不到结果
+
+**症状**：问答引用为空或检索报错；切换 `pgvector` 后索引失败。
+
+**原因**：`pgvector` 未创建 `vector` 扩展；或索引未迁移（内存索引未导入新后端）。
+
+**处理**：
+1. `CREATE EXTENSION IF NOT EXISTS vector;`；
+2. `npx tsx scripts/migrate-vector-store.ts` 迁移存量索引；
+3. 确认 `VECTOR_STORE` 与索引实际所在后端一致。
+
+**预防**：切换后端先迁移再切环境变量；compose 用 `pgvector/pgvector` 镜像。
+
+### 8. OCR 失败 / 扫描件识别为空
+
+**症状**：扫描 PDF / 图片上传后无文本可检索。
+
+**原因**：`OCR_ENABLED=false`；语言包缺失（`OCR_LANG` 需匹配文档语言，默认 `eng+chi_sim`）；超长文档超 `OCR_MAX_PAGES`（默认 20）。
+
+**处理**：确认 OCR 开关与语言包；超长文档拆分上传；检查 `.tessdata/` 语言包就绪（首次自动下载）。
+
+**预防**：混合语言文档显式配置 `OCR_LANG`。
+
+### 9. CI 失败：prisma 迁移漂移
+
+**症状**：CI `quality` job 的 `prisma migrate diff --exit-code` 失败。
+
+**原因**：改了 `prisma/schema.prisma` 但未生成迁移，或迁移与 schema 不一致。
+
+**处理**：`npx prisma migrate dev --name <描述>` 生成迁移并提交；不要手工改库。
+
+**预防**：schema 变更流程见[开发规范](../standards/README.md)；PR 模板勾选「DB 迁移」项。
+
+### 10. 问答质量差 / 答非所问
+
+**症状**：回答与问题无关或引用错误。
+
+**原因**：演示模式（本地抽取式生成）；`topK` 过小；文档未处理完成；重排/改写未开启。
+
+**处理**：配置真实 LLM；检查 `kb.ready`；调大 `topK`；开启 `RERANK_ENABLED` / `QUERY_REWRITE_ENABLED`；对已上线文档使用「点赞/点踩」反馈降权纠偏。
+
+**预防**：上线前用真实 Provider 验证检索质量（`RERANK_CANDIDATES` 默认 20 候选池）。
+
+### 新增条目模板
+
+```markdown
+### N. <故障标题>
+
+**症状**：<可观察现象，含报错信息>
+
+**原因**：<根因，1-2 句>
+
+**处理**：<按顺序的排查/修复步骤>
+
+**预防**：<如何避免再次发生>
+```
+
 ## 相关文档
 
-- [故障排查（四段式）](troubleshooting.md)
 - [部署指南](../ops/deployment-guide.md) · [环境变量全表](../ops/env-vars.md) · [监控与告警](../ops/monitoring.md)
 - [API 使用指南](../api/guide.md) · [错误码表](../api/errors.md)
 - [术语表](../standards/glossary.md)
@@ -125,4 +260,5 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1.0 | 2026-09-23 | 合并原《故障排查手册》为下半部分；429 限流维度补全为 7 档 |
 | 1.0.0 | 2026-08-20 | 初版（依据仓库约定与已知坑位沉淀） |

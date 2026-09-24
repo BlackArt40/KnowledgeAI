@@ -88,7 +88,7 @@ pnpm dev              # 开发服务器 :3000
 |------|------|
 | `pnpm dev` 启动报错 | 检查 Node 22+ 与 pnpm 版本（`pnpm -v` 应为 11.7.0） |
 | 问答答非所问 | 确认文档已处理完成（`kb.ready`）；未配置真实 LLM 时是演示模式生成 |
-| 上传 EACCES | 见 [故障排查](../faq/troubleshooting.md) 第 4 条 |
+| 上传 EACCES | 见 [故障排查](../faq/faq.md#troubleshooting) 第 4 条 |
 | CI 覆盖率挂了 | 补 `src/lib/{rag,auth,billing,team}` 的单测 |
 | 不知道改哪里 | 先读 [项目结构](project-structure.md) + [总体架构](../architecture/overview.md)，再问模块 Owner |
 

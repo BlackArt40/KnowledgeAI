@@ -35,5 +35,5 @@ applies_to: ">=1.2.0"
 
 ## 相关文档
 
-- [技术文档体系方案](technical-docs-strategy.md) — 体系设计与落地路径
+- [技术文档体系方案（已归档）](../archive/technical-docs-strategy.md) — 2026-08 的体系设计沿革，现行规范以本目录为准
 - [文档门户](../index.md) — 全站导航

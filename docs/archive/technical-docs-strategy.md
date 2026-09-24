@@ -1,5 +1,5 @@
 ---
-title: KnowledgeAI 技术文档体系方案
+title: "KnowledgeAI 技术文档体系方案（已归档）"
 description: KnowledgeAI 技术文档体系设计与落地指南：分类结构、编写规范、生命周期、工具平台与分阶段实施
 type: explanation
 category: standards
@@ -9,16 +9,18 @@ authors: [technical-writer]
 owner: 技术文档负责人
 reviewed_at: 2026-08-20
 review_interval: 180
-status: draft
+status: archived
 applies_to: ">=1.2.0"
-related: [standards/README.md, index.md]
+related: [../standards/README.md, ../index.md]
 ---
 
 # KnowledgeAI 技术文档体系方案
 
+> ⚠️ **已归档（2026-09-23）**：本文是 2026-08-20 的文档体系设计方案，所述 VitePress + docs-as-code 体系已落地。现行规范以 [文档规范与模板索引](../standards/README.md) 为准；本文仅作决策沿革保留。
+
 > **文档定位**：面向 KnowledgeAI 团队的技术文档体系设计与落地指南。基于项目现有文档资产盘点，规划文档分类结构、编写规范、生命周期管理、工具平台选型与分阶段实施路径。
 >
-> **文档版本**：v1.0　**状态**：草案（待评审）　**更新日期**：2026-08-20
+> **文档版本**：v1.0　**状态**：已归档（原草案）　**更新日期**：2026-08-20（归档 2026-09-23）
 >
 > **维护责任人**：技术文档负责人（Technical Writer）　**评审人**：技术负责人 / 各模块 Owner
 
@@ -498,7 +500,7 @@ authors: [<你的名字>]
 owner: <负责人>
 reviewed_at: <今天>
 review_interval: 180
-status: draft
+status: archived
 applies_to: ">=1.2.0"
 ---
 

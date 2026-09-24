@@ -70,7 +70,7 @@ src/
 │   └── page.tsx                  # 落地页
 │
 ├── components/                   # React 组件
-│   ├── ui/                       # 基础组件库（Button/Input/Dialog 等 15 个）
+│   ├── ui/                       # 基础组件库（Button/Input/Dialog 等 17 个）
 │   ├── app/                      # 业务组件（按模块分子目录）
 │   │   ├── kb/                   # 知识库相关（UploadZone / 文档卡片等）
 │   │   ├── chat/                 # 问答相关（消息流 / 引用面板）

@@ -4,14 +4,14 @@ description: KnowledgeAI 5 分钟起步：环境要求、启动服务、演示�
 type: tutorial
 category: getting-started
 level: L2
-version: 1.0.0
+version: 1.1.0
 authors: [technical-writer]
 owner: 技术文档负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [onboarding.md, demo-accounts.md, ../standards/glossary.md]
+related: [onboarding.md, ../architecture/overview.md, ../standards/glossary.md]
 ---
 
 # 快速开始
@@ -58,7 +58,15 @@ pnpm dev
 | `editor@knowledgeai.dev` | Editor | KB 编辑 + 问答 + Agent |
 | `viewer@knowledgeai.dev` | Viewer | KB 只读 + 问答 |
 
-也可自行注册（默认 Editor 角色）。完整说明见 [demo-accounts](demo-accounts.md)。
+也可自行注册（默认 Editor 角色）。OAuth（Google / GitHub）按钮在未配置 `GOOGLE_CLIENT_ID` / `GITHUB_CLIENT_ID` 时自动隐藏（见[环境变量全表](../ops/env-vars.md)）。
+
+### 演示数据与注意事项
+
+配置了 `DATABASE_URL` 时可通过 `npx prisma db seed` 预置演示数据：**5 个知识库**（含示例文档）、**1 个团队**（含跨角色成员）、若干示例会话与 Agent 任务历史；纯内存演示模式启动时会自动加载，重启即重置。
+
+1. **密码弱**：演示密码为固定值，仅限本地开发，生产环境不要保留演示账号；
+2. **角色即测试用例**：RBAC 四角色覆盖「Owner / Admin / Editor / Viewer」权限矩阵，测试权限时按角色登录对比即可；
+3. **不要改种子账号**：`tests/` 与 `scripts/smoke/` 依赖这些账号，改动会导致集成测试失败。
 
 ## Step 4：创建知识库并上传文档
 
@@ -102,4 +110,5 @@ pnpm dev
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1.0 | 2026-09-23 | 合并原《演示账号与数据》文档 |
 | 1.0.0 | 2026-08-20 | 初版 |

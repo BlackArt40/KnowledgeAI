@@ -167,8 +167,8 @@ pnpm dev
 
 ## 📄 文档
 
-- [产品概述](docs/getting-started/product-overview.md) — 完整产品规划（7 模块 25 页面）
-- [UI 设计体系](docs/architecture/design-system.md) — 设计令牌 / 组件 / 页面清单
+- [产品概述](docs/getting-started/product-overview.md) — 产品定位与页面清单（原始规划 25 项 / 当前 28 个路由）
+- [UI 设计体系](docs/architecture/design-system.md) — 设计令牌 / 组件 / 主题
 - [开发路线图（归档）](docs/archive/ROADMAP.md) — 12 周计划与实现记录
 
 ## 📜 许可
