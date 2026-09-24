@@ -107,11 +107,22 @@ related: [deployment-guide.md, monitoring.md]
 | `CHUNK_SIZE_MB` | 否 | `5` | 分片上传单片大小（MB） |
 | `MAX_CHUNKED_UPLOAD_MB` | 否 | `500` | 分片上传文件总量上限（MB） |
 
+## 任务队列（后台任务）
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `REDIS_URL` | 否 | 空（内存队列） | 留空 = 进程内内存队列（单实例）；设置后 = BullMQ + Redis（多实例、持久化、重试、死信队列） |
+| `QUEUE_CONCURRENCY` | 否 | `3` | 快速任务并发：`doc-process` / `index-cleanup` / `webhook-deliver` / `email-send`（仅 BullMQ 生效） |
+| `QUEUE_AGENT_CONCURRENCY` | 否 | `1` | Agent 调研并发：`agent-run` 单独一条队列，避免长耗时 LLM 任务占满并发后阻塞文档处理（仅 BullMQ 生效） |
+
+> 单独的 Agent 队列是为了解决「慢模型下文档处理排队数分钟」：实测单个 agent-run 耗时
+> 64–105s，若与 doc-process 共用同一 concurrency=3 的队列，三张并发就把槽位占满。
+> 提高并发会增加同时进行的 LLM 调用数（成本/限流），请按 provider 配额调整。
+
 ## 限流（分级维度）
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `REDIS_URL` | 否 | 空（内存窗口） | 设置后启用 Redis 滑动窗口（多实例全局限流） |
 | `RATE_LIMIT_PER_MIN` | 否 | `200` | 登录用户（次/分） |
 | `RATE_LIMIT_ANON_PER_MIN` | 否 | `20` | 匿名 IP |
 | `RATE_LIMIT_KEY_PER_MIN` | 否 | `500` | API Key |
