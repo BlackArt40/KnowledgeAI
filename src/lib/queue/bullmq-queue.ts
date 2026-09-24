@@ -34,11 +34,28 @@ type QueueModule = {
   Worker: new (name: string, processor: (job: BullMQJobType) => Promise<unknown>, opts: unknown) => BullMQWorkerType;
 };
 
-const QUEUE_NAME = "knowledgeai-jobs";
+/** Fast jobs: doc-process / index-cleanup / webhook-deliver / email-send. */
+const FAST_QUEUE_NAME = "knowledgeai-jobs";
+/** Long-running LLM jobs get their own queue and worker so a slow agent run
+ *  cannot occupy every slot and starve document processing (observed: three
+ *  64-105s agent runs left an upload queued for ~5 minutes). */
+const AGENT_QUEUE_NAME = "knowledgeai-agent-jobs";
+const AGENT_JOB_TYPES: ReadonlySet<JobType> = new Set<JobType>(["agent-run"]);
+
+function queueNameFor(type: JobType): string {
+  return AGENT_JOB_TYPES.has(type) ? AGENT_QUEUE_NAME : FAST_QUEUE_NAME;
+}
+
+/** Positive integer env override, else the fallback. */
+function concurrencyFrom(name: string, fallback: number): number {
+  const parsed = parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export class BullMQQueue implements JobQueue {
-  private queue: BullMQQueueType | null = null;
-  private worker: BullMQWorkerType | null = null;
+  /** One Queue per name - fast jobs and agent jobs are enqueued separately. */
+  private queues = new Map<string, BullMQQueueType>();
+  private workers: BullMQWorkerType[] = [];
   private handlers = new Map<JobType, JobHandler>();
   private mod: QueueModule | null = null;
   /** L-9: parsed once in ensureConnected(), reused by start() - was recomputed
@@ -52,12 +69,14 @@ export class BullMQQueue implements JobQueue {
   }
 
   private async ensureConnected(): Promise<QueueModule> {
-    if (this.mod && this.queue) return this.mod;
+    if (this.mod && this.queues.size > 0) return this.mod;
     try {
       const bullmq = await import("bullmq");
       this.mod = bullmq as unknown as QueueModule;
       this.parsedConnection = this.parseRedisUrl(process.env.REDIS_URL!);
-      this.queue = new this.mod.Queue(QUEUE_NAME, { connection: this.parsedConnection });
+      for (const name of [FAST_QUEUE_NAME, AGENT_QUEUE_NAME]) {
+        this.queues.set(name, new this.mod.Queue(name, { connection: this.parsedConnection }));
+      }
       return this.mod;
     } catch {
       throw new Error("bullmq/ioredis load failed - verify dependencies are installed (pnpm install)");
@@ -80,7 +99,9 @@ export class BullMQQueue implements JobQueue {
 
   async enqueue(type: JobType, payload: Record<string, unknown>): Promise<string> {
     await this.ensureConnected();
-    const job = await this.queue!.add(type, { type, payload }, {
+    const queue = this.queues.get(queueNameFor(type));
+    if (!queue) throw new Error("queue not connected");
+    const job = await queue.add(type, { type, payload }, {
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
       removeOnComplete: 100,
@@ -95,35 +116,48 @@ export class BullMQQueue implements JobQueue {
 
   async getJob(jobId: string) {
     await this.ensureConnected();
-    const job = await this.queue!.getJob(jobId);
-    if (!job) return null;
-    const state = await (this.queue as unknown as { getJobState?: (id: string) => Promise<string> }).getJobState?.(jobId);
-    const status = (state || "queued") as "queued" | "active" | "completed" | "failed";
-    return {
-      status,
-      result: job.returnvalue as JobResult | undefined,
-    };
+    for (const queue of this.queues.values()) {
+      const job = await queue.getJob(jobId);
+      if (!job) continue;
+      const state = await (queue as unknown as { getJobState?: (id: string) => Promise<string> }).getJobState?.(jobId);
+      const status = (state || "queued") as "queued" | "active" | "completed" | "failed";
+      return {
+        status,
+        result: job.returnvalue as JobResult | undefined,
+      };
+    }
+    return null;
   }
 
   start(): void {
     this.ensureConnected()
       .then(() => {
-        // L-9: reuse the connection parsed in ensureConnected (was re-parsed here).
-        this.worker = new this.mod!.Worker(
-          QUEUE_NAME,
-          async (job: BullMQJobType) => {
-            const handler = this.handlers.get(job.data.type);
-            if (!handler) throw new Error(`No handler for: ${job.data.type}`);
-            const result = await handler(job.data.payload);
-            if (!result.ok) throw new Error(result.error || "Job failed");
-            return result;
-          },
-          { connection: this.parsedConnection, concurrency: 3 }
+        const process = async (job: BullMQJobType) => {
+          const handler = this.handlers.get(job.data.type);
+          if (!handler) throw new Error(`No handler for: ${job.data.type}`);
+          const result = await handler(job.data.payload);
+          if (!result.ok) throw new Error(result.error || "Job failed");
+          return result;
+        };
+        const fastConcurrency = concurrencyFrom("QUEUE_CONCURRENCY", 3);
+        const agentConcurrency = concurrencyFrom("QUEUE_AGENT_CONCURRENCY", 1);
+        for (const [name, concurrency] of [
+          [FAST_QUEUE_NAME, fastConcurrency],
+          [AGENT_QUEUE_NAME, agentConcurrency],
+        ] as const) {
+          const worker = new this.mod!.Worker(name, process, {
+            connection: this.parsedConnection,
+            concurrency,
+          });
+          worker.on("failed", (_job: unknown, err: unknown) => {
+            log.error({ err }, "[queue] job failed");
+          });
+          this.workers.push(worker);
+        }
+        log.info(
+          { queue: FAST_QUEUE_NAME, concurrency: fastConcurrency, agentQueue: AGENT_QUEUE_NAME, agentConcurrency },
+          "[queue] BullMQ workers started"
         );
-        this.worker.on("failed", (_job: unknown, err: unknown) => {
-          log.error({ err }, "[queue] job failed");
-        });
-        log.info("[queue] BullMQ worker started");
       })
       .catch((err) => {
         log.error({ err: err instanceof Error ? err.message : err }, "[queue] failed to start BullMQ worker");
@@ -131,7 +165,9 @@ export class BullMQQueue implements JobQueue {
   }
 
   async stop(): Promise<void> {
-    await this.worker?.close().catch(() => {});
-    await this.queue?.close().catch(() => {});
+    for (const worker of this.workers) await worker.close().catch(() => {});
+    for (const queue of this.queues.values()) await queue.close().catch(() => {});
+    this.workers = [];
+    this.queues.clear();
   }
 }
