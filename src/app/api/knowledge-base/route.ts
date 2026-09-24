@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
 import { persistKb } from "@/lib/db/persist";
 import { canViewKb } from "@/lib/team/store";
-import { getRequestUser } from "@/lib/auth/guard";
+import { getRequestUser, requireRole } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -36,10 +36,12 @@ async function handleGET(req: Request) {
   return NextResponse.json({ kbs });
 }
 
-// POST /api/knowledge-base - create a knowledge base owned by the current user
+// POST /api/knowledge-base - create a knowledge base owned by the current user.
+// RBAC: viewer is read-only ("KB 只读 + 问答"), so creating requires EDITOR+.
 async function handlePOST(req: Request) {
-  const u = await getRequestUser(req);
-  if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  const guard = await requireRole(req, ["owner", "admin", "editor"]);
+  if (guard.error) return guard.error;
+  const u = guard.user;
   let body: { name?: string; desc?: string; color?: string; initial?: string };
   try {
     body = await req.json();

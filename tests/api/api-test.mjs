@@ -52,6 +52,12 @@ async function main() {
   r = await req("POST", "/api/knowledge-base", { name: "测试知识库", description: "接口测试创建" });
   log("新建KB", "POST", "/api/knowledge-base", r.status, r.status === 201 && !!r.data?.kb?.id, r.data?.kb?.id);
 
+  // RBAC: viewer 是只读角色（docs: "KB 只读 + 问答"）—— 建库必须被拒
+  await login("viewer@knowledgeai.dev");
+  r = await req("POST", "/api/knowledge-base", { name: "viewer-should-be-rejected" });
+  log("viewer建KB被拒", "POST", "/api/knowledge-base", r.status, r.status === 403, `403`);
+  await login(); // 切回 owner，后续用例依赖 owner 身份
+
   // ── 2. Chat API ──
   console.log("\n── Chat API ──");
   r = await req("GET", `/api/chat/conversations?kbId=${kbId}`);
