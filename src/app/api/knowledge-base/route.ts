@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
+import { persistKb } from "@/lib/db/persist";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
@@ -58,6 +59,10 @@ async function handlePOST(req: Request) {
     u.id,
     u.workspaceId
   );
+  // Make the parent row durable before returning: createKb persists
+  // fire-and-forget, while the upload path persists documents immediately -
+  // a doc insert that wins the race would violate KbDocument_kbId_fkey.
+  await persistKb(kb).catch(() => {});
   return NextResponse.json({ kb }, { status: 201 });
 }
 

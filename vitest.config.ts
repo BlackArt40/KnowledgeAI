@@ -17,13 +17,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/lib/rag/**", "src/lib/auth/**", "src/lib/billing/**", "src/lib/team/**"],
-      // External-service backends (chromadb/pgvector/pinecone) and pure type
+      // External-service backends (chromadb/pinecone) and pure type
       // files are excluded - they need live services or contain no runtime
       // code (documented in ROADMAP). ocr.ts needs tesseract binaries.
       exclude: [
         "src/lib/rag/ocr.ts",
         "src/lib/rag/vector-store-chromadb.ts",
-        "src/lib/rag/vector-store-pgvector.ts",
         "src/lib/rag/vector-store-pinecone.ts",
         "src/lib/rag/vector-store-interface.ts",
         "src/lib/rag/types.ts",
