@@ -135,8 +135,32 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Parent-row FK race: total ~500ms of patience across 4 retries. */
-const DOC_FK_MAX_RETRIES = 4;
-const DOC_FK_RETRY_BASE_MS = 50;
+const FK_MAX_RETRIES = 4;
+const FK_RETRY_BASE_MS = 50;
+
+/**
+ * Run a child-row write that can race ahead of its parent row.
+ *
+ * Every write in this module is fire-and-forget (the in-memory store is the
+ * read path), so a P2003 here is transient - the parent INSERT is still in
+ * flight. Retry briefly instead of silently dropping the child row. Shared by
+ * document (KbDocument -> KnowledgeBase), message
+ * (Message -> Conversation) and message-feedback writes.
+ */
+async function withFkRetry<T>(write: () => Promise<T>, label: string): Promise<T | undefined> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await write();
+    } catch (err) {
+      if (isForeignKeyViolation(err) && attempt < FK_MAX_RETRIES) {
+        await sleep(FK_RETRY_BASE_MS * (attempt + 1));
+        continue;
+      }
+      log.error({ err }, label);
+      return undefined;
+    }
+  }
+}
 
 /** Persist a document create/update to DB. */
 export async function persistDoc(doc: {
@@ -174,21 +198,8 @@ export async function persistDoc(doc: {
     });
 
   // KB creation persists fire-and-forget, and the upload path can persist the
-  // document before that write commits - the FK would reject it (P2003). Retry
-  // briefly instead of dropping the document row.
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await write();
-      return;
-    } catch (err) {
-      if (isForeignKeyViolation(err) && attempt < DOC_FK_MAX_RETRIES) {
-        await sleep(DOC_FK_RETRY_BASE_MS * (attempt + 1));
-        continue;
-      }
-      log.error({ err }, "[db] persistDoc error");
-      return;
-    }
-  }
+  // document before that write commits - the FK would reject it (P2003).
+  await withFkRetry(write, "[db] persistDoc error");
 }
 
 
@@ -380,9 +391,12 @@ export async function persistMessage(
   if (!isDbEnabled()) return;
   const db = await getDb();
   if (!db) return;
-  try {
-    await (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } })
-      .message.upsert({
+  const messages = (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } }).message;
+  // A brand-new conversation persists fire-and-forget; the first message can
+  // reach the DB first and trip Message_conversationId_fkey (P2003).
+  await withFkRetry(
+    () =>
+      messages.upsert({
         where: { id: msg.id },
         update: {
           conversationId: convId,
@@ -399,10 +413,9 @@ export async function persistMessage(
           citations: msg.citations ?? null,
           createdAt: new Date(msg.createdAt),
         },
-      });
-  } catch (err) {
-    log.error({ err }, "[db] persistMessage error");
-  }
+      }),
+    "[db] persistMessage error"
+  );
 }
 
 /** Persist feedback on a single message (P5-3). Upserts by message id so
@@ -414,9 +427,10 @@ export async function persistMessageFeedback(
   if (!isDbEnabled()) return;
   const db = await getDb();
   if (!db) return;
-  try {
-    await (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } })
-      .message.upsert({
+  const messages = (db as unknown as { message: { upsert: (o: unknown) => Promise<unknown> } }).message;
+  await withFkRetry(
+    () =>
+      messages.upsert({
         where: { id: msg.id },
         create: {
           id: msg.id,
@@ -434,10 +448,9 @@ export async function persistMessageFeedback(
           feedbackNote: msg.feedbackNote ?? null,
           feedbackAt: msg.feedbackAt ? new Date(msg.feedbackAt) : null,
         },
-      });
-  } catch (err) {
-    log.error({ err }, "[db] persistMessageFeedback error");
-  }
+      }),
+    "[db] persistMessageFeedback error"
+  );
 }
 
 /** Delete a conversation from DB. */
