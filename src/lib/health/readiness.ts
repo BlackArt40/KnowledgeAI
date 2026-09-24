@@ -94,16 +94,23 @@ function errMessage(err: unknown): string {
 
 // ── Per-dependency checks ────────────────────────────────────────────────
 
+/** Minimal client shape for the db probe (lets tests inject a fake). */
+export interface DbProbeClient {
+  $queryRawUnsafe<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
+}
+
 /** DB connectivity: real SELECT 1 (getDb() never connects by itself). */
-export async function checkDb(): Promise<DepStatus> {
+export async function checkDb(dbOverride?: DbProbeClient | null): Promise<DepStatus> {
   if (!isDbEnabled()) {
     return { name: "db", status: "skipped", detail: "DATABASE_URL 未配置（演示模式）" };
   }
-  const db = await getDb();
+  const db = dbOverride === undefined ? await getDb() : dbOverride;
   if (!db) return { name: "db", status: "degraded", detail: "Prisma 客户端不可用" };
   const start = Date.now();
   try {
-    await withTimeout(db.$queryRaw("SELECT 1"), DB_TIMEOUT_MS, "数据库");
+    // $queryRaw is a tag function on the real Prisma client; a plain string
+    // call throws. Use the (parameterized) unsafe variant for string SQL.
+    await withTimeout(db.$queryRawUnsafe("SELECT 1"), DB_TIMEOUT_MS, "数据库");
     return { name: "db", status: "ok", latencyMs: Date.now() - start };
   } catch (err) {
     return { name: "db", status: "degraded", detail: errMessage(err) };

@@ -225,8 +225,8 @@ export interface PrismaClient {
     create(opts: { data: unknown }): Promise<PrismaWorkspace>;
     update(opts: { where: { id: string }; data: unknown }): Promise<PrismaWorkspace>;
   };
-  $queryRaw<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
-  $executeRaw(sql: string, ...params: unknown[]): Promise<number>;
+  $queryRawUnsafe<T = unknown>(sql: string, ...params: unknown[]): Promise<T[]>;
+  $executeRawUnsafe(sql: string, ...params: unknown[]): Promise<number>;
 }
 
 // ── Additional model interfaces ──────────────────────────────────────────
