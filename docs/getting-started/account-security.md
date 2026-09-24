@@ -11,7 +11,7 @@ reviewed_at: 2026-08-29
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [getting-started/quickstart.md, getting-started/demo-accounts.md]
+related: [getting-started/quickstart.md, getting-started/onboarding.md]
 ---
 
 # 账号与邮箱安全

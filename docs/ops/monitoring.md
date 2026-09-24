@@ -11,7 +11,7 @@ reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [deployment-guide.md, env-vars.md, ../faq/troubleshooting.md]
+related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 ---
 
 # 监控与告警
@@ -49,7 +49,7 @@ related: [deployment-guide.md, env-vars.md, ../faq/troubleshooting.md]
 
 1. 查看 `GET /api/health/ready` 的 `degraded` 列表，定位故障依赖；
 2. 检查依赖连通性：`SELECT 1`（DB）/ `redis-cli ping` / `GET /models`（LLM）；
-3. 确认是依赖故障还是网络/配置问题（见[故障排查](../faq/troubleshooting.md)）；
+3. 确认是依赖故障还是网络/配置问题（见[故障排查手册](../faq/faq.md#troubleshooting)）；
 4. 修复后探针自动恢复，无需人工重置。
 
 ## SLI 指标（内存存储）
@@ -87,7 +87,7 @@ related: [deployment-guide.md, env-vars.md, ../faq/troubleshooting.md]
 
 | 症状 | 第一步 | 详见 |
 |------|--------|------|
-| 探针 503 degraded | 看 `degraded` 列表 → 检查依赖连通 | [故障排查](../faq/troubleshooting.md) |
+| 探针 503 degraded | 看 `degraded` 列表 → 检查依赖连通 | [故障排查手册](../faq/faq.md#troubleshooting) |
 | 请求 429 | 读 `Retry-After` / `dimension` → 检查限流档位 | [错误码表](../api/errors.md) |
 | 错误率上升 | 用 `X-Trace-Id` 串联日志定位链路 | 本节「链路追踪」 |
 | worker 积压 | 检查 worker 进程与 Redis 队列 | [部署指南](deployment-guide.md) |
@@ -96,7 +96,7 @@ related: [deployment-guide.md, env-vars.md, ../faq/troubleshooting.md]
 
 - [部署指南](deployment-guide.md)
 - [环境变量全表](env-vars.md)
-- [故障排查](../faq/troubleshooting.md)
+- [故障排查手册](../faq/faq.md#troubleshooting)
 
 ## 修订记录
 

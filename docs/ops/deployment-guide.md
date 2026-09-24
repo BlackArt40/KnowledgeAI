@@ -11,7 +11,7 @@ reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [env-vars.md, monitoring.md, ../faq/troubleshooting.md]
+related: [env-vars.md, monitoring.md, ../faq/faq.md]
 ---
 
 # 部署指南
@@ -127,7 +127,7 @@ kubectl apply -f k8s/deployment.yaml
 
 - [环境变量全表](env-vars.md)
 - [监控与告警](monitoring.md)
-- [常见问题 FAQ](../faq/faq.md) · [故障排查](../faq/troubleshooting.md)
+- [常见问题与故障排查](../faq/faq.md)（四段式排障见 [故障排查手册](../faq/faq.md#troubleshooting)）
 
 ## 修订记录
 

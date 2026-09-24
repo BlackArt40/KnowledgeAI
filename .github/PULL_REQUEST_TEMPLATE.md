@@ -1,4 +1,4 @@
-<!-- 提交前请确认以下勾选项；与 CI 四项检查（quality/unit/integration/e2e/docs）互补 -->
+<!-- 提交前请确认以下勾选项；与 CI 五项检查（quality/unit/integration/e2e/docs）互补 -->
 
 ## 变更说明
 

@@ -11,7 +11,7 @@ reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [reference.md, errors.md, webhooks.md, sdk-javascript.md]
+related: [reference.md, errors.md, webhooks.md, sdk.md]
 ---
 
 # API 使用指南
@@ -182,7 +182,7 @@ Webhook 订阅与签名验证见 [webhooks.md](webhooks.md)。
 - [API 参考（端点明细）](reference.md)
 - [错误码表](errors.md)
 - [Webhook 指南](webhooks.md)
-- [JavaScript SDK](sdk-javascript.md) · [Python SDK](sdk-python.md) · [Go SDK](sdk-go.md)
+- [三语言 SDK 使用指南](sdk.md)
 
 ## 修订记录
 

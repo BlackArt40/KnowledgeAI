@@ -1,17 +1,20 @@
 ---
-title: 产品文档
-description: KnowledgeAI 产品规划，7 大模块 25 页面清单与技术选型
+title: 产品概述
+description: KnowledgeAI 产品概述：定位、7 大模块页面清单、技术栈与后续迭代新增页面
 type: explanation
 category: getting-started
 level: L1
-version: 1.0.0
+version: 1.1.0
 authors: [product-team]
 owner: 产品负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
+related: [quickstart.md, project-structure.md, ../architecture/overview.md, ../architecture/design-system.md]
 ---
+
+# KnowledgeAI 产品概述
 
 ## 产品定位
 
@@ -33,7 +36,9 @@ applies_to: ">=1.2.0"
 
 ---
 
-## 完整页面清单（共7大模块，25个页面）
+## 完整页面清单（7 大模块，原始规划 25 个页面）
+
+> 以下为产品最初规划的 25 个页面/能力；其中部分能力（文档上传、成员邀请、套餐对比、账单历史）集成在对应页面内。后续迭代新增的 9 个页面路由见文末「后续迭代新增页面」。
 
 ### 模块一：公开区（未登录可访问）
 
@@ -322,134 +327,37 @@ applies_to: ">=1.2.0"
 
 ---
 
-## 开发顺序建议（8-12周）
-
-```
-第1-2周：落地页 + 登录注册 + 基础框架搭建
-第3-4周：知识库管理 + 文档上传 + 向量化
-第5-6周：智能问答（RAG核心功能）  ← 最关键
-第7-8周：Agent调研 + 任务队列
-第9-10周：团队协作 + 权限系统
-第10-11周：订阅计费 + 支付集成
-第12周：管理后台 + 安全加固 + 部署上线
-```
-
 ---
 
-## 这一个项目覆盖了8大技能的哪些？
+## 后续迭代新增页面（截至 2026-09-23）
 
-| 8大技能      | 项目中的体现               | 页面     |
-| ------------ | -------------------------- | -------- |
-|              |                            |          |
-| 全栈开发     | Next.js全栈 + 数据库       | 所有     |
-| 云原生DevOps | Docker + K8s + CI/CD部署   | 部署     |
-| 系统设计     | 多租户 + 微服务 + 异步队列 | 架构     |
-| AI/ML应用    | RAG问答 + Agent调研        | P9, P10  |
-| 自动化工程   | GitHub Actions + 测试      | CI/CD    |
-| 业务理解     | 订阅计费 + 用量监控        | P13-16   |
-| 伦理合规     | GDPR + 数据隔离 + 隐私     | P19, P24 |
+原始规划的 25 个页面/能力已全部实现。此后迭代新增了以下 9 个页面路由，当前 `src/app` 共 **28 个页面路由**：
 
----
+| 路由 | 说明 |
+|------|------|
+| `/developer` | 开发者门户：SDK 快速开始、Webhook 订阅管理、API 用量统计、第三方集成 |
+| `/docs` | Swagger UI 交互式 API 文档（渲染 `/api/openapi.json`） |
+| `/knowledge-base/[id]/graph` | 知识库知识图谱（实体/关系力导向探索） |
+| `/admin/monitoring` | 可观测性监控面板（仅 Owner/Admin） |
+| `/2fa-enroll` | 2FA 启用引导 |
+| `/forgot-password` | 忘记密码 / 发起重置 |
+| `/reset-password` | 重置密码 |
+| `/r/[id]` | Agent 报告公开分享页 |
+| `/share-doc/[token]` | 文档分享链接公开页 |
 
-## 附录：实现状态（2026-07-10 更新，含 P0/P1/P3 路线图实施）
+> 目录与模块全貌见[项目结构](project-structure.md)；服务边界与数据流见[总体架构](../architecture/overview.md)；设计令牌与组件见 [UI 设计体系](../architecture/design-system.md)。
 
-> 以下为 KnowledgeAI 的最终实现状态汇总。全部 7 大模块、25 个页面、12 周开发计划及生产化接入均已完成。
+## 相关文档
 
-### 开发计划完成状态
-
-| 阶段 | 内容 | 状态 |
-| --- | --- | :---: |
-| 第 1–2 周 | 落地页 + 登录注册 + 基础框架 + 设计系统 | ✅ |
-| 第 3–4 周 | 知识库管理 + 文档上传 + 向量化 | ✅ |
-| 第 5–6 周 | 智能问答（RAG 核心功能） | ✅ |
-| 第 7–8 周 | Agent 调研 + 任务队列 | ✅ |
-| 第 9–10 周 | 团队协作 + 权限系统 | ✅ |
-| 第 10–11 周 | 订阅计费 + 支付集成 | ✅ |
-| 第 12 周 | 管理后台 + 安全加固 + 部署上线 | ✅ |
-| 生产化接入 | LLM / 数据库 / 存储 / 支付 / 限流 / 认证适配层 | ✅ |
-| 用户认证 | 注册/登录/JWT + 4 角色演示账号 + 修改资料 | ✅ |
-| 外部模型 | 6 提供商导入 + 连接测试 + 拉取模型列表 + 运行时切换 | ✅ |
-| 通知系统 | 4 通道通知 + 偏好持久化 + 事件触发 + 铃铛下拉 | ✅ |
-| 路由权限 | 角色导航过滤 + 客户端路由守卫 + API 角色保护 | ✅ |
-| P0 生产化 | DB 持久化(hydrate+persist) + pgvector 向量库 + S3 存储 + BullMQ 队列 | ✅ |
-| P1 RAG 增强 | 多格式解析(PDF/Word/Excel/PPT) + BM25+RRF 混合检索 + 智能切片 + 多轮对话+追问 | ✅ |
-| P2 Agent 增强 | 自研 StateGraph 多 Agent 图（LangGraph 思路零依赖实现） + 外部数据源(Web/ArXiv/GitHub) + 报告增强(导出/分享/版本/评论) + Chat 联网搜索 | ✅ |
-| P3 安全加固 | TOTP 2FA(RFC 6238) + Redis 分布式限流 + AES-256-GCM 加密 | ✅ |
-
-### 25 个页面实现清单
-
-| 编号 | 页面 | 路由 | 状态 |
-| --- | --- | --- | :---: |
-| P1 | 落地页 | `/` | ✅ |
-| P2 | 登录 | `/login` | ✅ JWT+演示账号 |
-| P3 | 注册 | `/register` | ✅ JWT+角色分配 |
-| P4 | 邮箱验证 | `/verify-email` | ✅ |
-| P5 | 仪表盘 | `/dashboard` | ✅ API实时拉取 |
-| P6 | 知识库列表 | `/knowledge-base` | ✅ |
-| P7 | 知识库详情 | `/knowledge-base/[id]` | ✅ |
-| P8 | 文档上传 | （P7 内集成） | ✅ |
-| P9 | 智能问答 | `/chat` | ✅ |
-| P10 | Agent 调研 | `/agent` | ✅ |
-| P11 | 团队管理 | `/team` | ✅ 按邮箱匹配当前用户 |
-| P12 | 成员邀请 | （P11 内集成） | ✅ |
-| P13 | 订阅计费 | `/billing` | ✅ |
-| P14 | 套餐对比 | （P13 内集成） | ✅ |
-| P15 | 收银台 | `/checkout` | ✅ |
-| P16 | 用量监控 | `/usage` | ✅ |
-| P17 | 账单历史 | （P13 内集成） | ✅ |
-| P18 | API 密钥 | `/api-keys` | ✅ |
-| P19 | 安全设置 | `/settings` | ✅ 4标签(安全/个人信息/数据隐私/AI模型) |
-| P20 | 管理后台 | `/admin` | ✅ |
-| P21 | 404 页面 | `not-found.tsx` | ✅ |
-| P22 | 500 错误页 | `error.tsx` | ✅ |
-| P23 | 维护中页面 | `/maintenance` | ✅ |
-| P24 | 隐私政策 | `/privacy` | ✅ |
-| P25 | 服务条款 | `/terms` | ✅ |
-
-### 8 大技能覆盖情况
-
-| 8 大技能 | 项目中的体现 | 状态 |
-| --- | --- | :---: |
-| 全栈开发 | Next.js 16 全栈 + 25 页面 + 100+ API | ✅ |
-| 云原生 DevOps | Dockerfile + docker-compose + 安全响应头 | ✅ |
-| 系统设计 | 多租户 + RBAC + 角色路由守卫 + Provider 适配层 + 异步 RAG | ✅ |
-| AI/ML 应用 | RAG 问答（嵌入+检索+生成）+ Agent 多步调研 | ✅ |
-| 自动化工程 | 限流中间件 + 健康检查 + 构建验证 | ✅ |
-| 业务理解 | 订阅计费 + 用量监控 + 账单 + 收银台 | ✅ |
-| 伦理合规 | GDPR 数据导出 + 隐私政策 + 服务条款 + 2FA | ✅ |
-
-### 最终统计
-
-| 维度 | 数量 |
-| --- | --- |
-| 功能模块 | 7 大模块 |
-| 页面 | 25 个 |
-| 路由（含 API + Middleware） | 130+ 个 |
-| API 端点 | 103 |
-| UI 基础组件 | 17 个 |
-| 数据库模型（Prisma） | 25 个 |
-| 生产适配层（Provider） | 8 个（LLM / 支付 / 数据库 / 存储 / 限流 / 认证 / 向量库 / 队列） |
-| 设计令牌 | HSL 变量 + 亮/暗双模式 |
-
-### 关键技术亮点
-
-1. **RAG 引擎全面增强**：混合检索(BM25+向量+RRF) + 智能切片(heading-aware) + 多格式解析(PDF/Word/Excel/PPT) + 多轮对话+追问建议
-2. **Provider 适配层**：8 个适配层实现「配置即切换」，未配置时优雅降级到演示模式，业务代码零改动
-3. **SSE 流式**：Chat（逐 token 问答）与 Agent（4 步执行进度）均使用 Server-Sent Events 实时推送
-4. **RBAC 权限**：4 角色 × 10 能力矩阵 + 共享知识库访问级别 + 审计日志
-5. **安全合规**：TOTP 2FA(RFC 6238) + Redis 分布式限流 + AES-256-GCM 加密 + JWT 认证 + GDPR 数据导出 + 安全响应头
-6. **认证系统**：注册/登录/JWT 签发/httpOnly Cookie + 4 个初始化用户（Owner/Admin/Editor/Viewer）+ 修改资料（重签 JWT）+ 退出登录
-7. **外部模型导入**：设置页运行时导入 6 个 OpenAI 兼容提供商 + 连接测试 + 拉取可用模型列表（自动分类对话/嵌入）+ 提供商推荐标签 + 一键启停切换
-8. **通知系统**：4 通道（登录/KB/Agent/周报）+ 偏好持久化 + 通道过滤 + AppShell 铃铛未读徽章 + 下拉面板（30s 轮询）
-9. **路由权限**：三层防护--侧边栏角色过滤 + 客户端路由守卫（越权跳转）+ 服务端 API 守卫（`requireRole` 401/403）
-10. **生产化基础设施**（P0）：DB 水合+write-through 持久化 + pgvector ANN 检索 + S3 预签名直传 + BullMQ 异步队列
-11. **多格式文档解析**（P1）：PDF(pdfjs-dist) / Word(mammoth) / Excel(xlsx) / PPT(内置ZIP) 动态导入，解析失败时优雅降级
-12. **混合检索**（P1）：BM25 关键词索引 + 向量语义检索 + RRF(Reciprocal Rank Fusion) 融合，召回率提升 20%+
-13. **分布式限流**（P3）：Redis Lua EVAL 原子滑动窗口 + 内存回退，`REDIS_URL` 配置即启用多实例限流
-14. **Chat 联网搜索**（P2-2 扩展）：输入框旁「联网搜索」开关，开启后提问同时检索外部 Web 源并合并进 RAG 上下文，回答可引用网络来源（`sources` 事件携带 `url`/`sourceType`，引用面板 🌐 链接可点击）
-
-### 相关文档
-
-- [UI 设计体系](../architecture/design-system.md) — 设计令牌 / 组件库 / 页面清单
+- [快速开始](quickstart.md) — 5 分钟跑通核心链路
+- [项目结构](project-structure.md) — 目录组织与代码导览
+- [总体架构](../architecture/overview.md) — 服务边界 / 数据流 / 核心决策
+- [UI 设计体系](../architecture/design-system.md) — 设计令牌 / 组件库 / 主题
 - [设计与实现记录（归档）](../archive/design-and-implementation-log.md) — 各模块实现细节（历史追溯）
-- README.md（仓库根，[GitHub](https://github.com/)）— 快速开始、Docker 部署、生产化配置指南
+
+## 修订记录
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| 1.1.0 | 2026-09-23 | 删除过时的 8-12 周开发顺序与 2026-07-10 实现状态附录；页面口径更新为原始规划 25 项 / 当前 28 个路由 |
+| 1.0.0 | 2026-08-20 | 初版（原《产品文档》） |

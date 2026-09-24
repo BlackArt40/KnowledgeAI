@@ -18,7 +18,7 @@ export default withMermaid(defineConfig({
     '项目结构.md': 'getting-started/project-structure.md',
     '设计说明.md': 'architecture/design-system.md',
     'ROADMAP.md': 'archive/ROADMAP.md',
-    '技术文档体系方案.md': 'standards/technical-docs-strategy.md'
+    '技术文档体系方案.md': 'archive/technical-docs-strategy.md'
   },
 
   themeConfig: {
@@ -42,7 +42,6 @@ export default withMermaid(defineConfig({
             { text: '快速开始', link: '/getting-started/quickstart' },
             { text: '新成员入门指南', link: '/getting-started/onboarding' },
             { text: '贡献指南', link: '/getting-started/contribution-guide' },
-            { text: '演示账号', link: '/getting-started/demo-accounts' },
             { text: '账号与邮箱安全', link: '/getting-started/account-security' },
             { text: '产品概述', link: '/getting-started/product-overview' },
             { text: '项目结构', link: '/getting-started/project-structure' }
@@ -52,7 +51,6 @@ export default withMermaid(defineConfig({
           text: '文档规范与模板',
           link: '/standards/README',
           items: [
-            { text: '技术文档体系方案', link: '/standards/technical-docs-strategy' },
             { text: '文档编写规范', link: '/standards/doc-writing-standards' },
             { text: '文档评审 Checklist', link: '/standards/doc-review-checklist' },
             { text: '术语表', link: '/standards/glossary' },
@@ -78,9 +76,7 @@ export default withMermaid(defineConfig({
             { text: 'API 参考（自动生成）', link: '/api/reference' },
             { text: '错误码表', link: '/api/errors' },
             { text: 'Webhook 指南', link: '/api/webhooks' },
-            { text: 'JavaScript SDK', link: '/api/sdk-javascript' },
-            { text: 'Python SDK', link: '/api/sdk-python' },
-            { text: 'Go SDK', link: '/api/sdk-go' }
+            { text: '三语言 SDK', link: '/api/sdk' }
           ]
         },
         {
@@ -94,15 +90,15 @@ export default withMermaid(defineConfig({
         {
           text: 'FAQ 与排障',
           items: [
-            { text: '常见问题 FAQ', link: '/faq/faq' },
-            { text: '故障排查手册', link: '/faq/troubleshooting' }
+            { text: '常见问题与故障排查', link: '/faq/faq' }
           ]
         },
         {
           text: '归档（只读）',
           items: [
             { text: '开发路线图 ROADMAP', link: '/archive/ROADMAP' },
-            { text: '设计与实现记录', link: '/archive/design-and-implementation-log' }
+            { text: '设计与实现记录', link: '/archive/design-and-implementation-log' },
+            { text: '技术文档体系方案（归档）', link: '/archive/technical-docs-strategy' }
           ]
         }
       ]
