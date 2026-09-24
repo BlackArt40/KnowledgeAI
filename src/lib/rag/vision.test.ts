@@ -1,15 +1,19 @@
 // P7-4 unit tests: image description (vision LLM path + OCR demo path).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { llmEnabled, ocrResult, chatResult } = vi.hoisted(() => ({
+const { llmEnabled, ocrResult, chatResult, chatCalls } = vi.hoisted(() => ({
   llmEnabled: { value: false },
   ocrResult: { value: "这是一段 OCR 识别的图片文字：星辰协议 v2" },
   chatResult: { value: "一张产品架构图，包含星辰协议 v2 的模块划分。" },
+  chatCalls: [] as unknown[][],
 }));
 
 vi.mock("@/lib/llm/provider", () => ({
   isLLMEnabled: async () => llmEnabled.value,
-  chatComplete: async () => chatResult.value,
+  chatComplete: async (...args: unknown[]) => {
+    chatCalls.push(args);
+    return chatResult.value;
+  },
 }));
 
 vi.mock("./ocr", () => ({
@@ -28,6 +32,7 @@ beforeEach(() => {
   llmEnabled.value = false;
   ocrResult.value = "这是一段 OCR 识别的图片文字：星辰协议 v2";
   chatResult.value = "一张产品架构图，包含星辰协议 v2 的模块划分。";
+  chatCalls.length = 0;
 });
 
 describe("describeImage", () => {
@@ -44,6 +49,14 @@ describe("describeImage", () => {
     const desc = await describeImage(TINY_PNG, "image/png");
     expect(desc!.text).toBe(chatResult.value);
     expect(desc!.source).toBe("vision");
+  });
+
+  it("asks for a full transcription rather than a short caption", async () => {
+    llmEnabled.value = true;
+    await describeImage(TINY_PNG, "image/png");
+    const prompt = JSON.stringify(chatCalls.at(-1) ?? []);
+    expect(prompt).toContain("转录");
+    expect(prompt).not.toContain("40 字以内");
   });
 
   it("LLM path falls back to OCR when the model returns nothing", async () => {
@@ -67,6 +80,14 @@ describe("imageContextLine", () => {
     const line = await imageContextLine(TINY_PNG, "image/png");
     expect(line).toContain("【图片内容】");
     expect(line).toContain("星辰协议");
+  });
+
+  it("caps a long transcription so the chat context stays bounded", async () => {
+    llmEnabled.value = true;
+    chatResult.value = "文".repeat(5000);
+    const line = await imageContextLine(TINY_PNG, "image/png");
+    expect(line).not.toBeNull();
+    expect(line!.length).toBeLessThanOrEqual("【图片内容】".length + 2000);
   });
 
   it("still produces a context line for undescribable images (dimensions)", async () => {
