@@ -104,8 +104,12 @@ export function addMessage(
   // L-5: persist this message individually (upsert by id) so concurrent
   // addMessage calls can't drop each other's message. The conversation row
   // (title/updatedAt/shared/etc.) is still upserted by persistConversation.
-  void persistMessage(convId, message);
+  //
+  // Order matters: the message row references the conversation
+  // (Message_conversationId_fkey), so the parent upsert is issued first.
+  // persistMessage additionally retries P2003 as a safety net.
   void persistConversation(conv);
+  void persistMessage(convId, message);
   // P4-1: broadcast new messages so team members viewing a shared
   // conversation see it live (listeners only exist while a stream is open).
   if (conv.shared) {
