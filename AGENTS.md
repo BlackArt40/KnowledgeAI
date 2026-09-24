@@ -2,6 +2,47 @@
 
 Compact guidance for coding agent sessions (ZCode / OpenCode) working in this repo. Read this before editing.
 
+## Purpose
+
+Help make correct, maintainable changes with the smallest amount of relevant context. Prefer understanding the task and the affected code over following a fixed checklist.
+
+## Working Principles
+
+- Inspect the code, tests, and documentation that are relevant to the request. Do not read unrelated project documents by default.
+- Make focused changes that match existing project conventions.
+- Preserve behavior outside the requested scope unless a change is necessary to make the requested work correct.
+- State assumptions when requirements are ambiguous or when a decision has meaningful product, security, or compatibility impact.
+- Do not modify generated files, credentials, production data, or external systems unless the task explicitly requires it and the action is safe and authorized.
+
+## Project Documentation
+
+Use these documents only when the task calls for them:
+
+- Read `docs/architecture/overview.md` when changing service boundaries, module ownership, or cross-service behavior. Use the relevant file under `docs/architecture/` for RAG, agent orchestration, or design-system details.
+- Read `prisma/schema.prisma`, the relevant files under `prisma/migrations/`, and the Prisma specifics below when adding or changing a schema, migration, query contract, or data-retention behavior. This repository has no standalone `docs/database.md`.
+- Read `docs/ops/deployment-guide.md` when changing build, release, infrastructure, or runtime configuration.
+- Read `docs/getting-started/account-security.md` when handling authentication, authorization, secrets, personally identifiable information, or security-sensitive integrations.
+- Read `docs/ops/env-vars.md` and `.env.example` when adding or changing environment variables; keep both sides in parity.
+- Read `docs/archive/design-and-implementation-log.md` before introducing a new self-built component or replacing an established framework, and record the alternative/reason there as required by the conventions below. Use `docs/archive/ROADMAP.md` only when historical scope or coverage decisions are relevant.
+
+## Implementation and Verification
+
+- Use the repository's existing tools and conventions for formatting, linting, testing, and builds.
+- Start with the checks affected by the change. When practical, fix failures caused by the requested change and rerun the affected checks.
+- The local test environment uses disposable fixtures and has no production access. You may run relevant local tests and repair failures caused by the requested change without requesting approval at each step.
+- Do not spend time on broad or unrelated test suites for a small, isolated change unless the change creates a realistic regression risk or the task asks for full verification.
+- Before pushing, still satisfy the repository's local gate described below: `pnpm lint` and `pnpm test:unit`. Schema changes must also generate and verify a matching migration as described in the CI gate and Prisma sections.
+
+## Decision Boundaries
+
+- Proceed independently with local, reversible work that is within the requested scope.
+- Ask before making an irreversible, high-impact, or out-of-scope decision, including production changes, data deletion, external communication, new paid dependencies, or changes to public APIs.
+- If a safe, clearly relevant next step remains, continue through implementation, verification, and reasonable fixes instead of stopping after the first code change.
+
+## Completion
+
+Consider work complete when the requested behavior is implemented, relevant checks have been run or their omission is explained, and the result is ready for review. Report the files changed, verification performed, and any remaining limitation or follow-up.
+
 ## Commands
 
 ```bash
