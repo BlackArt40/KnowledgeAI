@@ -1,9 +1,8 @@
 // ---------------------------------------------------------------------------
 // Image description (P7-4) - used by:
-//   - parseImage: appends a vision description to the OCR text so image
-//     documents carry a caption and are retrievable by visual content
-//   - chat multimodal: describes user-uploaded images (demo mode) so the
-//     answer can reference the image content
+//   - parseImage: transcribes the image so scanned documents / screenshots are
+//     fully searchable (a short caption would drop most of the text)
+//   - chat multimodal: supplies the image text so the answer can reference it
 //
 // Two paths:
 //   - LLM configured (isLLMEnabled): chatComplete with OpenAI content parts
@@ -14,6 +13,19 @@
 
 import { isLLMEnabled, chatComplete } from "@/lib/llm/provider";
 import { ocrImage } from "./ocr";
+
+/** Max characters kept in a chat context line (mirrors the OCR cap). */
+const CONTEXT_MAX_CHARS = 2000;
+
+/** Transcription prompt: the parsed document must contain the actual text,
+ *  not a paraphrased summary - retrieval matches on literal strings. */
+const VISION_TRANSCRIBE_PROMPT =
+  "请完整、逐字转录这张图片中的所有可见文字，保持原有的行序、换行与表格/列表结构。" +
+  "只输出转录出的文字本身，不要总结、翻译或添加任何解释。" +
+  "如果图片中确实没有任何文字，再改用中文简要描述图片内容。";
+
+/** Transcription output can be long (a full scanned page). */
+const VISION_MAX_TOKENS = 4000;
 
 export interface ImageDescription {
   /** Natural-language description (LLM path) or OCR text (demo path). */
@@ -46,11 +58,12 @@ export async function describeImage(buf: Buffer, mime = "image/png"): Promise<Im
         [
           {
             role: "user",
-            content: "请用中文简要描述这张图片的内容（40 字以内，聚焦可检索的关键信息）。",
+            content: VISION_TRANSCRIBE_PROMPT,
             images: [{ mime, data }],
           },
         ],
-        { temperature: 0.2, maxTokens: 120 }
+        // Full transcripts are much longer than a one-line caption.
+        { temperature: 0, maxTokens: VISION_MAX_TOKENS }
       );
       if (text && text.trim().length > 2) {
         return { text: text.trim(), source: "vision", width, height };
@@ -76,8 +89,7 @@ export async function describeImage(buf: Buffer, mime = "image/png"): Promise<Im
 export async function imageContextLine(buf: Buffer, mime: string): Promise<string | null> {
   const desc = await describeImage(buf, mime);
   if (!desc) return null;
-  if (desc.source === "ocr" && desc.text.length > 2000) {
-    return `【图片内容】${desc.text.slice(0, 2000)}`;
-  }
-  return `【图片内容】${desc.text}`;
+  // Cap the context line regardless of path: a full-page transcription can be
+  // far longer than the chat context budget.
+  return `【图片内容】${desc.text.slice(0, CONTEXT_MAX_CHARS)}`;
 }
