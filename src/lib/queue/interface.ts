@@ -23,6 +23,28 @@ export interface JobResult {
 
 export type JobHandler = (payload: Record<string, unknown>) => Promise<JobResult>;
 
+export interface QueueCounts {
+  waiting: number;
+  active: number;
+  delayed: number;
+  completed: number;
+  failed: number;
+}
+
+export interface QueueStats {
+  name: string;
+  concurrency: number;
+  counts: QueueCounts;
+}
+
+export interface QueueStatsSnapshot {
+  mode: "memory" | "redis";
+  available: boolean;
+  capturedAt: number;
+  queues: QueueStats[];
+  error?: string;
+}
+
 export interface JobQueue {
   /** Enqueue a job. Returns a job ID. */
   enqueue(type: JobType, payload: Record<string, unknown>): Promise<string>;
@@ -32,6 +54,9 @@ export interface JobQueue {
 
   /** Get a job's status and result (if completed). */
   getJob(jobId: string): Promise<{ status: "queued" | "active" | "completed" | "failed"; result?: JobResult } | null>;
+
+  /** Current queue counts and configured worker concurrency. */
+  getStats(): Promise<QueueStats[]>;
 
   /** Start processing queued jobs. */
   start(): void;

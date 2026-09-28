@@ -811,7 +811,18 @@
       "s40": "No traces recorded",
       "s41": "No errors recorded",
       "s42": "instrumented routes",
-      "s43": "req/min"
+      "s43": "req/min",
+      "s44": "Job queues",
+      "s45": "In-memory queue",
+      "s46": "Redis queues",
+      "s47": "Queue",
+      "s48": "Concurrency",
+      "s49": "Waiting",
+      "s50": "Active",
+      "s51": "Delayed retry",
+      "s52": "Completed",
+      "s53": "Failed",
+      "s54": "Queue status unavailable"
     },
     "not-found": {
       "s0": "Page not found",

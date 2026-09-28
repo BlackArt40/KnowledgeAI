@@ -4,10 +4,10 @@ description: KnowledgeAI 可观测性手册：健康检查探针、就绪告警�
 type: how-to
 category: ops
 level: L2
-version: 1.0.0
+version: 1.1.0
 authors: [technical-writer]
 owner: devops-owner
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-28
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -62,6 +62,7 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 | 延迟 P50 / P95 / P99 | 请求延迟分位 |
 | RAG 检索耗时 | `recordRag(durationMs, failed)` |
 | LLM Token / 成本 / 模型分布 | Provider 用量聚合 |
+| 队列运行态 | `getQueueStats()`：内存或 Redis 后端的 waiting / active / delayed / completed / failed 与并发；Redis 不可用时返回 `available:false`，不阻塞监控接口 |
 
 > 内存存储：重启即清零，适合单实例观测；多实例/长期留存建议将日志与指标导出到外部系统（Loki / Sentry / 自建 Prometheus 采集）。
 
@@ -102,4 +103,5 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1.0 | 2026-09-28 | 增加 BullMQ / 内存队列运行态快照说明 |
 | 1.0.0 | 2026-08-20 | 初版（依据 src/lib/health、src/lib/obs 源码核对） |

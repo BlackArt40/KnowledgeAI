@@ -30,6 +30,7 @@ async function waitForPort(port, timeoutMs = 20000) {
 
 async function main() {
   let failures = 0;
+  let exitCode = 0;
   const results = [];
   const check = (name, cond, detail = "") => {
     if (cond) results.push(`✅ ${name}`);
@@ -151,16 +152,18 @@ async function main() {
     // ── 1. owner sees the dashboard ─────────────────────────────────────
     console.log("\n── 1. owner 仪表盘渲染 ──");
     await send("Page.navigate", { url: `${BASE}/admin/monitoring` });
-    await waitFor(`document.body.innerText.includes("可观测性")`);
+    await waitFor(`!!document.body && document.body.innerText.includes("可观测性")`);
     await sleep(800);
     const ownerState = await evalJs(`(() => {
       const text = document.body.innerText;
+      const llmTable = [...document.querySelectorAll("table")].find((el) => el.textContent.includes("调用次数"));
       return {
         title: text.includes("可观测性"),
         qpsCard: text.includes("QPS"),
         latency: text.includes("P50") && text.includes("P95") && text.includes("P99"),
         llmSection: text.includes("LLM 调用监控"),
-        modelRow: text.includes("demo") || text.includes("gpt-4o"),
+        modelRow: !!llmTable && llmTable.querySelectorAll("tbody tr").length > 0,
+        queueSection: text.includes("任务队列"),
         ragCard: text.includes("RAG 检索"),
         docCard: text.includes("文档处理"),
         agentCard: text.includes("Agent 调研"),
@@ -174,7 +177,7 @@ async function main() {
     check("dashboard: QPS 卡片", ownerState.qpsCard === true);
     check("dashboard: 延迟 P50/P95/P99", ownerState.latency === true);
     check("dashboard: LLM 调用监控 + 模型行", ownerState.llmSection === true && ownerState.modelRow === true, JSON.stringify(ownerState));
-    check("dashboard: RAG/文档/Agent 卡片", ownerState.ragCard && ownerState.docCard && ownerState.agentCard);
+    check("dashboard: 队列/ RAG/文档/Agent 区块", ownerState.queueSection && ownerState.ragCard && ownerState.docCard && ownerState.agentCard, JSON.stringify(ownerState));
     check("dashboard: 最近追踪 + 最近错误区块", ownerState.tracesSection === true && ownerState.errorsSection === true);
     check("dashboard: 刷新按钮", ownerState.refreshBtn === true);
     check("dashboard: 至少一个 SVG 图表", ownerState.charts >= 1, `svgs=${ownerState.charts}`);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import {
-  Activity, AlertTriangle, Bot, ChevronDown, Cpu, FileText, Gauge, ListTree, RefreshCw,
+  Activity, AlertTriangle, Bot, ChevronDown, Cpu, FileText, Gauge, Layers, ListTree, RefreshCw,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UsageChart } from "@/components/app/usage-chart";
 import { cn } from "@/lib/utils";
+
+interface QueueSnapshot {
+  mode: "memory" | "redis";
+  available: boolean;
+  capturedAt: number;
+  queues: {
+    name: string;
+    concurrency: number;
+    counts: { waiting: number; active: number; delayed: number; completed: number; failed: number };
+  }[];
+  error?: string;
+}
 
 interface MonitoringData {
   startedAt: number;
@@ -34,6 +46,7 @@ interface MonitoringData {
   };
   doc: { calls: number; ok: number; failed: number; avgMs: number | null };
   agent: { runs: number; ok: number; failed: number; avgMs: number | null };
+  queue: QueueSnapshot;
   traces: { traceId: string; name: string; status: string; start: number; durationMs: number }[];
   errors: { id: string; message: string; source: string; createdAt: number }[];
 }
@@ -86,7 +99,7 @@ export default function MonitoringPage() {
       const res = await fetch("/api/admin/monitoring", { cache: "no-store" });
       if (!res.ok) return; // 403 for non-admins - AppShell redirects instead
       const d = await res.json();
-      if (d?.requests && d?.llm) setData(d);
+      if (d?.requests && d?.llm && d?.queue) setData(d);
     } catch {
       /* dashboard is read-only - keep last snapshot */
     } finally {
@@ -178,6 +191,52 @@ export default function MonitoringPage() {
         </CardHeader>
         <CardContent>
           <UsageChart data={qpsSeries.length >= 2 ? qpsSeries : [0, 0]} labels={qpsLabels} />
+        </CardContent>
+      </Card>
+
+      {/* queue snapshot */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base"><Layers className="h-4 w-4" />{t("page.monitoring.s44")}</CardTitle>
+          <Badge variant={data.queue.available ? "secondary" : "destructive"}>
+            {data.queue.mode === "redis" ? t("page.monitoring.s46") : t("page.monitoring.s45")}
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          {!data.queue.available ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("page.monitoring.s54")}</p>
+          ) : data.queue.queues.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("page.monitoring.s28")}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="pb-2 font-medium">{t("page.monitoring.s47")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s48")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s49")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s50")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s51")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s52")}</th>
+                    <th className="pb-2 font-medium">{t("page.monitoring.s53")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.queue.queues.map((queue) => (
+                    <tr key={queue.name} className="border-b border-border/60 last:border-0">
+                      <td className="py-2 font-mono text-xs">{queue.name}</td>
+                      <td className="py-2 tabular-nums">{queue.concurrency}</td>
+                      <td className="py-2 tabular-nums">{queue.counts.waiting}</td>
+                      <td className="py-2 tabular-nums">{queue.counts.active}</td>
+                      <td className="py-2 tabular-nums">{queue.counts.delayed}</td>
+                      <td className="py-2 tabular-nums text-success">{queue.counts.completed}</td>
+                      <td className="py-2 tabular-nums text-destructive">{queue.counts.failed}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

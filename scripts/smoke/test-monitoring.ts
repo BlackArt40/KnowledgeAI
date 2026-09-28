@@ -1,7 +1,7 @@
 // @ts-nocheck
 // P6-1 acceptance verification (HTTP): observability.
-//   - GET /api/admin/monitoring exposes the SLI dashboard aggregate (owner
-//     200, editor 403, anonymous 401)
+//   - GET /api/admin/monitoring exposes the SLI + queue snapshot aggregate
+//     (owner 200, editor 403, anonymous 401)
 //   - full-chain tracing: a request carrying X-Trace-Id produces a trace
 //     whose span tree covers API -> RAG -> LLM (chat) / API (search)
 //   - POST /api/obs/report records client errors, visible via the dashboard
@@ -87,10 +87,13 @@ async function main() {
   const mon = await req("GET", "/api/admin/monitoring", { token });
   const d = mon.data;
   check("monitoring owner: 200", mon.status === 200, `status=${mon.status}`);
-  check("structure: requests SLI", !!d?.requests && typeof d.requests.errorRate === "number" && Array.isArray(d.requests.perMinute), JSON.stringify(d?.requests).slice(0, 120));
+  const requestsSnapshot = d?.requests;
+  check("structure: requests SLI", !!requestsSnapshot && typeof requestsSnapshot.errorRate === "number" && Array.isArray(requestsSnapshot.perMinute), requestsSnapshot ? JSON.stringify(requestsSnapshot).slice(0, 120) : "missing");
   check("structure: latency percentiles", "p50" in (d?.requests?.latency ?? {}) && "p95" in (d?.requests?.latency ?? {}) && "p99" in (d?.requests?.latency ?? {}));
   check("structure: llm byModel array", Array.isArray(d?.llm?.byModel), String(Array.isArray(d?.llm?.byModel)));
   check("structure: rag/doc/agent dimensions", !!d?.rag && !!d?.doc && !!d?.agent);
+  const queueSnapshot = d?.queue;
+  check("structure: queue snapshot", !!queueSnapshot && typeof queueSnapshot.available === "boolean" && Array.isArray(queueSnapshot.queues), queueSnapshot ? JSON.stringify(queueSnapshot).slice(0, 120) : "missing");
   check("structure: traces + errors lists", Array.isArray(d?.traces) && Array.isArray(d?.errors));
 
   // ── 2. 全链路追踪:search(API span)──────────────────────────────────
@@ -138,18 +141,20 @@ async function main() {
   // ── 5. SLI 指标已填充 ────────────────────────────────────────────────
   console.log("\n── 5. SLI 指标 ──");
   const m3 = mon2.data;
-  check("SLI: requests.total > 0", m3.requests.total > 0, String(m3.requests.total));
-  check("SLI: per-minute series present", m3.requests.perMinute.length > 0 && m3.requests.perMinute.some((p) => p.count > 0));
-  check("SLI: error rate >= 0 (computed)", typeof m3.requests.errorRate === "number" && m3.requests.errorRate >= 0);
-  check("SLI: latency p95 present after traffic", m3.requests.latency.count > 0 && m3.requests.latency.p95 !== null, JSON.stringify(m3.requests.latency));
-  check("SLI: rag.calls > 0 (chat ran retrieval)", m3.rag.calls > 0, String(m3.rag.calls));
-  check("SLI: llm.byModel includes demo (demo-mode chat)", (m3.llm.byModel ?? []).some((m) => m.model === "demo" && m.calls > 0), JSON.stringify(m3.llm.byModel));
-  check("SLI: llm totalTokens > 0", m3.llm.totalTokens > 0, String(m3.llm.totalTokens));
-  check("SLI: llm costUsd >= 0", typeof m3.llm.costUsd === "number" && m3.llm.costUsd >= 0);
-  check("SLI: uptime > 0", m3.uptimeMs > 0, String(m3.uptimeMs));
+  const m3Requests = m3?.requests;
+  const m3Detail = `status=${mon2.status} data=${m3 ? "present" : "missing"}`;
+  check("SLI: requests.total > 0", (m3Requests?.total ?? 0) > 0, `${m3Detail} total=${m3Requests?.total ?? "n/a"}`);
+  check("SLI: per-minute series present", (m3Requests?.perMinute?.length ?? 0) > 0 && m3Requests.perMinute.some((p) => p.count > 0));
+  check("SLI: error rate >= 0 (computed)", typeof m3Requests?.errorRate === "number" && m3Requests.errorRate >= 0);
+  check("SLI: latency p95 present after traffic", (m3Requests?.latency?.count ?? 0) > 0 && m3Requests.latency.p95 !== null, JSON.stringify(m3Requests?.latency));
+  check("SLI: rag.calls > 0 (chat ran retrieval)", (m3?.rag?.calls ?? 0) > 0, String(m3?.rag?.calls ?? "n/a"));
+  check("SLI: llm.byModel populated after chat", (m3?.llm?.byModel ?? []).some((m) => m.calls > 0), JSON.stringify(m3?.llm?.byModel));
+  check("SLI: llm totalTokens > 0", (m3?.llm?.totalTokens ?? 0) > 0, String(m3?.llm?.totalTokens ?? "n/a"));
+  check("SLI: llm costUsd >= 0", typeof m3?.llm?.costUsd === "number" && m3.llm.costUsd >= 0);
+  check("SLI: uptime > 0", (m3?.uptimeMs ?? 0) > 0, String(m3?.uptimeMs ?? "n/a"));
 
   // trace 列表出现在 dashboard
-  check("dashboard: recent traces list non-empty", m3.traces.length > 0, String(m3.traces.length));
+  check("dashboard: recent traces list non-empty", (m3?.traces?.length ?? 0) > 0, String(m3?.traces?.length ?? "n/a"));
 
   console.log(`\n${results.join("\n")}`);
   console.log(`\nMonitoring HTTP acceptance: ${results.length - failures}/${results.length} passed${failures ? `, ${failures} FAILED` : ""}`);

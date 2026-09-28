@@ -6,7 +6,7 @@
 // No persistence - jobs are lost on process restart.
 // ---------------------------------------------------------------------------
 
-import type { JobQueue, JobType, JobHandler, JobResult } from "./interface";
+import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
 import { log, redactText } from "@/lib/obs/log";
 
 interface Job {
@@ -79,6 +79,19 @@ export class MemoryQueue implements JobQueue {
     const job = this.jobs.get(jobId);
     if (!job) return null;
     return { status: job.status, result: job.result };
+  }
+
+  async getStats(): Promise<QueueStats[]> {
+    const counts = { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 };
+    for (const job of this.jobs.values()) {
+      if (job.status === "queued") {
+        if (job.nextRetryAt) counts.delayed++;
+        else counts.waiting++;
+      } else {
+        counts[job.status]++;
+      }
+    }
+    return [{ name: "memory", concurrency: this.concurrency, counts }];
   }
 
   start(): void {
