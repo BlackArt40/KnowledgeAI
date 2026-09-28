@@ -24,6 +24,12 @@ test("登录：demo 账号进入工作台", async ({ page }) => {
   await expect(page.getByText("仪表盘").first()).toBeVisible();
 });
 
+test("未登录：开发者门户跳转登录页", async ({ page }) => {
+  await page.goto("/developer");
+  await expect(page).toHaveURL(/\/login(?:\?|$)/);
+  await expect(page.getByRole("button", { name: "退出登录" })).toHaveCount(0);
+});
+
 test("上传：新建知识库并上传文档，等待处理完成", async ({ page }) => {
   await login(page);
 

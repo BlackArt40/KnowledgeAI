@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const MAX_CONTENT_CHARS = 2 * 1024 * 1024; // mirror the multipart text cap
 
 async function handlePOST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const scope = await requireApiKeyScope(req, "kb:write");
   if (scope.error) return scope.error;

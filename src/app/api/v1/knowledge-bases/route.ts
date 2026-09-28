@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // Same workspace isolation + access rules as the legacy route.
 
 async function handleGET(req: Request) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const scope = await requireApiKeyScope(req, "kb:read");
   if (scope.error) return scope.error;
@@ -45,7 +45,7 @@ async function handleGET(req: Request) {
 }
 
 async function handlePOST(req: Request) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const scope = await requireApiKeyScope(req, "kb:write");
   if (scope.error) return scope.error;

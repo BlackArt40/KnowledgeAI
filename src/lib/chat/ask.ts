@@ -53,6 +53,8 @@ export interface ChatRequestBody {
 export interface ChatRequestOptions {
   /** Endpoint path recorded in the API-key call log (legacy vs v1). */
   endpoint: string;
+  /** P7-1: only the versioned public API accepts scoped API keys. */
+  allowApiKey?: boolean;
   /** Pre-authenticated user (integration callbacks such as bots, P7-2):
    *  skip the request-level auth resolution and act as this user. */
   user?: RequestUser;
@@ -78,7 +80,7 @@ export async function handleChatRequest(
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
   const apiKey = bearerToken?.startsWith("kai_sk_") ? validateApiKey(bearerToken) : null;
 
-  const authUser = opts.user ?? (await getRequestUser(req));
+  const authUser = opts.user ?? (await getRequestUser(req, { allowApiKey: opts.allowApiKey === true }));
   if (!authUser) return early(Response.json({ error: "未登录" }, { status: 401 }));
 
   let body: ChatRequestBody;

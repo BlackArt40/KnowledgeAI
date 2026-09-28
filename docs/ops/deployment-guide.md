@@ -118,6 +118,18 @@ kubectl apply -f k8s/deployment.yaml
 | 数据库迁移 | 升级前在宿主机执行 `DATABASE_URL=... npx prisma migrate deploy`（运行镜像不含 Prisma CLI，迁移文件在仓库 `prisma/migrations/`） |
 | 降级处理 | 演示模式与生产模式可随时互切（移除/设置 `DATABASE_URL` 即可） |
 
+### 认证兼容性预检
+
+升级包含 API Key scope 收紧或 Agent 报告分享默认关闭的版本前：
+
+1. 用只读数据库连接执行 `DATABASE_URL=... npx tsx scripts/audit-auth-compat.ts`。
+2. 如果出现 `legacy_null > 0`，这些历史任务在升级后默认返回 403。不要批量自动放开；只对已确认原本就作为公开链接使用、且经业务审核的任务显式设置 `shareConfig = {"enabled": true, "views": 0}`。
+3. API Key 调用日志目前不落库。通过 Loki/结构化日志检查 `dimension=apikey` 且 `path` 不在 `/api/v1/` 下的调用；升级前将这类客户端迁移到 `/api/v1/*`。
+4. 确认以下边界后再发布：
+   - 内部 API 只接受 JWT 会话；
+   - API Key 只用于 `/api/v1/*` 且按 scope 校验；
+   - Agent 报告 `shareConfig` 缺失或 `enabled !== true` 时不可匿名访问。
+
 ## 部署自检清单
 
 - [ ] `AUTH_SECRET` 已设置为随机 32+ 字符
@@ -126,6 +138,7 @@ kubectl apply -f k8s/deployment.yaml
 - [ ] `/api/health` 与 `/api/health/ready` 探针可达
 - [ ] 生产环境已配置 `production` environment 审批门与 SSH secrets
 - [ ] 生产镜像 tag 可回滚（记录上次成功 tag）
+- [ ] 已执行认证兼容性预检，并完成历史分享链接与旧版 API Key 客户端迁移决策
 
 ## 相关文档
 

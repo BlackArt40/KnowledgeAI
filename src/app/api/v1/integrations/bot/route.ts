@@ -20,14 +20,14 @@ export const dynamic = "force-dynamic";
 // token is the credential; created once, stored hashed).
 
 async function handleGET(req: Request) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const bots = listBotBindings(u.workspaceId).map(({ tokenHash: _t, ...rest }) => rest);
   return NextResponse.json({ bots });
 }
 
 async function handlePOST(req: Request) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   let body: { name?: string; platform?: string; kbId?: string };

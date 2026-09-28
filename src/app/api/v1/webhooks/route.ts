@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 async function handleGET(req: Request) {
   const scope = await requireApiKeyScope(req, "webhooks:write");
   if (scope.error) return scope.error;
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
   // bypass requireApiKeyScope and were previously let through unchecked.
@@ -42,7 +42,7 @@ async function handleGET(req: Request) {
 async function handlePOST(req: Request) {
   const scope = await requireApiKeyScope(req, "webhooks:write");
   if (scope.error) return scope.error;
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
   // bypass requireApiKeyScope and were previously let through unchecked.

@@ -13,7 +13,7 @@ import { withApiTrace } from "@/lib/obs/trace";
 export const dynamic = "force-dynamic";
 
 async function handlePOST(req: Request) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const scope = await requireApiKeyScope(req, "kb:write");
   if (scope.error) return scope.error;

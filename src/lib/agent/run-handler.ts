@@ -20,8 +20,11 @@ import { reportError } from "@/lib/obs/errors";
 import { log } from "@/lib/obs/log";
 
 /** POST /api/agent/run -> text/event-stream (shared by legacy + v1 routes). */
-export async function handleAgentRun(req: Request): Promise<Response> {
-  const authUser = await getRequestUser(req);
+export async function handleAgentRun(
+  req: Request,
+  opts?: { allowApiKey?: boolean }
+): Promise<Response> {
+  const authUser = await getRequestUser(req, { allowApiKey: opts?.allowApiKey === true });
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
 
   // P1-2: agent runs enqueue expensive multi-step LLM tasks. The proxy skips

@@ -54,9 +54,9 @@ function readCookie(req: Request, name: string): string | null {
  *  Returns the user (id/email/name/role/workspaceId) or null if not
  *  authenticated. The workspace comes from the `kai-workspace` cookie; an
  *  unknown / non-member workspace falls back to the default one.
- *  `opts.allowApiKey` (default true): internal/legacy routes pass false so a
- *  kai_sk_ Bearer is NEVER accepted there (P1-6) - an API key scoped to
- *  kb:read must not reach /api/admin/* even though the key owner is admin. */
+ *  `opts.allowApiKey` (default false): only routes with an explicit API-key
+ *  contract may opt in. Legacy/internal routes stay session-only, so a
+ *  low-scope key cannot reach account, team, security or admin actions. */
 export async function getRequestUser(
   req: Request,
   opts?: { allowApiKey?: boolean }
@@ -67,7 +67,7 @@ export async function getRequestUser(
 
   // If the Bearer token looks like an API key (kai_sk_...), validate it as such
   // and resolve the key owner's identity.
-  if (opts?.allowApiKey !== false && bearerToken && bearerToken.startsWith("kai_sk_")) {
+  if (opts?.allowApiKey === true && bearerToken && bearerToken.startsWith("kai_sk_")) {
     const apiKey = validateApiKey(bearerToken);
     if (!apiKey) return null;
     const owner = getUserById(apiKey.userId);

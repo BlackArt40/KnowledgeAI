@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const scope = await requireApiKeyScope(req, "webhooks:write");
   if (scope.error) return scope.error;
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
   // bypass requireApiKeyScope and were previously let through unchecked.
@@ -70,7 +70,7 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
 async function handleDELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const scope = await requireApiKeyScope(req, "webhooks:write");
   if (scope.error) return scope.error;
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
   // bypass requireApiKeyScope and were previously let through unchecked.
@@ -100,7 +100,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   return withApiTrace(req, "api /api/v1/webhooks GET", async () => {
     const scope = await requireApiKeyScope(req, "webhooks:write");
     if (scope.error) return scope.error;
-    const u = await getRequestUser(req);
+    const u = await getRequestUser(req, { allowApiKey: true });
     if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   // P1-8: VIEWER must not manage webhook subscriptions - JWT sessions
   // bypass requireApiKeyScope and were previously let through unchecked.
