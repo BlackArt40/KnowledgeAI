@@ -13,11 +13,11 @@
 // worker can run in a separate process.
 // ---------------------------------------------------------------------------
 
-import type { JobQueue, JobType, JobHandler } from "./interface";
+import type { JobQueue, JobType, JobHandler, QueueStatsSnapshot } from "./interface";
 import { MemoryQueue } from "./memory-queue";
 import { BullMQQueue } from "./bullmq-queue";
 import type { AgentEvent } from "@/lib/agent/orchestrator";
-import { log } from "@/lib/obs/log";
+import { log, redactText } from "@/lib/obs/log";
 
 let _instance: JobQueue | null = null;
 let _handlersRegistered = false;
@@ -78,6 +78,21 @@ export async function stopQueue(): Promise<void> {
 /** Whether a real (Redis-backed) queue is configured. */
 export function isQueueExternal(): boolean {
   return !!process.env.REDIS_URL;
+}
+
+/** Backend-neutral queue snapshot for the admin monitoring dashboard. */
+export async function getQueueStats(): Promise<QueueStatsSnapshot> {
+  const mode = process.env.REDIS_URL ? "redis" : "memory";
+  const capturedAt = Date.now();
+  try {
+    return { mode, available: true, capturedAt, queues: await getQueue().getStats() };
+  } catch (err) {
+    log.error(
+      { err: redactText(err instanceof Error ? err.message : String(err)) },
+      "[queue] failed to read queue stats"
+    );
+    return { mode, available: false, capturedAt, queues: [], error: "queue stats unavailable" };
+  }
 }
 
 // Auto-register handlers on first use (lazy, to avoid circular deps at import time).

@@ -15,6 +15,7 @@ interface MockQueue {
   jobs: Map<string, MockJob>;
   states: Map<string, string>;
   add: (name: string, data: unknown, opts?: unknown) => Promise<MockJob>;
+  getJobCounts: (states: string[]) => Promise<Record<string, number>>;
   getJob: (id: string) => Promise<MockJob | null>;
   getJobState: (id: string) => Promise<string | undefined>;
   close: () => Promise<void>;
@@ -53,6 +54,7 @@ const mocks = vi.hoisted(() => {
       }),
       getJob: vi.fn(async (id: string) => queue.jobs.get(id) ?? null),
       getJobState: vi.fn(async (id: string) => queue.states.get(id) ?? "queued"),
+      getJobCounts: vi.fn(async () => ({ waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 })),
       close: vi.fn(async () => undefined),
     };
     queues.push(queue);
@@ -166,6 +168,48 @@ describe("BullMQQueue dual-queue topology", () => {
     await vi.waitFor(() => expect(mocks.workers).toHaveLength(2));
 
     expect(mocks.workers.map((worker) => worker.options.concurrency)).toEqual([3, 1]);
+  });
+
+  it("returns counts and concurrency for both queues", async () => {
+    const queue = new BullMQQueue("redis://:secret@localhost:6380");
+    await queue.enqueue("doc-process", { docId: "doc_3" });
+
+    vi.mocked(mocks.queues[0].getJobCounts).mockResolvedValue({
+      waiting: 4,
+      active: 2,
+      delayed: 1,
+      completed: 10,
+      failed: 3,
+    });
+    vi.mocked(mocks.queues[1].getJobCounts).mockResolvedValue({
+      waiting: 7,
+      active: 1,
+      delayed: 0,
+      completed: 2,
+      failed: 1,
+    });
+
+    await expect(queue.getStats()).resolves.toEqual([
+      {
+        name: FAST_QUEUE,
+        concurrency: 5,
+        counts: { waiting: 4, active: 2, delayed: 1, completed: 10, failed: 3 },
+      },
+      {
+        name: AGENT_QUEUE,
+        concurrency: 2,
+        counts: { waiting: 7, active: 1, delayed: 0, completed: 2, failed: 1 },
+      },
+    ]);
+    for (const queueInstance of mocks.queues) {
+      expect(queueInstance.getJobCounts).toHaveBeenCalledWith(
+        "waiting",
+        "active",
+        "delayed",
+        "completed",
+        "failed"
+      );
+    }
   });
 
   it("closes every worker and queue during shutdown", async () => {

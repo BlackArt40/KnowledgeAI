@@ -11,4 +11,4 @@ function demoPassword(): string {
   return Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString("latin1");
 }
 
-export { demoPassword as DEMO_PASSWORD };
+export const DEMO_PASSWORD = demoPassword();

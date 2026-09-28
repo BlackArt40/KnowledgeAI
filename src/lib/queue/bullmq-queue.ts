@@ -9,7 +9,7 @@
 // concurrency control, event pub/sub for real-time progress.
 // ---------------------------------------------------------------------------
 
-import type { JobQueue, JobType, JobHandler, JobResult } from "./interface";
+import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
 import { log } from "@/lib/obs/log";
 
 // BullMQ types (dynamic import - lazily loaded when REDIS_URL is set)
@@ -22,6 +22,7 @@ interface BullMQJobType {
 interface BullMQQueueType {
   add(name: string, data: unknown, opts?: unknown): Promise<BullMQJobType>;
   getJob(id: string): Promise<BullMQJobType | null>;
+  getJobCounts(...states: string[]): Promise<Record<string, number>>;
   close(): Promise<void>;
 }
 interface BullMQWorkerType {
@@ -112,6 +113,32 @@ export class BullMQQueue implements JobQueue {
 
   registerHandler(type: JobType, handler: JobHandler): void {
     this.handlers.set(type, handler);
+  }
+
+  async getStats(): Promise<QueueStats[]> {
+    await this.ensureConnected();
+    const definitions = [
+      { name: FAST_QUEUE_NAME, concurrency: concurrencyFrom("QUEUE_CONCURRENCY", 3) },
+      { name: AGENT_QUEUE_NAME, concurrency: concurrencyFrom("QUEUE_AGENT_CONCURRENCY", 1) },
+    ];
+    return Promise.all(
+      definitions.map(async ({ name, concurrency }) => {
+        const queue = this.queues.get(name);
+        if (!queue) throw new Error(`queue not connected: ${name}`);
+        const raw = await queue.getJobCounts("waiting", "active", "delayed", "completed", "failed");
+        return {
+          name,
+          concurrency,
+          counts: {
+            waiting: raw.waiting ?? 0,
+            active: raw.active ?? 0,
+            delayed: raw.delayed ?? 0,
+            completed: raw.completed ?? 0,
+            failed: raw.failed ?? 0,
+          },
+        };
+      })
+    );
   }
 
   async getJob(jobId: string) {
