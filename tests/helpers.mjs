@@ -5,7 +5,8 @@
 //   await login();                       // owner@knowledgeai.dev / password123
 //   await api("/api/...", { method, headers, body });
 
-export const BASE = "http://localhost:3000";
+const rawBase = process.env.KAI_TEST_BASE || "http://localhost:3000";
+export const BASE = rawBase.replace(/\/+$/, "");
 
 /** Current session cookie (read-only live binding - mutate via login()). */
 export let AUTH = null;

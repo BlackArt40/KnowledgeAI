@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { getRequestUser, requireRole } from "./guard";
 import { createToken, type AuthUser } from "./session";
+import { createKey, deleteKey } from "@/lib/apikeys/store";
 
 const user: AuthUser = { id: "usr_owner", email: "owner@knowledgeai.dev", name: "Owner", role: "owner" };
 
@@ -32,6 +33,17 @@ describe("getRequestUser", () => {
   it("returns null for unknown API keys", async () => {
     const u = await getRequestUser(reqWith({ authorization: "Bearer kai_sk_doesnotexist123" }));
     expect(u).toBeNull();
+  });
+
+  it("rejects valid API keys unless the route explicitly opts in", async () => {
+    const key = createKey("guard-api-key", ["chat:read"], user.id);
+    const req = reqWith({ authorization: `Bearer ${key.secret}` });
+    try {
+      expect(await getRequestUser(req)).toBeNull();
+      expect((await getRequestUser(req, { allowApiKey: true }))?.id).toBe(user.id);
+    } finally {
+      deleteKey(key.id, user.id);
+    }
   });
 });
 

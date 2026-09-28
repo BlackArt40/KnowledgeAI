@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 async function handlePOST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const scope = await requireApiKeyScope(req, "webhooks:write");
   if (scope.error) return scope.error;
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;
 

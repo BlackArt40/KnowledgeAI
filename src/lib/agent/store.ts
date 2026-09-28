@@ -52,6 +52,7 @@ export function createTask(input: {
     createdAt: now,
     updatedAt: now,
     userId,
+    shareConfig: { enabled: false, views: 0 },
   };
   store().tasks.set(task.id, task);
   void persistTask(task);

@@ -85,6 +85,34 @@ async function main() {
   const agentText = await agentSse.text();
   log("Agent SSE流式", "POST", "/api/agent/run", agentSse.status, agentSse.status === 200 && agentText.includes("step"), `init=${agentText.includes("init")}`);
 
+  const agentTaskId = agentText.match(/"taskId"\s*:\s*"([^"]+)"/)?.[1];
+  log("Agent任务ID", "POST", "/api/agent/run", agentTaskId ? 200 : 400, !!agentTaskId, agentTaskId ?? "missing");
+  if (agentTaskId) {
+    let agentStatus = "";
+    for (let i = 0; i < 30; i++) {
+      const taskRes = await req("GET", `/api/agent/tasks/${agentTaskId}`);
+      agentStatus = taskRes.data?.task?.status ?? "";
+      if (agentStatus === "done" || agentStatus === "failed") break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    log("Agent任务完成", "GET", `/api/agent/tasks/${agentTaskId}`, agentStatus === "done" ? 200 : 500, agentStatus === "done", `status=${agentStatus}`);
+
+    if (agentStatus === "done") {
+      let publicRes = await fetch(`${BASE}/api/agent/public/${agentTaskId}`);
+      let publicBody = await publicRes.json().catch(() => ({}));
+      log("未分享报告拒绝匿名访问", "GET", `/api/agent/public/${agentTaskId}`, publicRes.status, publicRes.status === 403 && publicBody.code === "disabled", `code=${publicBody.code ?? "none"}`);
+
+      r = await req("PUT", `/api/agent/tasks/${agentTaskId}/share`, { enabled: true });
+      log("开启报告公开分享", "PUT", `/api/agent/tasks/${agentTaskId}/share`, r.status, r.status === 200 && r.data?.shareConfig?.enabled === true);
+
+      publicRes = await fetch(`${BASE}/api/agent/public/${agentTaskId}`);
+      publicBody = await publicRes.json().catch(() => ({}));
+      log("已分享报告允许匿名访问", "GET", `/api/agent/public/${agentTaskId}`, publicRes.status, publicRes.status === 200 && typeof publicBody.report === "string", `report=${typeof publicBody.report === "string"}`);
+
+      await req("DELETE", `/api/agent/tasks/${agentTaskId}`);
+    }
+  }
+
   // ── 4. Team API ──
   console.log("\n── Team API ──");
   r = await req("GET", "/api/team");
@@ -219,14 +247,35 @@ async function main() {
   // API Key scope 强制（chat:read 密钥不能调 agent）
   const keyRes = await req("POST", "/api/api-keys", { name: "itest-v1", scopes: ["kb:read", "chat:read"] });
   const keySecret = keyRes.data?.key?.secret;
+  const v1KeyId = keyRes.data?.key?.id;
   log("创建API密钥", "POST", "/api/api-keys", keyRes.status, keyRes.status === 201 && !!keySecret);
   const keyHeaders = { Authorization: `Bearer ${keySecret}` };
+
+  const legacyKeyCreate = await fetch(`${BASE}/api/api-keys`, {
+    method: "POST",
+    headers: { ...keyHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "must-not-escalate", scopes: ["kb:write"] }),
+  });
+  log("API Key不能管理密钥", "POST", "/api/api-keys", legacyKeyCreate.status, legacyKeyCreate.status === 401);
+
+  const legacyTeam = await fetch(`${BASE}/api/team`, { headers: keyHeaders });
+  log("API Key不能访问内部团队接口", "GET", "/api/team", legacyTeam.status, legacyTeam.status === 401);
+
+  const keyMe = await fetch(`${BASE}/api/v1/me`, { headers: keyHeaders });
+  const keyMeBody = await keyMe.json().catch(() => ({}));
+  log("API Key仍可用于v1", "GET", "/api/v1/me", keyMe.status, keyMe.status === 200 && keyMeBody.user?.id === "usr_owner");
+
   const agentRes = await fetch(`${BASE}/api/v1/agent/run`, {
     method: "POST",
     headers: { ...keyHeaders, "Content-Type": "application/json" },
     body: JSON.stringify({ topic: "x" }),
   });
   log("v1/agent scope强制", "POST", "/api/v1/agent/run", agentRes.status, agentRes.status === 403, `403 (缺 agent:run)`);
+
+  if (v1KeyId) {
+    r = await req("DELETE", `/api/api-keys/${v1KeyId}`);
+    log("清理API密钥", "DELETE", `/api/api-keys/${v1KeyId}`, r.status, r.status === 200);
+  }
 
   // ── 11. P7-1: Webhook ──
   console.log("\n── Webhook ──");

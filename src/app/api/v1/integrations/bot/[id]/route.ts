@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // PATCH /api/v1/integrations/bot/[id] - rename / enable-disable a binding
 async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;
 
@@ -35,7 +35,7 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
 
 // DELETE /api/v1/integrations/bot/[id]
 async function handleDELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const u = await getRequestUser(req);
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const { id } = await ctx.params;
 

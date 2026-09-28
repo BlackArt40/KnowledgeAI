@@ -10,6 +10,6 @@ export async function POST(req: Request) {
   return withApiTrace(req, "api /api/v1/agent/run", async () => {
     const scope = await requireApiKeyScope(req, "agent:run");
     if (scope.error) return scope.error;
-    return handleAgentRun(req);
+    return handleAgentRun(req, { allowApiKey: true });
   });
 }

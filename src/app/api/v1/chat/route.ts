@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         trace.end(scope.error.status);
         return scope.error;
       }
-      return handleChatRequest(req, trace, { endpoint: "/api/v1/chat" });
+      return handleChatRequest(req, trace, { endpoint: "/api/v1/chat", allowApiKey: true });
     },
     { autoEnd: false }
   );
