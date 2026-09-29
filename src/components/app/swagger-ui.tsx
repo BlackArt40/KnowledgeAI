@@ -6,10 +6,14 @@
 // Zero React dependency from the swagger side - it renders into a raw div.
 
 import { useEffect, useRef } from "react";
+import { buildSwaggerUiConfig } from "@/lib/openapi/swagger-config";
 
 declare global {
   interface Window {
-    SwaggerUIBundle?: (opts: Record<string, unknown>) => unknown;
+    SwaggerUIBundle?: ((opts: Record<string, unknown>) => unknown) & {
+      presets: { apis: unknown };
+      plugins: { DownloadUrl: unknown };
+    };
     SwaggerUIStandalonePreset?: unknown;
   }
 }
@@ -22,15 +26,14 @@ export function SwaggerUI({ specUrl }: { specUrl: string }) {
 
     const boot = () => {
       if (cancelled || !ref.current || !window.SwaggerUIBundle) return;
-      window.SwaggerUIBundle({
-        url: specUrl,
-        domNode: ref.current,
-        deepLinking: true,
-        presets: [window.SwaggerUIStandalonePreset],
-        layout: "StandaloneLayout",
-        persistAuthorization: true,
-        displayRequestDuration: true,
-      });
+      window.SwaggerUIBundle(
+        buildSwaggerUiConfig({
+          specUrl,
+          domNode: ref.current,
+          swaggerBundle: window.SwaggerUIBundle,
+          standalonePreset: window.SwaggerUIStandalonePreset,
+        })
+      );
     };
 
     // Stylesheet (idempotent).

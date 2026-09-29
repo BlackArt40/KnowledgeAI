@@ -128,6 +128,8 @@
 
   --animate-marquee: marquee 40s linear infinite;
   --animate-aurora: aurora 18s ease-in-out infinite;
+  --animate-orbit: orbit 26s linear infinite;
+  --animate-data-travel: data-travel 5s ease-in-out infinite;
 }
 
 @layer base {
@@ -218,6 +220,30 @@
   }
 }
 
+@keyframes orbit {
+  from {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
+@keyframes data-travel {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
 @keyframes aurora {
   0%,
   100% {
@@ -227,6 +253,14 @@
   50% {
     transform: translate3d(0, -3%, 0) scale(1.08);
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-orbit,
+  .animate-data-travel,
+  .animate-aurora {
+    animation: none !important;
   }
 }
 

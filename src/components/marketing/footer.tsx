@@ -1,103 +1,36 @@
 "use client";
 
-import { useT } from "@/lib/i18n/provider";
-
 import Link from "next/link";
+import { useT } from "@/lib/i18n/provider";
 import { Logo } from "@/components/logo";
-import { GithubIcon as Github, XIcon as Twitter, LinkedinIcon as Linkedin } from "@/components/icons/brand-icons";
-
-function columns(t: (k: string) => string) {
-  return [
-  {
-    title: t("page.footer.s0"),
-    links: [
-      { label: t("page.footer.s1"), href: "/#features" },
-      { label: t("page.footer.s2"), href: "/#pricing" },
-      { label: t("page.footer.s3"), href: "/#workflow" },
-      { label: t("page.footer.s4"), href: "/docs" },
-    ],
-  },
-  {
-    title: t("page.footer.s5"),
-    links: [
-      { label: t("page.footer.s6"), href: "/docs" },
-      { label: t("page.footer.s7"), href: "/docs" },
-    ],
-  },
-  {
-    title: t("page.footer.s14"),
-    links: [
-      { label: t("page.footer.s15"), href: "/privacy" },
-      { label: t("page.footer.s16"), href: "/terms" },
-      { label: t("page.footer.s17"), href: "/privacy" },
-      { label: t("page.footer.s18"), href: "/privacy" },
-    ],
-  },
-];
-};
 
 export function Footer() {
   const t = useT();
+  const links = [
+    { label: t("page.navbar.s2"), href: "/#features" },
+    { label: t("page.navbar.s4"), href: "/#pricing" },
+    { label: t("page.navbar.s5"), href: "/docs" },
+    { label: t("page.footer.s15"), href: "/privacy" },
+  ];
+
   return (
-    <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-6">
-          <div className="col-span-2">
-            <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              {t("page.footer.s19")}
-            </p>
-            <div className="mt-5 flex items-center gap-2">
-              {/* P1-4: 不再用 "#" 死链;指向平台主页(未挂真实账号);标签各不相同 */}
-              {[
-                { Icon: Github, href: "https://github.com/", label: "GitHub" },
-                { Icon: Twitter, href: "https://x.com/", label: "X (Twitter)" },
-                { Icon: Linkedin, href: "https://www.linkedin.com/", label: "LinkedIn" },
-              ].map(({ Icon, href, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  aria-label={label}
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {columns(t).map((col) => (
-            <div key={col.title}>
-              <h4 className="text-sm font-semibold text-foreground">
-                {col.title}
-              </h4>
-              <ul className="mt-4 space-y-2.5">
-                {col.links.map((l) => (
-                  <li key={l.label}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <footer className="border-t border-border">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+        <Logo />
+        <nav className="flex flex-wrap gap-x-5 gap-y-2">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
           ))}
-        </div>
-
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} KnowledgeAI. {t("page.footer.s20")}
-          </p>
-          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex h-2 w-2 rounded-full bg-success" />
-            {t("page.footer.s21")}
-          </p>
-        </div>
+        </nav>
+        <p className="text-xs text-muted-foreground">
+          © {new Date().getFullYear()} KnowledgeAI
+        </p>
       </div>
     </footer>
   );
