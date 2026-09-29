@@ -14,7 +14,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { SMOKE_GROUPS, SMOKE_MANIFEST, type SmokeEntry, type SmokeGroup, type SmokePrereq } from "./lib/manifest";
+import { SMOKE_ALL_GROUPS, SMOKE_GROUPS, SMOKE_MANIFEST, type SmokeEntry, type SmokeGroup, type SmokePrereq } from "./lib/manifest";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
 import { ocrAvailable } from "./lib/ocr-available";
@@ -57,7 +57,7 @@ function parseArgs(argv: string[]): Options {
       case "--group":
       case "-g": {
         const raw = next();
-        const groups = raw === "all" ? [...SMOKE_GROUPS] : (raw.split(",").filter(Boolean) as SmokeGroup[]);
+        const groups = raw === "all" ? [...SMOKE_ALL_GROUPS] : (raw.split(",").filter(Boolean) as SmokeGroup[]);
         for (const g of groups) {
           if (!SMOKE_GROUPS.includes(g)) throw new Error(`unknown group "${g}" (expected ${SMOKE_GROUPS.join("|")}|all)`);
         }
@@ -81,7 +81,7 @@ function parseArgs(argv: string[]): Options {
         opts.only.push(arg);
     }
   }
-  if (opts.groups.length === 0) opts.groups = [...SMOKE_GROUPS];
+  if (opts.groups.length === 0) opts.groups = [...SMOKE_ALL_GROUPS];
   return opts;
 }
 
@@ -107,6 +107,8 @@ function helpText(): string {
     "    A long multi-script run therefore 429s itself unless --elevate is used.",
     "  * --elevate must not be combined with the `limits` group: that group",
     "    asserts the DOCUMENTED default tiers and needs its own server.",
+    "  * `--group all` = lib,http,ui,infra (limits excluded - see above);",
+    "    ask for it explicitly with `--group limits`.",
   ].join("\n");
 }
 

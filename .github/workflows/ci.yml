@@ -250,10 +250,10 @@ jobs:
           done
           curl -sf http://localhost:3000/api/health > /dev/null
           for i in $(seq 1 20); do
-            curl -sf http://localhost:5080 > /dev/null && break
+            curl -s -o /dev/null http://localhost:5080 && break
             sleep 1
           done
-          curl -sf http://localhost:5080 > /dev/null
+          curl -s -o /dev/null http://localhost:5080
       - name: Smoke - infra group
         run: npx tsx scripts/smoke/run-all.ts --group infra --elevate 5000
       - name: Upload smoke reports on failure

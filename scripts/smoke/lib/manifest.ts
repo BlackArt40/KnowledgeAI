@@ -115,4 +115,12 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   infra("test-vscode", { note: "starts its own instance on :3100" }),
 ];
 
-export const SMOKE_GROUPS: SmokeGroup[] = ["lib", "http", "ui", "infra"];
+export const SMOKE_GROUPS: SmokeGroup[] = ["lib", "http", "limits", "ui", "infra"];
+
+/**
+ * Groups `--group all` expands to. `limits` is intentionally excluded: it asserts
+ * the documented DEFAULT rate-limit tiers (anon 20 < kb 60 < user 200 < key 500),
+ * which conflicts with the `--elevate` that http/ui need to avoid 429 cascades in
+ * a shared server window - run it explicitly with `--group limits`.
+ */
+export const SMOKE_ALL_GROUPS: SmokeGroup[] = ["lib", "http", "ui", "infra"];
