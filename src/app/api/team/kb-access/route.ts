@@ -29,6 +29,14 @@ export async function PATCH(req: Request) {
   }
   const kb = getKb(body.kbId);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
+  // P4-3: tenant boundary. The KB comes from a caller-supplied id, so this
+  // route must scope exactly like /api/knowledge-base/[id] (canViewKb /
+  // canEditKb already deny the cross-workspace read). Without it an admin of
+  // another workspace could rewrite kbAccess on a KB they cannot even read:
+  // "edit" loosens it for every member of the owning workspace, "private"
+  // locks those members out.
+  if (kb.workspaceId !== u.workspaceId)
+    return NextResponse.json({ error: "无权访问" }, { status: 403 });
 
   // Per-member role override (P4-2) - only the KB owner may set member roles.
   if (body.email !== undefined) {
