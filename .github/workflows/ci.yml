@@ -205,6 +205,7 @@ jobs:
         with:
           name: smoke-reports
           path: scripts/smoke/.report/
+          include-hidden-files: true
           retention-days: 7
 
   # ── 验收 smoke（infra 组）：脚本各自 spawn 生产实例，需先 build ──────
@@ -231,7 +232,12 @@ jobs:
         run: npx prisma generate
       - name: Build (standalone test servers run `next start`)
         run: pnpm build
-      - name: Start mock Pinecone
+      # The infra scripts need a server on BASE_URL (:3000) for their own
+      # setup calls, and they spawn additional production `next start`
+      # instances from the `.next` build above. Use `next start` here too
+      # instead of `next dev`: a dev server rewrites `.next` underneath those
+      # spawned instances (they then answer with non-JSON 500s or never bind).
+      - name: Start production server + mock Pinecone
         run: |
           cat >> .env.local <<'EOF'
           RATE_LIMIT_PER_MIN=2000
@@ -242,16 +248,18 @@ jobs:
           RATE_LIMIT_AGENT_PER_MIN=500
           SSRF_ALLOW_PRIVATE_HOSTS=true
           EOF
+          pnpm start -p 3000 > /tmp/app.log 2>&1 &
           npx tsx scripts/smoke/mock-pinecone-server.ts > /tmp/pinecone.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/api/health > /dev/null
           for i in $(seq 1 20); do
             curl -s -o /dev/null http://localhost:5080 && break
             sleep 1
           done
           curl -s -o /dev/null http://localhost:5080
-      # No dev server here on purpose: the infra scripts spawn their own
-      # production `next start` instances from the `.next` build above, and a
-      # concurrent `next dev` in the same project dir rewrites that build (the
-      # spawned servers then answer with non-JSON 500s or never bind).
       - name: Smoke - infra group
         run: npx tsx scripts/smoke/run-all.ts --group infra
       - name: Upload smoke reports on failure
@@ -260,6 +268,7 @@ jobs:
         with:
           name: smoke-infra-reports
           path: scripts/smoke/.report/
+          include-hidden-files: true
           retention-days: 7
 
   # ── E2E：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent） ──────
