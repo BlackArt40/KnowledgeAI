@@ -240,6 +240,10 @@ jobs:
       - name: Start production server + mock Pinecone
         run: |
           cat >> .env.local <<'EOF'
+          # `next start` runs in production mode, where src/lib/secrets.ts
+          # refuses to boot without AUTH_SECRET (every route would answer 500).
+          # Throwaway value: this server only ever holds in-memory demo data.
+          AUTH_SECRET=smoke-acceptance-demo-secret-not-for-production
           RATE_LIMIT_PER_MIN=2000
           RATE_LIMIT_ANON_PER_MIN=2000
           RATE_LIMIT_KEY_PER_MIN=5000

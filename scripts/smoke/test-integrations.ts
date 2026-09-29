@@ -17,6 +17,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
+import { demoAuthSecret } from "./lib/demo-env";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 // Local-only origin (validated port, no other URL component honored).
@@ -145,7 +146,7 @@ async function main() {
   }
   const server = spawn("pnpm", ["start", "-p", "3100"], {
     cwd: ROOT,
-    env: { ...process.env, DATABASE_URL: "", REDIS_URL: "", RATE_LIMIT_INTEGRATION_PER_MIN: "3" },
+    env: { ...process.env, AUTH_SECRET: demoAuthSecret(), DATABASE_URL: "", REDIS_URL: "", RATE_LIMIT_INTEGRATION_PER_MIN: "3" },
     stdio: ["ignore", "ignore", "pipe"],
   });
   try {

@@ -22,6 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DEMO_PASSWORD } from "./lib/demo";
 import { resolveSmokeBase } from "./lib/base-url";
+import { demoAuthSecret } from "./lib/demo-env";
 
 const MOCK_PORT = 5092;
 // The unconfigured reference instance: the caller's dev server (BASE_URL, default
@@ -140,6 +141,8 @@ async function spawnConfiguredServer(): Promise<{ server: ReturnType<typeof spaw
     // its own origin for Auth.js baseUrl / redirect_uri.
     NEXTAUTH_URL: "",
     AUTH_URL: "http://localhost:3100",
+    // production `next start` refuses to boot without AUTH_SECRET
+    AUTH_SECRET: demoAuthSecret(),
     // High rate limits: the OAuth dance makes many requests per flow.
     RATE_LIMIT_PER_MIN: "2000",
     RATE_LIMIT_ANON_PER_MIN: "500",

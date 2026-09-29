@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
+import { demoAuthSecret } from "./lib/demo-env";
 
 const BASE = resolveSmokeBase();
 const BROKEN_PORT = 3100;
@@ -98,6 +99,8 @@ async function main() {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      // production `next start` refuses to boot without AUTH_SECRET
+      AUTH_SECRET: demoAuthSecret(),
       PORT: String(BROKEN_PORT),
       DATABASE_URL: "postgresql://user:pass@127.0.0.1:59999/knowledgeai?connect_timeout=1",
       REDIS_URL: "redis://127.0.0.1:59999",

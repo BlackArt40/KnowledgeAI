@@ -13,6 +13,7 @@
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
+import { demoAuthSecret } from "./lib/demo-env";
 
 const NOTION_PORT = 5090;
 const CONFLUENCE_PORT = 5091;
@@ -93,6 +94,8 @@ function startMockConfluence() {
 async function spawnConfiguredServer() {
   const env = {
     ...process.env,
+    // production `next start` refuses to boot without AUTH_SECRET
+    AUTH_SECRET: demoAuthSecret(),
     DATABASE_URL: "",
     REDIS_URL: "",
     NEXTAUTH_URL: "",
