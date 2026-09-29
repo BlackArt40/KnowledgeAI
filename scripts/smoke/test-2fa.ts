@@ -54,12 +54,21 @@ async function main() {
   // ── 2. otpauth:// URI ─────────────────────────────────────────────────
   const uri = generateOTPAuthURI(secret, "user@example.com", "KnowledgeAI");
   check("URI: starts with otpauth://totp/", uri.startsWith("otpauth://totp/"));
-  check("URI: contains encoded label KnowledgeAI:user@example.com", uri.includes("KnowledgeAI%3Auser%40example.com"));
+  // The label separator may be a literal ':' or percent-encoded, depending on
+  // the otplib version's encoder - both are valid per the otpauth spec.
+  check(
+    "URI: contains label KnowledgeAI:user@example.com",
+    /KnowledgeAI(%3A|:)user%40example\.com/.test(uri),
+    uri
+  );
   check("URI: contains secret param", uri.includes(`secret=${secret}`));
   check("URI: contains issuer=KnowledgeAI", uri.includes("issuer=KnowledgeAI"));
-  check("URI: contains algorithm=SHA1", uri.includes("algorithm=SHA1"));
-  check("URI: contains digits=6", uri.includes("digits=6"));
-  check("URI: contains period=30", uri.includes("period=30"));
+  // algorithm/digits/period are SHA1/6/30 (RFC 6238 defaults) and MAY be
+  // omitted by the generator - assert the value whenever they are present.
+  const param = (name: string): string | null => new URLSearchParams(uri.split("?")[1] ?? "").get(name);
+  check("URI: algorithm omitted or SHA1", param("algorithm") === null || param("algorithm")!.toUpperCase() === "SHA1", `got ${param("algorithm")}`);
+  check("URI: digits omitted or 6", param("digits") === null || param("digits") === "6", `got ${param("digits")}`);
+  check("URI: period omitted or 30", param("period") === null || param("period") === "30", `got ${param("period")}`);
 
   // ── 3. Backup codes: one-time use ─────────────────────────────────────
   const backups = generateBackupCodes();

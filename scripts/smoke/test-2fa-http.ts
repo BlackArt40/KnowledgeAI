@@ -1,10 +1,18 @@
 // @ts-nocheck
 // P3-1 HTTP integration test: full login -> 2FA -> session flow against a live dev server.
-// Run: npx tsx scripts/smoke/test-2fa-http.ts   (requires `pnpm dev` running on :3000)
+// Run: npx tsx scripts/smoke/test-2fa-http.ts   (requires `pnpm dev`; BASE_URL selects the port)
+//
+// NOTE: stateful but self-cleaning - it enables 2FA on admin@knowledgeai.dev for
+// the duration of the run and disables it again in step 10. The settings-based
+// enrollment uses a throwaway account, never the shared demo users. If this
+// script dies mid-run the admin can be left with 2FA on for the life of the
+// server process; the preflight guard below detects that and asks for a restart
+// instead of failing later with a confusing SecretMissingError.
 import { generateTOTP } from "../../src/lib/security/totp";
+import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
 
-const BASE = "http://localhost:3000";
+const BASE = resolveSmokeBase();
 let failures = 0;
 const results: string[] = [];
 function check(name: string, cond: boolean, detail = "") {
@@ -35,6 +43,13 @@ async function main() {
   // 1. Login as admin (no policy yet) -> session token
   let r = await post("/api/auth/login", { email, password });
   check("http: admin login (no 2FA) -> token", r.status === 200 && !!r.data.token, JSON.stringify(r.data));
+  if (r.data?.requires2FA === true) {
+    console.error(
+      "❌ admin@knowledgeai.dev already has 2FA enabled in this server's in-memory store\n" +
+      "   (left over from an earlier run). Restart the dev server before running this script.",
+    );
+    process.exit(1);
+  }
   const adminToken = r.data.token;
 
   // 2. Set required2FARoles = [admin]
@@ -75,21 +90,31 @@ async function main() {
   r = await post("/api/auth/login", { email, password, totpCode: "000000" });
   check("http: login with wrong TOTP -> 401", r.status === 401, JSON.stringify(r.data));
 
-  // 9. Settings-based enrollment via /api/security/2fa (authenticated) for the viewer account
-  const vLogin = await post("/api/auth/login", { email: "viewer@knowledgeai.dev", password });
-  const viewerToken = vLogin.data.token;
-  const e2 = await post("/api/security/2fa", { action: "enroll" }, viewerToken);
+  // 9. Settings-based enrollment via /api/security/2fa (authenticated) on a
+  //    throwaway account: enabling 2FA on a shared demo user (viewer@...) would
+  //    break every other smoke script that logs in as them.
+  const throwaway = `twofa-smoke-${Date.now().toString(36)}@example.com`;
+  const reg = await post("/api/auth/register", { name: "2FA Smoke", email: throwaway, password });
+  check("http: throwaway account registered", !!reg.data.token, JSON.stringify(reg.data));
+  const throwawayToken = reg.data.token;
+  const e2 = await post("/api/security/2fa", { action: "enroll" }, throwawayToken);
   check("http: settings enroll returns qrCodeDataUrl", !!e2.data.qrCodeDataUrl && e2.data.qrCodeDataUrl.startsWith("data:image/"), JSON.stringify(e2.data));
-  const v2 = await post("/api/security/2fa", { action: "verify", code: generateTOTP(e2.data.secret, Date.now()) }, viewerToken);
+  const v2 = await post("/api/security/2fa", { action: "verify", code: generateTOTP(e2.data.secret, Date.now()) }, throwawayToken);
   check("http: settings verify -> enabled", v2.data.enabled === true, JSON.stringify(v2.data));
   // getSecurity should not leak hashed backup codes
-  const sec = await fetch(BASE + "/api/security", { headers: { authorization: `Bearer ${viewerToken}` } }).then((x) => x.json());
+  const sec = await fetch(BASE + "/api/security", { headers: { authorization: `Bearer ${throwawayToken}` } }).then((x) => x.json());
   check("http: getSecurity shows enabled", sec.twoFactor?.enabled === true);
   check("http: getSecurity backupCodes sanitized (empty)", Array.isArray(sec.twoFactor?.backupCodes) && sec.twoFactor.backupCodes.length === 0);
   check("http: getSecurity backupCodesRemaining = 8", sec.twoFactor?.backupCodesRemaining === 8, `got ${sec.twoFactor?.backupCodesRemaining}`);
 
-  // 10. Reset policy
-  await patch("/api/admin/config", { required2FARoles: [] }, newToken);
+  // 10. Cleanup: reset the policy and turn the admin's 2FA back off, so this
+  //     script leaves the shared demo accounts exactly as it found them.
+  const rp = await patch("/api/admin/config", { required2FARoles: [] }, newToken);
+  check("http: cleanup - 2FA policy reset", rp.status === 200, JSON.stringify(rp.data?.config));
+  const d1 = await post("/api/security/2fa", { action: "disable", code: generateTOTP(secret, Date.now()) }, newToken);
+  check("http: cleanup - admin 2FA disabled", d1.data?.twoFactor?.enabled === false, JSON.stringify(d1.data));
+  const relogin = await post("/api/auth/login", { email, password });
+  check("http: cleanup - admin login without 2FA works again", relogin.status === 200 && !!relogin.data.token, JSON.stringify(relogin.data));
 
   console.log(results.join("\n"));
   console.log(`\n${failures === 0 ? "✅ ALL PASSED" : `❌ ${failures} FAILED`} (${results.length} checks)`);

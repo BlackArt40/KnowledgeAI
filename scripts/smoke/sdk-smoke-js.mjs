@@ -1,10 +1,12 @@
 // Static SDK exercise script - executed by scripts/smoke/test-sdk.ts with all
 // runtime config in the environment (never interpolated into code):
-//   KAI_SDK_PATH  file:// URL of sdk/javascript/kai-sdk.mjs
+//   KAI_SDK_PATH  file:// URL (or plain path) of sdk/javascript/kai-sdk.mjs
 //   KAI_BASE_URL  local dev-server origin
 //   KAI_API_KEY   API key created by the parent smoke run
 //   KAI_KB_ID     KB to chat against
-const { KnowledgeAI } = await import("file://" + process.env.KAI_SDK_PATH);
+const sdkPath = process.env.KAI_SDK_PATH;
+const sdkSpec = sdkPath.startsWith("file:") ? sdkPath : "file://" + sdkPath;
+const { KnowledgeAI } = await import(sdkSpec);
 
 const kai = new KnowledgeAI({ apiKey: process.env.KAI_API_KEY, baseUrl: process.env.KAI_BASE_URL });
 const me = await kai.me();

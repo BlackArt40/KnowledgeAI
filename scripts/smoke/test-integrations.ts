@@ -17,6 +17,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
+import { demoAuthSecret } from "./lib/demo-env";
+import { DETACHED, killTree, assertPortFree } from "./lib/proc";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 // Local-only origin (validated port, no other URL component honored).
@@ -143,10 +145,15 @@ async function main() {
     const { execSync } = await import("node:child_process");
     execSync("pnpm build", { cwd: ROOT, stdio: "inherit", timeout: 600_000 });
   }
+  // A previous infra script that leaked its own :3100 instance would silently
+  // answer these requests with the wrong env (e.g. no NOTION_API_URL), so
+  // refuse to start rather than hang on a foreign server.
+  if (!(await assertPortFree(3100, console.error))) process.exit(1);
   const server = spawn("pnpm", ["start", "-p", "3100"], {
     cwd: ROOT,
-    env: { ...process.env, DATABASE_URL: "", REDIS_URL: "", RATE_LIMIT_INTEGRATION_PER_MIN: "3" },
+    env: { ...process.env, AUTH_SECRET: demoAuthSecret(), DATABASE_URL: "", REDIS_URL: "", RATE_LIMIT_INTEGRATION_PER_MIN: "3" },
     stdio: ["ignore", "ignore", "pipe"],
+    ...DETACHED,
   });
   try {
     let up = false;
@@ -193,7 +200,7 @@ async function main() {
     });
     check("integration tier: owner quota untouched", ownerApi.status === 200, `status=${ownerApi.status}`);
   } finally {
-    server.kill("SIGTERM");
+    killTree(server);
   }
 
   // ── 4. Chrome 扩展 ───────────────────────────────────────────────────

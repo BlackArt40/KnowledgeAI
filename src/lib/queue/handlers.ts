@@ -180,7 +180,7 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
     const { resolveSafeUrl } = await import("@/lib/security/ssrf");
     let target: URL;
     try {
-      target = await resolveSafeUrl(sub.url);
+      target = await resolveSafeUrl(sub.url, { allowPrivate: true });
     } catch {
       recordDelivery({
         subscriptionId, workspaceId: sub.workspaceId, event: eventPayload.event as never,

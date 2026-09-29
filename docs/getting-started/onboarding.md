@@ -96,7 +96,7 @@ pnpm dev              # 开发服务器 :3000
 
 ### pnpm 与 Node 版本对齐
 
-项目要求 **Node 22**（CI 的五个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
+项目要求 **Node 22**（CI 的七个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
 
 ```bash
 nvm install 22

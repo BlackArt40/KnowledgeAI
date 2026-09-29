@@ -43,6 +43,7 @@ related: [deployment-guide.md, monitoring.md]
 | `AUTH_SECRET` | **是（生产）** | `change-me-...` | JWT 签名密钥，**生产必须改为随机 32+ 字符**（未配置生产拒绝启动）；同时作为审计链 HMAC 密钥 |
 | `AUDIT_RETENTION_DAYS` | 否 | `90` | 审计日志保留天数 |
 | `AUDIT_MAX_ENTRIES` | 否 | `2000` | 内存审计链上限 |
+| `SSRF_ALLOW_PRIVATE_HOSTS` | 否 | `false` | 临时放行出站请求指向内网/回环地址（仅供本地验收 smoke，`NODE_ENV=production` 时强制忽略） |
 
 ## 邮件（P8 密码重置 / 邮箱验证）
 

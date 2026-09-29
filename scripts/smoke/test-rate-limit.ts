@@ -5,7 +5,12 @@
 //
 // Each tier uses its own independent key (ip:<ip> / user:<id> / apikey:<id> /
 // kb:<id>), so no window reset waits are needed between tiers.
-// Expected env (see .env.example): anon < user and kb < user limits.
+//
+// Requires the DOCUMENTED default tiers (.env.example): anon 20 < kb 60 <
+// user 200 < key 500. The in-route user tier resolves its limit from the admin
+// store (demo default 60 - src/lib/admin/store.ts), which would sit below the
+// KB tier, so this script aligns the store with the documented env value (200)
+// for its own duration and restores the demo default (60) at the end.
 
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
@@ -92,6 +97,12 @@ async function main() {
   const keyRes = await req("POST", "/api/api-keys", { token: ownerToken, body: { name: "p3-3-smoke", scopes: ["kb:read"] } });
   check("api key: created", (keyRes.status === 200 || keyRes.status === 201) && !!keyRes.data?.key?.secret, `${keyRes.status} ${JSON.stringify(keyRes.data)}`);
   const secret = keyRes.data?.key?.secret;
+  // Align the admin-store user tier with the documented env value so the
+  // tier-ordering assertions below describe the documented configuration
+  // (whatever value the server had is restored at the end of this script).
+  const limBefore = await req("GET", "/api/admin/ratelimit", { token: adminToken });
+  const prevBase = limBefore.data?.limits?.base ?? 60;
+  await req("PATCH", "/api/admin/config", { token: adminToken, body: { rateLimitPerMin: 200 } });
 
   // ── 1. Authenticated user tier (user:<id>, RATE_LIMIT_PER_MIN) ───────
   console.log("\n── 1. 已认证用户分级（用户维度） ──");
@@ -103,8 +114,8 @@ async function main() {
   console.log("\n── 2. API Key 分级（apikey 维度） ──");
   let keyTest: any = {};
   if (secret) {
-    keyTest = await pokeUntil429(() => req("GET", "/api/knowledge-base", { apiKey: secret }), 160);
-    check("apikey: triggers 429 within cap", keyTest.first429 > 0, `no 429 in 160 tries`);
+    keyTest = await pokeUntil429(() => req("GET", "/api/knowledge-base", { apiKey: secret }), 550);
+    check("apikey: triggers 429 within cap", keyTest.first429 > 0, `no 429 in 550 tries`);
     if (keyTest.first429 > 0) assert429(keyTest.last, "apikey", "apikey");
   }
 
@@ -150,6 +161,8 @@ async function main() {
   check("dashboard: live stats include kb tier", kinds.has("kb"));
   const dash403 = await req("GET", "/api/admin/ratelimit", { token: editorToken });
   check("dashboard: non-admin forbidden (403)", dash403.status === 403, `got ${dash403.status}`);
+  // Restore the user tier the server had before this script (see the header).
+  await req("PATCH", "/api/admin/config", { token: adminToken, body: { rateLimitPerMin: prevBase } });
 
   console.log("\n" + results.join("\n"));
   console.log(`\n${failures === 0 ? "✅ ALL ACCEPTANCE CRITERIA PASSED" : `❌ ${failures} FAILED`}`);

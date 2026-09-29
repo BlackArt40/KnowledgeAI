@@ -83,6 +83,9 @@ __pycache__/
 # vitepress build generates timestamped config shims - never commit them
 /.vitepress/*.timestamp-*.mjs
 
+# smoke runner reports (scripts/smoke/run-all.ts)
+/scripts/smoke/.report/
+
 # agent tooling state / scratch artifacts (session-local, never source)
 .mimosa/
 .workbuddy/

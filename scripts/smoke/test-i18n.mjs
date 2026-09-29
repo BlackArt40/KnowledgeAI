@@ -7,10 +7,11 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9777;
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-i18n-shots";
 const PROFILE = "/tmp/kai-chrome-i18n";
 
@@ -36,11 +37,12 @@ async function main() {
     else { results.push(`❌ ${name} ${detail}`); failures++; }
   };
 
-  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
+  if (!existsSync(CHROME)) throw new Error(chromeMissingMessage());
   mkdirSync(OUT_DIR, { recursive: true });
 
   const chrome = spawn(CHROME, [
     "--headless=new",
+    ...LOCALE_ARGS,
     `--remote-debugging-port=${PORT}`,
     "--remote-allow-origins=*",
     `--user-data-dir=${PROFILE}`,

@@ -1215,6 +1215,41 @@ KnowledgeAI/
 
 > 判断基准：**兼容性风险 > 依赖重量 > 集成成本 > 自研成本**。当现成方案在 Next 16 / Edge 下兼容性存疑、或引入依赖的收益低于其成本时，自研并文档化是合理的例外——但默认路径永远是「先找现成的」。
 
+## 十五·二十六、验收 smoke 套件接入 CI（2026-09-29）
+
+> 背景：`scripts/smoke/` 下 55 个验收脚本（AGENTS.md 里记着 30/30、25/25、28/28 的验收结论）此前**只能手工运行**——`.github/workflows/` 里 grep `smoke` 零命中，脚本随重构漂移无人察觉（实测已出现 6 个红项：otplib 升级后 2FA URI 断言过期、crypto 模块搬家后 import 404、PBKDF2 迁移后哈希断言过期、SDK 缺 `webhooks:write` scope、`file://file://` 双前缀、SSRF 守卫挡住本机 webhook 接收端）。本次把它们变成两个 CI job，并顺带修掉「脚本之间互相污染」这一类隐性缺陷。
+
+### 调度器（不是把 55 个脚本硬编码进 yaml）
+- `scripts/smoke/lib/manifest.ts`：脚本清单 + 分组（`lib` / `limits` / `http` / `ui` / `infra`）+ 每项前置条件（`chrome`/`ocr`/`go`/`python`/`db`/`chromadb`/`pinecone-mock`）与超时；`package.json` 的脚本名 = `${id}.ts`（UI 为 `.mjs`）。
+- `scripts/smoke/run-all.ts`：CLI `--group/--only/--skip/--parallel/--json/--timeout/--list/--elevate`；帧子进程执行（ts 走 `npx tsx`、mjs 走 `node`），**以退出码判定通过**（0=pass，超时=SIGKILL→timeout），前置条件缺失或外部依赖未起 → `skip`（不计失败）；http/ui/limits 组在开跑前先探测 `/api/health`，不可达则整组记 fail 而不是逐个耗尽超时；报告写 `scripts/smoke/.report/*.json` + 同名 `.md`（含失败脚本末 12 行输出）。
+- 环境无关化：UI 脚本统一用 `scripts/smoke/lib/chrome.mjs` 的 `resolveChrome()`（`CHROME_PATH` → 各平台候选路径）；OCR 断言统一用 `scripts/smoke/lib/ocr-available.ts`（`.tessdata/` 缺语言包则局部 SKIP，不整脚本跳过，保留非 OCR 覆盖）；硬编码 `http://localhost:3000` 一律改 `resolveSmokeBase()`（本机 :3000 被 docker 栈占用时可用 `BASE_URL` 指到别的 dev 实例）。
+
+### 两个 CI job（`.github/workflows/ci.yml`）
+- `smoke`：`lib` 组（无需 server）→ 起 dev server（**不写 `.env.local`**，即文档默认档位）→ `limits` 组（`test-rate-limit` 断言 `anon 20 < kb 60 < user 200 < key 500` 与 `Retry-After`，必须跑在默认档位窗口）→ 追加 `.env.local`（抬高 6 个 `RATE_LIMIT_*` + `SSRF_ALLOW_PRIVATE_HOSTS=true`，需重启 dev 才生效）→ `http` 组 → `ui` 组（CDP + runner 自带 Chrome），后两组都带 `--elevate 5000`。
+- `smoke-infra`：`pnpm build`（脚本各自 spawn `next start` 生产实例）+ dev server + mock Pinecone (:5080) → `infra` 组；chromadb / OCR 语言包 / `DATABASE_URL` 缺失的脚本由 manifest 判 SKIP。
+- 失败时 `actions/upload-artifact@v4` 上传 `scripts/smoke/.report/`（两个 job 各自 7 天保留）。
+
+### 两类真实代码/脚本缺陷（非环境问题）
+1. **`--elevate` 的必要性**：`/api/chat` 的路由内 user 档位取 `getBaseLimit()`（优先 admin store，demo 硬编码 60/min），**不受 `RATE_LIMIT_PER_MIN` 影响**——同一 server 窗口跑十几个脚本会累积触发 429，导致 chat 相关断言（monitoring 的 llm span、workspaces 的计量、global-search 的文档命中、audit 的条目数）随机变红。runner 因此在开跑前 `PATCH /api/admin/config` 抬高该档位并在结束时恢复；`limits` 组与 `--elevate` 互斥（runner 直接报错），因为它断言的就是文档默认值。
+2. **SSRF 守卫 vs 本机 webhook 接收端**：`src/lib/security/ssrf.ts` 正确拒绝回环地址，但 `test-webhooks.ts` 必须在 `127.0.0.1` 起接收端 → 新增**仅非生产生效**的 `SSRF_ALLOW_PRIVATE_HOSTS`（`privateTargetsAllowed()` = env 为 `true` **且** `NODE_ENV !== "production"`），三个 webhook 调用点（建单/改单/投递 `src/lib/queue/handlers.ts`）传 `{ allowPrivate: true }`；RAG 网页抓取 `src/lib/rag/fetcher.ts` 保持严格。备选方案（相机砍掉 15 项投递断言、换成公网地址）因丢掉核心覆盖/离线不可行而否决。
+
+### 脚本自足化（让「重复跑」与「乱序」不再是失败源）
+- `test-2fa-http`：原本只重置策略、从不关 2FA，污染 `admin@knowledgeai.dev` 并连带打挂后续 5 个脚本；改为一次性账号 + 开跑前守卫（已污染则 fail-fast 提示重启 server）+ 末尾真清理（重置策略 + disable + 重新密码登录自检）。
+- `test-global-search` / `test-audit-encrypt` / `test-monitoring`：不再依赖种子 KB 里的文档（会被别的脚本删掉），改为自建 fixture KB + 上传 + （monitoring）轮询文档 `status === "ready"`。
+- 三个 CDP UI 脚本：收尾的 `exitCode is not defined` / `console.error(e)`（断言全过但进程非零退出）修复。
+- 另修：`test-oauth` 用 `resolveSmokeBase()` 后不再被 docker 栈的 `0.0.0.0:3000` 影响（并补上漏掉的 `DEMO_PASSWORD` import）；`test-sync`/`test-vscode`/`test-integrations` 需 :3100 空闲（残留实例会使其超时）。
+
+### 验收（本机 node v22.23.3，dev :3101）
+| 组 | 结果 |
+| --- | --- |
+| lib | 17/17 pass（9s，无需 server） |
+| limits | `test-rate-limit` 全断言通过（默认档位窗口） |
+| http | 18/18 pass（127s，`--elevate 5000`） |
+| ui | 9/9 pass（194s，`--elevate 5000`，CDP 驱动本机 Chrome） |
+| infra | 5 pass / 0 fail / 5 skip（42s；skip = chromadb / OCR / DB / pinecone mock 未起） |
+
+> 新 CI check 需在 GitHub 分支保护里补加 `smoke` 与 `smoke-infra`（仓库侧无法配置，需维护者在 Settings → Branches 勾选）。
+
 ## 十七、本地运行
 
 ```bash

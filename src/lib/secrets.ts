@@ -16,6 +16,8 @@
 // behavior, no real data) but a one-time warning is emitted.
 // ---------------------------------------------------------------------------
 
+import { logEdge } from "@/lib/obs/log-edge";
+
 let warned = false;
 
 /** Resolve AUTH_SECRET. `fallback` keeps each caller's existing dev key so
@@ -34,7 +36,9 @@ export function getAuthSecret(fallback: string): string {
   }
   if (!warned) {
     warned = true;
-    console.warn("[security] AUTH_SECRET 未配置，使用开发回退密钥（仅限 demo/test 环境，生产环境将拒绝启动）");
+    // log-edge is the repo's only sanctioned console.* writer (Edge-safe, same
+    // JSON shape as pino) - a raw console.warn here fails the logging scan.
+    logEdge.warn("[security] AUTH_SECRET 未配置，使用开发回退密钥（仅限 demo/test 环境，生产环境将拒绝启动）", { module: "secrets" });
   }
   return fallback;
 }

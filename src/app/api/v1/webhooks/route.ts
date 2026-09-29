@@ -61,8 +61,10 @@ async function handlePOST(req: Request) {
   }
   // P1-4: reject private / loopback / link-local targets (SSRF via webhook
   // delivery - the server would POST to an internal service on every event).
+  // `allowPrivate` is a dev/test-only opt-in (SSRF_ALLOW_PRIVATE_HOSTS) so the
+  // acceptance smokes can point a subscription at a 127.0.0.1 receiver.
   try {
-    await resolveSafeUrl(body.url);
+    await resolveSafeUrl(body.url, { allowPrivate: true });
   } catch {
     return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
   }

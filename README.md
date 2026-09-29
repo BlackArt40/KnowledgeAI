@@ -122,7 +122,7 @@ src/
     └── config.ts        # ⭐ Provider 状态聚合
 prisma/                 # 数据库 schema + 迁移 + 种子
 scripts/                # 运维脚本（清理/迁移/CI 检查）
-└── smoke/              # 手动冒烟测试
+└── smoke/              # 验收 smoke 套件（run-all.ts 分组调度，CI 的 smoke / smoke-infra 两个 job）
 tests/                  # 集成测试（需 dev server）
 docs/                   # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
 ```

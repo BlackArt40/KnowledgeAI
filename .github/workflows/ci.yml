@@ -126,6 +126,155 @@ jobs:
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
 
+  # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
+  # 顺序有讲究：limits 组断言文档默认限流档位（anon 20 < kb 60 < user 200 <
+  # key 500），必须先在没有抬高限流的 server 窗口上跑；之后写入 .env.local
+  # 抬高限流并重启 dev，供 http/ui 组使用。http/ui 还要 --elevate：
+  # /api/chat 的路由内 user 档位取 admin store 的 60/min，不受 RATE_LIMIT_PER_MIN
+  # 影响，不抬高会被同窗口内多脚本累积触发 429。
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # lib 组不需要 server（解析/分块/检索/日志/主题等纯逻辑）
+      - name: Smoke - lib group (no server needed)
+        run: npx tsx scripts/smoke/run-all.ts --group lib --parallel 2
+
+      - name: Start dev server (documented default limits)
+        run: |
+          pnpm dev > /tmp/dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/api/health > /dev/null
+
+      # 断言分层顺序与 Retry-After，必须跑在 .env.example 的默认档位窗口上
+      - name: Smoke - limits group (default rate-limit tiers)
+        run: npx tsx scripts/smoke/run-all.ts --group limits
+
+      - name: Raise rate limits and allow loopback webhook targets
+        run: |
+          cat >> .env.local <<'EOF'
+          # CI smoke: 抬高限流避免多脚本累积触发 429；放行回环地址供 webhook
+          # 接收端（仅非生产生效，见 src/lib/security/ssrf.ts）。
+          RATE_LIMIT_PER_MIN=2000
+          RATE_LIMIT_ANON_PER_MIN=2000
+          RATE_LIMIT_KEY_PER_MIN=5000
+          RATE_LIMIT_KB_PER_MIN=2000
+          RATE_LIMIT_INTEGRATION_PER_MIN=5000
+          RATE_LIMIT_AGENT_PER_MIN=500
+          SSRF_ALLOW_PRIVATE_HOSTS=true
+          EOF
+          pkill -f "next dev" 2>/dev/null || true
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3000/api/health > /dev/null || break
+            sleep 1
+          done
+          pnpm dev > /tmp/dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/api/health > /dev/null
+
+      - name: Smoke - http group
+        run: npx tsx scripts/smoke/run-all.ts --group http --elevate 5000
+
+      # ui 组用 CDP 驱动 Chrome（runner 自带 /usr/bin/google-chrome）
+      - name: Smoke - ui group
+        run: npx tsx scripts/smoke/run-all.ts --group ui --elevate 5000
+
+      - name: Upload smoke reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-reports
+          path: scripts/smoke/.report/
+          include-hidden-files: true
+          retention-days: 7
+
+  # ── 验收 smoke（infra 组）：脚本各自 spawn 生产实例，需先 build ──────
+  # test-health / test-oauth / test-sync / test-vscode / test-integrations 会自己
+  # 在 :3100 起 `next start` 生产实例，故先做生产构建；mock Pinecone (:5080) 供
+  # test-pinecone 使用。chromadb / OCR 语言包 / DATABASE_URL 缺失的脚本由
+  # runner 前置探测判定为 SKIP（不计失败）。
+  smoke-infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Build (standalone test servers run `next start`)
+        run: pnpm build
+      # The infra scripts need a server on BASE_URL (:3000) for their own
+      # setup calls, and they spawn additional production `next start`
+      # instances from the `.next` build above. Use `next start` here too
+      # instead of `next dev`: a dev server rewrites `.next` underneath those
+      # spawned instances (they then answer with non-JSON 500s or never bind).
+      - name: Start production server + mock Pinecone
+        run: |
+          cat >> .env.local <<'EOF'
+          # `next start` runs in production mode, where src/lib/secrets.ts
+          # refuses to boot without AUTH_SECRET (every route would answer 500).
+          # Throwaway value: this server only ever holds in-memory demo data.
+          AUTH_SECRET=smoke-acceptance-demo-secret-not-for-production
+          RATE_LIMIT_PER_MIN=2000
+          RATE_LIMIT_ANON_PER_MIN=2000
+          RATE_LIMIT_KEY_PER_MIN=5000
+          RATE_LIMIT_KB_PER_MIN=2000
+          RATE_LIMIT_INTEGRATION_PER_MIN=5000
+          RATE_LIMIT_AGENT_PER_MIN=500
+          SSRF_ALLOW_PRIVATE_HOSTS=true
+          EOF
+          pnpm start -p 3000 > /tmp/app.log 2>&1 &
+          npx tsx scripts/smoke/mock-pinecone-server.ts > /tmp/pinecone.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/api/health > /dev/null
+          for i in $(seq 1 20); do
+            curl -s -o /dev/null http://localhost:5080 && break
+            sleep 1
+          done
+          curl -s -o /dev/null http://localhost:5080
+      - name: Smoke - infra group
+        run: npx tsx scripts/smoke/run-all.ts --group infra
+      - name: Upload smoke reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-infra-reports
+          path: scripts/smoke/.report/
+          include-hidden-files: true
+          retention-days: 7
+
   # ── E2E：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent） ──────
   e2e:
     runs-on: ubuntu-latest

@@ -46,7 +46,7 @@ async function main() {
 
   const keyRes = await req("POST", "/api/api-keys", {
     token,
-    body: { name: "sdk-test", scopes: ["kb:read", "kb:write", "chat:read", "agent:run"] },
+    body: { name: "sdk-test", scopes: ["kb:read", "kb:write", "chat:read", "agent:run", "webhooks:write"] },
   });
   const apiKey = keyRes.data?.key?.secret;
   check("create api key", !!apiKey);

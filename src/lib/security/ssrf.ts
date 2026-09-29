@@ -16,6 +16,11 @@
 //   4. callers must follow redirects manually (redirect: "manual") and
 //      re-validate every hop with resolveSafeUrl - a redirect to an internal
 //      address is just as dangerous as the original URL.
+//
+// Dev/test escape hatch: webhook acceptance smokes need to register a receiver
+// on 127.0.0.1, so callers may pass `{ allowPrivate: true }`. That is honored
+// only when SSRF_ALLOW_PRIVATE_HOSTS=true AND NODE_ENV !== "production" - a
+// production process can never reach a private target through it.
 // ---------------------------------------------------------------------------
 
 import dns from "node:dns/promises";
@@ -66,7 +71,23 @@ export function isBlockedIp(ip: string): boolean {
  * Returns the (unchanged) URL when safe; throws Error otherwise.
  * Callers MUST use redirect:"manual" and re-call this on every Location hop.
  */
-export async function resolveSafeUrl(rawUrl: string): Promise<URL> {
+/**
+ * True when the current process may talk to private / loopback targets.
+ * Requires the explicit SSRF_ALLOW_PRIVATE_HOSTS=true opt-in and is
+ * hard-refused in production regardless of the flag.
+ */
+export function privateTargetsAllowed(): boolean {
+  return (
+    process.env.SSRF_ALLOW_PRIVATE_HOSTS === "true" && process.env.NODE_ENV !== "production"
+  );
+}
+
+export async function resolveSafeUrl(
+  rawUrl: string,
+  opts: { allowPrivate?: boolean } = {}
+): Promise<URL> {
+  // Only an opt-in call site can relax the check, and only outside production.
+  const allowPrivate = opts.allowPrivate === true && privateTargetsAllowed();
   let u: URL;
   try {
     u = new URL(rawUrl);
@@ -82,7 +103,7 @@ export async function resolveSafeUrl(rawUrl: string): Promise<URL> {
   // IP literal fast path (IPv6 hostnames arrive bracketed: "[::1]")
   const bareHost = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
   if (/^[\d.]+$/.test(bareHost) || bareHost.includes(":")) {
-    if (isBlockedIp(bareHost)) throw new Error("禁止访问内网/回环地址");
+    if (isBlockedIp(bareHost) && !allowPrivate) throw new Error("禁止访问内网/回环地址");
     return u;
   }
 
@@ -95,7 +116,7 @@ export async function resolveSafeUrl(rawUrl: string): Promise<URL> {
   }
   if (records.length === 0) throw new Error("域名无有效解析结果");
   for (const r of records) {
-    if (isBlockedIp(r.address)) {
+    if (isBlockedIp(r.address) && !allowPrivate) {
       throw new Error(`目标地址被禁止（内网/回环）: ${r.address}`);
     }
   }

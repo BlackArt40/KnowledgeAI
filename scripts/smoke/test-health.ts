@@ -17,6 +17,8 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
+import { demoAuthSecret } from "./lib/demo-env";
+import { killTree, assertPortFree } from "./lib/proc";
 
 const BASE = resolveSmokeBase();
 const BROKEN_PORT = 3100;
@@ -94,10 +96,16 @@ async function main() {
     console.log("  无生产构建，先 pnpm build（坏依赖实例需要 next start）...");
     await runCmd("pnpm", ["build"]);
   }
+  // A leaked instance from an earlier infra script would answer these probes
+  // with a HEALTHY server (200) instead of the intended broken one, so refuse
+  // to run rather than assert against the wrong server.
+  if (!(await assertPortFree(BROKEN_PORT, console.error))) process.exit(1);
   const brokenServer = spawn("pnpm", ["start"], {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      // production `next start` refuses to boot without AUTH_SECRET
+      AUTH_SECRET: demoAuthSecret(),
       PORT: String(BROKEN_PORT),
       DATABASE_URL: "postgresql://user:pass@127.0.0.1:59999/knowledgeai?connect_timeout=1",
       REDIS_URL: "redis://127.0.0.1:59999",
@@ -147,7 +155,7 @@ async function main() {
     }
   } finally {
     // 清理坏依赖实例
-    try { process.kill(-brokenServer.pid); } catch {}
+    try { killTree(brokenServer); } catch {}
     await sleep(1000);
   }
 

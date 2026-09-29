@@ -7,10 +7,11 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9400 + Math.floor(Math.random() * 200); // 随机端口，避免残留实例冲突
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-graph-shots";
 const PROFILE = `/tmp/kai-chrome-profile-graph-${Date.now()}`;
 
@@ -36,7 +37,7 @@ async function main() {
     else { results.push(`❌ ${name} ${detail}`); failures++; }
   };
 
-  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
+  if (!existsSync(CHROME)) throw new Error(chromeMissingMessage());
   mkdirSync(OUT_DIR, { recursive: true });
 
   // ── 0. 准备: 自建 KB + 上传构造文档（测试自包含，不依赖其他套件产物） ──
@@ -93,6 +94,7 @@ async function main() {
   // login via the UI so the app shell has the session cookie
   const chrome = spawn(CHROME, [
     "--headless=new",
+    ...LOCALE_ARGS,
     `--remote-debugging-port=${PORT}`,
     "--remote-allow-origins=*",
     `--user-data-dir=${PROFILE}`,
