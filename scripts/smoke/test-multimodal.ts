@@ -13,6 +13,7 @@ import { createCanvas } from "@napi-rs/canvas";
 import { writeFileSync } from "node:fs";
 import { resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
+import { ocrAvailable, ocrSkipReason } from "./lib/ocr-available";
 
 const BASE = resolveSmokeBase();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -23,6 +24,13 @@ async function main() {
   function check(name, cond, detail = "") {
     if (cond) results.push(`✅ ${name}`);
     else { results.push(`❌ ${name} ${detail}`); failures++; }
+  }
+  // The image-text assertions need real OCR (tesseract packs in .tessdata/,
+  // absent on a fresh clone / in CI) - SKIP instead of failing there.
+  const ocrReady = ocrAvailable();
+  function checkOcr(name, cond, detail = "") {
+    if (!ocrReady) { results.push(`⏭️ ${name} ${ocrSkipReason()}`); return; }
+    check(name, cond, detail);
   }
 
   const req = async (method, path, opts = {}) => {
@@ -125,7 +133,7 @@ async function main() {
   check("chat: answer produced", q1.answer.length > 0, q1.answer.slice(0, 80));
   const imgCited = (q1.sources ?? []).some((c) => c.docId === imgDocId);
   check("image doc retrieved by its OCR text", imgCited, `sources=${q1.sources.map((c) => c.docName).join(",")}`);
-  check("answer mentions the image text", /STAR PROTOCOL|star protocol/i.test(q1.answer), q1.answer.slice(0, 100));
+  checkOcr("answer mentions the image text", /STAR PROTOCOL|star protocol/i.test(q1.answer), q1.answer.slice(0, 100));
 
   // ── 2. 图片 + 文本混合提问 ───────────────────────────────────────────
   console.log("\n── 2. 混合提问 ──");
@@ -135,7 +143,7 @@ async function main() {
     images: [{ mime: "image/png", data: imgB64 }],
   });
   check("mixed QA: answer produced", q2.answer.length > 0, q2.answer.slice(0, 80));
-  check("mixed QA: answer references image content", /2026/.test(q2.answer), q2.answer.slice(0, 120));
+  checkOcr("mixed QA: answer references image content", /2026/.test(q2.answer), q2.answer.slice(0, 120));
 
   const badImg = await fetch(`${BASE}/api/chat`, {
     method: "POST",

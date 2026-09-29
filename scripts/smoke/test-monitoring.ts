@@ -108,17 +108,42 @@ async function main() {
   check("trace: root status ok + duration", trace1?.status === "ok" && trace1?.durationMs >= 0);
 
   // ── 3. 全链路追踪:chat(API -> RAG -> LLM)─────────────────────────────
-  const kbs = await req("GET", "/api/knowledge-base", { token });
-  const kbId = (kbs.data?.kbs ?? []).find((k) => k.stats?.ready > 0)?.id ?? kbs.data?.kbs?.[0]?.id;
-  check("setup: KB id for chat", !!kbId, String(kbId));
+  // The chat must hit a KB with at least one READY document: with no chunks the
+  // demo answer path skips generation entirely and no llm-kind span is recorded.
+  // Seed/other-script KBs are not reliable for that (docs deleted, or still
+  // being processed), so build a self-contained fixture here.
+  const fxKbRes = await req("POST", "/api/knowledge-base", { token, body: { name: `observability-fixture-${Date.now().toString(36)}` } });
+  const kbId = fxKbRes.data?.kb?.id;
+  const fxForm = new FormData();
+  fxForm.append("files", new Blob(["产品文档 观测性冒烟：检索增强生成会把命中的片段交给模型生成回答。"], { type: "text/plain" }), "observability-fixture.txt");
+  const fxUp = await fetch(`${BASE}/api/knowledge-base/${kbId}/upload`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+    body: fxForm,
+  });
+  check("setup: observability fixture KB + doc uploaded", fxUp.status === 201, `${fxUp.status}`);
+  let fxReady = false;
+  for (let i = 0; i < 60; i++) {
+    const detail = await req("GET", `/api/knowledge-base/${kbId}`, { token });
+    if ((detail.data?.docs ?? []).some((d: any) => d.status === "ready")) { fxReady = true; break; }
+    await sleep(500);
+  }
+  check("setup: fixture document processed (ready)", fxReady, String(kbId));
   const tid2 = "test-trace-chat-002";
   const events = await chatSse(token, { kbId, query: "介绍一下产品文档" }, tid2);
   check("chat SSE: done event", events.some((e) => e.type === "done"), `events=${events.map((e) => e.type).join(",")}`);
-  await sleep(500); // let the trace finalize (stream finally)
-  const t2 = await req("GET", `/api/admin/monitoring/traces?id=${tid2}`, { token });
-  const trace2 = t2.data?.trace;
-  const kinds2 = (trace2?.spans ?? []).map((s) => s.kind);
-  check("trace: chat trace exists", !!trace2, JSON.stringify(t2.data).slice(0, 120));
+  // The LLM span is written when the stream finalizes, so poll briefly instead
+  // of a fixed sleep - a single 500ms wait is flaky on a loaded machine.
+  let trace2: any = null;
+  let kinds2: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    await sleep(250);
+    const t2 = await req("GET", `/api/admin/monitoring/traces?id=${tid2}`, { token });
+    trace2 = t2.data?.trace;
+    kinds2 = (trace2?.spans ?? []).map((s: any) => s.kind);
+    if (kinds2.includes("llm")) break;
+  }
+  check("trace: chat trace exists", !!trace2, JSON.stringify(trace2 ?? null).slice(0, 120));
   check("trace: API span (api /api/chat)", (trace2?.spans ?? []).some((s) => s.kind === "api" && s.name === "api /api/chat"), JSON.stringify(kinds2));
   check("trace: RAG span (rag.retrieve)", (trace2?.spans ?? []).some((s) => s.kind === "rag"), JSON.stringify(kinds2));
   check("trace: LLM span (chat stream)", (trace2?.spans ?? []).some((s) => s.kind === "llm"), JSON.stringify(kinds2));

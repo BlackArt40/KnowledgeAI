@@ -1,11 +1,19 @@
 async function main() {
   const { parseDocument } = await import("../../src/lib/rag/parser");
   const { docTypeFromName } = await import("../../src/lib/kb/store");
+  const { ocrAvailable, ocrSkipReason } = await import("./lib/ocr-available");
 
   let failures = 0;
   function assert(cond: boolean, msg: string) {
     if (!cond) { console.error(`❌ ${msg}`); failures++; }
     else console.log(`✅ ${msg}`);
+  }
+  // OCR text assertions need the tesseract packs in .tessdata/ (absent on a
+  // fresh clone / in CI) - SKIP rather than fail when they cannot run.
+  const ocrReady = ocrAvailable();
+  function assertOcr(cond: boolean, msg: string) {
+    if (!ocrReady) { console.log(`⏭️ ${msg} ${ocrSkipReason()}`); return; }
+    assert(cond, msg);
   }
 
   assert(docTypeFromName("photo.png") === "image", "png => image");
@@ -27,7 +35,7 @@ async function main() {
 
   const imgParsed = await parseDocument(pngBuf, "photo.png", "image");
   assert(imgParsed !== null, "parseDocument(image) returns non-null");
-  assert(imgParsed !== null && imgParsed.text.toUpperCase().includes("IMAGE"), `image OCR contains "IMAGE" (got: ${imgParsed!.text})`);
+  assertOcr(imgParsed !== null && imgParsed.text.toUpperCase().includes("IMAGE"), `image OCR contains "IMAGE" (got: ${imgParsed!.text})`);
 
   // Digital text PDF (has a text layer) -> pdfjs-dist extracts text, no OCR.
   const pageW = 300, pageH = 300;

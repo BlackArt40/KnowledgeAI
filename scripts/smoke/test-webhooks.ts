@@ -138,10 +138,12 @@ async function main() {
     body: form,
   });
   check("upload doc: 201", upRes.status === 201, `status=${upRes.status}`);
-  // wait for doc-processing (parse -> chunk -> vectorize) + webhook delivery
+  // wait for doc-processing (parse -> chunk -> vectorize) + webhook delivery.
+  // Filter by the KB we just created: a boot-time seed re-index in the same
+  // (default) workspace can deliver an unrelated kb.ready first.
   let kbReady = null;
   for (let i = 0; i < 40; i++) {
-    kbReady = receiver.deliveries.find((d) => d.event === "kb.ready");
+    kbReady = receiver.deliveries.find((d) => d.event === "kb.ready" && d.body?.data?.kbId === kbId);
     if (kbReady) break;
     await sleep(500);
   }
@@ -193,7 +195,17 @@ async function main() {
   });
   const wsKbId = kbInWs.data?.kb?.id;
   check("create kb in fresh workspace", !!wsKbId);
-  await Promise.allSettled(
+  // /api/chat's in-route user tier resolves its limit from the admin store
+  // (demo default 60/min - src/lib/admin/store.ts), NOT from
+  // RATE_LIMIT_PER_MIN, so a 100-request burst would be partly 429'd and the
+  // usage threshold would never be crossed. Raise it for this case and restore
+  // whatever value the server had (not a hardcoded default - the runner's
+  // --elevate may have raised it for the whole suite).
+  const limBefore = await req("GET", "/api/admin/ratelimit", { token });
+  const prevBase = limBefore.data?.limits?.base ?? 60;
+  await req("PATCH", "/api/admin/config", { token, body: { rateLimitPerMin: Math.max(prevBase, 1000) } });
+  // 并发补足 100 次问答（并行请求，避免串行等待生成）。
+  const chatBurst = await Promise.allSettled(
     Array.from({ length: 100 }, () =>
       fetch(`${BASE}/api/chat`, {
         method: "POST",
@@ -203,9 +215,11 @@ async function main() {
           Cookie: `kai-workspace=${wsId}`,
         },
         body: JSON.stringify({ kbId: wsKbId, query: "测试用量告警" }),
-      }).catch(() => {})
+      })
     )
   );
+  const accepted = chatBurst.filter((r) => r.status === "fulfilled" && r.value.status === 200).length;
+  check(`usage burst: 100 chats accepted (${accepted})`, accepted >= 100);
   let usageAlert = null;
   for (let i = 0; i < 60; i++) {
     usageAlert = receiver.deliveries.find((d) => d.event === "usage.alert");
@@ -217,6 +231,7 @@ async function main() {
     check("usage.alert: signed", usageAlert.verified);
     check("usage.alert: payload has plan/usage/limit", usageAlert.body.data.plan === "free" && usageAlert.body.data.limit === 100, JSON.stringify(usageAlert.body.data).slice(0, 150));
   }
+  await req("PATCH", "/api/admin/config", { token, body: { rateLimitPerMin: prevBase } });
 
   // ── 5. 重试与死信 ────────────────────────────────────────────────────
   console.log("\n── 5. 重试 + 死信 ──");

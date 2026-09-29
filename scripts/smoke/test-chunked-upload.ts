@@ -1,13 +1,15 @@
 // @ts-nocheck
 // End-to-end test for chunked upload API.
-// Requires: dev server running on localhost:3000
-// Usage: npx tsx scripts/test-chunked-upload.ts
+// Requires: a dev server (`pnpm dev`; BASE_URL selects the port, default :3000)
+// Usage: npx tsx scripts/smoke/test-chunked-upload.ts
 //
 // Tests: init -> upload chunks -> status -> complete (full upload)
 //        init -> partial upload -> status (resume check) -> complete
 //        init -> partial upload -> abort
 
-const BASE = "http://localhost:3000";
+import { resolveSmokeBase } from "./lib/base-url";
+
+const BASE = resolveSmokeBase();
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB (matches server default)
 
 let token: string;

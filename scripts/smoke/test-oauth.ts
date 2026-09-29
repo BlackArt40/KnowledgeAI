@@ -20,9 +20,13 @@ import { createServer } from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { DEMO_PASSWORD } from "./lib/demo";
+import { resolveSmokeBase } from "./lib/base-url";
 
 const MOCK_PORT = 5092;
-const BASE = "http://localhost:3000";
+// The unconfigured reference instance: the caller's dev server (BASE_URL, default
+// :3000). Set BASE_URL when another stack (e.g. docker compose) already owns :3000.
+const BASE = resolveSmokeBase();
 let failures = 0;
 const results: string[] = [];
 function check(name: string, cond: boolean, detail = "") {

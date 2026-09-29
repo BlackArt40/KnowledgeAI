@@ -12,6 +12,8 @@
     "test:unit": "vitest run --coverage",
     "test:integration": "node tests/functional/functional-test.mjs && node tests/api/api-test.mjs && node tests/performance/performance-test.mjs",
     "test:e2e": "playwright test",
+    "test:smoke": "tsx scripts/smoke/run-all.ts --group lib",
+    "test:smoke:all": "tsx scripts/smoke/run-all.ts --group all",
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"

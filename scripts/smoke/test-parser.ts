@@ -1,15 +1,24 @@
 // @ts-nocheck
 // P1-1 acceptance verification: exercises parseDocument for all 8 formats
-// + scanned-PDF OCR + image OCR. Run: npx tsx scripts/test-parser.ts
+// + scanned-PDF OCR + image OCR. Run: npx tsx scripts/smoke/test-parser.ts
+import { ocrAvailable, ocrSkipReason } from "./lib/ocr-available";
+
 async function main() {
   process.env.OCR_LANG = process.env.OCR_LANG || "eng";
   const { parseDocument } = await import("../../src/lib/rag/parser");
+  // OCR can only run with the tesseract packs cached in .tessdata/ (absent on a
+  // fresh clone / in CI) - the OCR assertions SKIP rather than fail there.
+  const ocrReady = ocrAvailable(process.env.OCR_LANG);
 
   let failures = 0;
   const results: string[] = [];
   function check(name: string, cond: boolean, detail = "") {
     if (cond) { results.push(`✅ ${name}`); }
     else { results.push(`❌ ${name} ${detail}`); failures++; }
+  }
+  function checkOcr(name: string, cond: boolean, detail = "") {
+    if (!ocrReady) { results.push(`⏭️ ${name} ${ocrSkipReason(process.env.OCR_LANG)}`); return; }
+    check(name, cond, detail);
   }
 
   const { createCanvas } = await import("@napi-rs/canvas");
@@ -65,7 +74,7 @@ async function main() {
   {
     const pdf = buildScannedPdf("INDEXABLE CONTENT");
     const r = await parseDocument(pdf, "scan.pdf", "pdf");
-    check("Scanned PDF via OCR", r !== null && r.text.toUpperCase().includes("INDEXABLE"), JSON.stringify(r?.text?.slice(0, 60)));
+    checkOcr("Scanned PDF via OCR", r !== null && r.text.toUpperCase().includes("INDEXABLE"), JSON.stringify(r?.text?.slice(0, 60)));
   }
   // --- Image via OCR ---
   {
@@ -76,7 +85,7 @@ async function main() {
     ctx.fillText("PICTURE WORDS", 15, 30);
     const png = canvas.toBuffer("image/png");
     const r = await parseDocument(png, "img.png", "image");
-    check("Image via OCR", r !== null && r.text.toUpperCase().includes("PICTURE"), JSON.stringify(r?.text?.slice(0, 60)));
+    checkOcr("Image via OCR", r !== null && r.text.toUpperCase().includes("PICTURE"), JSON.stringify(r?.text?.slice(0, 60)));
   }
 
   console.log(results.join("\n"));

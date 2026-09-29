@@ -10,10 +10,11 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { resolveChrome, chromeMissingMessage } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9778;
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-theme-shots";
 const PROFILE = "/tmp/kai-chrome-theme";
 
@@ -79,7 +80,7 @@ async function main() {
     else { results.push(`❌ ${name} ${detail}`); failures++; }
   };
 
-  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
+  if (!existsSync(CHROME)) throw new Error(chromeMissingMessage());
   mkdirSync(OUT_DIR, { recursive: true });
 
   const chrome = spawn(CHROME, [
@@ -92,6 +93,7 @@ async function main() {
     "--disable-gpu",
   ], { stdio: "ignore" });
 
+  let exitCode = 0;
   try {
     await waitForPort(PORT);
     const target = await fetch(

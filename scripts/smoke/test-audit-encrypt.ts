@@ -42,7 +42,7 @@ async function main() {
   // ── 0. 加密工具（crypto.ts 单测） ─────────────────────────────────────
   console.log("\n── 0. 加密工具（AES-256-GCM） ──");
   const { encrypt, decrypt, encryptToString, decryptFromString, isEncrypted } =
-    await import("../../src/lib/security/crypto");
+    await import("../../src/lib/crypto");
   const pt = "kai_sk_test_secret_123";
   const enc = encrypt(pt);
   check("crypto: encrypt/decrypt round-trip", decrypt(enc) === pt);
@@ -101,24 +101,27 @@ async function main() {
     check("audit-flow: kb deleted", del.status === 200);
   }
 
-  // 3b. 文档删除（匿名 401 修复验证 + owner 删除）。文档来自种子 KB -
-  // the store is per-process, so create docs via HTTP listing instead of a
-  // direct import (which would live in this script's process, not the server).
-  const kbList = await req("GET", "/api/knowledge-base", { token: ownerToken });
-  const seedKb = (kbList.data?.kbs ?? []).find((k: any) => k.ownerId === "usr_owner") ?? kbList.data?.kbs?.[0];
-  if (seedKb?.id) {
-    const kbDetail = await req("GET", `/api/knowledge-base/${seedKb.id}`, { token: ownerToken });
-    const doc = kbDetail.data?.docs?.[0];
-    if (doc?.id) {
-      const anonDel = await req("DELETE", `/api/knowledge-base/${seedKb.id}/documents/${doc.id}`);
-      check("doc: anonymous delete rejected (401 - auth hole fixed)", anonDel.status === 401, `got ${anonDel.status}`);
-      const del = await req("DELETE", `/api/knowledge-base/${seedKb.id}/documents/${doc.id}`, { token: ownerToken });
-      check("audit-flow: doc deleted", del.status === 200, `got ${del.status} ${JSON.stringify(del.data)}`);
-    } else {
-      check("audit-flow: doc deleted", false, "no docs in seed kb");
-    }
+  // 3b. 文档删除（匿名 401 修复验证 + owner 删除）。上传自己的 fixture 而不是
+  // 复用种子 KB 的文档：其它 smoke 脚本会把种子文档删掉，重复跑就不再有文档可删。
+  const fxKb = await req("POST", "/api/knowledge-base", { token: ownerToken, body: { name: `audit-doc-kb-${Date.now().toString(36)}` } });
+  const fxKbId = fxKb.data?.kb?.id;
+  const fxForm = new FormData();
+  fxForm.append("files", new Blob(["audit fixture"], { type: "text/plain" }), "audit-fixture.txt");
+  const fxUpRes = await fetch(`${BASE}/api/knowledge-base/${fxKbId}/upload`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${ownerToken}` },
+    body: fxForm,
+  });
+  const fxUp = await fxUpRes.json().catch(() => ({}));
+  const fxDoc = fxUp?.docs?.[0];
+  check("doc: fixture uploaded", fxUpRes.status === 201 && !!fxDoc?.id, `${fxUpRes.status} ${JSON.stringify(fxUp).slice(0, 200)}`);
+  if (fxDoc?.id) {
+    const anonDel = await req("DELETE", `/api/knowledge-base/${fxKbId}/documents/${fxDoc.id}`);
+    check("doc: anonymous delete rejected (401 - auth hole fixed)", anonDel.status === 401, `got ${anonDel.status}`);
+    const del = await req("DELETE", `/api/knowledge-base/${fxKbId}/documents/${fxDoc.id}`, { token: ownerToken });
+    check("audit-flow: doc deleted", del.status === 200, `got ${del.status} ${JSON.stringify(del.data)}`);
   } else {
-    check("audit-flow: doc deleted", false, "no kb available");
+    check("audit-flow: doc deleted", false, "fixture upload failed");
   }
 
   // 3c. API Key 删除
@@ -172,7 +175,10 @@ async function main() {
   check("audit-api: chain valid", dash.data?.chainValid === true, `chainValid=${dash.data?.chainValid}`);
 
   const byAction = await req("GET", "/api/admin/audit?action=kb.delete", { token: adminToken });
-  check("audit-api: filter by action (kb.delete)", byAction.data?.total >= 3 && byAction.data?.audit?.every((a: any) => a.action === "kb.delete"), `total=${byAction.data?.total}`);
+  // This script itself performs exactly two KB deletions (the throwaway KB above
+  // and kbId3's cleanup), so >= 2 is the honest floor - a higher bound only held
+  // when other smoke scripts had already deleted KBs in the same server process.
+  check("audit-api: filter by action (kb.delete)", byAction.data?.total >= 2 && byAction.data?.audit?.every((a: any) => a.action === "kb.delete"), `total=${byAction.data?.total}`);
 
   const byActor = await req("GET", "/api/admin/audit?actor=张明", { token: adminToken });
   check("audit-api: filter by actor", byActor.data?.total >= 1 && byActor.data?.audit?.every((a: any) => a.actor.includes("张明") || (a.actorId ?? "").includes("张明")), `total=${byActor.data?.total}`);

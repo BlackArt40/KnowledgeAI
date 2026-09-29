@@ -24,11 +24,11 @@ KnowledgeAI/
 ├── src/                  # 应用源码（App Router 页面 + API + 业务库）
 ├── prisma/               # 数据库 schema + 迁移 + 种子数据
 ├── scripts/              # 运维脚本（cron/迁移/清理）
-│   └── smoke/            # 手动冒烟测试脚本（npx tsx 运行）
+│   └── smoke/            # 验收 smoke 套件（run-all.ts + manifest 分组调度，CI 会跑）
 ├── tests/                # 集成测试（需启动 dev server，用 node 运行）
 ├── docs/                 # VitePress 文档中心（入门/架构/API/运维/FAQ/规范，历史文档在 archive/）
 ├── public/               # 静态资源（favicon、SVG 图标）
-├── .github/workflows/    # CI 流水线（五 job：quality / unit / integration / e2e / docs）
+├── .github/workflows/    # CI 流水线（七 job：quality / unit / integration / smoke / smoke-infra / e2e / docs）
 ├── .tessdata/            # Tesseract OCR 语言包（首次 OCR 时下载，gitignored）
 └── .uploads/             # 本地上传文件存储（demo 模式，gitignore）
 ```
@@ -158,7 +158,9 @@ scripts/
 ├── check-prisma-migrations.sh   # CI 迁移漂移检查（shell）
 ├── cleanup-temp-files.ts        # 临时文件清理（可配 cron）
 ├── migrate-vector-store.ts      # 内存索引批量迁移到向量库
-└── smoke/                       # 手动冒烟测试（npx tsx scripts/smoke/<name>.ts）
+└── smoke/                       # 验收 smoke 套件（run-all.ts 按 lib/limits/http/ui/infra 分组调度）
+    ├── run-all.ts               # runner：前置探测 + 分组 + 超时 + 报告（.report/）
+    ├── lib/manifest.ts          # 脚本清单（分组 / 前置条件 / 超时）
     ├── test-parser.ts           # 多格式文档解析
     ├── test-ocr-*.ts            # OCR 图片 / 扫描 PDF
     ├── test-chunker.ts          # 智能切片

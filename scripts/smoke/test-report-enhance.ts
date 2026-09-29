@@ -82,7 +82,10 @@ async function main() {
   check("share: default disabled", cfg0.enabled === false && cfg0.views === 0);
 
   const hp = store.hashPassword("s3cret");
-  check("share: hashPassword is sha-256 hex", /^[0-9a-f]{64}$/.test(hp));
+  // L-2: share passwords are PBKDF2 (per-share random salt), no longer a bare
+  // unsalted SHA-256 - assert the stored format, not one specific digest.
+  check("share: hashPassword uses PBKDF2 with per-share salt", /^pbkdf2-sha256\$\d+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(hp), hp.slice(0, 40));
+  check("share: hashPassword is not a bare sha-256 hex", !/^[0-9a-f]{64}$/.test(hp));
   check("share: verifyPassword correct", store.verifyPassword("s3cret", hp) === true);
   check("share: verifyPassword wrong rejected", store.verifyPassword("wrong", hp) === false);
 

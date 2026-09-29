@@ -16,7 +16,7 @@ related: [onboarding.md, ../standards/doc-writing-standards.md, ../standards/doc
 
 # 贡献指南
 
-> 本文定义 KnowledgeAI 的代码与文档贡献流程。核心原则：**文档与代码同 PR（docs-as-code）**、**CI 五门禁全绿才可合并**、**破坏性变更必须有迁移/文档**。
+> 本文定义 KnowledgeAI 的代码与文档贡献流程。核心原则：**文档与代码同 PR（docs-as-code）**、**CI 七门禁全绿才可合并**、**破坏性变更必须有迁移/文档**。
 
 ## 分支与版本策略
 
@@ -33,6 +33,7 @@ related: [onboarding.md, ../standards/doc-writing-standards.md, ../standards/doc
 ```bash
 pnpm lint            # ESLint，零告警
 pnpm test:unit       # vitest，覆盖率门槛：lines/functions/statements 70%、branches 60%
+pnpm test:smoke      # 验收 smoke lib 组（无需 server，~10s）
 npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 ```
 
@@ -48,15 +49,17 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
    - 改了环境变量 → 同步 [环境变量全表](../ops/env-vars.md)；
    - 新增/移除功能 → 更新 [FAQ](../faq/faq.md) 或文档清单；
 4. **评审**：至少 1 人 approve（L2+ 文档需技术文档负责人审语言）；评审人按 [文档评审 Checklist](../standards/doc-review-checklist.md) 核对；
-5. **CI 五门禁**：quality / unit / integration / e2e / **docs** 全绿后合并。
+5. **CI 七门禁**：quality / unit / integration / smoke / smoke-infra / e2e / **docs** 全绿后合并。
 
-## CI 五门禁速览
+## CI 七门禁速览
 
 | Job | 检查内容 | 常挂原因 |
 |-----|----------|----------|
 | quality | tsc + lint + build + prisma 迁移漂移 | schema 改了没生成迁移 |
 | unit | vitest 覆盖率门槛 | `src/lib/{rag,auth,billing,team}` 新代码没配测试 |
 | integration | 功能/API/性能套件（需 dev server） | 破坏既有 API 契约 |
+| smoke | `scripts/smoke/` 验收套件 lib/limits/http/ui 四组（runner: `scripts/smoke/run-all.ts`） | 验收断言过期、脚本相互污染、限流窗口被抬高 |
+| smoke-infra | 验收套件 infra 组（各自 spawn 生产实例，需先 build） | 生产构建坏、OAuth/同步/VS Code 集成回归 |
 | e2e | Playwright 主流程 | 前端行为回归 |
 | docs | 站点构建（死链）+ Frontmatter 校验 + OpenAPI 漂移 | 文档缺元数据 / 引用失效 / API 变了没重生成参考 |
 
@@ -71,6 +74,7 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 
 - **单测**：纯函数优先；LLM 路径用 `vi.mock("@/lib/llm/provider")`；重依赖（pdfjs/mammoth/xlsx）用 `vi.mock`；
 - **集成**：`tests/<suite>/<suite>-test.mjs` 打 live dev server（用演示账号）；
+- **验收 smoke**：`scripts/smoke/test-*.ts` 打到 live server（或纯库级），由 `scripts/smoke/run-all.ts` 按 manifest 分组调度，CI 的 smoke / smoke-infra 两个 job 会跑；新增脚本要登记到 `scripts/smoke/lib/manifest.ts`，并让脚本自带 fixture 与清理（可重复、顺序无关）；
 - **E2E**：`e2e/main-flow.spec.ts` 覆盖登录 → 上传 → 问答 → Agent；受控输入需 fill-verify-retry 循环（React hydration 竞态）。
 
 ## 相关文档

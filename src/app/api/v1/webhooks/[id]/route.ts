@@ -45,7 +45,7 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
   // P1-4: SSRF - a subscription URL must never point at internal targets.
   if (body.url !== undefined) {
     try {
-      await resolveSafeUrl(body.url);
+      await resolveSafeUrl(body.url, { allowPrivate: true });
     } catch {
       return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
     }

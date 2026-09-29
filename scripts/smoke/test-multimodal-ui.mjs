@@ -6,10 +6,11 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { resolveChrome, chromeMissingMessage } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9339;
-const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-multimodal-shots";
 const PROFILE = `/tmp/kai-chrome-profile-mm-${Date.now()}`;
 
@@ -35,7 +36,7 @@ async function main() {
     else { results.push(`❌ ${name} ${detail}`); failures++; }
   };
 
-  if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
+  if (!existsSync(CHROME)) throw new Error(chromeMissingMessage());
   mkdirSync(OUT_DIR, { recursive: true });
 
   const chrome = spawn(CHROME, [
@@ -47,6 +48,7 @@ async function main() {
     "--lang=zh-CN",
   ], { stdio: "ignore" });
 
+  let exitCode = 0;
   try {
     await waitForPort(PORT);
     const target = await fetch(
@@ -205,7 +207,7 @@ async function main() {
     console.log(`\n${failures === 0 ? "✅" : "❌"} multimodal-ui smoke: ${results.length - failures}/${results.length} passed`);
     exitCode = failures > 0 ? 1 : 0;
     } catch (err) {
-      console.error(e);
+      console.error(err);
       exitCode = 1;
     } finally {
       chrome.kill();

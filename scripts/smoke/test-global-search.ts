@@ -57,6 +57,20 @@ async function main() {
   const owner = await login("owner@knowledgeai.dev");
   const viewer = await login("viewer@knowledgeai.dev");
 
+  // Self-sufficient document fixture: destructive smoke scripts (test-audit-encrypt)
+  // delete documents from the seed KBs, so the doc-search assertions below must not
+  // depend on seed data or they break whenever the run order changes.
+  const fixtureKbRes = await req("POST", "/api/knowledge-base", { token: owner, body: { name: `全局搜索冒烟 ${Date.now().toString(36)}` } });
+  const fixtureKbId = fixtureKbRes.data?.kb?.id;
+  const fixtureForm = new FormData();
+  fixtureForm.append("files", new Blob(["需求文档 全局搜索冒烟内容"], { type: "text/plain" }), "需求文档-smoke.txt");
+  const fixtureUp = await fetch(`${BASE}/api/knowledge-base/${fixtureKbId}/upload`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${owner}` },
+    body: fixtureForm,
+  });
+  check("setup: fixture KB + document uploaded", fixtureUp.status === 201, `${fixtureUp.status} ${await fixtureUp.text().catch(() => "")}`.slice(0, 200));
+
   // ── 1. 鉴权与基本搜索 ─────────────────────────────────────────────────
   console.log("\n── 1. 鉴权与基本搜索 ──");
   const anon = await req("GET", "/api/search?q=产品");
@@ -74,7 +88,7 @@ async function main() {
 
   const docRes = await req("GET", "/api/search?q=需求", { token: owner });
   const docs = docRes.data?.results?.docs ?? [];
-  check("search: document hit (「需求」→ 需求文档)", docs.some((d) => d.name.includes("需求") || d.name.includes("文档")), JSON.stringify(docs.map((d) => d.name)));
+  check("search: document hit (「需求」→ fixture doc)", docs.some((d) => d.name.includes("需求") || d.name.includes("文档")), JSON.stringify(docs.map((d) => d.name)));
   check("search: document hit carries kbName", docs.length > 0 && !!docs[0].kbName, JSON.stringify(docs[0] ?? null));
 
   const emptyRes = await req("GET", "/api/search?q=不存在的关键词xyz", { token: owner });
