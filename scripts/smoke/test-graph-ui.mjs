@@ -7,7 +7,7 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { resolveChrome, chromeMissingMessage } from "./lib/chrome.mjs";
+import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9400 + Math.floor(Math.random() * 200); // 随机端口，避免残留实例冲突
@@ -94,6 +94,7 @@ async function main() {
   // login via the UI so the app shell has the session cookie
   const chrome = spawn(CHROME, [
     "--headless=new",
+    ...LOCALE_ARGS,
     `--remote-debugging-port=${PORT}`,
     "--remote-allow-origins=*",
     `--user-data-dir=${PROFILE}`,

@@ -27,6 +27,19 @@ export function resolveChrome() {
 
 export const CHROME = resolveChrome();
 
+/**
+ * Chrome flags that pin the browser locale to zh-CN.
+ *
+ * The app resolves the UI locale as `kai-locale` cookie -> Accept-Language ->
+ * zh-CN (src/lib/i18n/server.ts), and every UI smoke script drives the Chinese
+ * UI by its visible text. A fresh profile on a CI runner sends
+ * `Accept-Language: en-US`, so the app would render English and every
+ * text-located assertion would fail (the one script that already passed
+ * --lang=zh-CN was the only UI script green on the runner). `--accept-lang`
+ * sets the request header, `--lang` the browser/navigator language.
+ */
+export const LOCALE_ARGS = ["--lang=zh-CN", "--accept-lang=zh-CN,zh;q=0.9"];
+
 export function chromeMissingMessage(path = CHROME) {
   return `Chrome not found at ${path} (install Chrome/Chromium or set CHROME_PATH)`;
 }

@@ -9,7 +9,7 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { resolveChrome, chromeMissingMessage } from "./lib/chrome.mjs";
+import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const PORT = 9555;
@@ -44,6 +44,7 @@ async function main() {
 
   const chrome = spawn(CHROME, [
     "--headless=new",
+    ...LOCALE_ARGS,
     `--remote-debugging-port=${PORT}`,
     "--remote-allow-origins=*",
     `--user-data-dir=${PROFILE}`,
@@ -92,6 +93,21 @@ async function main() {
         writeFileSync(`${OUT_DIR}/${name}.png`, Buffer.from(res.result.data, "base64"));
         return `${OUT_DIR}/${name}.png`;
       } catch { return "screenshot failed"; }
+    };
+
+    // React state updates after a click are not synchronous, and the first paint
+    // of a Radix portal can land a few hundred ms later on a loaded machine.
+    // Poll instead of sleeping a fixed amount so the assertions do not flake
+    // (this script is run by the CI `smoke` job on a shared runner).
+    const waitEval = async (expression, timeoutMs = 8000, intervalMs = 250) => {
+      const start = Date.now();
+      let last = null;
+      while (Date.now() - start < timeoutMs) {
+        last = await evalJs(expression);
+        if (last) return last;
+        await sleep(intervalMs);
+      }
+      return last;
     };
 
     await send("Page.enable");
@@ -143,6 +159,25 @@ async function main() {
           return btns.some((b) => b.textContent.trim() === "重新生成");
         })()`);
         if (done) return true;
+        await sleep(500);
+      }
+      return false;
+    }
+
+    // The composer ignores Enter while an answer is still streaming, so a plain
+    // ask() can silently drop a question when the previous answer has not
+    // finished (that made the recommendation assertion flaky). Retry until the
+    // textarea clears - that is the signal the question was submitted.
+    async function askConfirmed(question, timeoutMs = 30000) {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        await ask(question);
+        await sleep(400);
+        const cleared = await evalJs(`(() => {
+          const ta = document.querySelector('.chat-height textarea');
+          return !!ta && ta.value.trim() === "";
+        })()`);
+        if (cleared) return true;
         await sleep(500);
       }
       return false;
@@ -270,11 +305,14 @@ async function main() {
       const archTab = btns.find((b) => b.textContent.trim() === "已归档");
       if (archTab) archTab.click();
     })()`);
-    await sleep(800);
-    const archView = await evalJs(`(() => {
+    const archView = (await waitEval(`(() => {
       const items = [...document.querySelectorAll('.chat-height [aria-label="会话操作"]')];
-      return { count: items.length, text: document.querySelector('.chat-height').innerText.includes("归档会话") || items.length > 0 };
-    })()`);
+      return items.length > 0 ? { count: items.length, text: true } : null;
+    })()`)) ?? (await evalJs(`(() => {
+      const items = [...document.querySelectorAll('.chat-height [aria-label="会话操作"]')];
+      const body = document.querySelector('.chat-height');
+      return { count: items.length, text: !!body && body.innerText.includes("归档会话") };
+    })()`));
     check("archive: archived view shows items", archView.count > 0, JSON.stringify(archView));
     // restore via API (menu UI already exercised above), then switch back
     const restored = await evalJs(`(async () => {
@@ -311,11 +349,14 @@ async function main() {
       const tag = btns.find((b) => b.textContent.trim() === "编辑标签");
       if (tag) tag.click();
     })()`);
-    await sleep(500);
-    const tagDialog = await evalJs(`(() => {
+    const tagDialog = (await waitEval(`(() => {
+      const dlg = document.querySelector('[role="dialog"][data-state="open"]');
+      if (!dlg || !dlg.querySelector('input[placeholder*="输入标签"]')) return null;
+      return { open: true, hasInput: true, text: dlg.innerText.slice(0, 60) };
+    })()`)) ?? (await evalJs(`(() => {
       const dlg = document.querySelector('[role="dialog"][data-state="open"]');
       return { open: !!dlg, hasInput: !!dlg && !!dlg.querySelector('input[placeholder*="输入标签"]'), text: dlg ? dlg.innerText.slice(0, 60) : "no-dialog" };
-    })()`);
+    })()`));
     check("tags: editor dialog opens", tagDialog.open === true && tagDialog.hasInput === true, JSON.stringify(tagDialog));
     await evalJs(`(() => {
       const dlg = document.querySelector('[role="dialog"][data-state="open"]');
@@ -325,22 +366,20 @@ async function main() {
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
     })()`);
-    await sleep(300);
-    const chipAdded = await evalJs(`(() => {
+    const chipAdded = (await waitEval(`(() => {
       const dlg = document.querySelector('[role="dialog"][data-state="open"]');
-      return dlg && dlg.innerText.includes("#UI测试");
-    })()`);
+      return !!(dlg && dlg.innerText.includes("#UI测试"));
+    })()`, 4000)) === true;
     check("tags: chip added in editor", chipAdded === true);
     await evalJs(`(() => {
       const dlg = document.querySelector('[role="dialog"][data-state="open"]');
       const save = [...dlg.querySelectorAll("button")].find((b) => b.textContent.trim() === "保存标签");
       if (save) save.click();
     })()`);
-    await sleep(800);
-    const chipInList = await evalJs(`(() => {
+    const chipInList = (await waitEval(`(() => {
       const body = document.querySelector('.chat-height');
-      return body.innerText.includes("#UI测试");
-    })()`);
+      return !!(body && body.innerText.includes("#UI测试"));
+    })()`)) === true;
     check("tags: tag chip shown in conversation list", chipInList === true);
     await shot("5-tags");
 
@@ -360,7 +399,16 @@ async function main() {
       }
     })()`);
     await sleep(500);
-    await ask("移动端框架和性能优化怎么做");
+    // The data path is a separate concern from the strip rendering: assert the
+    // recommendation API actually returns the fixture KB for this question.
+    const recApi = await evalJs(`(async () => {
+      const d = await fetch("/api/knowledge-base/recommend?q=" + encodeURIComponent("移动端框架和性能优化怎么做"), { cache: "no-store" }).then((r) => r.json());
+      const names = (d.recommendations ?? []).map((r) => r.name);
+      return { count: names.length, names };
+    })()`);
+    check("recommend: API returns related KBs", (recApi?.count ?? 0) > 0, JSON.stringify(recApi));
+    const recAsked = await askConfirmed("移动端框架和性能优化怎么做");
+    check("recommend: question submitted (composer not blocked)", recAsked === true);
     const recShown = await evalJs(`(() => {
       const start = Date.now();
       return new Promise((resolve) => {

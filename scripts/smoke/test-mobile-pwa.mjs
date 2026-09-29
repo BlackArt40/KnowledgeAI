@@ -17,7 +17,7 @@
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { resolveChrome, chromeMissingMessage } from "./lib/chrome.mjs";
+import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const MODE = process.env.MODE || "layout";
@@ -54,6 +54,7 @@ function main() {
 
     const chrome = spawn(CHROME, [
       "--headless=new",
+      ...LOCALE_ARGS,
       `--remote-debugging-port=${PORT}`,
       "--remote-allow-origins=*",
       `--user-data-dir=${PROFILE}`,
