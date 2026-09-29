@@ -23,6 +23,7 @@ import path from "node:path";
 import { DEMO_PASSWORD } from "./lib/demo";
 import { resolveSmokeBase } from "./lib/base-url";
 import { demoAuthSecret } from "./lib/demo-env";
+import { DETACHED, killTree, assertPortFree } from "./lib/proc";
 
 const MOCK_PORT = 5092;
 // The unconfigured reference instance: the caller's dev server (BASE_URL, default
@@ -155,9 +156,11 @@ async function spawnConfiguredServer(): Promise<{ server: ReturnType<typeof spaw
     GITHUB_CLIENT_SECRET: Buffer.from([116, 101, 115, 116, 45, 103, 105, 116, 104, 117, 98, 45, 115, 101, 99, 114, 101, 116]).toString(),
     GITHUB_ISSUER: `http://127.0.0.1:${MOCK_PORT}`,
   };
+  if (!(await assertPortFree(3100, console.error))) process.exit(1);
   const server = spawn("pnpm", ["start", "-p", "3100"], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
+    ...DETACHED,
   });
   // Capture the instance log for debugging auth errors.
   let log = "";
@@ -254,7 +257,7 @@ async function main() {
   const { server, url, ready } = await spawnConfiguredServer();
   check(":3100 实例就绪", await ready());
   if (!(await ready())) {
-    server.kill("SIGTERM"); mock.close(); console.log("\n❌ :3100 未就绪，中止"); process.exit(1);
+    killTree(server); mock.close(); console.log("\n❌ :3100 未就绪，中止"); process.exit(1);
   }
   const cfgProviders = await (await fetch(`${url}/api/auth/providers`)).json();
   check(":3100 /api/auth/providers 含 google+github", Object.keys(cfgProviders).sort().join(",") === "github,google", JSON.stringify(cfgProviders));
@@ -352,7 +355,7 @@ async function main() {
   const auditLogin = await (await ownerJar.req("GET", "/api/admin/audit?action=auth.oauth_login_success")).json();
   check("审计 auth.oauth_login_success ≥1", (auditLogin.audit ?? []).length >= 1, JSON.stringify(auditLogin.audit?.length));
 
-  server.kill("SIGTERM");
+  killTree(server);
   mock.close();
   console.log(results.join("\n"));
   console.log(`\n${failures === 0 ? "✅ OAuth acceptance: ALL PASSED" : `❌ ${failures} FAILED`}`);

@@ -14,6 +14,7 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { demoAuthSecret } from "./lib/demo-env";
+import { DETACHED, killTree, assertPortFree } from "./lib/proc";
 
 const NOTION_PORT = 5090;
 const CONFLUENCE_PORT = 5091;
@@ -110,7 +111,8 @@ async function spawnConfiguredServer() {
     CONFLUENCE_EMAIL: "dev@example.com",
     CONFLUENCE_TOKEN: "secret-confluence-token",
   };
-  const server = spawn("pnpm", ["start", "-p", "3100"], { env, stdio: "ignore" });
+  if (!(await assertPortFree(3100, console.error))) process.exit(1);
+  const server = spawn("pnpm", ["start", "-p", "3100"], { env, stdio: "ignore", ...DETACHED });
   const url = "http://localhost:3100";
   const ready = () =>
     new Promise<boolean>((resolveReady) => {
@@ -134,7 +136,7 @@ async function main() {
   const mockConf = await startMockConfluence();
   const { server, url, ready } = await spawnConfiguredServer();
   check(":3100 实例就绪", await ready());
-  if (!(await ready())) { server.kill("SIGTERM"); mockNotion.close(); mockConf.close(); process.exit(1); }
+  if (!(await ready())) { killTree(server); mockNotion.close(); mockConf.close(); process.exit(1); }
 
   const login = await fetch(`${url}/api/auth/login`, {
     method: "POST",
@@ -225,7 +227,7 @@ async function main() {
   });
   check("未配置实例 -> 400（无 NOTION_TOKEN）", unconf.status === 400, `${unconf.status} ${await unconf.text()}`);
 
-  server.kill("SIGTERM");
+  killTree(server);
   mockNotion.close();
   mockConf.close();
   console.log(results.join("\n"));
