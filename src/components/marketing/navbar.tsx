@@ -1,65 +1,49 @@
 "use client";
 
-import { useT } from "@/lib/i18n/provider";
-
 import * as React from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { useT } from "@/lib/i18n/provider";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 
 function navLinks(t: (k: string) => string) {
   return [
-  { label: t("page.navbar.s2"), href: "/#features" },
-  { label: t("page.navbar.s3"), href: "/#workflow" },
-  { label: t("page.navbar.s4"), href: "/#pricing" },
-  { label: t("page.navbar.s5"), href: "/#docs" },
-];
-};
+    { label: t("page.navbar.s2"), href: "/#features" },
+    { label: t("page.navbar.s3"), href: "/#workflow" },
+    { label: t("page.navbar.s4"), href: "/#pricing" },
+    { label: t("page.navbar.s5"), href: "/docs" },
+  ];
+}
 
 export function Navbar() {
   const t = useT();
-  const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
-    <header className="sticky top-0 z-50 w-full">
-      <div
-        className={cn(
-          "mx-auto flex h-16 max-w-6xl items-center justify-between px-4 transition-all duration-300 sm:px-6",
-          scrolled &&
-            "mt-2 max-w-5xl rounded-2xl border border-border/70 bg-background/80 px-4 shadow-lg shadow-black/[0.03] backdrop-blur-xl sm:px-4"
-        )}
-      >
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Logo />
 
         <nav className="hidden items-center gap-1 md:flex">
-          {navLinks(t).map((l) => (
+          {navLinks(t).map((link) => (
             <Link
-              key={l.href}
-              href={l.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              {l.label}
+              {link.label}
             </Link>
           ))}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className="rounded-full" asChild>
             <Link href="/login">{t("page.navbar.s0")}</Link>
           </Button>
-          <Button variant="gradient" size="sm" asChild>
+          <Button size="sm" className="rounded-full px-4" asChild>
             <Link href="/register">{t("page.navbar.s1")}</Link>
           </Button>
         </div>
@@ -69,8 +53,8 @@ export function Navbar() {
           <button
             type="button"
             aria-label={t("page.navbar.s6")}
-            onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card"
           >
             {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
@@ -78,26 +62,26 @@ export function Navbar() {
       </div>
 
       {open && (
-        <div className="mx-4 mt-2 rounded-2xl border border-border bg-card/95 p-3 shadow-xl backdrop-blur-xl md:hidden">
+        <div className="border-t border-border bg-background/95 p-4 backdrop-blur-xl md:hidden">
           <nav className="flex flex-col">
-            {navLinks(t).map((l) => (
+            {navLinks(t).map((link) => (
               <Link
-                key={l.href}
-                href={l.href}
+                key={link.href}
+                href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                {l.label}
+                {link.label}
               </Link>
             ))}
           </nav>
-          <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
             <Button variant="outline" asChild>
               <Link href="/login" onClick={() => setOpen(false)}>
                 {t("page.navbar.s0")}
               </Link>
             </Button>
-            <Button variant="gradient" asChild>
+            <Button asChild>
               <Link href="/register" onClick={() => setOpen(false)}>
                 {t("page.navbar.s1")}
               </Link>

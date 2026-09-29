@@ -869,7 +869,19 @@
       "s18": "According to the knowledge base, demand for AI engineers keeps growing in 2026 — RAG, agents, and MLOps skills are in especially short supply.",
       "s19": "Regenerate",
       "s20": "Ask grounded in your knowledge base…",
-      "s21": "Citations"
+      "s21": "Citations",
+      "s22": "Interactive live preview",
+      "s23": "Runtime trace",
+      "s24": "Parse, chunk and vectorize",
+      "s25": "Answer validated",
+      "s26": "Live system status",
+      "s27": "Checking",
+      "s28": "All systems operational",
+      "s29": "Some services degraded",
+      "s30": "Status unavailable",
+      "s31": "Drop documents into the knowledge flow",
+      "s32": "Indexed",
+      "s33": "Healthy"
     },
     "features": {
       "s0": "Done",
