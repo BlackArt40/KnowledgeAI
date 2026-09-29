@@ -8,6 +8,8 @@ import {
 } from "@/lib/security/share-password";
 
 type Store = { tasks: Map<string, AgentTask> };
+// SAFETY: the only writer of __KAI_AGENT_STORE__ is this module (a hot-reload
+// re-evaluation keeps the first instance), and it always stores { tasks: Map }.
 const g = globalThis as unknown as { __KAI_AGENT_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_AGENT_STORE__) g.__KAI_AGENT_STORE__ = { tasks: new Map() };
@@ -23,6 +25,19 @@ export function listTasks(userId?: string, workspaceId?: string): AgentTask[] {
 
 export function getTask(id: string): AgentTask | undefined {
   return store().tasks.get(id);
+}
+
+/** Can the user see a task? Its owner always can; otherwise membership of the
+ *  task's workspace is required. `userId` is optional on AgentTask, so the
+ *  workspace check is what keeps a userId-less task from leaking to every
+ *  logged-in user.
+ *  P4-3: single source of truth - the rule had drifted across the nested
+ *  routes under /api/agent/tasks/[id]/**, so do not re-inline it. */
+export function canAccessTask(
+  task: Pick<AgentTask, "userId" | "workspaceId">,
+  u: { id: string; workspaceId: string }
+): boolean {
+  return task.workspaceId === u.workspaceId || task.userId === u.id;
 }
 
 export function createTask(input: {
