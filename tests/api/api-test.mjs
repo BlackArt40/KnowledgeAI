@@ -34,6 +34,10 @@ async function main() {
   console.log("╚══════════════════════════════════════════╝\n");
 
   // ── 0. 登录（demo 账号） ──
+  const anonMeRes = await fetch(`${BASE}/api/auth/me`);
+  const anonMe = await anonMeRes.json().catch(() => ({}));
+  log("未登录用户拒绝", "GET", "/api/auth/me", anonMeRes.status, anonMeRes.status === 401 && anonMe.user === null, `${anonMe.user === null ? "user=null" : "unexpected body"}`);
+
   const loggedIn = await login();
   console.log(`${loggedIn ? "✅" : "❌"} 登录 owner@knowledgeai.dev`);
 

@@ -400,10 +400,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return true;
   }, []);
 
-  // Fetch current user once on mount. `/api/auth/me` returns 200 with
-  // `{ user: null }` when the session is missing or expired, so both that
-  // response and a 401 must redirect to /login. A network failure (P5-1
-  // offline mode) keeps the shell mounted so cached content stays visible.
+  // Fetch current user once on mount. Only a 401 redirects to /login, so the
+  // API must return 401 for a missing or expired session. A network failure
+  // (P5-1 offline mode) keeps the shell mounted so cached content stays visible.
   React.useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
       .then(async (r) => {
@@ -413,11 +412,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }
         if (!r.ok) return;
         const d = await r.json();
-        if (!d?.user) {
-          router.replace("/login");
-          return;
-        }
-        setUser(d.user);
+        if (d?.user) setUser(d.user);
       })
       .catch(() => {
         /* offline: keep shell, data sections show their empty/error states */

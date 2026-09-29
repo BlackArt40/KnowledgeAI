@@ -33,10 +33,12 @@ async function authId(req: Request): Promise<string | null> {
 // GET /api/auth/me - get current user from cookie or Authorization header
 async function handleGET(req: Request) {
   const id = await authId(req);
-  if (!id) return NextResponse.json({ user: null }, { status: 200 });
+  // Keep the response body stable for JSON-only clients while returning the
+  // semantically correct status for a missing or expired session.
+  if (!id) return NextResponse.json({ user: null }, { status: 401 });
 
   const user = getUserById(id);
-  if (!user) return NextResponse.json({ user: null }, { status: 200 });
+  if (!user) return NextResponse.json({ user: null }, { status: 401 });
 
   return NextResponse.json({ user: sanitize(user) });
 }
