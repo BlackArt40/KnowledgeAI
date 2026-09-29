@@ -4,10 +4,10 @@ description: KnowledgeAI 新成员第一天：开发环境搭建、代码导航�
 type: tutorial
 category: getting-started
 level: L1
-version: 1.0.0
+version: 1.0.1
 authors: [technical-writer]
 owner: 技术负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-29
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -87,10 +87,41 @@ pnpm dev              # 开发服务器 :3000
 | 现象 | 处理 |
 |------|------|
 | `pnpm dev` 启动报错 | 检查 Node 22+ 与 pnpm 版本（`pnpm -v` 应为 11.7.0） |
+| `pnpm` 报 `ERR_PNPM_PNPM_ENGINE_NO_NATIVE_BINARY` | PATH 里 `$PNPM_HOME/bin/pnpm` 先于 nvm 的 shim 命中，处理方式见「[pnpm 与 Node 版本对齐](#pnpm-与-node-版本对齐)」 |
+| `node -v` 不是 22.x | `nvm alias default 22` 后重开终端（nvm 只在 shell 初始化时选版本） |
 | 问答答非所问 | 确认文档已处理完成（`kb.ready`）；未配置真实 LLM 时是演示模式生成 |
 | 上传 EACCES | 见 [故障排查](../faq/faq.md#troubleshooting) 第 4 条 |
 | CI 覆盖率挂了 | 补 `src/lib/{rag,auth,billing,team}` 的单测 |
 | 不知道改哪里 | 先读 [项目结构](project-structure.md) + [总体架构](../architecture/overview.md)，再问模块 Owner |
+
+### pnpm 与 Node 版本对齐
+
+项目要求 **Node 22**（CI 的五个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
+
+```bash
+nvm install 22
+nvm alias default 22   # 只影响新开的 shell；已开的终端需 nvm use 22 或重开
+node -v                # 预期输出 v22.x
+pnpm -v                # 预期输出 11.7.0
+```
+
+若 `pnpm -v` 报下面的错误，说明 PATH 里先命中了 `pnpm setup` 写入 `$PNPM_HOME/bin` 的包装 shim，而它最终执行的 `@pnpm/exe` 在 `darwin-x64` 上没有二进制：
+
+```text
+Error: ERR_PNPM_PNPM_ENGINE_NO_NATIVE_BINARY
+  × verify the package manager identity
+  ╰─▶ Cannot run @pnpm/exe@11.7.0 on this host: it ships no native binary for darwin-x64.
+```
+
+两种处理方式：
+
+- **临时绕过**：直接用 corepack 调用，如 `corepack pnpm install`、`corepack pnpm lint`；
+- **根治**：让 corepack 在该目录重新生成 shim（符号链接指向当前 node 的 corepack，切换 node 大版本后需重跑一次）：
+
+```bash
+corepack enable --install-directory "$PNPM_HOME/bin" pnpm
+pnpm -v   # 预期输出 11.7.0
+```
 
 ## 今日产出清单
 
@@ -109,3 +140,4 @@ pnpm dev              # 开发服务器 :3000
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版 |
+| 1.0.1 | 2026-09-29 | 补充 pnpm shim 报错与 Node 22 版本对齐的排障步骤 |
