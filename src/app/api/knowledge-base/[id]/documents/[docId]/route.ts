@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string; docId: string }> };
 
 // P4-2: document-level permission checks on top of the KB checks (P3-4).
+// D4: the workspace boundary is passed for EVERY verb - a GET that omitted it
+// let a user from another tenant read the doc metadata AND content.
 async function loadDoc(req: Request, docId: string) {
   const u = await getRequestUser(req);
   if (!u) return { error: NextResponse.json({ error: "未登录" }, { status: 401 }) };
@@ -16,7 +18,7 @@ async function loadDoc(req: Request, docId: string) {
   if (!doc) return { error: NextResponse.json({ error: "文档不存在" }, { status: 404 }) };
   const kb = getKb(doc.kbId);
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
-  if (!canViewDoc(kb, doc, u.id))
+  if (!canViewDoc(kb, doc, u.id, u.workspaceId))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   return { u, doc, kb };
 }

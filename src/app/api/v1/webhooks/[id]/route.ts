@@ -42,10 +42,11 @@ async function handlePATCH(req: Request, ctx: { params: Promise<{ id: string }> 
   if (body.url !== undefined && !isValidWebhookUrl(body.url)) {
     return NextResponse.json({ error: "Webhook 地址必须是 http/https URL" }, { status: 400 });
   }
-  // P1-4: SSRF - a subscription URL must never point at internal targets.
+  // P1-4 / F6: SSRF - a subscription URL must never point at internal targets.
+  // No caller-side opt-out: the dev-only relaxation lives in resolveSafeUrl.
   if (body.url !== undefined) {
     try {
-      await resolveSafeUrl(body.url, { allowPrivate: true });
+      await resolveSafeUrl(body.url);
     } catch {
       return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
     }

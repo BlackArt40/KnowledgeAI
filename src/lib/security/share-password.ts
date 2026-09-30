@@ -35,9 +35,16 @@ export function verifySharePassword(plaintext: string, stored: string): boolean 
     const salt = Buffer.from(parts[2], "base64");
     const expected = Buffer.from(parts[3], "base64");
     const hash = crypto.pbkdf2Sync(plaintext, salt, iters, KEYLEN, "sha256");
+    // timingSafeEqual throws on a length mismatch (malformed/corrupt stored
+    // value) - guard so a bad row returns "wrong password", not a 500.
+    if (expected.length !== hash.length) return false;
     return crypto.timingSafeEqual(hash, expected);
   }
   // Legacy unsalted SHA-256 hex - verify directly (kept so existing links
   // remain usable until their password is re-set).
-  return crypto.createHash("sha256").update(plaintext).digest("hex") === stored;
+  // F10: compare the digests in constant time (was `===` on the hex string).
+  const computed = crypto.createHash("sha256").update(plaintext).digest();
+  const expected = Buffer.from(stored, "hex");
+  if (expected.length !== computed.length) return false;
+  return crypto.timingSafeEqual(computed, expected);
 }

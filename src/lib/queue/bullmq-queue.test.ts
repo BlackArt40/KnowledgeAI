@@ -7,6 +7,7 @@ interface MockJob {
   data: { type: string; payload: Record<string, unknown> };
   returnvalue: unknown;
   updateProgress: (progress: number) => void;
+  getState: () => Promise<string>;
 }
 
 interface MockQueue {
@@ -17,7 +18,6 @@ interface MockQueue {
   add: (name: string, data: unknown, opts?: unknown) => Promise<MockJob>;
   getJobCounts: (states: string[]) => Promise<Record<string, number>>;
   getJob: (id: string) => Promise<MockJob | null>;
-  getJobState: (id: string) => Promise<string | undefined>;
   close: () => Promise<void>;
 }
 
@@ -41,11 +41,14 @@ const mocks = vi.hoisted(() => {
       jobs: new Map(),
       states: new Map(),
       add: vi.fn(async (jobName: string, data: unknown, opts?: unknown) => {
+        const jobId = `job_${nextJobId++}`;
         const job: MockJob = {
-          id: `job_${nextJobId++}`,
+          id: jobId,
           data: data as MockJob["data"],
           returnvalue: undefined,
           updateProgress: vi.fn(),
+          // F16: state lives on the job (BullMQ has no queue.getJobState).
+          getState: vi.fn(async () => queue.states.get(jobId) ?? "waiting"),
         };
         void jobName;
         void opts;
@@ -53,7 +56,6 @@ const mocks = vi.hoisted(() => {
         return job;
       }),
       getJob: vi.fn(async (id: string) => queue.jobs.get(id) ?? null),
-      getJobState: vi.fn(async (id: string) => queue.states.get(id) ?? "queued"),
       getJobCounts: vi.fn(async () => ({ waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 })),
       close: vi.fn(async () => undefined),
     };

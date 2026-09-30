@@ -177,10 +177,12 @@ const webhookDeliverHandler: JobHandler = async (payload) => {
     // P1-4: re-validate the target at delivery time - the subscription URL
     // was checked at creation, but DNS can be rebound / the row may predate
     // the check. Never POST to a private / loopback / link-local address.
+    // F6: no caller-side opt-out (see ssrf.ts) - the dev-only escape hatch
+    // for the localhost acceptance receiver is an environment policy.
     const { resolveSafeUrl } = await import("@/lib/security/ssrf");
     let target: URL;
     try {
-      target = await resolveSafeUrl(sub.url, { allowPrivate: true });
+      target = await resolveSafeUrl(sub.url);
     } catch {
       recordDelivery({
         subscriptionId, workspaceId: sub.workspaceId, event: eventPayload.event as never,

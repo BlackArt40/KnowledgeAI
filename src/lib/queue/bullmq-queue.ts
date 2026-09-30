@@ -18,6 +18,8 @@ interface BullMQJobType {
   data: { type: JobType; payload: Record<string, unknown> };
   updateProgress(p: number): void;
   returnvalue: unknown;
+  /** BullMQ exposes the state on the JOB, not on the queue (F16). */
+  getState(): Promise<string>;
 }
 interface BullMQQueueType {
   add(name: string, data: unknown, opts?: unknown): Promise<BullMQJobType>;
@@ -34,6 +36,16 @@ type QueueModule = {
   Queue: new (name: string, opts: unknown) => BullMQQueueType;
   Worker: new (name: string, processor: (job: BullMQJobType) => Promise<unknown>, opts: unknown) => BullMQWorkerType;
 };
+
+/** Map a BullMQ job state onto our coarser status union (F16).
+ *  BullMQ reports waiting / delayed / paused / prioritized /
+ *  waiting-children / unknown - all of which are "not started yet" for us. */
+function toQueueStatus(state: string): "queued" | "active" | "completed" | "failed" {
+  if (state === "active") return "active";
+  if (state === "completed") return "completed";
+  if (state === "failed") return "failed";
+  return "queued";
+}
 
 /** Fast jobs: doc-process / index-cleanup / webhook-deliver / email-send. */
 const FAST_QUEUE_NAME = "knowledgeai-jobs";
@@ -146,8 +158,12 @@ export class BullMQQueue implements JobQueue {
     for (const queue of this.queues.values()) {
       const job = await queue.getJob(jobId);
       if (!job) continue;
-      const state = await (queue as unknown as { getJobState?: (id: string) => Promise<string> }).getJobState?.(jobId);
-      const status = (state || "queued") as "queued" | "active" | "completed" | "failed";
+      // F16: `queue.getJobState(id)` does not exist in BullMQ, so the optional
+      // call always returned undefined and every job reported status "queued"
+      // - a finished job looked permanently pending in the status endpoint.
+      // The state lives on the job itself.
+      const state = await job.getState();
+      const status = toQueueStatus(state);
       return {
         status,
         result: job.returnvalue as JobResult | undefined,

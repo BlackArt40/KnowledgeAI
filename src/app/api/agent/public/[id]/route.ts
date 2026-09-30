@@ -22,8 +22,10 @@ export async function GET(req: Request, { params }: Params) {
     return NextResponse.json({ error: "分享链接已过期", code: "expired" }, { status: 410 });
   }
   if (cfg.passwordHash) {
-    const pwd =
-      req.headers.get("x-share-password") ?? new URL(req.url).searchParams.get("password") ?? "";
+    // F13: header only. The `?password=` query fallback leaked the share
+    // password into access logs, Referer headers and browser history; the
+    // share page (src/app/r/[id]/page.tsx) already sends the header.
+    const pwd = req.headers.get("x-share-password") ?? "";
     if (!verifyPassword(pwd, cfg.passwordHash)) {
       return NextResponse.json({ error: "需要访问密码", code: "needPassword" }, { status: 401 });
     }

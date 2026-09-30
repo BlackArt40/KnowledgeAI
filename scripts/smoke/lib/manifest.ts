@@ -77,7 +77,7 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   http("test-sdk", { prereq: ["go", "python"], note: "runs the JS/Python/Go SDKs against the live server" }),
   http("test-theme"),
   http("test-webhooks", {
-    note: "registers a receiver on 127.0.0.1 - needs SSRF_ALLOW_PRIVATE_HOSTS=true on the server (dev/test only)",
+    note: "registers a receiver on 127.0.0.1 - needs SSRF_ALLOW_PRIVATE_HOSTS=true on the server and NODE_ENV=development (dev/test only; any other NODE_ENV stays strict)",
   }),
   http("test-workspaces"),
 

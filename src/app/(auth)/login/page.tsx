@@ -36,6 +36,23 @@ export default function LoginPage() {
   // Buttons render only for configured providers; unconfigured ones stay
   // hidden instead of dead-ending at the provider.
   const [oauthProviders, setOauthProviders] = React.useState<string[]>([]);
+  // E4 (2026-09-30): the login shell is precached by the service worker, so
+  // this page can render with no server behind it. Previously that produced a
+  // form that could be filled but never submitted ("能填不能登"). Track
+  // connectivity and refuse to pretend sign-in is possible while offline.
+  const [offline, setOffline] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const sync = () => setOffline(navigator.onLine === false);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
 
   React.useEffect(() => {
     fetch("/api/auth/providers")
@@ -58,6 +75,12 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // E4: never attempt a login that cannot reach the server.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setOffline(true);
+      setError(t("page.login.s34"));
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
@@ -280,13 +303,19 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {offline && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
+            {t("page.login.s34")}
+          </p>
+        )}
+
         {error && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
 
-        <Button variant="gradient" size="lg" className="w-full" disabled={loading}>
+        <Button variant="gradient" size="lg" className="w-full" disabled={loading || offline}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
           {loading ? t("page.login.s19") : t("page.login.s20")}
         </Button>

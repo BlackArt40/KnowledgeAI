@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
+import { resolveSafeModelBaseUrl } from "@/lib/security/ssrf";
 export const dynamic = "force-dynamic";
 
 // POST /api/models/fetch-list  { apiKey, baseUrl }
@@ -16,7 +17,18 @@ export async function POST(req: Request) {
   const apiKey = body.apiKey ?? "";
   if (!baseUrl) return NextResponse.json({ error: "Base URL 不能为空" }, { status: 400 });
 
+  // F1: GET {baseUrl}/models is server-side and user-controlled - SSRF guard.
+  try {
+    await resolveSafeModelBaseUrl(baseUrl);
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "模型地址不被允许" },
+      { status: 400 }
+    );
+  }
+
   const start = Date.now();
+
   try {
     const res = await fetch(`${baseUrl}/models`, {
       method: "GET",

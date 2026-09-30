@@ -143,6 +143,10 @@ end
 `;
 
 let redisClient: unknown = null;
+/** Last Redis failure reason for the current `rateLimit()` call (null = none).
+ *  Set by the helpers, consumed by rateLimit() so degradation is recorded in
+ *  exactly one place - F9. */
+let lastRedisFailure: unknown = null;
 
 async function getRedisClient(): Promise<unknown | null> {
   if (redisClient) return redisClient;
@@ -161,8 +165,9 @@ async function getRedisClient(): Promise<unknown | null> {
     });
     log.info("[ratelimit] Redis client initialized");
     return redisClient;
-  } catch {
+  } catch (err) {
     log.warn("[ratelimit] ioredis load failed - using memory rate limiter");
+    lastRedisFailure = err;
     return null;
   }
 }
@@ -183,6 +188,7 @@ async function redisRateLimit(key: string, limit: number): Promise<RateLimitResu
       WINDOW_MS,
       now
     );
+    markRedisHealthy();
     return {
       allowed: result[0] === 1,
       limit: result[1],
@@ -190,10 +196,97 @@ async function redisRateLimit(key: string, limit: number): Promise<RateLimitResu
       resetAt: result[3],
       count: result[4],
     };
-  } catch {
-    // Redis error -> fall back to memory
+  } catch (err) {
+    // F9: Redis error -> fall back to the memory bucket, but LOUDLY. The old
+    // code returned null silently, so a Redis outage silently downgraded the
+    // limiter to per-instance memory buckets: with >1 replica each instance
+    // counts independently (limits effectively multiplied), and a restart
+    // resets every counter. Nothing surfaced that. The recording itself
+    // happens in rateLimit() so it fires once per request.
+    lastRedisFailure = err;
     return null;
   }
+}
+
+// ── F9: degradation visibility ───────────────────────────────────────────
+//
+// A fallback to the memory limiter is a real availability/security event, not
+// a normal path. It is surfaced three ways: a throttled warn log, a counter on
+// globalThis, and an additive field on /api/health/ready so monitoring can
+// alert on it (the readiness probe alone cannot see it - Redis can be reachable
+// while a single EVAL fails).
+
+interface RateLimitDegradation {
+  /** Number of Redis failures that forced a memory fallback since boot. */
+  fallbacks: number;
+  /** Timestamp of the most recent fallback (null when none since boot). */
+  lastFallbackAt: number | null;
+  /** Last error message (truncated) - helps tell "Redis down" from "EVAL bug". */
+  lastError: string | null;
+  /** Throttle: last time we logged/alarmed (avoid one line per request). */
+  lastLoggedAt: number;
+}
+
+const DEGRADE_LOG_INTERVAL_MS = 60_000;
+
+const gd = globalThis as unknown as { __KAI_RATELIMIT_DEGRADE__?: RateLimitDegradation };
+
+function degradation(): RateLimitDegradation {
+  if (!gd.__KAI_RATELIMIT_DEGRADE__) {
+    gd.__KAI_RATELIMIT_DEGRADE__ = {
+      fallbacks: 0,
+      lastFallbackAt: null,
+      lastError: null,
+      lastLoggedAt: 0,
+    };
+  }
+  return gd.__KAI_RATELIMIT_DEGRADE__;
+}
+
+function markRedisDegraded(err: unknown): void {
+  const d = degradation();
+  const now = Date.now();
+  d.fallbacks += 1;
+  d.lastFallbackAt = now;
+  d.lastError = err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300);
+  // Throttled WARN (not info): a degraded distributed limiter is an ops event.
+  if (now - d.lastLoggedAt >= DEGRADE_LOG_INTERVAL_MS) {
+    d.lastLoggedAt = now;
+    log.warn(
+      {
+        err: d.lastError,
+        fallbacks: d.fallbacks,
+        degradedForMs: DEGRADE_LOG_INTERVAL_MS,
+      },
+      "[ratelimit] Redis 不可用 - 已回落单实例内存限流（多实例下限额会被放大）",
+    );
+  }
+}
+
+function markRedisHealthy(): void {
+  const d = degradation();
+  if (d.lastFallbackAt !== null) {
+    log.info({ fallbacks: d.fallbacks }, "[ratelimit] Redis 恢复，限流重新走分布式计数");
+    d.lastFallbackAt = null;
+    d.lastError = null;
+  }
+}
+
+/** Whether the limiter is currently degraded to single-instance memory
+ *  buckets, plus counters - exposed on /api/health/ready. */
+export function rateLimitDegradation(): {
+  degraded: boolean;
+  fallbacks: number;
+  lastFallbackAt: number | null;
+  lastError: string | null;
+} {
+  const d = degradation();
+  return {
+    degraded: d.lastFallbackAt !== null,
+    fallbacks: d.fallbacks,
+    lastFallbackAt: d.lastFallbackAt,
+    lastError: d.lastError,
+  };
 }
 
 // ── Stats for the admin rate-limit dashboard ─────────────────────────────
@@ -270,13 +363,25 @@ export function rateLimitStats(): { live: RateLimitStat[]; recent: RateLimitStat
 /**
  * Check rate limit for a key (IP / user ID / API key / KB id).
  * Uses Redis when available, falls back to memory.
+ *
+ * F9: when REDIS_URL is configured and Redis cannot answer, the fallback to
+ * per-instance memory buckets is recorded as a degradation (warn log +
+ * counters exposed on /api/health/ready) instead of happening silently.
  */
 export async function rateLimit(
   key: string,
   limit: number = getBaseLimit()
 ): Promise<RateLimitResult> {
   // Try Redis first
+  lastRedisFailure = null;
   const redisResult = await redisRateLimit(key, limit);
+  if (redisResult) {
+    markRedisHealthy();
+  } else if (process.env.REDIS_URL) {
+    // Configured but unusable (EVAL failure, client construction failure, or
+    // a client that never came up) - this process is on memory buckets now.
+    markRedisDegraded(lastRedisFailure ?? new Error("Redis 不可用（未返回结果）"));
+  }
   const result = redisResult ?? memoryRateLimit(key, limit);
   recordStat(key, limit, result);
   return result;

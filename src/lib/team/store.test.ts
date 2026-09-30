@@ -20,6 +20,11 @@ import {
 import { seed as seedUsers, findUserByEmail } from "@/lib/auth/store";
 
 const OWNER_ID = "usr_owner";
+/** Default tenant used by the seed data (`ws_default`). */
+const WS = "ws_default";
+/** A different tenant - any KB it owns must be unreachable from WS. */
+const WS_OTHER = "ws_other";
+const inWs = (kbWorkspaceId = WS) => ({ callerWorkspaceId: WS, kbWorkspaceId });
 
 beforeEach(() => {
   delete (globalThis as Record<string, unknown>).__KAI_TEAM_STORE__;
@@ -72,16 +77,16 @@ describe("KB access", () => {
 
   it("canViewKb: owner always, viewers denied on private KBs", () => {
     const viewer = findUserByEmail("viewer@knowledgeai.dev")!;
-    expect(canViewKb("kb-fin", "财务报告", OWNER_ID, OWNER_ID)).toBe(true);
-    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID)).toBe(false);
-    expect(canViewKb("kb-ops", "运维手册", viewer.id, OWNER_ID)).toBe(true);
+    expect(canViewKb("kb-fin", "财务报告", OWNER_ID, OWNER_ID, inWs())).toBe(true);
+    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID, inWs())).toBe(false);
+    expect(canViewKb("kb-ops", "运维手册", viewer.id, OWNER_ID, inWs())).toBe(true);
   });
 
   it("canEditKb: owner + edit access; viewer cannot edit", () => {
     const viewer = findUserByEmail("viewer@knowledgeai.dev")!;
-    expect(canEditKb("kb-ops", "运维手册", OWNER_ID, OWNER_ID)).toBe(true);
-    expect(canEditKb("kb-ops", "运维手册", viewer.id, OWNER_ID)).toBe(true);
-    expect(canEditKb("kb-other", "产品文档", viewer.id, OWNER_ID)).toBe(false);
+    expect(canEditKb("kb-ops", "运维手册", OWNER_ID, OWNER_ID, inWs())).toBe(true);
+    expect(canEditKb("kb-ops", "运维手册", viewer.id, OWNER_ID, inWs())).toBe(true);
+    expect(canEditKb("kb-other", "产品文档", viewer.id, OWNER_ID, inWs())).toBe(false);
   });
 
   it("per-KB member roles override KB access (P4-2)", () => {
@@ -89,11 +94,48 @@ describe("KB access", () => {
     // grant viewer edit on a private KB -> can view AND edit
     setKbMemberRole("kb-fin", viewer.email, "editor");
     expect(getKbMemberRole("kb-fin", viewer.email)).toBe("editor");
-    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID)).toBe(true);
-    expect(canEditKb("kb-fin", "财务报告", viewer.id, OWNER_ID)).toBe(true);
+    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID, inWs())).toBe(true);
+    expect(canEditKb("kb-fin", "财务报告", viewer.id, OWNER_ID, inWs())).toBe(true);
     expect(listKbMemberRoles("kb-fin")).toHaveProperty(viewer.email);
     // revoke -> private again
     setKbMemberRole("kb-fin", viewer.email, null);
-    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID)).toBe(false);
+    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID, inWs())).toBe(false);
+  });
+});
+
+// D3 / F11 regression: the tenant boundary must hold even for the KB owner.
+// The old signature made the workspace ids optional and only enforced the
+// check when BOTH were supplied - any call site that forgot one (the
+// single-document GET did) silently disabled isolation.
+describe("tenant boundary (D3/F11)", () => {
+  it("denies cross-workspace view even to the KB owner", () => {
+    expect(canViewKb("kb-ops", "运维手册", OWNER_ID, OWNER_ID, {
+      callerWorkspaceId: WS_OTHER,
+      kbWorkspaceId: WS,
+    })).toBe(false);
+  });
+
+  it("denies cross-workspace edit even to the KB owner", () => {
+    expect(canEditKb("kb-ops", "运维手册", OWNER_ID, OWNER_ID, {
+      callerWorkspaceId: WS_OTHER,
+      kbWorkspaceId: WS,
+    })).toBe(false);
+  });
+
+  it("denies cross-workspace view even with an explicit per-KB editor role", () => {
+    const viewer = findUserByEmail("viewer@knowledgeai.dev")!;
+    setKbMemberRole("kb-fin", viewer.email, "editor");
+    expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID, {
+      callerWorkspaceId: WS_OTHER,
+      kbWorkspaceId: WS,
+    })).toBe(false);
+  });
+
+  it("allows the same workspace through", () => {
+    const viewer = findUserByEmail("viewer@knowledgeai.dev")!;
+    expect(canViewKb("kb-ops", "运维手册", viewer.id, OWNER_ID, {
+      callerWorkspaceId: "ws_default",
+      kbWorkspaceId: "ws_default",
+    })).toBe(true);
   });
 });

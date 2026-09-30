@@ -7,6 +7,7 @@ import { canEditKb } from "@/lib/team/store";
 import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { validateFile } from "@/lib/storage";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -95,6 +96,14 @@ async function handleUpload(req: Request, { params }: Params) {
   const errors: string[] = [];
 
   for (const file of files) {
+    // F8: this is the MAIN upload path, and it never validated the file type -
+    // the extension whitelist in lib/storage was effectively dead code here
+    // (only the chunked init route called it).
+    const validation = validateFile(file.name, file.size);
+    if (!validation.ok) {
+      errors.push(`${file.name}: ${validation.error}`);
+      continue;
+    }
     const maxBytes = getConfig().maxUploadMb * 1024 * 1024;
     if (file.size > maxBytes) {
       errors.push(`${file.name} 超过 ${getConfig().maxUploadMb}MB 限制`);

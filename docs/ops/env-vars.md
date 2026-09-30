@@ -44,6 +44,7 @@ related: [deployment-guide.md, monitoring.md]
 | `AUDIT_RETENTION_DAYS` | 否 | `90` | 审计日志保留天数 |
 | `AUDIT_MAX_ENTRIES` | 否 | `2000` | 内存审计链上限 |
 | `SSRF_ALLOW_PRIVATE_HOSTS` | 否 | `false` | 临时放行出站请求指向内网/回环地址（仅供本地验收 smoke，`NODE_ENV=production` 时强制忽略） |
+| `LLM_ALLOW_PRIVATE_BASE_URL` | 否 | `false` | 放行用户自定义模型 `baseUrl` 指向内网/回环（仅自托管 Ollama / vLLM 场景；**生产环境同样生效**，云元数据 `169.254.0.0/16` 始终拒绝） |
 
 ## 邮件（P8 密码重置 / 邮箱验证）
 

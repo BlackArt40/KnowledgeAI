@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getSession, deleteSession } from "@/lib/upload/store";
-import { isStorageEnabled } from "@/lib/storage";
+import { isStorageEnabled, validateFile } from "@/lib/storage";
 import { completeMultipartUpload, downloadFromS3 } from "@/lib/storage/s3";
 import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
 import { canEditKb } from "@/lib/team/store";
@@ -39,6 +39,17 @@ export async function POST(_req: Request, { params }: Params) {
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
   if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
+  }
+
+  // F8: re-validate the type at assembly time. The init route already checked
+  // it, but this is the point where bytes become an indexed document - a
+  // session created before the whitelist existed (or a tampered session) must
+  // not slip through. size=0 skips the size check on purpose: the chunked tier
+  // has its own (larger) MAX_CHUNKED_UPLOAD_MB ceiling enforced at init, and
+  // the direct-upload MAX_UPLOAD_MB limit does not apply here.
+  const typeCheck = validateFile(session.filename, 0);
+  if (!typeCheck.ok) {
+    return NextResponse.json({ error: typeCheck.error }, { status: 400 });
   }
 
   try {

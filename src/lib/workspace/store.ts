@@ -8,9 +8,9 @@
 // switches to another workspace.
 //
 // Members are stored by EMAIL (stable identifier shared by auth users and
-// team members). The Prisma Team model already provides the multi-team DB
-// skeleton; this store is the in-memory source of truth (demo mode), mapping
-// 1:1 to a Team row in production.
+// team members) and are persisted (Workspace.members, D2) so membership
+// survives a restart. The Prisma Team model is a separate, unrelated
+// single-tenant audit/role table - this store is NOT its in-memory mirror.
 // ---------------------------------------------------------------------------
 
 import { recordAudit } from "@/lib/security/audit";
@@ -74,20 +74,89 @@ export function getDefaultWorkspace(): Workspace {
   return store().get(DEFAULT_WORKSPACE_ID)!;
 }
 
-/** Resolve the effective workspace for a user: explicit id if they are a
- *  member, otherwise the default workspace. */
+/** Resolve the effective workspace for a user.
+ *
+ *  Order (F4 fix, 2026-09-30):
+ *    1. an explicitly requested workspace the user is a member of;
+ *    2. a workspace the user OWNS (their personal workspace) - a
+ *       self-registered user must land in their own tenant, not the shared
+ *       default one, or they can read every non-private KB in it;
+ *    3. any workspace they are a member of;
+ *    4. the default workspace (seed / demo users who belong to nothing else).
+ */
 export function resolveWorkspace(userId: string, email: string, requestedId?: string | null): Workspace {
+  const s = store();
   if (requestedId) {
-    const ws = store().get(requestedId);
+    const ws = s.get(requestedId);
     if (ws && ws.members.includes(email)) return ws;
   }
+  const owned = [...s.values()]
+    .filter((w) => w.ownerId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
+  if (owned) return owned;
+
+  const memberOf = [...s.values()]
+    .filter((w) => w.members.includes(email))
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
+  if (memberOf) return memberOf;
+
   return getDefaultWorkspace();
+}
+
+/** Workspaces the user OWNS (their personal tenant). Used by registration to
+ *  decide whether a personal workspace still has to be created. */
+export function listOwnedWorkspaces(userId: string): Workspace[] {
+  return [...store().values()].filter((w) => w.ownerId === userId);
+}
+
+/**
+ * F4 (2026-09-30): give a freshly created account its own tenant.
+ *
+ * Self-registered users used to be assigned no workspace, so `resolveWorkspace`
+ * fell back to `ws_default` - and because the default access for an unnamed KB
+ * is "view", a brand-new user could read every non-private KB of the default
+ * organization. Creating a personal workspace here makes the account's default
+ * tenant its own.
+ *
+ * Idempotent: returns the existing personal workspace when one is already
+ * owned by the user. Returns `null` only when the store is unavailable.
+ */
+export function ensurePersonalWorkspace(input: {
+  ownerId: string;
+  ownerEmail: string;
+  ownerName?: string;
+  /** Optional explicit name; defaults to "<name> 的工作区". */
+  name?: string;
+}): Workspace | null {
+  const existing = listOwnedWorkspaces(input.ownerId).sort((a, b) => b.createdAt - a.createdAt)[0];
+  if (existing) return existing;
+  const email = input.ownerEmail.trim().toLowerCase();
+  if (!email) return null;
+  const display = (input.ownerName || email.split("@")[0] || "用户").trim();
+  return createWorkspace({
+    name: input.name || `${display} 的工作区`,
+    ownerId: input.ownerId,
+    ownerEmail: email,
+    ownerName: display,
+  });
 }
 
 /** Is the user (by email) a member of this workspace? */
 export function workspaceOf(id: string, email: string): boolean {
   const ws = store().get(id);
   return !!ws && ws.members.includes(email);
+}
+
+/** Add a member (by email) to a workspace. Write-through persisted (D2) so
+ *  the membership list survives a restart. Idempotent. */
+export function addWorkspaceMember(id: string, email: string): Workspace | undefined {
+  const ws = store().get(id);
+  if (!ws) return undefined;
+  if (!ws.members.includes(email)) {
+    ws.members = [...ws.members, email];
+    void persistWorkspace(ws);
+  }
+  return ws;
 }
 
 /** Create a workspace (owner = creator). Audited as `workspace.create`. */
