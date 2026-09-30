@@ -187,12 +187,33 @@ async function main() {
     await sleep(200);
     await key("keyDown", 13); // Enter
     await key("keyUp", 13);
-    await sleep(1500);
-    const afterEnter = await evalJs(`(() => ({ url: location.pathname, params: location.search }))()`);
+    // App Router commits a navigation only after the target route's RSC payload
+    // is ready, and dev mode compiles /knowledge-base/[id] on first visit - a
+    // single fixed sleep races that compiler on cold/slow runners (seen in CI:
+    // URL still /dashboard after 1.5s while the recents check below proves go()
+    // ran and pushed). Poll for the commit instead, and report the latency so a
+    // slow runner stays visible even when the step passes.
+    const enterAt = Date.now();
+    let afterEnter = { url: "", params: "" };
+    for (let i = 0; i < 48; i++) { // ≤ 12s
+      await sleep(250);
+      afterEnter = await evalJs(`(() => ({ url: location.pathname, params: location.search }))()`);
+      if (afterEnter.url.startsWith("/knowledge-base/")) break;
+    }
+    const enterMs = Date.now() - enterAt;
+    const enterDiag = afterEnter.url.startsWith("/knowledge-base/") ? null : await evalJs(`(() => {
+      const d = document.querySelector('[role="dialog"][data-state="open"]');
+      return {
+        dialogStillOpen: !!d,
+        rows: d ? [...d.querySelectorAll("li button")].map((b) => b.innerText.slice(0, 30)) : [],
+        devOverlay: !!document.querySelector("nextjs-portal"),
+      };
+    })()`);
+    console.log(`    · Enter → ${afterEnter.url || "(unchanged)"} in ${enterMs}ms${enterDiag ? " " + JSON.stringify(enterDiag) : ""}`);
     check(
       "Enter: navigates to first result (KB deep-link)",
       afterEnter.url.startsWith("/knowledge-base/"),
-      JSON.stringify(afterEnter)
+      JSON.stringify({ ...afterEnter, enterMs, ...(enterDiag ?? {}) })
     );
     await shot("2-after-enter");
 

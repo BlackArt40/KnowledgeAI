@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTask, deleteTask } from "@/lib/agent/store";
+import { getTask, deleteTask, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +11,7 @@ async function loadOwned(req: Request, id: string) {
   const task = getTask(id);
   if (!task) return { error: NextResponse.json({ error: "任务不存在" }, { status: 404 }) };
   // P4-3: owner, or any member of the task's workspace.
-  const sameWs = task.workspaceId === u.workspaceId;
-  if (task.userId && task.userId !== u.id && !sameWs)
-    return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
-  if (!task.userId && !sameWs)
+  if (!canAccessTask(task, u))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   return { task };
 }

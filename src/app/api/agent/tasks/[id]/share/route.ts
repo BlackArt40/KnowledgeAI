@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { getTask, getShareConfig, setShareConfig, hashPassword } from "@/lib/agent/store";
+import {
+  getTask,
+  getShareConfig,
+  setShareConfig,
+  hashPassword,
+  canAccessTask,
+} from "@/lib/agent/store";
 import type { SharePatch } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 
@@ -12,7 +18,8 @@ async function loadOwned(req: Request, id: string) {
   if (!u) return { error: NextResponse.json({ error: "未登录" }, { status: 401 }) };
   const task = getTask(id);
   if (!task) return { error: NextResponse.json({ error: "任务不存在" }, { status: 404 }) };
-  if (task.userId && task.userId !== u.id)
+  // P4-3: owner, or any member of the task's workspace.
+  if (!canAccessTask(task, u))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   return { task };
 }
