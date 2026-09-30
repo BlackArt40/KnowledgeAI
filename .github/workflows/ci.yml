@@ -266,6 +266,26 @@ jobs:
           curl -s -o /dev/null http://localhost:5080
       - name: Smoke - infra group
         run: npx tsx scripts/smoke/run-all.ts --group infra
+      # E5 (engineering-assurance 2026-09-30): reclaim the servers this job and
+      # the infra scripts spawned. Without it a `next start` child (and the
+      # mock servers) can outlive the step as an orphan and keep holding :3000,
+      # which is exactly the "server was shut down but still answers" shape
+      # from the login-page incident. Runs even when the smoke group failed -
+      # a failed run is when leftovers are most likely. `|| true` keeps the
+      # job's real result intact; the assertion below is the actual check.
+      - name: Teardown - reclaim spawned servers
+        if: always()
+        run: |
+          pkill -TERM -f 'next-server|next start|mock-pinecone-server|pnpm start' 2>/dev/null || true
+          sleep 2
+          pkill -KILL -f 'next-server|next start|mock-pinecone-server|pnpm start' 2>/dev/null || true
+          sleep 1
+          if pgrep -f 'next-server|mock-pinecone-server' > /dev/null; then
+            echo "::error::teardown failed - spawned server processes are still alive:"
+            pgrep -af 'next-server|mock-pinecone-server' || true
+            exit 1
+          fi
+          echo "teardown ok - no spawned server processes remain"
       - name: Upload smoke reports on failure
         if: failure()
         uses: actions/upload-artifact@v4

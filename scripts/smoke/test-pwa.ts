@@ -54,11 +54,30 @@ async function main() {
   const sw = await get("/sw.js");
   check("sw.js: 200 + text/javascript", sw.status === 200 && (sw.type.includes("javascript") || sw.type.includes("text/plain")), `${sw.status} ${sw.type}`);
   const swText = sw.text;
-  check("sw.js: precaches app shell (chat/knowledge-base)", swText.includes('"/chat"') && swText.includes('"/knowledge-base"'));
+  // E4 (2026-09-30): the precache set is the UNAUTHENTICATED shell only.
+  // Pre-caching /dashboard, /chat, /agent, /knowledge-base used to hand a
+  // signed-out browser a signed-in page shell, so the assertion was inverted
+  // together with the fix.
+  check("sw.js: precaches the unauthenticated shell (login)", swText.includes('"/login"'));
+  for (const p of ['"/dashboard"', '"/chat"', '"/agent"', '"/knowledge-base"']) {
+    check(`sw.js: does NOT precache authenticated route ${p}`, !swText.includes(p));
+  }
   check("sw.js: navigations network-first with cache fallback", swText.includes("request.mode === \"navigate\"") && swText.includes("caches.match"));
+  // E4: a failed navigation must fail LOUDLY, not serve a stale page.
+  check("sw.js: explicit offline page on navigation failure", swText.includes("offlineResponse") && swText.includes("Service Unavailable"));
+  // E3: remote kill switch.
+  check("sw.js: remote kill switch endpoint", swText.includes("/sw-config.json"));
+  check("sw.js: kill switch clears caches + unregisters", swText.includes("caches.delete") && swText.includes("registration.unregister"));
   check("sw.js: /_next/static stale-while-revalidate", swText.includes("/_next/static/"));
   check("sw.js: /api never cached", swText.includes('"/api/"'));
   check("sw.js: versioned caches + cleanup on activate", swText.includes("activate") && swText.includes("caches.delete"));
+
+  // E3: the kill switch config must be servable (that is what retires the SW).
+  const swConfig = await get("/sw-config.json");
+  check("sw-config.json: 200", swConfig.status === 200, `${swConfig.status}`);
+  let swCfg: any = null;
+  try { swCfg = JSON.parse(swConfig.text); } catch {}
+  check("sw-config.json: valid JSON with boolean disabled", swCfg && typeof swCfg.disabled === "boolean");
 
   // ── 4. root HTML meta ────────────────────────────────────────────────
   console.log("\n── 4. root HTML meta ──");
