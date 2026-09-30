@@ -5,6 +5,7 @@ import { createToken } from "@/lib/auth/session";
 import { issueEmailVerification } from "@/lib/auth/email-verify";
 import { addSession, recordLogin } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
+import { ensurePersonalWorkspace } from "@/lib/workspace/store";
 import { isEmailEnabled } from "@/lib/email";
 import { authLink, demoLinksAllowed, enqueueEmailSend } from "@/lib/email/deliver";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,15 @@ export async function POST(req: Request) {
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }
+
+  // F4: a self-registered account gets its OWN tenant. Without this the
+  // account resolved to `ws_default` and could read the default
+  // organization's non-private knowledge bases.
+  ensurePersonalWorkspace({
+    ownerId: result.id,
+    ownerEmail: result.email,
+    ownerName: result.name,
+  });
 
   // P1-3: register the session + tie the JWT jti to it (consistent with the
   // login flow) so "注销设备" revokes this token too.

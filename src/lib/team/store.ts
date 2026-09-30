@@ -209,29 +209,32 @@ export function listKbMemberRoles(kbId: string): Record<string, KbMemberRole> {
   return { ...(store().kbMemberRoles.get(kbId) ?? {}) };
 }
 
-/** Access-check options (P1-1): when both are provided, the caller must be
- *  in the KB's workspace - a tenant-boundary check that closes the
- *  cross-workspace read/write hole in permission helpers. */
+/** Access-check options (P1-1 / D3): BOTH fields are REQUIRED.
+ *
+ *  Tenant-boundary contract: the caller must be in the KB's workspace.
+ *  These were optional in P1-1, gated on "both supplied" - so any call site
+ *  that forgot one silently disabled isolation (the root cause of the
+ *  cross-tenant read in `documents/[docId]/route.ts`). Making them required
+ *  moves the guarantee to the type system: `npx tsc --noEmit` (CI `quality`
+ *  job) now fails on a call site that omits the tenant boundary. */
 export interface KbAccessCheckOpts {
   /** The requesting user's resolved workspace (RequestUser.workspaceId). */
-  callerWorkspaceId?: string;
+  callerWorkspaceId: string;
   /** The KB's owning workspace (KnowledgeBase.workspaceId). */
-  kbWorkspaceId?: string;
+  kbWorkspaceId: string;
 }
 
 /** Can the user VIEW (read) this KB? Owner always; a per-KB role grants
  *  viewer/editor; otherwise falls back to the shared access (P4-2).
- *  P1-1: when callerWorkspaceId + kbWorkspaceId are supplied, a mismatch
- *  denies access outright (cross-tenant isolation). */
+ *  A workspace mismatch denies access outright (cross-tenant isolation). */
 export function canViewKb(
   kbId: string,
   kbName: string,
   userId: string,
   ownerId: string,
-  opts?: KbAccessCheckOpts
+  opts: KbAccessCheckOpts
 ): boolean {
-  if (opts?.callerWorkspaceId !== undefined && opts.kbWorkspaceId !== undefined &&
-      opts.callerWorkspaceId !== opts.kbWorkspaceId) {
+  if (opts.callerWorkspaceId !== opts.kbWorkspaceId) {
     return false;
   }
   if (ownerId === userId) return true;
@@ -243,16 +246,15 @@ export function canViewKb(
 
 /** Can the user EDIT (upload/modify) this KB? Owner always; per-KB editor
  *  role grants edit; otherwise only when the shared access is "edit".
- *  P1-1: workspace mismatch denies access (see canViewKb). */
+ *  A workspace mismatch denies access (see canViewKb). */
 export function canEditKb(
   kbId: string,
   kbName: string,
   userId: string,
   ownerId: string,
-  opts?: KbAccessCheckOpts
+  opts: KbAccessCheckOpts
 ): boolean {
-  if (opts?.callerWorkspaceId !== undefined && opts.kbWorkspaceId !== undefined &&
-      opts.callerWorkspaceId !== opts.kbWorkspaceId) {
+  if (opts.callerWorkspaceId !== opts.kbWorkspaceId) {
     return false;
   }
   if (ownerId === userId) return true;

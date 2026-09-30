@@ -83,6 +83,8 @@ export async function persistKb(kb: {
   name: string;
   desc: string;
   ownerId: string;
+  /** D1: the owning tenant - persisted so the boundary survives a restart. */
+  workspaceId?: string;
   settings: object;
   createdAt: number;
   updatedAt: number;
@@ -95,6 +97,10 @@ export async function persistKb(kb: {
       name: kb.name,
       description: kb.desc,
       ownerId: kb.ownerId,
+      // D1: only write the column when the caller knows the tenant - keeps
+      // pre-existing call sites (which omitted it) from resetting a row back
+      // to the default workspace.
+      ...(kb.workspaceId ? { workspaceId: kb.workspaceId } : {}),
       settings: kb.settings,
       updatedAt: new Date(kb.updatedAt),
     };
@@ -754,6 +760,8 @@ export async function persistWorkspace(ws: {
   plan: string;
   ownerId: string;
   brandColor: string;
+  /** D2: member emails - persisted so membership survives a restart. */
+  members?: string[];
   createdAt: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
@@ -765,6 +773,7 @@ export async function persistWorkspace(ws: {
       plan: ws.plan,
       ownerId: ws.ownerId,
       brandColor: ws.brandColor,
+      ...(ws.members ? { members: ws.members } : {}),
       updatedAt: new Date(),
     };
     await db.workspace.upsert({

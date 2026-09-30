@@ -478,7 +478,7 @@ export function canViewDoc(
   kb: KnowledgeBase,
   doc: KbDocument,
   userId: string,
-  callerWorkspaceId?: string
+  callerWorkspaceId: string
 ): boolean {
   if (kb.ownerId === userId) return true;
   if (doc.access === "private") return false;
@@ -495,7 +495,7 @@ export function canEditDoc(
   kb: KnowledgeBase,
   doc: KbDocument,
   userId: string,
-  callerWorkspaceId?: string
+  callerWorkspaceId: string
 ): boolean {
   if (kb.ownerId === userId) return true;
   if (doc.access === "private") return false;
