@@ -82,13 +82,29 @@ async function resolveChatConfig(): Promise<ResolvedConfig | null> {
       const { getActiveModelForUser } = await import("@/lib/models/store");
       const active = getActiveModelForUser(userId);
       if (active && active.enabled) {
-        return {
-          apiKey: active.apiKey,
-          baseUrl: active.baseUrl.replace(/\/$/, ""),
-          chatModel: active.chatModel,
-          embeddingModel: active.embeddingModel || "text-embedding-3-small",
-          label: `${active.chatModel} (${active.providerName})`,
-        };
+        // F1 defense-in-depth: the write paths (create/update/test/fetch-list)
+        // validate baseUrl with a full DNS check, but a row persisted before
+        // that guard existed is never re-validated. A DNS-free precheck here
+        // rejects the cheap high-signal cases (non-http(s), cloud metadata,
+        // private IP literals) on every turn without adding a lookup; an
+        // unsafe config is skipped so generation falls back to env / local
+        // instead of leaking an internal response.
+        const { modelBaseUrlPrecheck } = await import("@/lib/security/ssrf");
+        const precheck = modelBaseUrlPrecheck(active.baseUrl);
+        if (!precheck.ok) {
+          log.warn(
+            { userId, modelId: active.id, reason: precheck.reason },
+            "[llm] 跳过不安全的用户模型 baseUrl"
+          );
+        } else {
+          return {
+            apiKey: active.apiKey,
+            baseUrl: active.baseUrl.replace(/\/$/, ""),
+            chatModel: active.chatModel,
+            embeddingModel: active.embeddingModel || "text-embedding-3-small",
+            label: `${active.chatModel} (${active.providerName})`,
+          };
+        }
       }
     } catch {
       // store not available - fall through to env

@@ -59,12 +59,13 @@ async function handlePOST(req: Request) {
   if (!body.url || !isValidWebhookUrl(body.url)) {
     return NextResponse.json({ error: "Webhook 地址必须是 http/https URL" }, { status: 400 });
   }
-  // P1-4: reject private / loopback / link-local targets (SSRF via webhook
+  // P1-4 / F6: reject private / loopback / link-local targets (SSRF via webhook
   // delivery - the server would POST to an internal service on every event).
-  // `allowPrivate` is a dev/test-only opt-in (SSRF_ALLOW_PRIVATE_HOSTS) so the
-  // acceptance smokes can point a subscription at a 127.0.0.1 receiver.
+  // The dev-only relaxation for the 127.0.0.1 acceptance receiver lives inside
+  // `resolveSafeUrl` (SSRF_ALLOW_PRIVATE_HOSTS, never in production) - this
+  // business path deliberately has no "skip the check" argument.
   try {
-    await resolveSafeUrl(body.url, { allowPrivate: true });
+    await resolveSafeUrl(body.url);
   } catch {
     return NextResponse.json({ error: "Webhook 地址禁止指向内网/回环地址" }, { status: 400 });
   }

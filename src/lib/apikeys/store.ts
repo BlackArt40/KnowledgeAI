@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
 import { encryptToString, decryptFromString, isEncrypted } from "@/lib/crypto";
@@ -83,9 +84,20 @@ function storedSecretOf(k: ApiKey): string {
   try { return decryptFromString(k.secret); } catch { return ""; }
 }
 
+/** Constant-time string comparison (F10). Returns false on a length mismatch
+ *  (the only thing a shorter/longer value can leak is its own length). */
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a, "utf-8");
+  const bb = Buffer.from(b, "utf-8");
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
 /** Validate an API key by its secret. Returns the key if active, or null. */
 export function validateApiKey(secret: string): ApiKey | null {
-  const k = store().keys.find((k) => storedSecretOf(k) === secret && k.status === "active");
+  // F10: `storedSecretOf(k) === secret` short-circuited on the first differing
+  // character, leaking a prefix oracle for a long-lived credential.
+  const k = store().keys.find((k) => k.status === "active" && safeEqual(storedSecretOf(k), secret));
   return k ?? null;
 }
 
