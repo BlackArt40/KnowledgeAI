@@ -4,7 +4,7 @@ description: KnowledgeAI 系统架构总览：内存存储与写穿数据库、P
 type: explanation
 category: architecture
 level: L1
-version: 1.1.0
+version: 1.2.0
 authors: [technical-writer]
 owner: 技术负责人
 reviewed_at: 2026-10-08
@@ -90,6 +90,8 @@ flowchart LR
 
 > ⚠️ **修改约束**：新增持久化实体必须同时改动 4 处：`store.ts`（内存形态）→ `persist.ts`（写穿函数）→ `hydrate.ts`（加载函数）→ `prisma/schema.prisma`（+ 新迁移）。漏掉任何一处都会造成内存与 DB 失步。
 
+> **鉴权读路径例外（F5，2026-10-08）**：apiKey 校验与 JWT jti 撤销已改为「内存快路径 + DB/Redis 回源」的共享读路径——apiKey 未命中时回源 DB（节流），jti 黑名单经共享 Redis 跨实例生效。因此**多副本部署不再需要为这两项而保持单实例**（但需要 `REDIS_URL`）；其余业务读路径仍为单实例内存模型。详见 [ADR-0006](adr/adr-0006-read-path-storage-evolution.md)。
+
 ### 2. Provider 适配层：配置即切换
 
 每个外部依赖都有「真实实现 + 演示回退」双实现（`src/lib/*/provider.ts` + `src/lib/config.ts` 聚合状态）：
@@ -114,6 +116,8 @@ flowchart LR
 - **BullMQ + Redis**：多实例、死信队列（DLQ）、独立 worker 进程（Docker `worker` 服务）。
 
 任务类型：`doc-process`（解析→切片→索引）、`agent-run`（runTask + 事件发布）、`index-cleanup`、`webhook-deliver`。详见 [ADR-0002](adr/adr-0002-background-job-queue.md)。
+
+**队列背压（X5/X6）**：积压（waiting + delayed，按队列计）达到 `QUEUE_MAX_DEPTH`（默认 500）即拒绝新任务（`QueueBackpressureError`，调用方返回可重试提示；webhook 等尽力而为路径跳过并记录），就绪探针暴露 `queueBackpressured`。详见 [ADR-0007](adr/adr-0007-queue-backpressure.md)。
 
 ### 4. SSE 事件链路（流式体验）
 
@@ -143,8 +147,9 @@ flowchart LR
 
 在上述框架不变的前提下，2026 年 9–10 月完成了多轮加固（对应工程保障审计与上线体检，审计结论见仓库 `deliverables/` 索引）：
 
-- **多租户边界落地**：`KnowledgeBase.workspaceId` 与 `Workspace.members` 落库（迁移 `20260930120000_tenant_persistence`），重启/部署不再归并 `ws_default`；权限函数（`canViewKb/canEditKb`、`canViewDoc/canEditDoc`）的 workspace 参数已**必填**（漏传即编译失败），全仓 30+ 调用点显式传租户。
+- **多租户边界落地**：`KnowledgeBase.workspaceId` 与 `Workspace.members` 落库（迁移 `20260930120000_tenant_persistence`），重启/部署不再归并 `ws_default`；权限函数（`canViewKb/canEditKb`、`canViewDoc/canEditDoc`）的 workspace 参数已**必填**（漏传即编译失败），全仓 30+ 调用点显式传租户。公开 KB 语义（"同租户可读"）记录于 [ADR-0003](adr/adr-0003-multi-tenant-isolation.md)。
 - **安全加固**：模型自定义 `baseUrl` 统一接入 SSRF 校验（fail-closed；`LLM_ALLOW_PRIVATE_BASE_URL` 放行自托管端点，云元数据地址永久封禁）；CORS（F17）收紧——无白名单的生产实例不再反射 Origin（`CORS_ALLOWED_ORIGINS` 需显式配置，详见 env-vars）；会话/密钥比较恒定时间化；限流降级可观测（`getRateLimitHealth` 并入就绪探针）。
+- **扩容就绪（D 组）**：鉴权读路径共享化（apiKey 校验回源 DB + jti 黑名单共享 Redis，[ADR-0006](adr/adr-0006-read-path-storage-evolution.md)）；队列深度背压与告警位（[ADR-0007](adr/adr-0007-queue-backpressure.md)）；就绪探针新增 `revocationDegraded` / `queueBackpressured` 附加降级位；k8s 清单刷新扩容前置条件状态（uploads 卷需 RWX 或对象存储，且多副本必须配置 `REDIS_URL`）。
 - **前端 / 离线**：PWA 预缓存收窄为公共壳（`/`、`/login`、manifest、icons），导航失败返回 503 离线页，并新增远程 kill switch（`public/sw-config.json`）；账号删除/OAuth 失败回跳改用 `location.replace`（无历史条目、彻底清客户端状态）。
 - **CI 门禁**：七个 job（新增 `smoke` / `smoke-infra` 验收组）与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
 
@@ -179,6 +184,9 @@ flowchart LR
 - [Agent 编排架构](agent-orchestration.md)
 - [ADR-0001：内存存储 + 写穿 DB](adr/adr-0001-in-memory-store-write-through-db.md)
 - [ADR-0002：后台任务队列](adr/adr-0002-background-job-queue.md)
+- [ADR-0003：多租户隔离契约](adr/adr-0003-multi-tenant-isolation.md)
+- [ADR-0006：读路径存储演进](adr/adr-0006-read-path-storage-evolution.md)
+- [ADR-0007：队列背压](adr/adr-0007-queue-backpressure.md)
 - [术语表](../standards/glossary.md)
 
 ## 修订记录
@@ -187,3 +195,4 @@ flowchart LR
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版（依据 AGENTS.md 与源码核对） |
 | 1.1.0 | 2026-10-08 | 补记 2026-09～10 架构演进（多租户持久化、安全加固、PWA、CI 门禁） |
+| 1.2.0 | 2026-10-08 | 扩容就绪（D 组）：鉴权读路径共享化（ADR-0006）、队列背压（ADR-0007）、就绪探针附加降级位、k8s 前置条件刷新 |
