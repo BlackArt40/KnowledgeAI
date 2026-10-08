@@ -2,6 +2,7 @@
 
 **日期**：2026-09-30
 **分支**：`fix/engineering-assurance-p0-p1`
+**PR**：https://github.com/BlackArt40/KnowledgeAI/pull/27
 **基线**：`main` @ `3efff59`
 **输入**：`code-review` / `incident-login-page-after-shutdown` / `pre-deploy-go-no-go` / `tech-debt`（2026-09-30 四份报告）
 **证据等级**：【实测】= 有命令输出或 file:line；【推断】= 基于代码逻辑；【假设】= 无直接证据。
