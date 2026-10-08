@@ -7,6 +7,9 @@
 // provider authorize URL). The state / PKCE / CSRF cookies set by Auth.js on
 // that response are stored by the browser, so the follow-up navigation
 // carries them.
+//
+// Failure paths navigate with location.replace(): a full load back to /login
+// clears any partial auth state, and replace() leaves no history entry.
 
 export interface OAuthSignInOptions {
   /** provider id — narrowed to the configured providers at compile time
@@ -21,7 +24,7 @@ export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAut
   // Provider allowlist: the value is interpolated into the signin URL path,
   // so anything beyond the configured providers is rejected up front.
   if (provider !== "google" && provider !== "github") {
-    window.location.href = `/login?error=oauth_failed`;
+    window.location.replace("/login?error=oauth_failed");
     return;
   }
   // Open-redirect guard: the callback must be an in-app absolute path
@@ -32,7 +35,7 @@ export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAut
   try {
     csrf = await fetch("/api/auth/csrf").then((r) => r.json());
   } catch {
-    window.location.href = `/login?error=oauth_failed`;
+    window.location.replace("/login?error=oauth_failed");
     return;
   }
   // Literal signin paths per provider (the provider value never reaches the
@@ -56,5 +59,5 @@ export async function oauthSignIn({ provider, callbackUrl = "/dashboard" }: OAut
     }
   }
   // Provider unconfigured / CSRF failure -> land on login with a message.
-  window.location.href = `/login?error=${res.status === 401 ? "oauth_failed" : "Configuration"}`;
+  window.location.replace(`/login?error=${res.status === 401 ? "oauth_failed" : "Configuration"}`);
 }

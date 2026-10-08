@@ -66,6 +66,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # 依赖漏洞审计（2026-10-08 dependency audit）：critical 阻断，high 及以下
+      # 仅报告。存量修复记录与残留豁免见
+      # deliverables/software-company/dependency-remediation-2026-10-08.md。
+      - name: Dependency audit (critical fails the job)
+        run: pnpm audit --audit-level=critical
+
       - name: Build
         run: pnpm build
 

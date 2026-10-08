@@ -9,11 +9,28 @@ allowBuilds:
   tesseract.js: false
   '@scarf/scarf': false
 
-# P1-5: force vulnerable transitive deps to patched versions
-# (postcss <8.5.18 arbitrary-file-read, sharp <0.35.0 libvips, nanoid <3.3.18
-# ReDoS/loop, deepmerge-ts <8.0.0 stack exhaustion).
+# P1-5 + 2026-10-08 dependency audit: force vulnerable transitive deps to
+# patched versions (postcss <8.5.18 arbitrary-file-read, sharp <0.35.5
+# libheif/librsvg CVEs, nanoid <3.3.18 ReDoS/loop, deepmerge-ts <8.0.0 stack
+# exhaustion, @xmldom/xmldom <0.8.15 injection/ReDoS, source-map-js <1.2.2
+# event-loop DoS, browserslist <4.28.7 memory growth, baseline-browser-
+# mapping <2.11.0 DoS, undici <7.29.1 TLS-bypass/DoS; dev toolchain: vite
+# <6.4.3, js-yaml <4.3.2, brace-expansion <1.1.21 / <5.0.12, dompurify
+# <3.4.16, vue & @vue/server-renderer <3.5.42 - kept in lockstep: a lone
+# server-renderer override desyncs the @vue/* family and breaks vitepress SSR).
 overrides:
-  sharp: ^0.35.0
+  sharp: ^0.35.5
   deepmerge-ts: ^8.0.0
   'nanoid@<3.3.18': ^3.3.18
   postcss: ^8.5.18
+  '@xmldom/xmldom': ^0.8.15
+  source-map-js: ^1.2.2
+  browserslist: ^4.29.3
+  baseline-browser-mapping: ^2.11.27
+  undici: ^7.29.1
+  'vite@<6.4.3': 6.4.4
+  'js-yaml@>=4.0.0 <4.3.2': 4.3.2
+  'brace-expansion@<1.1.21': 1.1.21
+  'brace-expansion@>=4.0.0': 5.0.12
+  'dompurify@<3.4.16': 3.4.16
+  'vue@<3.5.42': 3.5.43
