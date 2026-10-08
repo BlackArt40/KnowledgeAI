@@ -78,11 +78,22 @@ export function getDefaultWorkspace(): Workspace {
  *
  *  Order (F4 fix, 2026-09-30):
  *    1. an explicitly requested workspace the user is a member of;
- *    2. a workspace the user OWNS (their personal workspace) - a
- *       self-registered user must land in their own tenant, not the shared
- *       default one, or they can read every non-private KB in it;
- *    3. any workspace they are a member of;
- *    4. the default workspace (seed / demo users who belong to nothing else).
+ *    2. the DEFAULT workspace, but only when the user is actually a member of
+ *       it - this is the long-standing "no cookie / stale cookie -> default"
+ *       behaviour and must stay intact (see below);
+ *    3. a workspace the user OWNS (their personal workspace);
+ *    4. any workspace they are a member of;
+ *    5. the default workspace as a last resort.
+ *
+ *  Why step 2 sits above step 3: the F4 problem is that a self-registered
+ *  account is assigned no workspace at all, yet fell back to `ws_default` -
+ *  where, because an unnamed KB defaults to "view", it could read every
+ *  non-private KB of the default organization. Creating a personal workspace
+ *  for new accounts fixes that, but it must not change resolution for anyone
+ *  already inside the default workspace: a demo user who creates an extra
+ *  workspace still resolves to `ws_default` when no cookie is present
+ *  (otherwise every "default workspace" assertion in the acceptance suite
+ *  starts looking at the wrong tenant).
  */
 export function resolveWorkspace(userId: string, email: string, requestedId?: string | null): Workspace {
   const s = store();
@@ -90,6 +101,10 @@ export function resolveWorkspace(userId: string, email: string, requestedId?: st
     const ws = s.get(requestedId);
     if (ws && ws.members.includes(email)) return ws;
   }
+
+  const fallback = getDefaultWorkspace();
+  if (fallback.members.includes(email)) return fallback;
+
   const owned = [...s.values()]
     .filter((w) => w.ownerId === userId)
     .sort((a, b) => b.createdAt - a.createdAt)[0];
@@ -100,7 +115,7 @@ export function resolveWorkspace(userId: string, email: string, requestedId?: st
     .sort((a, b) => b.createdAt - a.createdAt)[0];
   if (memberOf) return memberOf;
 
-  return getDefaultWorkspace();
+  return fallback;
 }
 
 /** Workspaces the user OWNS (their personal tenant). Used by registration to

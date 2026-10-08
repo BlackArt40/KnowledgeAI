@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   DEFAULT_WORKSPACE_ID,
+  createWorkspace,
   ensurePersonalWorkspace,
   getDefaultWorkspace,
   listOwnedWorkspaces,
@@ -49,6 +50,23 @@ describe("resolveWorkspace (F4)", () => {
   it("falls back to the default workspace for demo members", () => {
     expect(resolveWorkspace("usr_owner", DEMO_EMAIL).id).toBe(DEFAULT_WORKSPACE_ID);
     expect(resolveWorkspace("usr_viewer", "viewer@knowledgeai.dev").id).toBe(DEFAULT_WORKSPACE_ID);
+  });
+
+  it("keeps the default workspace for a member who ALSO owns another one", () => {
+    // Regression: an earlier version of the F4 fix preferred "any owned
+    // workspace", which silently moved every demo user (they create extra
+    // workspaces during the acceptance run) out of ws_default whenever no
+    // workspace cookie was present.
+    createWorkspace({
+      name: "额外工作区",
+      ownerId: "usr_owner",
+      ownerEmail: DEMO_EMAIL,
+      ownerName: "张明",
+    });
+    expect(resolveWorkspace("usr_owner", DEMO_EMAIL).id).toBe(DEFAULT_WORKSPACE_ID);
+    // ...but an explicitly requested, joined workspace still wins.
+    const extra = listOwnedWorkspaces("usr_owner").find((w) => w.id !== DEFAULT_WORKSPACE_ID)!;
+    expect(resolveWorkspace("usr_owner", DEMO_EMAIL, extra.id).id).toBe(extra.id);
   });
 
   it("prefers the user's OWN workspace over the shared default", () => {
