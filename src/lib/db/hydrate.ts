@@ -12,6 +12,7 @@
 import { getDb, isDbEnabled } from "./client";
 import { decryptFromString } from "@/lib/crypto";
 import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
+import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";
 import { log } from "@/lib/obs/log";
 
 let _hydrated = false;
@@ -856,33 +857,8 @@ async function hydrateApiKeys(): Promise<number> {
     const rows = await (db as unknown as {
       apiKey: { findMany: (o?: unknown) => Promise<unknown[]> };
     }).apiKey.findMany({ orderBy: { createdAt: "desc" } });
-    const store = g.__KAI_APIKEY_STORE__;
-    const seen = new Set(store.keys.map((k) => k.id));
-    for (const r of rows as unknown as {
-      id: string; userId: string; name: string; keyHash: string; prefix: string;
-      scopes: string[]; status: string; calls: number; lastUsed: Date | null; createdAt: Date;
-    }[]) {
-      if (seen.has(r.id)) continue;
-      store.keys.push({
-        id: r.id,
-        userId: r.userId,
-        name: r.name,
-        // P0-5: persistApiKey stores the AES-256-GCM ciphertext in the
-        // `keyHash` column (schema has no `secret` column). Loading the
-        // ciphertext as-is keeps the in-memory store consistent with
-        // createKey() (secret = ciphertext; validateApiKey decrypts on
-        // compare). The old code read a non-existent `r.secret` -> undefined
-        // -> every key became invalid after a DB-mode restart.
-        secret: r.keyHash,
-        prefix: r.prefix,
-        scopes: r.scopes,
-        status: r.status,
-        calls: r.calls,
-        lastUsed: r.lastUsed ? r.lastUsed.getTime() : null,
-        createdAt: r.createdAt.getTime(),
-      });
-    }
-    return store.keys.length;
+    for (const r of rows as unknown as ApiKeyRow[]) mergeApiKeyRow(r);
+    return g.__KAI_APIKEY_STORE__.keys.length;
   } catch (err) {
     log.error({ err }, "[db] hydrateApiKeys error");
     throw err;

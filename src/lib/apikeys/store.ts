@@ -1,8 +1,10 @@
 import crypto from "crypto";
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
+import { getDb, isDbEnabled } from "@/lib/db/client";
 import { encryptToString, decryptFromString, isEncrypted } from "@/lib/crypto";
 import { uid, genSecret } from "@/lib/ids";
+import { log } from "@/lib/obs/log";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };
@@ -93,12 +95,113 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(ba, bb);
 }
 
-/** Validate an API key by its secret. Returns the key if active, or null. */
+/** Validate an API key by its secret. Returns the key if active, or null.
+ *
+ *  NOTE (F5): this sync variant reads ONLY the in-process store - it is the
+ *  fast path and the best-effort lookup used by the proxy's rate-limit
+ *  tiering. The authoritative check for API auth is validateApiKeyShared(),
+ *  which adds a throttled DB fallback so keys created on other instances are
+ *  honored without a restart. */
 export function validateApiKey(secret: string): ApiKey | null {
   // F10: `storedSecretOf(k) === secret` short-circuited on the first differing
   // character, leaking a prefix oracle for a long-lived credential.
   const k = store().keys.find((k) => k.status === "active" && safeEqual(storedSecretOf(k), secret));
   return k ?? null;
+}
+
+// ── F5: shared read path (multi-instance API-key validation) ──────────────
+//
+// The in-memory store is hydrated from the DB at boot, but a key created on
+// instance A afterwards was invisible to instance B (401 for a valid key).
+// validateApiKeyShared() keeps the memory map as the fast path and, on a
+// miss, sweeps the DB write-through target to pick up out-of-instance keys.
+// The sweep is throttled + de-duplicated so garbage bearer tokens can't turn
+// the miss path into a DB-amplification vector: a newly created key becomes
+// visible on other instances within KEY_REFRESH_THROTTLE_MS.
+
+const KEY_REFRESH_THROTTLE_MS = 3000;
+let lastApiKeySweepAt = 0;
+let inflightApiKeySweep: Promise<void> | null = null;
+
+/** DB row shape of ApiKey (keyHash holds the AES-GCM ciphertext of the secret). */
+export interface ApiKeyRow {
+  id: string;
+  userId: string;
+  name: string;
+  keyHash: string;
+  prefix: string;
+  scopes: string[];
+  status: string;
+  calls: number;
+  lastUsed: Date | null;
+  createdAt: Date;
+}
+
+/** Merge a DB row into the in-memory store (skip when already present).
+ *  Shared by the boot hydration (db/hydrate.ts) and the sweep below so both
+ *  map rows identically (secret = keyHash ciphertext; decrypted on compare). */
+export function mergeApiKeyRow(r: ApiKeyRow): void {
+  const s = store();
+  if (s.keys.some((k) => k.id === r.id)) return;
+  s.keys.push({
+    id: r.id,
+    userId: r.userId,
+    name: r.name,
+    secret: r.keyHash,
+    prefix: r.prefix,
+    scopes: r.scopes,
+    status: r.status as KeyStatus,
+    calls: r.calls,
+    lastUsed: r.lastUsed ? r.lastUsed.getTime() : null,
+    createdAt: r.createdAt.getTime(),
+  });
+}
+
+async function sweepApiKeysFromDb(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const rows = await (db as unknown as {
+    apiKey: { findMany: (o?: unknown) => Promise<unknown[]> };
+  }).apiKey.findMany({ orderBy: { createdAt: "desc" } });
+  for (const r of rows as unknown as ApiKeyRow[]) mergeApiKeyRow(r);
+}
+
+/** Validate an API key, falling back to the DB when the memory miss could be
+ *  an out-of-instance key. See the comment block above for the throttle. */
+export async function validateApiKeyShared(secret: string): Promise<ApiKey | null> {
+  const fast = validateApiKey(secret);
+  if (fast) return fast;
+  if (!isDbEnabled()) return null;
+
+  try {
+    if (inflightApiKeySweep) {
+      // Another request is already sweeping - ride along instead of stacking.
+      await inflightApiKeySweep;
+    } else if (Date.now() - lastApiKeySweepAt >= KEY_REFRESH_THROTTLE_MS) {
+      lastApiKeySweepAt = Date.now();
+      inflightApiKeySweep = sweepApiKeysFromDb()
+        .catch((err) => {
+          // Keep the memory-only read path on DB trouble (fail closed for the
+          // unknown key: it stays invalid until the next successful sweep).
+          log.error({ err }, "[apikeys] DB sweep failed - key stays invalid this round");
+        })
+        .finally(() => {
+          inflightApiKeySweep = null;
+        });
+      await inflightApiKeySweep;
+    }
+  } catch {
+    /* sweep never rejects (caught above) */
+  }
+
+  // Re-check: the sweep may have pulled the key from the DB into memory.
+  return validateApiKey(secret);
+}
+
+/** Test-only: reset the sweep throttle between cases. */
+export function __resetApiKeySweepForTest(): void {
+  lastApiKeySweepAt = 0;
+  inflightApiKeySweep = null;
 }
 
 /** Record a real API call and increment the key's counter.
