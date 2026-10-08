@@ -1,16 +1,25 @@
 # ⚠️ 示例清单（EXAMPLE ONLY）—— 不可直接用于生产
 #
 # 本文件仅演示探针与卷的接线方式，**未满足生产运行的租户/存储前提**。直接
-# `kubectl apply` 到多节点集群会导致：多副本鉴权/限流状态不一致（内存
-# store 为读路径事实源）、ReadWriteOnce 卷 Multi-Attach 使后到 Pod
-# CrashLoop、以及租户数据归属依赖单实例内存等一连串问题（见
-# deliverables/engineering-assurance/pre-deploy-go-no-go-knowledgeai-2026-09-30.md
-# 的 X1/X2/X3 硬门）。
+# `kubectl apply` 到多节点集群会导致：ReadWriteOnce 卷 Multi-Attach 使后到
+# Pod CrashLoop、未配置 REDIS_URL 时撤销/限流/队列状态无法跨实例一致等一连
+# 串问题（见 deliverables/engineering-assurance/ 的 X1/X2/X3 硬门）。
 #
-# 扩容前置条件（必须全部满足后才可把 app replicas 调 > 1）：
-#   1. 鉴权/限流/撤销等读路径改走 DB 或共享 Redis（apiKey 校验、JWT jti 黑名单）；
-#   2. uploads 卷改 RWX 或对象存储（S3/MinIO），否则 RWO 无法跨节点/跨 Pod 共享；
-#   3. 队列加入深度/内存背压与告警（当前 1Gi limit 下无界内存队列有 OOMKilled 风险）。
+# 扩容前置条件（必须全部满足后才可把 app replicas 调 > 1；2026-10-08 更新）：
+#   1. ✅ 鉴权/撤销读路径已共享化（F5）：apiKey 校验在内存未命中时回源 DB；
+#      JWT jti 黑名单经共享 Redis 跨实例生效（src/lib/auth/jti-shared.ts）。
+#      **多副本必须配置 REDIS_URL**，否则撤销退回本实例内存（就绪探针以
+#      revocationDegraded 暴露该降级状态）。
+#   2. ⏳ uploads 卷仍为 RWO（单节点示例）。多节点/多副本必须二选一：
+#      - RWX：换用支持 ReadWriteMany 的存储类（NFS/CephFS 等）；
+#      - 对象存储：配置 S3_ENDPOINT / S3_BUCKET / S3_ACCESS_KEY / S3_SECRET_KEY，
+#        分片上传链路直接读写 S3/MinIO（不落本地盘）。
+#      注意：直传（非分片）上传及后台解析仍读写本地 .uploads —— 多节点下必须
+#      RWX，或把上传统一改走分片上传 + 对象存储。
+#   3. ✅ 队列背压已上线（X5/X6 的入队防护）：QUEUE_MAX_DEPTH（默认 500/队列）
+#      达上限即拒绝新任务，就绪探针暴露 queueBackpressured；存量积压的自动
+#      处置与主动告警仍为人工巡检（RB-03）。
+# 当前唯一剩余硬前置为 ② —— 完成前请保持 replicas: 1。
 #
 # P6-4: Kubernetes 示例清单（健康检查与就绪探针）
 #
@@ -37,7 +46,13 @@ metadata:
 spec:
   # X2: ReadWriteOnce = 单节点读写。app + worker 同节点时可共享；**跨节点
   # 多副本开箱即坏**（Multi-Attach -> 后到 Pod Pending/CrashLoop）。
-  # 生产多副本必须改 ReadWriteMany 或对象存储（S3/MinIO）。
+  #
+  # 多节点方案 A（RWX）：换用支持 ReadWriteMany 的存储类：
+  #   storageClassName: nfs-client      # 替换为集群实际的 RWX 存储类
+  #   accessModes:
+  #     - ReadWriteMany
+  # 多节点方案 B（对象存储）：保持本卷用于直传链路，或统一改走分片上传 +
+  #   S3/MinIO（配置 S3_* 环境变量后分片链路不落本地盘），详见文件头前置条件 ②。
   accessModes:
     - ReadWriteOnce
   resources:
@@ -51,9 +66,10 @@ metadata:
   labels:
     app: knowledgeai
 spec:
-  # X1: 必须保持 1。内存 globalThis store 是鉴权（apiKey 校验、JWT jti 撤销
-  # 黑名单）与限流计数的读路径事实源；多副本会让跨实例鉴权/撤销静默失效，
-  # 并与 RWO 卷冲突。扩容前请先满足文件头的三条前置条件。
+  # X1: 保持 1 —— 当前剩余硬前置是 uploads RWO 卷（多节点 Multi-Attach 崩溃），
+  # 且本示例未配置 REDIS_URL。鉴权/撤销读路径（F5，ADR-0006）与队列背压
+  # （X5/X6，ADR-0007）已在代码层改造完成；扩容到多副本前请先满足文件头
+  # 前置条件（②，并配置 REDIS_URL）。
   replicas: 1
   selector:
     matchLabels:

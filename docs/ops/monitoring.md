@@ -4,10 +4,10 @@ description: KnowledgeAI 可观测性手册：健康检查探针、就绪告警�
 type: how-to
 category: ops
 level: L2
-version: 1.1.0
+version: 1.2.0
 authors: [technical-writer]
 owner: devops-owner
-reviewed_at: 2026-09-28
+reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -27,6 +27,10 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 
 - 未配置的依赖（演示模式）计为 `skipped`，是合法运行态，不判 degraded；
 - 就绪响应含 `checks`（逐项状态）、`degraded`（故障列表）、`degradedSince`；
+- 响应另含三个**附加降级位**（均为增量字段，**不改变** 200/503 聚合状态，便于告警而不摘流量）：
+  - `rateLimitDegraded`：限流回落单实例内存桶（F9，Redis EVAL 失败）；
+  - `revocationDegraded`：JWT jti 撤销黑名单回落本实例内存（F5，此时跨实例撤销暂不生效）；
+  - `queueBackpressured`：某队列积压（waiting+delayed）达到 `QUEUE_MAX_DEPTH`，新任务入队被拒（X5/X6）；
 - 两个端点均在限流豁免（`SKIP_PATHS`）中，可被高频探测。
 
 **Docker / K8s 三探针映射**（详见[部署指南](deployment-guide.md)）：
@@ -62,7 +66,7 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 | 延迟 P50 / P95 / P99 | 请求延迟分位 |
 | RAG 检索耗时 | `recordRag(durationMs, failed)` |
 | LLM Token / 成本 / 模型分布 | Provider 用量聚合 |
-| 队列运行态 | `getQueueStats()`：内存或 Redis 后端的 waiting / active / delayed / completed / failed 与并发；Redis 不可用时返回 `available:false`，不阻塞监控接口 |
+| 队列运行态 | `getQueueStats()`：内存或 Redis 后端的 waiting / active / delayed / completed / failed 与并发；Redis 不可用时返回 `available:false`，不阻塞监控接口。**背压**：`queueBackpressureSnapshot()` 对照 `QUEUE_MAX_DEPTH`（默认 500/队列），达上限时就绪探针置 `queueBackpressured` |
 
 > 内存存储：重启即清零，适合单实例观测；多实例/长期留存建议将日志与指标导出到外部系统（Loki / Sentry / 自建 Prometheus 采集）。
 
@@ -89,9 +93,10 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 | 症状 | 第一步 | 详见 |
 |------|--------|------|
 | 探针 503 degraded | 看 `degraded` 列表 → 检查依赖连通 | [故障排查手册](../faq/faq.md#troubleshooting) |
+| 探针附加降级位置位（rateLimit/revocation/queueBackpressured） | 对应降级对象的恢复动作（Redis 连通 / worker 消费能力） | 本节「健康检查探针」 |
 | 请求 429 | 读 `Retry-After` / `dimension` → 检查限流档位 | [错误码表](../api/errors.md) |
 | 错误率上升 | 用 `X-Trace-Id` 串联日志定位链路 | 本节「链路追踪」 |
-| worker 积压 | 检查 worker 进程与 Redis 队列 | [部署指南](deployment-guide.md) |
+| worker 积压 / 任务被拒（"队列繁忙"） | 检查 worker 进程与 Redis 队列，必要时降并发/扩容 | [运维 Runbook](runbook.md) RB-03 |
 
 ## 相关文档
 
@@ -103,5 +108,6 @@ related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.2.0 | 2026-10-08 | 补充就绪探针附加降级位（rateLimitDegraded / revocationDegraded / queueBackpressured）与队列背压说明（F5/F9/X5-X6） |
 | 1.1.0 | 2026-09-28 | 增加 BullMQ / 内存队列运行态快照说明 |
 | 1.0.0 | 2026-08-20 | 初版（依据 src/lib/health、src/lib/obs 源码核对） |

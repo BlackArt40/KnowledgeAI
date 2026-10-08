@@ -97,7 +97,11 @@ flowchart LR
 
 ## 方式四：Kubernetes
 
-> ⚠️ **示例清单，不可直接用于生产**：`k8s/deployment.yaml` 仅演示探针与卷的接线方式。当前架构下 app 必须保持 `replicas: 1`（读路径内存态依赖单实例），且把 replicas 调到 >1 之前须满足清单头注的三条前置条件（鉴权/限流读路径改共享存储、uploads 卷改 RWX/对象存储、队列背压落地）。
+> ⚠️ **示例清单，不可直接用于生产**：`k8s/deployment.yaml` 仅演示探针与卷的接线方式。
+>
+> **扩容前置条件状态（2026-10-08）**：① 鉴权/撤销读路径已共享化（F5：apiKey 未命中回源 DB + jti 黑名单经共享 Redis 跨实例生效；**多副本必须配置 `REDIS_URL`**，详见 [ADR-0006](../architecture/adr/adr-0006-read-path-storage-evolution.md)）；② uploads 卷仍为 RWO，**多节点/多副本必须改 RWX 或对象存储**；③ 队列深度背压已上线（`QUEUE_MAX_DEPTH` + 就绪探针 `queueBackpressured`，详见 [ADR-0007](../architecture/adr/adr-0007-queue-backpressure.md)）。
+>
+> **② 完成之前，app 必须保持 `replicas: 1`。**
 
 示例清单 `k8s/deployment.yaml`（替换镜像占位符后 apply；仅限单副本试用/联调）：
 
@@ -109,7 +113,10 @@ kubectl apply -f k8s/deployment.yaml
 - **三探针语义**：`startupProbe`（启动容错）→ `livenessProbe`（`GET /api/health`，进程存活，恒 200）→ `readinessProbe`（`GET /api/health/ready`，依赖连通，503 摘流量）；
 - `securityContext.fsGroup: 1001`：让 uploads PVC 可被 nextjs（uid 1001）写入，避免 EACCES；
 - **worker 单独部署**（同一镜像，command 覆盖为 `node worker.js`），否则队列任务无人消费；
-- uploads 卷：单节点用 ReadWriteOnce PVC；多副本建议 RWX 或对象存储。
+- uploads 卷：单节点用 ReadWriteOnce PVC；**多节点/多副本必须二选一**：
+  1. 换支持 **ReadWriteMany** 的存储类（NFS/CephFS 等）——直传与后台解析都可用；
+  2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
+     注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
 ## 升级与回滚
 

@@ -162,7 +162,7 @@ npx prisma migrate deploy
 ### 判定
 
 ```bash
-curl -s http://127.0.0.1:3000/api/health/ready | jq '{status, degraded, rateLimitDegraded}'
+curl -s http://127.0.0.1:3000/api/health/ready | jq '{status, degraded, rateLimitDegraded, queueBackpressured}'
 curl -s http://127.0.0.1:3000/api/health | jq .          # liveness 应恒 200
 ```
 
@@ -172,6 +172,7 @@ curl -s http://127.0.0.1:3000/api/health | jq .          # liveness 应恒 200
   docker inspect --format '{{.State.Running}}' <worker-container>
   ```
 - `rateLimitDegraded: true` 说明限流已回落单实例内存桶（Redis 不可用）；
+- `queueBackpressured: true` 说明某队列积压已达 `QUEUE_MAX_DEPTH`（默认 500/队列），**新任务入队正在被拒**；
 - 队列深度单调上升 + worker 正常 → 消费能力不足或某类任务卡住。
 
 ### 处置
@@ -180,13 +181,19 @@ curl -s http://127.0.0.1:3000/api/health | jq .          # liveness 应恒 200
 2. Redis 不可用时优先恢复 Redis：**限流会静默回落到单实例内存桶**，多副本部署下
    各实例独立计数，实际限额被放大；
 3. 内存无界增长时临时提高 `limits.memory` 或降低 `QUEUE_*_CONCURRENCY`，并保留现场
-   用于定位（当前队列**无深度上限**，是已知债务）。
+   用于定位；
+4. **`queueBackpressured: true` 的处置**：队列已有深度背压（`QUEUE_MAX_DEPTH`，默认
+   500/队列，含 waiting + delayed）——积压达上限后新任务会被拒绝（调用方收到"队列
+   繁忙"类可重试提示），它只**阻止继续恶化、不消费存量**。定位方向仍与第 1–3 步一致：
+   恢复 worker 消费能力 / 恢复 Redis / 按配额调整并发与内存。
 
 ### 验收
 
-`/api/health/ready` 返回 200 且 `degraded` 为空、`rateLimitDegraded === false`；
-队列深度在数个窗口内回到基线且不再单调上升。
+`/api/health/ready` 返回 200 且 `degraded` 为空、`rateLimitDegraded === false`、
+`queueBackpressured === false`；队列深度在数个窗口内回到基线且不再单调上升。
 
 ### 已知局限
 
-队列**缺少深度/内存背压告警**（部署前检查报告 X5/X6），当前只能人工巡检。
+队列**深度背压与告警位已上线**（`QUEUE_MAX_DEPTH` + `queueBackpressured`，X5/X6 的
+入队防护部分关闭）；**存量积压仍未自动处置、未实现主动告警推送**——管理端
+`/admin/monitoring` 的队列快照 + 就绪探针字段为当前观测手段，仍须人工巡检。
