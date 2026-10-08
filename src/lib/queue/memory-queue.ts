@@ -6,6 +6,7 @@
 // No persistence - jobs are lost on process restart.
 // ---------------------------------------------------------------------------
 
+import { queueMaxDepth, QueueBackpressureError } from "./interface";
 import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
 import { log, redactText } from "@/lib/obs/log";
 
@@ -43,6 +44,11 @@ export class MemoryQueue implements JobQueue {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   async enqueue(type: JobType, payload: Record<string, unknown>): Promise<string> {
+    // X5/X6 backpressure: refuse new work once the backlog hits the cap so an
+    // unbounded queue can't grow the process into an OOM kill.
+    const maxDepth = queueMaxDepth();
+    const depth = this.pendingDepth();
+    if (depth >= maxDepth) throw new QueueBackpressureError(depth, maxDepth);
     const id = `job_${Date.now()}_${++this.jobCounter}`;
     const job: Job = {
       id,
@@ -69,6 +75,15 @@ export class MemoryQueue implements JobQueue {
     if (!this.running) {
       this.running = true;
     }
+  }
+
+  /** Backlog = jobs queued but not started (waiting + waiting-for-retry). */
+  private pendingDepth(): number {
+    let n = 0;
+    for (const job of this.jobs.values()) {
+      if (job.status === "queued") n++;
+    }
+    return n;
   }
 
   registerHandler(type: JobType, handler: JobHandler): void {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { getKb, addDocument, deleteDocument } from "@/lib/kb/store";
+import { getKb, addDocument, deleteDocument, markDocFailed } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
 import { canEditKb } from "@/lib/team/store";
 import { getConfig } from "@/lib/admin/store";
@@ -10,6 +10,7 @@ import { getRequestUser } from "@/lib/auth/guard";
 import { validateFile } from "@/lib/storage";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
 import { withApiTrace } from "@/lib/obs/trace";
+import { log } from "@/lib/obs/log";
 
 export const dynamic = "force-dynamic";
 
@@ -136,8 +137,22 @@ async function handleUpload(req: Request, { params }: Params) {
       await deleteDocument(doc.id).catch(() => {});
       continue;
     }
-    // Enqueue only after the file is on disk (no parse race).
-    void import("@/lib/queue").then(({ enqueue }) => enqueue("doc-process", { docId: doc.id }));
+    // Enqueue only after the file is on disk (no parse race). X5/X6: a
+    // backpressure rejection (or queue error) must not become an unhandled
+    // rejection - mark the doc failed with an actionable message instead.
+    void import("@/lib/queue")
+      .then(async ({ enqueue, QueueBackpressureError }) => {
+        try {
+          await enqueue("doc-process", { docId: doc.id });
+        } catch (err) {
+          log.warn({ err }, "[upload] doc-process enqueue failed");
+          markDocFailed(
+            doc.id,
+            err instanceof QueueBackpressureError ? "队列繁忙，未开始解析（请稍后重试）" : "排队失败"
+          );
+        }
+      })
+      .catch((err) => log.error({ err }, "[upload] queue module load failed"));
     created.push(doc);
   }
 

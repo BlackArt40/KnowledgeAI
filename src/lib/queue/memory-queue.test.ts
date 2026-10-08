@@ -1,11 +1,16 @@
 // Queue observability: the in-process backend must expose the same bounded
 // waiting/active/delayed/terminal snapshot shape as the Redis backend.
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryQueue } from "./memory-queue";
+import { QueueBackpressureError } from "./interface";
 
 async function tick(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("MemoryQueue stats", () => {
   it("reports active, waiting and concurrency while saturated", async () => {
@@ -67,5 +72,33 @@ describe("MemoryQueue stats", () => {
         counts: { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 1 },
       },
     ]);
+  });
+
+  it("rejects new jobs once the backlog hits QUEUE_MAX_DEPTH (X5/X6 backpressure)", async () => {
+    vi.stubEnv("QUEUE_MAX_DEPTH", "2");
+    const queue = new MemoryQueue();
+    const releases: Array<() => void> = [];
+    queue.registerHandler("doc-process", () =>
+      new Promise((resolve) => {
+        releases.push(() => resolve({ ok: true }));
+      })
+    );
+
+    // 3 slots occupied (concurrency 3), then fill the 2-deep backlog.
+    await queue.enqueue("doc-process", { docId: "a" });
+    await queue.enqueue("doc-process", { docId: "b" });
+    await queue.enqueue("doc-process", { docId: "c" });
+    await queue.enqueue("doc-process", { docId: "d" });
+    await queue.enqueue("doc-process", { docId: "e" });
+
+    await expect(queue.enqueue("doc-process", { docId: "f" })).rejects.toThrow(
+      QueueBackpressureError
+    );
+    await expect(queue.enqueue("doc-process", { docId: "g" })).rejects.toMatchObject({
+      code: "queue_full",
+    });
+
+    for (const release of releases) release();
+    await queue.stop();
   });
 });
