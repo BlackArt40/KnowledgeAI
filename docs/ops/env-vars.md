@@ -57,7 +57,7 @@ related: [deployment-guide.md, monitoring.md]
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `CORS_ALLOWED_ORIGINS` | 否 | 空（反射任意 Origin） | `/api/*` 的 Origin 白名单（逗号分隔完整 origin）。响应始终带 `Vary: Origin` 防共享缓存投毒；生产建议显式设置 |
+| `CORS_ALLOWED_ORIGINS` | 否 | 空（仅非生产环境反射） | `/api/*` 的 Origin 白名单（逗号分隔完整 origin）。命中则反射该 Origin；留空时仅非生产环境反射（dev/演示便利），生产留空则不发送 `Access-Control-Allow-Origin`（外部 widget 必须显式配置）。响应始终带 `Vary: Origin` 防共享缓存投毒 |
 
 ## OAuth 社交登录（Auth.js v5）
 
