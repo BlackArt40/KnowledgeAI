@@ -274,7 +274,9 @@ export default function SettingsPage() {
         setDeleting(false);
         return;
       }
-      window.location.href = "/login";
+      // replace(): drop all client state of the deleted account and leave no
+      // history entry to navigate back to it.
+      window.location.replace("/login");
     } catch {
       setProfileMsg({ ok: false, text: t("page.settings.s42") });
       setDeleting(false);
