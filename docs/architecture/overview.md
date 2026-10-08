@@ -4,10 +4,10 @@ description: KnowledgeAI 系统架构总览：内存存储与写穿数据库、P
 type: explanation
 category: architecture
 level: L1
-version: 1.0.0
+version: 1.1.0
 authors: [technical-writer]
 owner: 技术负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -139,6 +139,15 @@ flowchart LR
 - **健康检查**：存活探针 `/api/health` 与依赖解耦；就绪探针校验 DB / Redis / LLM 连通性，失败返回 503 并触发站内告警；
 - **错误上报**：Sentry（`SENTRY_DSN` 门控）。
 
+## 演进纪要（2026-09 ～ 10）
+
+在上述框架不变的前提下，2026 年 9–10 月完成了多轮加固（对应工程保障审计与上线体检，审计结论见仓库 `deliverables/` 索引）：
+
+- **多租户边界落地**：`KnowledgeBase.workspaceId` 与 `Workspace.members` 落库（迁移 `20260930120000_tenant_persistence`），重启/部署不再归并 `ws_default`；权限函数（`canViewKb/canEditKb`、`canViewDoc/canEditDoc`）的 workspace 参数已**必填**（漏传即编译失败），全仓 30+ 调用点显式传租户。
+- **安全加固**：模型自定义 `baseUrl` 统一接入 SSRF 校验（fail-closed；`LLM_ALLOW_PRIVATE_BASE_URL` 放行自托管端点，云元数据地址永久封禁）；CORS（F17）收紧——无白名单的生产实例不再反射 Origin（`CORS_ALLOWED_ORIGINS` 需显式配置，详见 env-vars）；会话/密钥比较恒定时间化；限流降级可观测（`getRateLimitHealth` 并入就绪探针）。
+- **前端 / 离线**：PWA 预缓存收窄为公共壳（`/`、`/login`、manifest、icons），导航失败返回 503 离线页，并新增远程 kill switch（`public/sw-config.json`）；账号删除/OAuth 失败回跳改用 `location.replace`（无历史条目、彻底清客户端状态）。
+- **CI 门禁**：七个 job（新增 `smoke` / `smoke-infra` 验收组）与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
+
 ## 模块地图
 
 | 模块（src/lib/） | 职责 | 文档 |
@@ -177,3 +186,4 @@ flowchart LR
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版（依据 AGENTS.md 与源码核对） |
+| 1.1.0 | 2026-10-08 | 补记 2026-09～10 架构演进（多租户持久化、安全加固、PWA、CI 门禁） |

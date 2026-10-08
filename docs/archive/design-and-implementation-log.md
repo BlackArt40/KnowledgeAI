@@ -1,22 +1,22 @@
 ---
-title: 设计与实现记录（归档）
-description: KnowledgeAI 各模块后端实现与 P4-P7 功能实现记录（原《设计说明.md》第二~十八部分，已归档）
+title: 设计与实现记录
+description: KnowledgeAI 各模块设计与实现决策的持续记录（原《设计说明.md》拆分而来，按 十五·N 章节追加）
 type: explanation
 category: architecture
 level: L1
 version: 1.0.0
 authors: [product-team]
 owner: 技术负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-10-08
 review_interval: 365
-status: archived
+status: published
 applies_to: ">=1.2.0"
 related: [../architecture/overview.md, ../architecture/design-system.md]
 ---
 
-# KnowledgeAI 设计与实现记录（已归档）
+# KnowledgeAI 设计与实现记录
 
-> **归档说明**：本文由原《设计说明.md》拆分归档（2026-08-20）。当前模块设计与实现以 [总体架构](../architecture/overview.md)、[RAG 引擎架构](../architecture/rag-engine.md)、[Agent 编排架构](../architecture/agent-orchestration.md) 及 [API 文档](../api/guide.md) 为准；本文仅作历史追溯，可能过时。
+> **文档定位**：本文由原《设计说明.md》拆分而来（2026-08-20），并作为设计决策的**持续记录处**按 十五·N 章节追加（见仓库 AGENTS.md「技术选型原则」——新增自建组件 / 框架替换须在此注明替代对象与理由）。模块架构速查以 [总体架构](../architecture/overview.md)、[RAG 引擎架构](../architecture/rag-engine.md)、[Agent 编排架构](../architecture/agent-orchestration.md) 及 [API 文档](../api/guide.md) 为准；本文侧重决策沿革与实现细节。文件保留于 `docs/archive/` 为历史路径，内容持续维护。
 
 ---
 ## 五、认证与用户系统

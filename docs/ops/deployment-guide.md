@@ -97,7 +97,9 @@ flowchart LR
 
 ## 方式四：Kubernetes
 
-示例清单 `k8s/deployment.yaml`（替换镜像占位符后 apply）：
+> ⚠️ **示例清单，不可直接用于生产**：`k8s/deployment.yaml` 仅演示探针与卷的接线方式。当前架构下 app 必须保持 `replicas: 1`（读路径内存态依赖单实例），且把 replicas 调到 >1 之前须满足清单头注的三条前置条件（鉴权/限流读路径改共享存储、uploads 卷改 RWX/对象存储、队列背压落地）。
+
+示例清单 `k8s/deployment.yaml`（替换镜像占位符后 apply；仅限单副本试用/联调）：
 
 ```bash
 kubectl apply -f k8s/deployment.yaml
