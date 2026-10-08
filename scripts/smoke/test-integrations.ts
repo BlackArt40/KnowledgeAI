@@ -11,7 +11,7 @@
 //      integration tier 429s independently (second `next start` instance,
 //      same pattern as test-health.ts)
 //   4. Chrome extension - manifest valid + referenced files exist
-// Run: npx tsx scripts/smoke/test-integrations.ts   (requires `pnpm dev`)
+// Run: npx tsx scripts/smoke/test-integrations.ts   (requires `pnpm build && pnpm start`; the F17 CORS deny assertions only hold on a production server)
 
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

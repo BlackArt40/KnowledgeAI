@@ -105,7 +105,7 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   // ── infra: brings its own server / external dependency ───────────────
   infra("test-chromadb", { prereq: ["chromadb"] }),
   infra("test-health", { note: "spawns a second production server to assert the 503 degraded path" }),
-  infra("test-integrations", { note: "spawns its own low-rate-limit instance on :3100" }),
+  infra("test-integrations", { note: "spawns its own low-rate-limit :3100 instance (explicit CORS allowlist); the F17 assertions on :3000 expect production mode" }),
   infra("test-oauth", { note: "mock OIDC server on :5092 + instance on :3100" }),
   infra("test-ocr-image", { prereq: ["ocr"] }),
   infra("test-ocr-scanned-pdf", { prereq: ["ocr"] }),
