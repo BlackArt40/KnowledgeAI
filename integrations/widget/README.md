@@ -25,7 +25,9 @@
 
 - **独立认证**：组件使用自己的 API Key（`Authorization: Bearer`），在服务端按
   `apikey:<keyId>` 维度独立限流，不占用任何登录用户额度。
-- **CORS**：服务端对 `/api/*` 已放行跨域（仅限 Header 鉴权，无 Cookie）。
+- **CORS**：跨域调用需要服务端把 widget 所在站点列入 `CORS_ALLOWED_ORIGINS`（逗号分隔完整 origin；仅 Header 鉴权、无 Cookie）：
+  - 开发/演示环境：留空时自动反射 Origin（仅非生产环境生效）；
+  - **生产环境：留空 = 不发送 `Access-Control-Allow-Origin`，浏览器会拦截 widget 请求**——上线前务必配置，如 `CORS_ALLOWED_ORIGINS=https://your-site.com`。
 - 支持暗色模式跟随系统；聊天记录不落库（纯前端展示）。
 - 演示页：`public/widget/demo.html`（把 widget 目录放到任意静态服务器即可预览）。
 

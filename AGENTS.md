@@ -61,7 +61,7 @@ pnpm docs:dev             # VitePress docs site (docs/); also docs:build / docs:
 
 ### CI gate (`.github/workflows/ci.yml` - seven jobs, all must pass)
 
-1. `quality` (postgres service): `npx prisma generate` → `npx tsc --noEmit` → `prisma migrate diff --exit-code` (fails if `schema.prisma` drifted from migrations) → `pnpm lint` → `pnpm build`
+1. `quality` (postgres service): `npx prisma generate` → `npx tsc --noEmit` → `prisma migrate diff --exit-code` (fails if `schema.prisma` drifted from migrations) → `pnpm lint` → `pnpm audit --audit-level=critical` (dependency audit - critical blocks, everything else is reported; remediation record in `deliverables/software-company/dependency-remediation-2026-10-08.md`) → `pnpm build`
 2. `unit`: `pnpm test:unit` - vitest with **coverage thresholds** (lines/functions/statements 70%, branches 60% on `src/lib/{rag,auth,billing,team}`) - below threshold = red
 3. `integration`: starts `pnpm dev` in demo mode (high rate-limit envs) → `tests/` functional + api + performance
 4. `e2e`: `playwright install --with-deps chromium` → `pnpm test:e2e`
@@ -69,7 +69,7 @@ pnpm docs:dev             # VitePress docs site (docs/); also docs:build / docs:
 6. `smoke`: `scripts/smoke/run-all.ts` acceptance suite - `lib` group (no server) → dev server on default limits → `limits` group (asserts the documented tiers: anon 20 < kb 60 < user 200 < key 500) → write `.env.local` (raised `RATE_LIMIT_*` + `SSRF_ALLOW_PRIVATE_HOSTS=true`, needs a restart) → `http` group → `ui` group (CDP + Chrome), both with `--elevate 5000`
 7. `smoke-infra`: `pnpm build` → dev server + mock Pinecone (:5080) → `infra` group; scripts spawn their own `next start` instances. Missing prereqs (chromadb/OCR packs/DATABASE_URL) are reported as SKIP, not failures
 
-So: run `pnpm lint` + `pnpm test:unit` locally before pushing, and never edit `prisma/schema.prisma` without running `npx prisma migrate dev --name <descriptive>` to generate a matching migration. Migrations: 16 under `prisma/migrations/` (init + P2~P8 features: report enhance, 2FA enforce, audit, conversation feedback, locale, brand color, webhooks, bots, knowledge graph (hand-written SQL), oauth links, agent task extended, drop dead tables, kb member roles, password reset, email verification) - drift-checked against schema in CI. PR merge gate = branch protection (GitHub settings side): `enforce_admins` **on**, the seven checks required (strict), **0 approvals required** (solo-maintainer repo). Direct pushes to `main` are **rejected** — the flow is: cut a branch → push → PR (template auto-fills) → seven checks green → merge (squash). Local gates before pushing stay `pnpm lint` + `pnpm test:unit`.
+So: run `pnpm lint` + `pnpm test:unit` locally before pushing, and never edit `prisma/schema.prisma` without running `npx prisma migrate dev --name <descriptive>` to generate a matching migration. Migrations: 17 under `prisma/migrations/` (init + P2~P8 features: report enhance, 2FA enforce, audit, conversation feedback, locale, brand color, webhooks, bots, knowledge graph (hand-written SQL), oauth links, agent task extended, drop dead tables, kb member roles, password reset, email verification, tenant persistence + workspace members) - drift-checked against schema in CI. PR merge gate = branch protection (GitHub settings side): `enforce_admins` **on**, the seven checks required (strict), **0 approvals required** (solo-maintainer repo). Direct pushes to `main` are **rejected** — the flow is: cut a branch → push → PR (template auto-fills) → seven checks green → merge (squash). Local gates before pushing stay `pnpm lint` + `pnpm test:unit`.
 
 ### Tests
 
@@ -138,7 +138,7 @@ When adding a new external integration, follow the same shape: env check -> real
 
 ## Prisma specifics
 
-- `@prisma/client` **is** a runtime dependency (despite the README saying `pnpm add` to enable). It's lazy-loaded only when `DATABASE_URL` is set. Listed in `next.config.ts` `serverExternalPackages`.
+- `@prisma/client` **is** a runtime dependency. It's lazy-loaded only when `DATABASE_URL` is set. Listed in `next.config.ts` `serverExternalPackages`.
 - `prisma/seed.ts` is `@ts-nocheck` - edits there won't break `tsc --noEmit`, but also won't get type checking.
 - pgvector: the `KbChunk` model exists in `schema.prisma` but the `embedding` column is added via **raw SQL** (Prisma can't model the `vector` type). Requires `CREATE EXTENSION IF NOT EXISTS vector;` on the DB. See `src/lib/rag` vector store implementations (`memory` | `pgvector` | `chromadb` | `pinecone`).
 - Seed demo data: `npx prisma db seed` (configured in `package.json` -> `prisma.seed`). Creates 4 demo users (password `password123`) + 5 KBs + 1 team.
@@ -150,7 +150,7 @@ When adding a new external integration, follow the same shape: env check -> real
 - App Router under `src/app/`: route groups `(app)` (AppShell-wrapped workspace), `(auth)` (login/register/verify), plus top-level `api/`, `privacy/`, `terms/`, `maintenance/`.
 - RBAC roles: `OWNER` / `ADMIN` / `EDITOR` / `VIEWER`. Guard via `src/lib/auth/guard.ts`. Self-registration defaults to `EDITOR`.
 - SSE routes: `/api/chat` emits `sources` / `token` / `done` (`sources` carries `url`/`sourceType` when 联网搜索 is on); `/api/agent/run` emits `init` / `step` / `done` / `error` / `end`. Tests assert these event names - don't rename them.
-- Not a monorepo: `pnpm-workspace.yaml` is only an `allowBuilds` allowlist for native builds (prisma engines, esbuild, sharp, etc.). Single package.
+- Not a monorepo: `pnpm-workspace.yaml` holds the `allowBuilds` allowlist for native builds (prisma engines, esbuild, sharp, etc.) plus the `overrides` pins that keep vulnerable transitive deps on patched versions (pnpm 11 no longer reads the `pnpm` field in package.json - overrides MUST live in pnpm-workspace.yaml). Single package.
 - Docker: `output: "standalone"` build copied into a minimal `node:22-alpine` runner. `docker compose up -d` brings up app + worker + Redis (port 6380) + PostgreSQL (pgvector, port 5432, shared `.uploads` volume between app and worker).
 - docs/ is a VitePress site (Divio structure: getting-started / architecture / api / ops / faq / standards). The historical ROADMAP and the design log (设计说明, chapters 十五·N still referenced throughout this file) live in `docs/archive/`. Editing docs follows `docs/standards/` (doc-writing-standards.md + doc-review-checklist.md).
 - Secrets hygiene: reference secrets only by env var NAME (`AUTH_SECRET`, `RESEND_API_KEY`, ...) - never read, echo, or paste real secret values from `.env.local` / the environment into docs, code, comments, logs, commit messages, or any external request or upload. `.env.example` carries names + demo-fallback docs, never values. Anything that leaves the machine (posts, uploads, links shared with third-party services) must not include secret values; if a task requires sharing content beyond app source, confirm with the user first.
