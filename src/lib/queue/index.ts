@@ -85,12 +85,40 @@ export function isQueueExternal(): boolean {
   return !!process.env.REDIS_URL;
 }
 
+/** Hard bound on the backend stats read. A dead Redis makes BullMQ's
+ *  getJobCounts() wait indefinitely (its ioredis runs with
+ *  maxRetriesPerRequest: null), and /api/health/ready must answer within
+ *  seconds - the unbounded read hung the readiness probe on the
+ *  broken-dependency smoke instance (dead REDIS_URL, test-health). */
+export const QUEUE_STATS_TIMEOUT_MS = 3000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`queue stats timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+
 /** Backend-neutral queue snapshot for the admin monitoring dashboard. */
 export async function getQueueStats(): Promise<QueueStatsSnapshot> {
   const mode = process.env.REDIS_URL ? "redis" : "memory";
   const capturedAt = Date.now();
   try {
-    return { mode, available: true, capturedAt, queues: await getQueue().getStats() };
+    return {
+      mode,
+      available: true,
+      capturedAt,
+      queues: await withTimeout(getQueue().getStats(), QUEUE_STATS_TIMEOUT_MS),
+    };
   } catch (err) {
     log.error(
       { err: redactText(err instanceof Error ? err.message : String(err)) },
