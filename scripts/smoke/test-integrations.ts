@@ -1,7 +1,9 @@
 // @ts-nocheck
 // P7-2 acceptance verification: integrations.
 //   1. Embeddable widget - kai-widget.js + demo.html served; file is
-//      self-contained (no import/require), CORS headers on the v1 API
+//      self-contained (no import/require); CORS on the v1 API (F17: denied on
+//      a production instance without an allowlist, reflected for a listed
+//      Origin on the :3100 instance that has one)
 //   2. Chat bots - create bindings per platform; callbacks answer in the
 //      platform format; Slack/Feishu url_verification challenges echo; bad
 //      token 401; deleted bot 404
@@ -23,6 +25,10 @@ import { DETACHED, killTree, assertPortFree } from "./lib/proc";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 // Local-only origin (validated port, no other URL component honored).
 const BASE = resolveSmokeBase();
+/** Origin used for the CORS assertions (F17). The :3100 instance is spawned
+ *  with exactly this value in CORS_ALLOWED_ORIGINS. */
+const CORS_ALLOWED_ORIGIN = "https://example-widget-site.com";
+const CORS_OTHER_ORIGIN = "https://not-on-the-allowlist.example.com";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -67,18 +73,37 @@ async function main() {
   const demo = await fetch(`${BASE}/widget/demo.html`);
   check("widget demo.html: 200", demo.status === 200, `status=${demo.status}`);
 
-  // CORS for the widget's cross-origin chat call
+  // CORS for the widget's cross-origin chat call.
+  // F17 (2026-09-30): with CORS_ALLOWED_ORIGINS unset, reflection is now a
+  // dev-only convenience. The smoke-infra job runs this against a PRODUCTION
+  // `next start` instance, so the correct expectation here is DENY: no
+  // Access-Control-Allow-Origin header at all (the browser then blocks the
+  // request). The allowlist-hit path is asserted further down against the
+  // :3100 instance, which is spawned with an explicit allowlist.
   const cors = await req("POST", "/api/v1/chat", {
     origin: "https://example-widget-site.com",
     token,
     body: { kbId, query: "测试 CORS" },
   });
-  check("v1 chat CORS: allow-origin header", cors.headers?.get?.("access-control-allow-origin") === "https://example-widget-site.com", String(cors.headers?.get?.("access-control-allow-origin")));
+  check(
+    "v1 chat CORS (prod, no allowlist): origin NOT reflected",
+    !cors.headers?.get?.("access-control-allow-origin"),
+    String(cors.headers?.get?.("access-control-allow-origin"))
+  );
+  check(
+    "v1 chat CORS: Vary: Origin still sent",
+    String(cors.headers?.get?.("vary") ?? "").includes("Origin"),
+    String(cors.headers?.get?.("vary"))
+  );
   const preflight = await fetch(`${BASE}/api/v1/chat`, {
     method: "OPTIONS",
     headers: { Origin: "https://example-widget-site.com", "Access-Control-Request-Method": "POST" },
   });
-  check("v1 chat CORS: preflight 204 + headers", preflight.status === 204 && preflight.headers.get("access-control-allow-methods")?.includes("POST"), `status=${preflight.status}`);
+  check(
+    "v1 chat CORS preflight: 204 without allow-methods (denied)",
+    preflight.status === 204 && !preflight.headers.get("access-control-allow-methods"),
+    `status=${preflight.status} allow-methods=${preflight.headers.get("access-control-allow-methods")}`
+  );
 
   // ── 2. Chat bots ─────────────────────────────────────────────────────
   console.log("\n── 2. 群机器人 ──");
@@ -151,7 +176,17 @@ async function main() {
   if (!(await assertPortFree(3100, console.error))) process.exit(1);
   const server = spawn("pnpm", ["start", "-p", "3100"], {
     cwd: ROOT,
-    env: { ...process.env, AUTH_SECRET: demoAuthSecret(), DATABASE_URL: "", REDIS_URL: "", RATE_LIMIT_INTEGRATION_PER_MIN: "3" },
+    env: {
+      ...process.env,
+      AUTH_SECRET: demoAuthSecret(),
+      DATABASE_URL: "",
+      REDIS_URL: "",
+      RATE_LIMIT_INTEGRATION_PER_MIN: "3",
+      // F17: the allowlist-hit CORS path can only be observed on a server that
+      // actually has an allowlist configured (the main :3000 instance is
+      // production without one, and must stay denied).
+      CORS_ALLOWED_ORIGINS: CORS_ALLOWED_ORIGIN,
+    },
     stdio: ["ignore", "ignore", "pipe"],
     ...DETACHED,
   });
@@ -165,6 +200,36 @@ async function main() {
       await sleep(1000);
     }
     check(":3100 production instance up", up);
+
+    // ── F17: the allowlist-hit CORS path (only observable with a configured
+    // allowlist). Same production mode as :3000, but CORS_ALLOWED_ORIGINS is
+    // set, so a listed Origin IS reflected and an unlisted one is not.
+    const corsListed = await fetch("http://localhost:3100/api/health", {
+      headers: { Origin: CORS_ALLOWED_ORIGIN },
+    });
+    check(
+      "F17 CORS: listed origin reflected",
+      corsListed.headers.get("access-control-allow-origin") === CORS_ALLOWED_ORIGIN,
+      String(corsListed.headers.get("access-control-allow-origin"))
+    );
+    const corsListedPreflight = await fetch("http://localhost:3100/api/v1/knowledge-bases", {
+      method: "OPTIONS",
+      headers: { Origin: CORS_ALLOWED_ORIGIN, "Access-Control-Request-Method": "GET" },
+    });
+    check(
+      "F17 CORS: preflight 204 + allow-methods for listed origin",
+      corsListedPreflight.status === 204 &&
+        String(corsListedPreflight.headers.get("access-control-allow-methods") ?? "").includes("GET"),
+      `status=${corsListedPreflight.status} allow-methods=${corsListedPreflight.headers.get("access-control-allow-methods")}`
+    );
+    const corsUnlisted = await fetch("http://localhost:3100/api/health", {
+      headers: { Origin: CORS_OTHER_ORIGIN },
+    });
+    check(
+      "F17 CORS: unlisted origin NOT reflected (no allowlist fallback)",
+      !corsUnlisted.headers.get("access-control-allow-origin"),
+      String(corsUnlisted.headers.get("access-control-allow-origin"))
+    );
 
     const login3100 = await fetch("http://localhost:3100/api/auth/login", {
       method: "POST",
