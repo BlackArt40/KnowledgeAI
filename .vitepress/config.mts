@@ -84,7 +84,8 @@ export default withMermaid(defineConfig({
           items: [
             { text: '部署指南', link: '/ops/deployment-guide' },
             { text: '环境变量全表', link: '/ops/env-vars' },
-            { text: '监控与告警', link: '/ops/monitoring' }
+            { text: '监控与告警', link: '/ops/monitoring' },
+            { text: '运维 Runbook', link: '/ops/runbook' }
           ]
         },
         {

@@ -1137,7 +1137,8 @@
       "s30": "Demo accounts (password for all: password123)",
       "s31": "Forgot password?",
       "s32": "Don't have an account?",
-      "s33": "Sign up free"
+      "s33": "Sign up free",
+      "s34": "You are offline - sign-in is unavailable. Restore your connection and retry."
     },
     "register": {
       "s0": "Create account",

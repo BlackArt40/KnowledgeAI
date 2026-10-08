@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listModelsSafe, createModel, getProvider, PROVIDERS } from "@/lib/models/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { resolveSafeModelBaseUrl } from "@/lib/security/ssrf";
 import type { ProviderId } from "@/lib/models/types";
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,26 @@ export async function POST(req: Request) {
   }
 
   const preset = body.provider ? getProvider(body.provider) : undefined;
+  const baseUrl = body.baseUrl ?? preset?.baseUrl ?? "";
+
+  // F1: the baseUrl is an outbound request target - reject private / loopback
+  // / link-local / cloud-metadata hosts before persisting it.
+  if (baseUrl.trim()) {
+    try {
+      await resolveSafeModelBaseUrl(baseUrl.trim());
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "模型地址不被允许" },
+        { status: 400 }
+      );
+    }
+  }
+
   const result = createModel(u.id, {
     name: body.name ?? "",
     provider: body.provider ?? "custom",
     apiKey: body.apiKey,
-    baseUrl: body.baseUrl ?? preset?.baseUrl ?? "",
+    baseUrl,
     chatModel: body.chatModel ?? "",
     embeddingModel: body.embeddingModel,
   });

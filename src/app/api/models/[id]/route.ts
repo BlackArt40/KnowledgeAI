@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { updateModel, deleteModel, sanitize } from "@/lib/models/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { resolveSafeModelBaseUrl } from "@/lib/security/ssrf";
 export const dynamic = "force-dynamic";
 
 // PATCH /api/models/[id] - update THIS USER's model config
@@ -12,6 +13,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
+  }
+
+  // F1: re-validate whenever the update carries a baseUrl - PATCH was the
+  // second way to plant an internal target after the create-path check.
+  const nextBaseUrl = typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
+  if (nextBaseUrl) {
+    try {
+      await resolveSafeModelBaseUrl(nextBaseUrl);
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "模型地址不被允许" },
+        { status: 400 }
+      );
+    }
   }
 
   const result = updateModel(u.id, id, body);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getModel, setTestResult, sanitize } from "@/lib/models/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { resolveSafeModelBaseUrl } from "@/lib/security/ssrf";
 export const dynamic = "force-dynamic";
 
 // POST /api/models/test  { id }  or  { provider, apiKey, baseUrl, chatModel }
@@ -26,7 +27,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "baseUrl 和 chatModel 必填" }, { status: 400 });
   }
 
+  // F1: this endpoint performs a real outbound POST to {baseUrl}/{...} and
+  // echoes the first 200 chars of a non-2xx body - an unvalidated baseUrl is
+  // both an SSRF probe and a potential credential-leak channel.
+  try {
+    await resolveSafeModelBaseUrl(baseUrl);
+  } catch (err) {
+    if (modelId) setTestResult(u.id, modelId, false);
+    return NextResponse.json(
+      { ok: false, error: err instanceof Error ? err.message : "模型地址不被允许" },
+      { status: 400 }
+    );
+  }
+
   const start = Date.now();
+
   try {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",

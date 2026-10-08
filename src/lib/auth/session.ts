@@ -185,6 +185,20 @@ export async function hashPassword(password: string): Promise<string> {
   return `pbkdf2$100000$${base64url.encode(salt)}$${base64url.encode(new Uint8Array(hash))}`;
 }
 
+/** Constant-time byte comparison (F10).
+ *
+ *  Password/PBKDF2 verification used `===` on the encoded strings, which
+ *  short-circuits on the first differing character and leaks how many leading
+ *  bytes of the derived hash matched - a timing side channel on an
+ *  unauthenticated endpoint. The length check is safe to short-circuit: the
+ *  derived key is a fixed 32 bytes, so a length mismatch is not secret. */
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
 /** Verify a password against a hash. */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
@@ -192,6 +206,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   // copy into an ArrayBuffer-backed view (BufferSource for subtle.deriveBits)
   const salt = new Uint8Array(base64url.decode(parts[2]));
   const iterations = parseInt(parts[1], 10);
+  if (!Number.isFinite(iterations) || iterations <= 0) return false;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -204,6 +219,8 @@ export async function verifyPassword(password: string, stored: string): Promise<
     key,
     256
   );
-  return base64url.encode(new Uint8Array(hash)) === parts[3];
+  // F10: compare the raw derived bytes in constant time (was `===` on the
+  // base64url strings).
+  return timingSafeEqualBytes(new Uint8Array(hash), new Uint8Array(base64url.decode(parts[3])));
 }
 

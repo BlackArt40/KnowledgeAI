@@ -1,6 +1,20 @@
+# ⚠️ 示例清单（EXAMPLE ONLY）—— 不可直接用于生产
+#
+# 本文件仅演示探针与卷的接线方式，**未满足生产运行的租户/存储前提**。直接
+# `kubectl apply` 到多节点集群会导致：多副本鉴权/限流状态不一致（内存
+# store 为读路径事实源）、ReadWriteOnce 卷 Multi-Attach 使后到 Pod
+# CrashLoop、以及租户数据归属依赖单实例内存等一连串问题（见
+# deliverables/engineering-assurance/pre-deploy-go-no-go-knowledgeai-2026-09-30.md
+# 的 X1/X2/X3 硬门）。
+#
+# 扩容前置条件（必须全部满足后才可把 app replicas 调 > 1）：
+#   1. 鉴权/限流/撤销等读路径改走 DB 或共享 Redis（apiKey 校验、JWT jti 黑名单）；
+#   2. uploads 卷改 RWX 或对象存储（S3/MinIO），否则 RWO 无法跨节点/跨 Pod 共享；
+#   3. 队列加入深度/内存背压与告警（当前 1Gi limit 下无界内存队列有 OOMKilled 风险）。
+#
 # P6-4: Kubernetes 示例清单（健康检查与就绪探针）
 #
-# 用法：替换镜像占位符后 apply。
+# 用法：替换镜像占位符后 apply（仅限单副本试用/联调）。
 #   kubectl apply -f k8s/deployment.yaml
 #
 # 探针语义（与 /api/health* 对应）：
@@ -21,6 +35,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: knowledgeai-uploads
 spec:
+  # X2: ReadWriteOnce = 单节点读写。app + worker 同节点时可共享；**跨节点
+  # 多副本开箱即坏**（Multi-Attach -> 后到 Pod Pending/CrashLoop）。
+  # 生产多副本必须改 ReadWriteMany 或对象存储（S3/MinIO）。
   accessModes:
     - ReadWriteOnce
   resources:
@@ -34,7 +51,10 @@ metadata:
   labels:
     app: knowledgeai
 spec:
-  replicas: 2
+  # X1: 必须保持 1。内存 globalThis store 是鉴权（apiKey 校验、JWT jti 撤销
+  # 黑名单）与限流计数的读路径事实源；多副本会让跨实例鉴权/撤销静默失效，
+  # 并与 RWO 卷冲突。扩容前请先满足文件头的三条前置条件。
+  replicas: 1
   selector:
     matchLabels:
       app: knowledgeai

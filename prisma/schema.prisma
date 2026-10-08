@@ -97,14 +97,17 @@ model TeamMember {
 // ── Workspaces (P4-3 tenants / P5-5 theme) ─────────────────
 // P5-5: persistence row for the in-memory workspace store (src/lib/workspace/
 // store.ts). `brandColor` drives the workspace-level theme (see
-// src/lib/theme/brand-colors.ts). Members stay memory-only for now - there is
-// no member relation on this table yet.
+// src/lib/theme/brand-colors.ts).
+// D2 (engineering-assurance 2026-09-30): `members` (member emails) is now
+// persisted too - it used to be memory-only, so every restart dropped the
+// membership list and re-hydrated workspaces came back memberless.
 model Workspace {
   id         String   @id
   name       String
   plan       String   @default("free")
   ownerId    String
   brandColor String   @default("indigo")
+  members    String[] @default([])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -131,6 +134,11 @@ model KnowledgeBase {
   initial     String       @default("K")
   ownerId     String
   teamId      String?
+  // D1 (engineering-assurance 2026-09-30): the owning tenant. This used to be
+  // a memory-only field, so `hydrateKb` had to hard-code "ws_default" - every
+  // restart / second replica silently merged other tenants' KBs into the
+  // default workspace. Now it round-trips through the DB.
+  workspaceId String       @default("ws_default")
   settings    Json         @default("{}")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

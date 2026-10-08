@@ -24,6 +24,8 @@ export interface UploadSession {
   totalChunks: number;
   /** Set of received chunk indices (0-based). */
   receivedChunks: Set<number>;
+  /** Total bytes accepted so far, cross-checked against `fileSize` (F7). */
+  receivedBytes: number;
   /** S3 multipart upload ID (null in local mode). */
   s3UploadId: string | null;
   /** S3 object key for the final file. */
@@ -80,6 +82,7 @@ export function createSession(input: {
     chunkSize: input.chunkSize,
     totalChunks: input.totalChunks,
     receivedChunks: new Set(),
+    receivedBytes: 0,
     s3UploadId: input.s3UploadId ?? null,
     s3Key: input.s3Key ?? null,
     partETags: new Map(),
@@ -97,16 +100,20 @@ export function getSession(uploadId: string): UploadSession | null {
   return store().get(uploadId) ?? null;
 }
 
-/** Mark a chunk as received and store its S3 ETag (if applicable). */
+/** Mark a chunk as received and store its S3 ETag (if applicable).
+ *  `bytes` accumulates the accepted payload size so the route can cross-check
+ *  the declared `fileSize` (F7: the client declares the total, the server must
+ *  not trust it blindly). */
 export function markChunkReceived(
   uploadId: string,
   chunkIndex: number,
-  etag?: string
+  opts: { etag?: string; bytes?: number } = {}
 ): UploadSession | null {
   const s = store().get(uploadId);
   if (!s) return null;
   s.receivedChunks.add(chunkIndex);
-  if (etag) s.partETags.set(chunkIndex + 1, etag); // S3 parts are 1-based
+  if (opts.bytes) s.receivedBytes = (s.receivedBytes ?? 0) + opts.bytes;
+  if (opts.etag) s.partETags.set(chunkIndex + 1, opts.etag); // S3 parts are 1-based
   s.updatedAt = Date.now();
   return s;
 }

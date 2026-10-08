@@ -39,9 +39,36 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: `无效的分片索引: ${index}` }, { status: 400 });
   }
 
+  // ── F7: enforce the DECLARED chunk size before buffering anything ────────
+  // Every size limit used to come from the client's own declaration
+  // (fileSize/totalChunks), while the individual chunk was unbounded: a client
+  // could declare `fileSize: 1` and then post an arbitrarily large chunk,
+  // blowing up request memory and the disk/S3 bucket. The server now validates
+  // the actual payload against the size it handed out at init.
+  if (chunk.size > session.chunkSize) {
+    return NextResponse.json(
+      {
+        error: `分片过大: ${chunk.size} 字节，上限 ${session.chunkSize} 字节`,
+        maxChunkSize: session.chunkSize,
+      },
+      { status: 413 }
+    );
+  }
+
   // Already received? Skip (idempotent for resume)
   if (session.receivedChunks.has(index)) {
     return NextResponse.json({ index, received: true, skipped: true });
+  }
+
+  // Cumulative cross-check: the chunks together may not exceed the declared
+  // total. The reference client slices exactly (last slice = remainder), so
+  // any overage means the declaration was forged.
+  const alreadyBytes = session.receivedBytes ?? 0;
+  if (alreadyBytes + chunk.size > session.fileSize) {
+    return NextResponse.json(
+      { error: `分片总量超出声明的文件大小: ${alreadyBytes + chunk.size} > ${session.fileSize}` },
+      { status: 413 }
+    );
   }
 
   const data = Buffer.from(await chunk.arrayBuffer());
@@ -50,7 +77,7 @@ export async function POST(req: Request, { params }: Params) {
     // S3 mode: upload part
     try {
       const etag = await uploadPart(session.s3Key, session.s3UploadId, index + 1, data);
-      markChunkReceived(uploadId, index, etag);
+      markChunkReceived(uploadId, index, { etag, bytes: data.byteLength });
     } catch (e) {
       return NextResponse.json(
         { error: `S3 分片上传失败: ${e instanceof Error ? e.message : e}` },
@@ -60,7 +87,7 @@ export async function POST(req: Request, { params }: Params) {
   } else if (session.tempDir) {
     // Local mode: save chunk file
     await fs.writeFile(path.join(session.tempDir, `${index}`), data);
-    markChunkReceived(uploadId, index);
+    markChunkReceived(uploadId, index, { bytes: data.byteLength });
   } else {
     return NextResponse.json({ error: "上传会话状态异常" }, { status: 500 });
   }

@@ -262,10 +262,12 @@ function hydrateKb(kb: PrismaKb): void {
     color: "from-primary/15",
     initial: kb.name.charAt(0) || "K",
     ownerId: kb.ownerId,
-    // P4-3: the KnowledgeBase table has no workspaceId column (memory-only
-    // field); DB rows belong to the default workspace, same as in-memory
-    // creation. Without it the tenant filter hides every hydrated KB.
-    workspaceId: (kb as unknown as { workspaceId?: string | null }).workspaceId ?? "ws_default",
+    // D1 (engineering-assurance 2026-09-30): read the real column. This used to
+    // hard-code "ws_default" because the field was memory-only, which silently
+    // merged every other tenant's KB into the default workspace on restart.
+    // Rows written before the column existed default to "ws_default" in SQL,
+    // so the fallback only covers a genuinely absent value.
+    workspaceId: (kb as unknown as { workspaceId?: string | null }).workspaceId || "ws_default",
     createdAt: kb.createdAt.getTime(),
     updatedAt: kb.updatedAt.getTime(),
     settings: {
@@ -630,13 +632,18 @@ async function hydrateWorkspace(): Promise<number> {
       const existing = store.get(w.id) as
         | { members?: string[]; createdAt?: number }
         | undefined;
+      const dbMembers = (w as unknown as { members?: string[] }).members ?? [];
       store.set(w.id, {
         id: w.id,
         name: w.name,
         plan: w.plan,
         ownerId: w.ownerId,
         brandColor: w.brandColor ?? "indigo",
-        members: existing?.members ?? [],
+        // D2: prefer the persisted member list. Legacy rows created before the
+        // column existed come back as [] - keep the in-memory seed for
+        // ws_default in that case so existing installs don't lose their demo
+        // membership (and their tenant resolution) after an upgrade.
+        members: dbMembers.length > 0 ? dbMembers : existing?.members ?? [],
         createdAt: existing?.createdAt ?? w.createdAt.getTime(),
       });
     }

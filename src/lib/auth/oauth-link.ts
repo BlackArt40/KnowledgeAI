@@ -20,6 +20,7 @@
 
 import { listUsers, findUserByEmail, createOAuthUser, type User } from "@/lib/auth/store";
 import { persistUser } from "@/lib/db/persist";
+import { ensurePersonalWorkspace } from "@/lib/workspace/store";
 
 /** Supported OAuth providers (keep in sync with authjs.ts providers). */
 export const OAUTH_PROVIDERS = ["google", "github"] as const;
@@ -81,6 +82,13 @@ export async function upsertOauthUser(
     profile.providerUserId
   );
   if ("error" in created) return { error: created.error };
+  // F4: an OAuth-created account is a self-registered account - it gets its
+  // own tenant instead of silently reading the default organization's KBs.
+  ensurePersonalWorkspace({
+    ownerId: created.id,
+    ownerEmail: created.email,
+    ownerName: created.name,
+  });
   return { user: created, created: true };
 }
 
