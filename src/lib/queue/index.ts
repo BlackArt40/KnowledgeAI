@@ -13,11 +13,16 @@
 // worker can run in a separate process.
 // ---------------------------------------------------------------------------
 
+import { queueMaxDepth } from "./interface";
 import type { JobQueue, JobType, JobHandler, QueueStatsSnapshot } from "./interface";
 import { MemoryQueue } from "./memory-queue";
 import { BullMQQueue } from "./bullmq-queue";
 import type { AgentEvent } from "@/lib/agent/orchestrator";
 import { log, redactText } from "@/lib/obs/log";
+
+/** Re-exported so routes can distinguish backpressure from other enqueue
+ *  failures and answer with a retryable 503 (`err instanceof ...`). */
+export { QueueBackpressureError } from "./interface";
 
 let _instance: JobQueue | null = null;
 let _handlersRegistered = false;
@@ -80,12 +85,40 @@ export function isQueueExternal(): boolean {
   return !!process.env.REDIS_URL;
 }
 
+/** Hard bound on the backend stats read. A dead Redis makes BullMQ's
+ *  getJobCounts() wait indefinitely (its ioredis runs with
+ *  maxRetriesPerRequest: null), and /api/health/ready must answer within
+ *  seconds - the unbounded read hung the readiness probe on the
+ *  broken-dependency smoke instance (dead REDIS_URL, test-health). */
+export const QUEUE_STATS_TIMEOUT_MS = 3000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`queue stats timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+
 /** Backend-neutral queue snapshot for the admin monitoring dashboard. */
 export async function getQueueStats(): Promise<QueueStatsSnapshot> {
   const mode = process.env.REDIS_URL ? "redis" : "memory";
   const capturedAt = Date.now();
   try {
-    return { mode, available: true, capturedAt, queues: await getQueue().getStats() };
+    return {
+      mode,
+      available: true,
+      capturedAt,
+      queues: await withTimeout(getQueue().getStats(), QUEUE_STATS_TIMEOUT_MS),
+    };
   } catch (err) {
     log.error(
       { err: redactText(err instanceof Error ? err.message : String(err)) },
@@ -93,6 +126,35 @@ export async function getQueueStats(): Promise<QueueStatsSnapshot> {
     );
     return { mode, available: false, capturedAt, queues: [], error: "queue stats unavailable" };
   }
+}
+
+/** X5/X6: current backlog vs the QUEUE_MAX_DEPTH cap. `depth` is the largest
+ *  per-queue backlog (waiting + delayed); `backpressured` flips when any
+ *  queue is at the cap (new jobs are being rejected). Exposed additively on
+ *  /api/health/ready so monitoring can alert on it. */
+export async function queueBackpressureSnapshot(): Promise<{
+  mode: "memory" | "redis";
+  available: boolean;
+  depth: number;
+  maxDepth: number;
+  backpressured: boolean;
+  queues: { name: string; depth: number }[];
+}> {
+  const maxDepth = queueMaxDepth();
+  const snapshot = await getQueueStats();
+  const queues = snapshot.queues.map((q) => ({
+    name: q.name,
+    depth: q.counts.waiting + q.counts.delayed,
+  }));
+  const depth = queues.reduce((m, q) => Math.max(m, q.depth), 0);
+  return {
+    mode: snapshot.mode,
+    available: snapshot.available,
+    depth,
+    maxDepth,
+    backpressured: snapshot.available && depth >= maxDepth,
+    queues,
+  };
 }
 
 // Auto-register handlers on first use (lazy, to avoid circular deps at import time).

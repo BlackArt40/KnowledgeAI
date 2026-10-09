@@ -58,4 +58,31 @@ describe("getQueueStats", () => {
     });
     expect(snapshot.capturedAt).toEqual(expect.any(Number));
   });
+
+  it("bounds a hung backend so health probes answer (dead-Redis regression)", async () => {
+    vi.stubEnv("REDIS_URL", "redis://localhost:6380");
+    globals.__KAI_QUEUE_INSTANCE__ = {
+      enqueue: async () => "job_1",
+      registerHandler: () => undefined,
+      getJob: async () => null,
+      // BullMQ's getJobCounts() never settles against an unreachable Redis
+      // (maxRetriesPerRequest: null) - the stats read must time out instead
+      // of hanging /api/health/ready forever.
+      getStats: () => new Promise(() => {}),
+      start: () => undefined,
+      stop: async () => undefined,
+    };
+
+    vi.useFakeTimers();
+    try {
+      const { getQueueStats, QUEUE_STATS_TIMEOUT_MS } = await import("./index");
+      const pending = getQueueStats();
+      await vi.advanceTimersByTimeAsync(QUEUE_STATS_TIMEOUT_MS + 100);
+      const snapshot = await pending;
+
+      expect(snapshot).toMatchObject({ mode: "redis", available: false, queues: [] });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

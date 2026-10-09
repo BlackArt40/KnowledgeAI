@@ -4,10 +4,10 @@ description: KnowledgeAI 全部环境变量参考：必填项、默认值、演�
 type: reference
 category: ops
 level: L2
-version: 1.1.0
+version: 1.2.0
 authors: [technical-writer]
 owner: devops-owner
-reviewed_at: 2026-09-05
+reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -116,6 +116,7 @@ related: [deployment-guide.md, monitoring.md]
 | `REDIS_URL` | 否 | 空（内存队列） | 留空 = 进程内内存队列（单实例）；设置后 = BullMQ + Redis（多实例、持久化、重试、死信队列） |
 | `QUEUE_CONCURRENCY` | 否 | `3` | 快速任务并发：`doc-process` / `index-cleanup` / `webhook-deliver` / `email-send`（仅 BullMQ 生效） |
 | `QUEUE_AGENT_CONCURRENCY` | 否 | `1` | Agent 调研并发：`agent-run` 单独一条队列，避免长耗时 LLM 任务占满并发后阻塞文档处理（仅 BullMQ 生效） |
+| `QUEUE_MAX_DEPTH` | 否 | `500` | 队列积压背压上限（waiting + delayed，按队列计）：达到上限后新任务入队被拒（`QueueBackpressureError`，调用方返回"队列繁忙"类可重试提示），`/api/health/ready` 的 `queueBackpressured` 同步置位（X5/X6） |
 
 > 单独的 Agent 队列是为了解决「慢模型下文档处理排队数分钟」：实测单个 agent-run 耗时
 > 64–105s，若与 doc-process 共用同一 concurrency=3 的队列，三张并发就把槽位占满。
@@ -198,5 +199,6 @@ related: [deployment-guide.md, monitoring.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.2.0 | 2026-10-08 | 新增 `QUEUE_MAX_DEPTH`（队列深度背压，X5/X6）；CORS 描述已同步 F17 语义（生产留空不反射） |
 | 1.1.0 | 2026-09-05 | 补 P8 邮件（RESEND/EMAIL_FROM）、AGENT/AUTH_EMAIL 限流档、CORS、S3_REGION/S3_PUBLIC_URL、MAX_UPLOAD_MB；移除废弃的 NEXT_PUBLIC_APP_NAME/MAINTENANCE_MODE/ALLOW_SIGNUP；新增 CI 变量名一致性校验 |
 | 1.0.0 | 2026-08-20 | 初版（与 .env.example 逐项核对） |

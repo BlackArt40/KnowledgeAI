@@ -9,6 +9,7 @@
 // concurrency control, event pub/sub for real-time progress.
 // ---------------------------------------------------------------------------
 
+import { queueMaxDepth, QueueBackpressureError } from "./interface";
 import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
 import { log } from "@/lib/obs/log";
 
@@ -114,6 +115,14 @@ export class BullMQQueue implements JobQueue {
     await this.ensureConnected();
     const queue = this.queues.get(queueNameFor(type));
     if (!queue) throw new Error("queue not connected");
+    // X5/X6 backpressure: cap the waiting backlog (one extra Redis round trip
+    // per enqueue) so producers get a retryable signal instead of growing
+    // Redis + worker memory without bound. Soft cap under concurrency: two
+    // roughly simultaneous enqueues can overshoot by one - acceptable.
+    const maxDepth = queueMaxDepth();
+    const counts = await queue.getJobCounts("waiting", "delayed");
+    const depth = (counts.waiting ?? 0) + (counts.delayed ?? 0);
+    if (depth >= maxDepth) throw new QueueBackpressureError(depth, maxDepth);
     const job = await queue.add(type, { type, payload }, {
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },

@@ -14,7 +14,7 @@ import { canViewKb } from "@/lib/team/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
-import { enqueue, subscribeAgentEvents } from "@/lib/queue";
+import { enqueue, subscribeAgentEvents, QueueBackpressureError } from "@/lib/queue";
 import { agentRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/obs/errors";
 import { log } from "@/lib/obs/log";
@@ -131,7 +131,15 @@ export async function handleAgentRun(
         } catch (err) {
           log.error({ err }, "[agent/run] stream error");
           reportError(err, { source: "/api/agent/run", context: `task ${task.id}` });
-          send({ type: "error", message: "排队或执行失败" });
+          // X5/X6: distinguish queue backpressure from a real failure so the
+          // client knows it can simply retry in a moment.
+          send({
+            type: "error",
+            message:
+              err instanceof QueueBackpressureError
+                ? "系统繁忙（任务队列已满），请稍后重试"
+                : "排队或执行失败",
+          });
           // Mark the task as failed so the UI reflects the error state.
           task.status = "failed";
           saveTask(task);

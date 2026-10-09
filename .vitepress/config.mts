@@ -66,7 +66,10 @@ export default withMermaid(defineConfig({
             { text: 'Agent 编排架构', link: '/architecture/agent-orchestration' },
             { text: 'UI 设计体系', link: '/architecture/design-system' },
             { text: 'ADR-0001 内存存储+写穿 DB', link: '/architecture/adr/adr-0001-in-memory-store-write-through-db' },
-            { text: 'ADR-0002 后台任务队列', link: '/architecture/adr/adr-0002-background-job-queue' }
+            { text: 'ADR-0002 后台任务队列', link: '/architecture/adr/adr-0002-background-job-queue' },
+            { text: 'ADR-0003 多租户隔离契约', link: '/architecture/adr/adr-0003-multi-tenant-isolation' },
+            { text: 'ADR-0006 读路径存储演进', link: '/architecture/adr/adr-0006-read-path-storage-evolution' },
+            { text: 'ADR-0007 队列背压', link: '/architecture/adr/adr-0007-queue-backpressure' }
           ]
         },
         {

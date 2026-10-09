@@ -92,6 +92,7 @@ vi.mock("@/lib/obs/log", () => ({
 }));
 
 import { BullMQQueue } from "./bullmq-queue";
+import { QueueBackpressureError } from "./interface";
 
 const FAST_QUEUE = "knowledgeai-jobs";
 const AGENT_QUEUE = "knowledgeai-agent-jobs";
@@ -224,5 +225,31 @@ describe("BullMQQueue dual-queue topology", () => {
 
     for (const worker of mocks.workers) expect(worker.close).toHaveBeenCalledOnce();
     for (const queueInstance of mocks.queues) expect(queueInstance.close).toHaveBeenCalledOnce();
+  });
+
+  it("rejects enqueue once the backlog reaches QUEUE_MAX_DEPTH (X5/X6 backpressure)", async () => {
+    vi.stubEnv("QUEUE_MAX_DEPTH", "5");
+    const queue = new BullMQQueue("redis://:secret@localhost:6380");
+    await queue.enqueue("doc-process", { docId: "seed" });
+
+    vi.mocked(mocks.queues[0].getJobCounts).mockResolvedValue({
+      waiting: 4,
+      delayed: 1,
+      active: 0,
+      completed: 0,
+      failed: 0,
+    });
+    await expect(queue.enqueue("doc-process", { docId: "blocked" })).rejects.toThrow(
+      QueueBackpressureError
+    );
+
+    vi.mocked(mocks.queues[0].getJobCounts).mockResolvedValue({
+      waiting: 3,
+      delayed: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+    });
+    await expect(queue.enqueue("doc-process", { docId: "ok" })).resolves.toBeTruthy();
   });
 });

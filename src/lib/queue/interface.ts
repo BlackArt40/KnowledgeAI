@@ -23,6 +23,39 @@ export interface JobResult {
 
 export type JobHandler = (payload: Record<string, unknown>) => Promise<JobResult>;
 
+// ── X5/X6: queue backpressure ─────────────────────────────────────────────
+//
+// The queues had no depth cap - an unbounded backlog could grow until the
+// process was OOM-killed. enqueue() now refuses new work once a queue's
+// backlog (waiting + delayed) reaches QUEUE_MAX_DEPTH, giving producers a
+// clear retryable signal instead. The same cap feeds the /api/health/ready
+// `queueBackpressured` flag so monitoring can alert before hits.
+
+/** Default backlog cap per queue (waiting + delayed). */
+export const QUEUE_MAX_DEPTH_DEFAULT = 500;
+
+/** Resolve the backlog cap: QUEUE_MAX_DEPTH env override, else the default. */
+export function queueMaxDepth(): number {
+  const parsed = parseInt(process.env.QUEUE_MAX_DEPTH ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : QUEUE_MAX_DEPTH_DEFAULT;
+}
+
+/** Thrown by enqueue() when a queue's backlog is at (or above) the cap.
+ *  Callers map it to a retryable 503-style response, or skip best-effort
+ *  work (webhooks) rather than failing the user's request. */
+export class QueueBackpressureError extends Error {
+  readonly code = "queue_full";
+  readonly depth: number;
+  readonly maxDepth: number;
+
+  constructor(depth: number, maxDepth: number) {
+    super(`队列积压已达上限（${depth}/${maxDepth}），拒绝新任务`);
+    this.name = "QueueBackpressureError";
+    this.depth = depth;
+    this.maxDepth = maxDepth;
+  }
+}
+
 export interface QueueCounts {
   waiting: number;
   active: number;

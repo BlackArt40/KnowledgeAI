@@ -9,7 +9,7 @@
 //     are the key owner's own session and already carry full privileges.
 // ---------------------------------------------------------------------------
 
-import { validateApiKey } from "@/lib/apikeys/store";
+import { validateApiKeyShared } from "@/lib/apikeys/store";
 import type { ApiKey } from "@/lib/apikeys/types";
 
 export interface ScopeCheck {
@@ -31,7 +31,9 @@ export async function requireApiKeyScope(req: Request, scope: string): Promise<S
     return { key: null, error: null };
   }
 
-  const key = validateApiKey(bearerToken);
+  // F5: shared validation (memory fast path + throttled DB fallback) so a key
+  // created on another instance validates here without a restart.
+  const key = await validateApiKeyShared(bearerToken);
   if (!key) {
     return { key: null, error: Response.json({ error: "无效的 API Key" }, { status: 401 }) };
   }

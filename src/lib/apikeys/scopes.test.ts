@@ -7,6 +7,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const validateApiKey = vi.fn();
 vi.mock("@/lib/apikeys/store", () => ({
   validateApiKey: (secret: string) => validateApiKey(secret),
+  // F5: scopes.ts validates via the shared variant (memory fast path +
+  // throttled DB fallback) - same underlying mock so the matrix is unchanged.
+  validateApiKeyShared: async (secret: string) => validateApiKey(secret),
 }));
 
 import { requireApiKeyScope } from "./scopes";

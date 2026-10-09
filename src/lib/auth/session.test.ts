@@ -1,5 +1,5 @@
 // P6-3 unit tests: auth/session (jose JWT + Web Crypto PBKDF2).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createToken,
   verifyToken,
@@ -11,12 +11,21 @@ import {
   revokeJti,
   type AuthUser,
 } from "./session";
+import { __setJtiRedisForTest, __resetJtiStateForTest } from "./jti-shared";
 
 const user: AuthUser = { id: "usr_1", email: "a@b.dev", name: "A", role: "editor" };
 
 beforeEach(() => {
   // P1-3: fresh revocation blacklist per test.
   delete (globalThis as Record<string, unknown>).__KAI_REVOKED_JTI__;
+  // F5: isolate from any developer-machine Redis; tests inject fakes on demand.
+  vi.stubEnv("REDIS_URL", "");
+  __resetJtiStateForTest();
+});
+
+afterEach(() => {
+  __resetJtiStateForTest();
+  vi.unstubAllEnvs();
 });
 
 describe("session JWT", () => {
@@ -37,6 +46,42 @@ describe("session JWT", () => {
     // other tokens (different jti) remain valid
     const other = await createToken(user, 7 * 86400, { jti: "ses_other" });
     expect(await verifyToken(other)).toMatchObject({ id: "usr_1" });
+  });
+
+  it("rejects a token revoked on another instance via the shared store (F5)", async () => {
+    __setJtiRedisForTest({
+      set: vi.fn(async () => "OK"),
+      get: vi.fn(async () => "1"),
+    });
+    const token = await createToken(user, 7 * 86400, { jti: "ses_remote" });
+    expect(await verifyToken(token)).toBeNull();
+    // The shared hit warms the local cache - it stays rejected even if Redis
+    // then flaps (no flip-flop on the same instance).
+    __setJtiRedisForTest({
+      set: vi.fn(async () => "OK"),
+      get: vi.fn(async () => {
+        throw new Error("down");
+      }),
+    });
+    expect(await verifyToken(token)).toBeNull();
+  });
+
+  it("keeps enforcing local revokes and fails open cross-instance while the shared store is down (F5)", async () => {
+    __setJtiRedisForTest({
+      set: vi.fn(async () => {
+        throw new Error("down");
+      }),
+      get: vi.fn(async () => {
+        throw new Error("down");
+      }),
+    });
+    revokeJti("ses_local_only");
+    const revoked = await createToken(user, 7 * 86400, { jti: "ses_local_only" });
+    // Same-instance revoke is still enforced from the local Map.
+    expect(await verifyToken(revoked)).toBeNull();
+    // An unrevoked token must stay valid - an outage must not lock everyone out.
+    const live = await createToken(user, 7 * 86400, { jti: "ses_live" });
+    expect(await verifyToken(live)).toMatchObject({ id: "usr_1" });
   });
 
   it("verifies tokens signed by the pre-jose implementation (wire compat)", async () => {

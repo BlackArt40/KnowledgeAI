@@ -166,7 +166,10 @@ export function auditWebhook(
 }
 
 /** Emit an event to every matching ACTIVE subscription in a workspace.
- *  Returns the number of delivery jobs enqueued (0 when nothing matches). */
+ *  Returns the number of delivery jobs enqueued (0 when nothing matches).
+ *  X5/X6: a per-subscription enqueue failure (e.g. queue backpressure) is
+ *  logged and skipped - the caller's business flow must not fail because the
+ *  queue is full. */
 export async function emitWebhookEvent(
   workspaceId: string,
   event: WebhookEvent,
@@ -178,9 +181,15 @@ export async function emitWebhookEvent(
   if (matches.length === 0) return 0;
 
   const { enqueue } = await import("@/lib/queue");
+  let enqueued = 0;
   for (const sub of matches) {
     const payload: WebhookEventPayload = { event, ts: Date.now(), data };
-    await enqueue("webhook-deliver", { subscriptionId: sub.id, payload });
+    try {
+      await enqueue("webhook-deliver", { subscriptionId: sub.id, payload });
+      enqueued++;
+    } catch (err) {
+      log.warn({ err, subscriptionId: sub.id }, "[webhooks] enqueue failed - delivery skipped");
+    }
   }
-  return matches.length;
+  return enqueued;
 }

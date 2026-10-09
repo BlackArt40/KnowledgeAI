@@ -12,6 +12,7 @@ import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db
 import { publish } from "@/lib/realtime/bus";
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/store";
+import { QueueBackpressureError } from "@/lib/queue/interface";
 import { uid } from "@/lib/ids";
 import type { DocAccess } from "@/lib/team/types";
 import { promises as fs } from "fs";
@@ -121,12 +122,26 @@ function startProcessing(docId: string) {
     })
     .catch((e) => {
       log.error({ err: e }, "[kb] failed to enqueue doc-process");
-      const doc = getStore().docs.get(docId);
-      if (doc) {
-        doc.status = "failed";
-        doc.error = "排队失败";
-      }
+      // X5/X6: tell backpressure apart from a real enqueue failure so the doc
+      // error is actionable ("retry later" vs "queue failed").
+      markDocFailed(
+        docId,
+        e instanceof QueueBackpressureError ? "队列繁忙，未开始解析（请稍后重试）" : "排队失败"
+      );
     });
+}
+
+/** Mark a doc as failed because it never reached the queue (backpressure
+ *  rejection / queue error). Shared by startProcessing()'s catch and the
+ *  upload route's fire-and-forget enqueue; persisted so the state survives a
+ *  restart. */
+export function markDocFailed(docId: string, error: string): void {
+  const doc = getStore().docs.get(docId);
+  if (!doc) return;
+  doc.status = "failed";
+  doc.error = error;
+  getStore().docs.set(docId, doc);
+  void persistDoc(doc);
 }
 
 /**
