@@ -131,16 +131,24 @@ export default function AgentPage() {
     const taskParam = params.get("task");
     if (taskParam) pendingTaskRef.current = taskParam;
     fetch("/api/knowledge-base", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ kbs }) => setKbs(kbs));
+      .then((r) => (r.ok ? r.json() : null))
+      // A non-OK body ({error:...} on 401/429/5xx) has no `kbs` - feeding it
+      // into state used to crash the render (`kbs.map` on undefined) and blank
+      // the page behind the 500 boundary.
+      .then((d) => setKbs(d?.kbs ?? []))
+      .catch(() => {});
     refreshHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect (refreshHistory is stable)
   }, []);
 
   function refreshHistory() {
     fetch("/api/agent/tasks", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ tasks }) => {
+      .then((r) => (r.ok ? r.json() : null))
+      // Same guard as the KB fetch above: keep the previous list on failure
+      // instead of writing undefined into state (which crashes the render).
+      .then((d) => {
+        if (!d) return;
+        const tasks = d.tasks ?? [];
         setHistory(tasks);
         // P5-2: deep-link - open the requested task once history is ready.
         if (pendingTaskRef.current) {
@@ -148,12 +156,15 @@ export default function AgentPage() {
           pendingTaskRef.current = null;
           if (tasks.some((t: { id: string }) => t.id === tid)) loadTask(tid);
         }
-      });
+      })
+      .catch(() => {});
   }
 
   async function loadTask(id: string) {
     const res = await fetch(`/api/agent/tasks/${id}`, { cache: "no-store" });
-    const { task } = await res.json();
+    if (!res.ok) return;
+    const d = await res.json().catch(() => null);
+    const task = d?.task;
     if (task) {
       setTask(task);
       setSteps(task.steps);
