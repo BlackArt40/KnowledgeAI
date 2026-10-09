@@ -48,7 +48,9 @@ export function Hero() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="rounded-full bg-card/70 px-7 backdrop-blur" asChild>
-              <Link href="/#features">{t("page.hero.s1")}</Link>
+              {/* 跳转页内交互式预览（下方 KnowledgeConsole，标题"实时交互预览"）；
+                  此前指向 #features，会滚过演示区落到功能卡片，像"没有演示"。 */}
+              <Link href="/#demo">{t("page.hero.s1")}</Link>
             </Button>
           </div>
 
@@ -62,7 +64,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative mx-auto mt-16 max-w-6xl sm:mt-20">
+        <div id="demo" className="relative mx-auto mt-16 max-w-6xl scroll-mt-20 sm:mt-20">
           <div className="pointer-events-none absolute -inset-x-10 -bottom-8 -top-8 -z-10 rounded-[3rem] bg-brand-gradient opacity-[0.045] blur-3xl" />
           <KnowledgeConsole />
         </div>

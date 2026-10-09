@@ -28,6 +28,7 @@ import {
   MessageSquare,
   GitBranch,
   Trash2,
+  TriangleAlert,
   RotateCcw,
   ChevronDown,
   Plus,
@@ -111,6 +112,9 @@ export default function AgentPage() {
   const [history, setHistory] = React.useState<AgentTask[]>([]);
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+  // 运行失败/被拒的可见反馈（SSE error 事件、流异常中断、请求被拒），
+  // 下次发起调研时清除。
+  const [runError, setRunError] = React.useState<string | null>(null);
 
   // P2-3: report enhancement state
   const [activeTab, setActiveTab] = React.useState("report");
@@ -127,16 +131,24 @@ export default function AgentPage() {
     const taskParam = params.get("task");
     if (taskParam) pendingTaskRef.current = taskParam;
     fetch("/api/knowledge-base", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ kbs }) => setKbs(kbs));
+      .then((r) => (r.ok ? r.json() : null))
+      // A non-OK body ({error:...} on 401/429/5xx) has no `kbs` - feeding it
+      // into state used to crash the render (`kbs.map` on undefined) and blank
+      // the page behind the 500 boundary.
+      .then((d) => setKbs(d?.kbs ?? []))
+      .catch(() => {});
     refreshHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount effect (refreshHistory is stable)
   }, []);
 
   function refreshHistory() {
     fetch("/api/agent/tasks", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ tasks }) => {
+      .then((r) => (r.ok ? r.json() : null))
+      // Same guard as the KB fetch above: keep the previous list on failure
+      // instead of writing undefined into state (which crashes the render).
+      .then((d) => {
+        if (!d) return;
+        const tasks = d.tasks ?? [];
         setHistory(tasks);
         // P5-2: deep-link - open the requested task once history is ready.
         if (pendingTaskRef.current) {
@@ -144,12 +156,15 @@ export default function AgentPage() {
           pendingTaskRef.current = null;
           if (tasks.some((t: { id: string }) => t.id === tid)) loadTask(tid);
         }
-      });
+      })
+      .catch(() => {});
   }
 
   async function loadTask(id: string) {
     const res = await fetch(`/api/agent/tasks/${id}`, { cache: "no-store" });
-    const { task } = await res.json();
+    if (!res.ok) return;
+    const d = await res.json().catch(() => null);
+    const task = d?.task;
     if (task) {
       setTask(task);
       setSteps(task.steps);
@@ -165,6 +180,11 @@ export default function AgentPage() {
     setTask(null);
     setSteps([]);
     setHighlightN(null);
+    setRunError(null);
+    // A run must end in exactly one of: done / error event. If the stream
+    // closes without either (worker crash, connection drop), the UI used to
+    // fall back to the idle state with no explanation - surface it instead.
+    let settled = false;
 
     try {
       const res = await fetch("/api/agent/run", {
@@ -179,7 +199,13 @@ export default function AgentPage() {
           agents: enabledAgents,
         }),
       });
-      if (!res.ok || !res.body) throw new Error();
+      if (!res.ok || !res.body) {
+        // Backpressure / quota / auth refusals answer with JSON before the SSE
+        // stream exists - show the server's reason when it provides one.
+        const denied = await res.json().catch(() => null);
+        setRunError(denied?.error || t("common.requestFailed"));
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -204,14 +230,26 @@ export default function AgentPage() {
               return copy;
             });
           } else if (data.type === "done" && data.task) {
+            settled = true;
             setTask(data.task);
             setSteps(data.task.steps);
+            refreshHistory();
+          } else if (data.type === "error") {
+            settled = true;
+            // Known failures carry a stable code so the text follows the UI
+            // language; anything else (worker-side LLM errors) shows verbatim.
+            setRunError(
+              data.code === "queue_busy" ? t("page.agent.s86")
+                : data.code === "queue_failed" ? t("page.agent.s87")
+                : (data.message || t("page.agent.s88"))
+            );
             refreshHistory();
           }
         }
       }
+      if (!settled) setRunError(t("page.agent.s88"));
     } catch {
-      setSteps((prev) => prev);
+      setRunError(t("common.networkError"));
     } finally {
       setRunning(false);
     }
@@ -403,6 +441,19 @@ export default function AgentPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* main: timeline + report */}
         <div className="space-y-6 lg:col-span-2">
+          {runError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3"
+            >
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-destructive">{t("page.agent.s85")}</p>
+                <p className="mt-0.5 break-words text-xs text-destructive/80">{runError}</p>
+              </div>
+            </div>
+          )}
+
           {showTimeline && (
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">

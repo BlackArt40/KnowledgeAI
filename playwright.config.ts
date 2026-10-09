@@ -23,5 +23,16 @@ export default defineConfig({
     url: "http://localhost:3000/login",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // 每条用例独立登录，套件本身会打出十几次匿名请求（/api/auth/* 均走 anon
+    // 档 20/min）——达到档位后 login 直接 429，用例表现为"登录失败"。与 CI
+    // integration 任务一致，给 E2E 的 server 抬高限额；限流档位本身由 smoke
+    // 的 limits 组断言，不靠这里覆盖。
+    env: {
+      RATE_LIMIT_PER_MIN: "2000",
+      RATE_LIMIT_ANON_PER_MIN: "1000",
+      RATE_LIMIT_KB_PER_MIN: "2000",
+      RATE_LIMIT_KEY_PER_MIN: "5000",
+      RATE_LIMIT_AGENT_PER_MIN: "60",
+    },
   },
 });
