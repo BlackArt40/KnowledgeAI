@@ -32,6 +32,7 @@ export default defineConfig({
       RATE_LIMIT_ANON_PER_MIN: "1000",
       RATE_LIMIT_KB_PER_MIN: "2000",
       RATE_LIMIT_KEY_PER_MIN: "5000",
+      RATE_LIMIT_AGENT_PER_MIN: "60",
     },
   },
 });
