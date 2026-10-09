@@ -28,6 +28,7 @@ import {
   MessageSquare,
   GitBranch,
   Trash2,
+  TriangleAlert,
   RotateCcw,
   ChevronDown,
   Plus,
@@ -111,6 +112,9 @@ export default function AgentPage() {
   const [history, setHistory] = React.useState<AgentTask[]>([]);
   const [highlightN, setHighlightN] = React.useState<number | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+  // 运行失败/被拒的可见反馈（SSE error 事件、流异常中断、请求被拒），
+  // 下次发起调研时清除。
+  const [runError, setRunError] = React.useState<string | null>(null);
 
   // P2-3: report enhancement state
   const [activeTab, setActiveTab] = React.useState("report");
@@ -165,6 +169,11 @@ export default function AgentPage() {
     setTask(null);
     setSteps([]);
     setHighlightN(null);
+    setRunError(null);
+    // A run must end in exactly one of: done / error event. If the stream
+    // closes without either (worker crash, connection drop), the UI used to
+    // fall back to the idle state with no explanation - surface it instead.
+    let settled = false;
 
     try {
       const res = await fetch("/api/agent/run", {
@@ -179,7 +188,13 @@ export default function AgentPage() {
           agents: enabledAgents,
         }),
       });
-      if (!res.ok || !res.body) throw new Error();
+      if (!res.ok || !res.body) {
+        // Backpressure / quota / auth refusals answer with JSON before the SSE
+        // stream exists - show the server's reason when it provides one.
+        const denied = await res.json().catch(() => null);
+        setRunError(denied?.error || t("common.requestFailed"));
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -204,14 +219,26 @@ export default function AgentPage() {
               return copy;
             });
           } else if (data.type === "done" && data.task) {
+            settled = true;
             setTask(data.task);
             setSteps(data.task.steps);
+            refreshHistory();
+          } else if (data.type === "error") {
+            settled = true;
+            // Known failures carry a stable code so the text follows the UI
+            // language; anything else (worker-side LLM errors) shows verbatim.
+            setRunError(
+              data.code === "queue_busy" ? t("page.agent.s86")
+                : data.code === "queue_failed" ? t("page.agent.s87")
+                : (data.message || t("page.agent.s88"))
+            );
             refreshHistory();
           }
         }
       }
+      if (!settled) setRunError(t("page.agent.s88"));
     } catch {
-      setSteps((prev) => prev);
+      setRunError(t("common.networkError"));
     } finally {
       setRunning(false);
     }
@@ -403,6 +430,19 @@ export default function AgentPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* main: timeline + report */}
         <div className="space-y-6 lg:col-span-2">
+          {runError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3"
+            >
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-destructive">{t("page.agent.s85")}</p>
+                <p className="mt-0.5 break-words text-xs text-destructive/80">{runError}</p>
+              </div>
+            </div>
+          )}
+
           {showTimeline && (
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">

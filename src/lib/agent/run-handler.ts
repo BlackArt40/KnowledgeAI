@@ -110,10 +110,13 @@ export async function handleAgentRun(
             if (event.type === "step") {
               send({ type: "step", step: event.step });
             } else if (event.type === "done") {
-              // Reload the latest task state from the store in case the
-              // worker's in-memory copy has fields the event snapshot lacks.
-              const latest = getTask(task.id);
-              send({ type: "done", task: latest ?? event.task });
+              // Cross-process (BullMQ worker): this process's in-memory copy is
+              // still the queued snapshot - report / duration / versions are
+              // produced by the worker and travel only in the event payload.
+              // Prefer the event snapshot (in single-process mode getTask()
+              // returns the same object, so both are equivalent) and keep the
+              // local copy purely as a fallback.
+              send({ type: "done", task: event.task ?? getTask(task.id) });
             } else if (event.type === "error") {
               send({ type: "error", message: event.message });
             } else if (event.type === "end") {
@@ -132,9 +135,12 @@ export async function handleAgentRun(
           log.error({ err }, "[agent/run] stream error");
           reportError(err, { source: "/api/agent/run", context: `task ${task.id}` });
           // X5/X6: distinguish queue backpressure from a real failure so the
-          // client knows it can simply retry in a moment.
+          // client knows it can simply retry in a moment. `code` is the stable
+          // machine-readable tag (the client localizes it); `message` stays for
+          // API consumers, logs and unknown codes.
           send({
             type: "error",
+            code: err instanceof QueueBackpressureError ? "queue_busy" : "queue_failed",
             message:
               err instanceof QueueBackpressureError
                 ? "系统繁忙（任务队列已满），请稍后重试"

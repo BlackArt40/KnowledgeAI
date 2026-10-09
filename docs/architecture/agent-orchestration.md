@@ -4,10 +4,10 @@ description: KnowledgeAI 多 Agent 调研编排：自研 StateGraph DAG 引擎�
 type: explanation
 category: architecture
 level: L1
-version: 1.0.0
+version: 1.0.1
 authors: [technical-writer]
 owner: agent-owner
-reviewed_at: 2026-08-20
+reviewed_at: 2026-10-09
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -74,8 +74,8 @@ SSE 事件协议（v1 与内部一致）：
 |------|------|------|
 | `init` | `{ taskId }` | 任务已入队 |
 | `step` | `{ step }`（AgentStep） | 角色进度：role / status / progress / detail / result |
-| `done` | `{ task }`（AgentTask） | 任务完成，含报告内容 |
-| `error` | `{ message }` | 任务失败 |
+| `done` | `{ task }`（AgentTask） | 任务完成，含报告内容。多进程（独立 worker）下取 worker 发布的终态快照，Web 进程的内存副本不作准 |
+| `error` | `{ code?, message }` | 任务失败；`code` 为稳定枚举（`queue_busy` 队列积压可重试 / `queue_failed` 入队或执行失败），worker 侧失败（如 LLM 报错）不带 `code`，客户端按 `message` 原样展示 |
 
 任务状态机：`queued → running → done | failed`；步骤状态：`pending → running → done | skipped`。
 
