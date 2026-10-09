@@ -54,6 +54,20 @@ export default function LoginPage() {
     };
   }, []);
 
+  // 已登录用户仍能通过官网头部/书签落到这里：直接送回工作台，避免"点登录像
+  // 要重新登录"。网络失败/离线保持表单（提交时会给出离线提示）。
+  React.useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json().catch(() => null);
+        if (d?.user) router.replace("/dashboard");
+      })
+      .catch(() => {
+        /* offline: keep the form mounted */
+      });
+  }, [router]);
+
   React.useEffect(() => {
     fetch("/api/auth/providers")
       .then((r) => r.json())

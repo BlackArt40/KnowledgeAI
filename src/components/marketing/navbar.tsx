@@ -17,7 +17,7 @@ function navLinks(t: (k: string) => string) {
   ];
 }
 
-export function Navbar() {
+export function Navbar({ signedIn = false }: { signedIn?: boolean }) {
   const t = useT();
   const [open, setOpen] = React.useState(false);
 
@@ -40,12 +40,20 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" className="rounded-full" asChild>
-            <Link href="/login">{t("page.navbar.s0")}</Link>
-          </Button>
-          <Button size="sm" className="rounded-full px-4" asChild>
-            <Link href="/register">{t("page.navbar.s1")}</Link>
-          </Button>
+          {signedIn ? (
+            <Button size="sm" className="rounded-full px-4" asChild>
+              <Link href="/dashboard">{t("page.navbar.s7")}</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" className="rounded-full" asChild>
+                <Link href="/login">{t("page.navbar.s0")}</Link>
+              </Button>
+              <Button size="sm" className="rounded-full px-4" asChild>
+                <Link href="/register">{t("page.navbar.s1")}</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -76,16 +84,26 @@ export function Navbar() {
             ))}
           </nav>
           <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
-            <Button variant="outline" asChild>
-              <Link href="/login" onClick={() => setOpen(false)}>
-                {t("page.navbar.s0")}
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/register" onClick={() => setOpen(false)}>
-                {t("page.navbar.s1")}
-              </Link>
-            </Button>
+            {signedIn ? (
+              <Button className="col-span-2" asChild>
+                <Link href="/dashboard" onClick={() => setOpen(false)}>
+                  {t("page.navbar.s7")}
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" asChild>
+                  <Link href="/login" onClick={() => setOpen(false)}>
+                    {t("page.navbar.s0")}
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/register" onClick={() => setOpen(false)}>
+                    {t("page.navbar.s1")}
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}

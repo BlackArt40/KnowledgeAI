@@ -34,6 +34,19 @@ export default function RegisterPage() {
       .catch(() => setOauthProviders([]));
   }, []);
 
+  // 已登录用户落到注册页（官网 CTA / 书签）：直接送回工作台，与登录页一致。
+  React.useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json().catch(() => null);
+        if (d?.user) router.replace("/dashboard");
+      })
+      .catch(() => {
+        /* offline: keep the form mounted */
+      });
+  }, [router]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
