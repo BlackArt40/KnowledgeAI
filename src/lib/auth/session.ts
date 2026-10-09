@@ -140,8 +140,13 @@ export function isJtiRevoked(jti: string): boolean {
   return true;
 }
 
-/** Verify a JWT and return the user, or null if invalid/expired. */
-export async function verifyToken(token: string): Promise<AuthUser | null> {
+/** Verify a JWT and return the full verified claims, including the session
+ *  `jti`. Routes that must act on the session itself (logout) need the jti;
+ *  everything else should keep using verifyToken() so the session id never
+ *  leaks into ordinary auth flows. */
+export async function verifyTokenClaims(
+  token: string
+): Promise<(AuthUser & { jti?: string }) | null> {
   try {
     const { payload } = await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
     // Reject scoped tokens such as the 2FA-enrollment pre-auth token. Only
@@ -171,10 +176,18 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
       email: payload.email,
       name: typeof payload.name === "string" ? payload.name : "",
       role: payload.role as AuthUser["role"],
+      jti: typeof payload.jti === "string" ? payload.jti : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/** Verify a JWT and return the user, or null if invalid/expired. */
+export async function verifyToken(token: string): Promise<AuthUser | null> {
+  const claims = await verifyTokenClaims(token);
+  if (!claims) return null;
+  return { id: claims.id, email: claims.email, name: claims.name, role: claims.role };
 }
 
 /** Extract and verify user from a Request's Authorization header. */

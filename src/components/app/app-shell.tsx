@@ -426,10 +426,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, routeGuard, router]);
 
-  function logout() {
+  async function logout() {
     localStorage.removeItem("kai-token");
-    document.cookie = "kai-token=; path=/; max-age=0";
+    setUserMenu(false);
+    try {
+      // The session cookie is httpOnly - only the server can clear it, and the
+      // JWT must be blacklisted server-side. Navigating before this resolves
+      // would race /login's signed-in guard and bounce straight back here.
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* offline: leave anyway - the local state is already cleared */
+    }
     router.push("/login");
+    router.refresh();
   }
 
   async function markAllRead() {
