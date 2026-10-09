@@ -16,7 +16,13 @@ function store(): Store {
       config: {
         defaultModel: "gpt-4o",
         embeddingModel: "bge-m3",
-        rateLimitPerMin: 60,
+        // RATE_LIMIT_PER_MIN is the documented user-tier source (.env.example,
+        // docs/ops/env-vars.md; /api/admin/config reports the same value with
+        // rateLimitEnvControlled). The seeded default used to be a hardcoded
+        // 60, which silently overrode the documented tier (200) for every
+        // route-level check - e.g. a deployment raising the env still got
+        // 429s at 60/min.
+        rateLimitPerMin: parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10),
         maxUploadMb: 50,
         maintenanceMode: false,
         allowSignup: true,

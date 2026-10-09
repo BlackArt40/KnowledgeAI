@@ -155,11 +155,12 @@ function ensureStores(): void {
   if (!g.__KAI_ADMIN_STORE__)
     // Mirror admin/store.ts defaults - an empty config would make
     // getConfig() throw (e.g. required2FARoles) and 2FA policy fails closed.
+    // rateLimitPerMin follows RATE_LIMIT_PER_MIN (documented user tier).
     g.__KAI_ADMIN_STORE__ = {
       config: {
         defaultModel: "gpt-4o",
         embeddingModel: "bge-m3",
-        rateLimitPerMin: 60,
+        rateLimitPerMin: parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10),
         maxUploadMb: 50,
         maintenanceMode: false,
         allowSignup: true,
