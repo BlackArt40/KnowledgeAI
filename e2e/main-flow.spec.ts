@@ -59,7 +59,7 @@ test("官网：查看演示落到页内交互预览，并可切换三种模式",
   await page.getByRole("link", { name: "查看演示" }).click();
 
   // 目标是页内的交互式预览（标题"实时交互预览"），而不是功能卡片区
-  await expect(page).toHaveURL(/#demo$/);
+  await expect(page).toHaveURL(/\/#demo$/);
   const demo = page.locator("#demo");
   await expect(demo).toBeInViewport();
   await expect(demo.getByText("实时交互预览")).toBeVisible();
@@ -71,6 +71,31 @@ test("官网：查看演示落到页内交互预览，并可切换三种模式",
   await demo.getByRole("button", { name: "Agent 调研" }).click();
   await expect(demo.getByText("规划", { exact: true })).toBeVisible();
   await expect(demo.getByText("撰写", { exact: true })).toBeVisible();
+
+  // 回归（用户报告 2026-10-10）：回顶部后再点「查看演示」——URL 不得回退为 /
+  // 或叠加为 #demo#demo，必须重新滚到演示区；window 标记保留证明是页内滚动，
+  // 而不是整页刷新（同页锚点已改走浏览器原生片段导航）。
+  await page.evaluate(() => {
+    (window as unknown as { __demoMarker?: number }).__demoMarker = 1;
+    window.scrollTo(0, 0);
+  });
+  await page.getByRole("link", { name: "查看演示" }).click();
+  await expect(page).toHaveURL(/\/#demo$/);
+  await expect(demo).toBeInViewport();
+  expect(await page.evaluate(() => (window as unknown as { __demoMarker?: number }).__demoMarker)).toBe(1);
+
+  // 以 /#demo 直接载入（书签/刷新）后再点：同样不得把 hash 叠加成 #demo#demo
+  await page.goto("/#demo");
+  await page.getByRole("link", { name: "查看演示" }).click();
+  await expect(page).toHaveURL(/\/#demo$/);
+  await expect(demo).toBeInViewport();
+
+  // 导航栏同页锚点（原生 <a>）：连点两次仍稳定停在 /#features
+  const navFeatures = page.locator("header").getByRole("link", { name: "功能" });
+  await navFeatures.click();
+  await expect(page).toHaveURL(/\/#features$/);
+  await navFeatures.click();
+  await expect(page).toHaveURL(/\/#features$/);
 });
 
 test("退出登录：会话真正失效并停在登录页", async ({ page }) => {
