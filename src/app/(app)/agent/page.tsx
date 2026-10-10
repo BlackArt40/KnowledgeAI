@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n/provider";
+import { fetchJson } from "@/lib/http";
 
 import * as React from "react";
 import {
@@ -1055,9 +1056,10 @@ function ShareDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    fetch(`/api/agent/tasks/${taskId}/share`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ shareConfig }) => {
+    fetchJson<{ shareConfig: ShareConfig | null }>(`/api/agent/tasks/${taskId}/share`, { cache: "no-store" })
+      .then((d) => {
+        if (!d) return; // 非 2xx：保持当前设置，不把错误体写进 state
+        const shareConfig = d.shareConfig;
         setCfg(shareConfig);
         setEnabled(!!shareConfig?.enabled);
         if (shareConfig?.expiresAt) {

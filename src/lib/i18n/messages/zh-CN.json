@@ -22,6 +22,7 @@
     "copy": "复制",
     "networkError": "网络错误，请重试",
     "requestFailed": "请求失败",
+    "retry": "重试",
     "create": "创建",
     "submit": "提交",
     "language": "语言",

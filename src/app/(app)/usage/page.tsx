@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { UsageChart } from "@/components/app/usage-chart";
+import { LoadError } from "@/components/app/load-error";
 import { useT } from "@/lib/i18n/provider";
+import { fetchJson } from "@/lib/http";
 import { useFormat } from "@/lib/i18n/use-format";
 import { cn } from "@/lib/utils";
 import type { Usage } from "@/lib/billing/types";
@@ -37,19 +39,37 @@ export default function UsagePage() {
   const [data, setData] = React.useState<UsageData | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    fetch("/api/usage", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setData(d))
+  const load = React.useCallback(() => {
+    setLoading(true);
+    // fetchJson：非 2xx 返回 null —— 错误体没有 usage/plan 字段，写进 state 会
+    // 让渲染期解构崩溃（白屏 500）。失败时 data 保持 null，由下面的守卫渲染
+    // LoadError；刷新失败也不会清掉已加载的数据。
+    fetchJson<UsageData>("/api/usage", { cache: "no-store" })
+      .then((d) => {
+        if (d) setData(d);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading || !data) {
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount load (same pattern as settings/admin)
+    load();
+  }, [load]);
+
+  if (loading) {
     return (
       <div className="mx-auto max-w-5xl space-y-4">
         <Skeleton className="h-24 rounded-2xl" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-28 rounded-xl" />)}</div>
         <Skeleton className="h-72 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <LoadError onRetry={load} />
       </div>
     );
   }

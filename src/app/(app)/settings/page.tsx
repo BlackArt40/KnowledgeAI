@@ -1,6 +1,7 @@
 "use client";
 
 import { useT, useI18n } from "@/lib/i18n/provider";
+import { fetchJson } from "@/lib/http";
 import * as React from "react";
 import {
   Shield, Smartphone, Monitor, LogOut, History, Download, Trash2,
@@ -22,6 +23,7 @@ import { formatRelative } from "@/lib/format";
 import type { SecurityState, PrivacySettings } from "@/lib/security/types";
 import { cn } from "@/lib/utils";
 import { ModelSettings } from "@/components/app/model-settings";
+import { LoadError } from "@/components/app/load-error";
 import { ThemeSettings } from "@/components/app/theme-settings";
 import { GoogleIcon, GithubIcon } from "@/components/icons/brand-icons";
 import { oauthSignIn } from "@/lib/auth/oauth-signin";
@@ -101,8 +103,13 @@ export default function SettingsPage() {
   const [savingNotif, setSavingNotif] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
-    const d = await fetch("/api/security", { cache: "no-store" }).then((r) => r.json());
-    setData(d);
+    // fetchJson：非 2xx 返回 null —— 错误体没有 sessions/twoFactor 等字段，
+    // 写进 state 会让渲染期解构崩溃（白屏）。
+    const d = await fetchJson<SecurityState & { twoFactorRequired?: boolean }>(
+      "/api/security",
+      { cache: "no-store" }
+    );
+    if (d) setData(d);
     setLoading(false);
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -283,11 +290,20 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-4xl space-y-4">
         <Skeleton className="h-16 rounded-2xl" />
         <Skeleton className="h-80 rounded-2xl" />
+      </div>
+    );
+  }
+
+  // 加载失败（fetchJson 返回 null → data 仍为 null）：渲染重试回退而不是无限骨架屏。
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <LoadError onRetry={() => { setLoading(true); void refresh(); }} />
       </div>
     );
   }
