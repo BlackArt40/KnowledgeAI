@@ -18,7 +18,11 @@ export function Hero() {
 
       <div className="mx-auto max-w-7xl px-4 pb-14 pt-20 sm:px-6 sm:pb-20 sm:pt-28">
         <div className="mx-auto max-w-4xl text-center">
-          <Link
+          {/* 同页锚点用原生 <a>（不用 <Link>）：交给浏览器做片段导航，连点/刷新后
+              行为稳定。Next 16.4 的 <Link> 会把 hash 交给客户端路由器记账，实测在
+              二次点击/以 #hash 载入后会出现 URL 丢失 #hash 或叠加成 #demo#demo。 */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
             href="/#workflow"
             className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-xl transition-colors hover:border-primary/40 hover:text-foreground"
           >
@@ -28,7 +32,7 @@ export function Hero() {
             </span>
             {t("page.hero.s11")}
             <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </a>
 
           <h1 className="mt-8 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-7xl lg:text-[5.8rem]">
             {t("page.hero.s12")}
@@ -48,9 +52,13 @@ export function Hero() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="rounded-full bg-card/70 px-7 backdrop-blur" asChild>
-              {/* 跳转页内交互式预览（下方 KnowledgeConsole，标题"实时交互预览"）；
-                  此前指向 #features，会滚过演示区落到功能卡片，像"没有演示"。 */}
-              <Link href="/#demo">{t("page.hero.s1")}</Link>
+              {/* 跳转页内交互式预览（下方 KnowledgeConsole，标题"实时交互预览"）。
+                  用原生 <a> 而非 <Link>（用户报告 2026-10-10）：同页锚点走客户端
+                  路由器时，二次点击会触发"同页刷新"，其 URL 记账可能把不带 hash 的
+                  / 写回地址栏（hash 不发给服务器，任何以响应/缓存为基准的写回都会
+                  丢 hash）。原生锚点由浏览器处理，连点每次都重新滚动、URL 恒为 /#demo。 */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a href="/#demo">{t("page.hero.s1")}</a>
             </Button>
           </div>
 
