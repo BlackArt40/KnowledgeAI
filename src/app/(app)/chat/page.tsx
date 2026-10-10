@@ -1,6 +1,7 @@
 "use client";
 
 import { useT, useI18n } from "@/lib/i18n/provider";
+import { fetchJson } from "@/lib/http";
 import * as React from "react";
 import {
   Send,
@@ -219,9 +220,12 @@ export default function ChatPage() {
     const convParam = params.get("conv");
     if (convParam) pendingConvRef.current = convParam;
 
-    fetch("/api/knowledge-base", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ kbs }) => {
+    // fetchJson：非 2xx（401/429/5xx）返回 null —— 错误体没有 kbs 字段，直接
+    // 写进 state 会让列表渲染抛 `kbs.map` of undefined（PR #32 复盘）。
+    fetchJson<{ kbs: KbLite[] }>("/api/knowledge-base", { cache: "no-store" })
+      .then((d) => {
+        if (!d) return;
+        const kbs = d.kbs ?? [];
         setKbs(kbs);
         if (kbs.length && !selectedKb) {
           const kbFromUrl = kbParam ? kbs.find((k: KbLite) => k.id === kbParam) : null;
@@ -237,9 +241,10 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveConv(null);
     setMessages([]);
-    fetch(`/api/chat/conversations?kbId=${selectedKb}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ conversations }) => setConversations(conversations));
+    fetchJson<{ conversations: ConvLite[] }>(`/api/chat/conversations?kbId=${selectedKb}`, { cache: "no-store" })
+      .then((d) => {
+        if (d) setConversations(d.conversations ?? []);
+      });
   }, [selectedKb]);
 
   // P4-1: team-shared conversations (span all KBs) - load once on mount.
@@ -300,10 +305,13 @@ export default function ChatPage() {
     setActiveConv(id);
     // Close the mobile conversation sheet once a conversation is picked.
     setConvSheetOpen(false);
-    const res = await fetch(`/api/chat/conversations/${id}`, { cache: "no-store" });
-    const { conversation } = await res.json();
+    const d = await fetchJson<{ conversation: { messages: Msg[] } }>(
+      `/api/chat/conversations/${id}`,
+      { cache: "no-store" }
+    );
+    if (!d?.conversation?.messages) return;
     setMessages(
-      conversation.messages.map((m: Msg) => ({
+      d.conversation.messages.map((m: Msg) => ({
         ...m,
         streaming: false,
         // Historical messages carry the server-side id directly.
@@ -327,9 +335,12 @@ export default function ChatPage() {
 
   function refreshConversations() {
     if (!selectedKb) return;
-    fetch(`/api/chat/conversations?kbId=${selectedKb}${archivedView ? "&archived=1" : ""}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ conversations }) => setConversations(conversations));
+    fetchJson<{ conversations: ConvLite[] }>(
+      `/api/chat/conversations?kbId=${selectedKb}${archivedView ? "&archived=1" : ""}`,
+      { cache: "no-store" }
+    ).then((d) => {
+      if (d) setConversations(d.conversations ?? []);
+    });
   }
 
   // P5-3: archive / restore + tags, then refresh the list.

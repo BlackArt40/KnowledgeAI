@@ -22,6 +22,7 @@
     "copy": "Copy",
     "networkError": "Network error, please retry",
     "requestFailed": "Request failed",
+    "retry": "Retry",
     "create": "Create",
     "submit": "Submit",
     "language": "Language",

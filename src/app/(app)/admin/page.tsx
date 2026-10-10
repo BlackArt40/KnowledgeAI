@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n/provider";
+import { fetchJson } from "@/lib/http";
 import * as React from "react";
 import { clientLog } from "@/lib/obs/log-browser";
 import {
@@ -9,6 +10,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadError } from "@/components/app/load-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -76,16 +78,22 @@ export default function AdminPage() {
   const [savingCfg, setSavingCfg] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
+    // fetchJson：非 2xx 返回 null —— 错误体（含 403/429）没有 stats/users 等
+    // 字段，直接 setState 会让下面的渲染解构崩溃（白屏 500）。
     const [o, u, k, c, rl, au] = await Promise.all([
-      fetch("/api/admin", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/admin/users", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/admin/kbs", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/admin/config", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/admin/ratelimit", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/admin/audit", { cache: "no-store" }).then((r) => r.json()),
+      fetchJson<AdminOverview>("/api/admin", { cache: "no-store" }),
+      fetchJson<{ users?: unknown[] }>("/api/admin/users", { cache: "no-store" }),
+      fetchJson<{ kbs?: unknown[] }>("/api/admin/kbs", { cache: "no-store" }),
+      fetchJson<SystemConfig & { providers?: ProviderStatus[] }>("/api/admin/config", { cache: "no-store" }),
+      fetchJson<RateLimitDashboard>("/api/admin/ratelimit", { cache: "no-store" }),
+      fetchJson<{ audit: AuditEvent[]; total: number; chainValid: boolean }>("/api/admin/audit", { cache: "no-store" }),
     ]);
-    setOverview(o); setUsers(u.users ?? []); setKbs(k.kbs ?? []); setConfig(c);
-    setProviders(c.providers ?? []); setRatelimit(rl); setAudit(au);
+    if (o) setOverview(o);
+    if (u) setUsers((u.users ?? []) as never[]);
+    if (k) setKbs((k.kbs ?? []) as never[]);
+    if (c) { setConfig(c); setProviders(c.providers ?? []); }
+    if (rl) setRatelimit(rl);
+    if (au) setAudit(au);
     setLoading(false);
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -136,16 +144,28 @@ export default function AdminPage() {
     const qs = new URLSearchParams();
     if (auditAction) qs.set("action", auditAction);
     if (auditActor) qs.set("actor", auditActor);
-    const r = await fetch(`/api/admin/audit?${qs.toString()}`, { cache: "no-store" });
-    setAudit(await r.json());
+    const d = await fetchJson<{ audit: AuditEvent[]; total: number; chainValid: boolean }>(
+      `/api/admin/audit?${qs.toString()}`,
+      { cache: "no-store" }
+    );
+    if (d) setAudit(d);
   }
 
-  if (loading || !overview || !config) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-6xl space-y-4">
         <Skeleton className="h-16 rounded-2xl" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{Array.from({length:8}).map((_,i)=><Skeleton key={i} className="h-24 rounded-xl" />)}</div>
         <Skeleton className="h-96 rounded-2xl" />
+      </div>
+    );
+  }
+
+  // 概览/配置拿不到（403/429/5xx 或网络失败）→ 重试回退，而不是无限骨架屏。
+  if (!overview || !config) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <LoadError onRetry={() => { setLoading(true); void refresh(); }} />
       </div>
     );
   }
