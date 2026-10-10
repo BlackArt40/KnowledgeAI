@@ -7,15 +7,17 @@ const EMAIL = "owner@knowledgeai.dev";
 // password literal in source.
 const PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString();
 
-/** 通过 UI 登录（每个用例独立登录，避免测试间状态耦合）。 */
+/** 通过 UI 登录（每个用例独立登录，避免测试间状态耦合）。
+ *  超时给得宽：dev 模式（CI 与本机）首次访问某路由要现场编译，冷启动时
+ *  登录 POST + 工作台首屏可能超过 20s，曾导致整条套件的前几条用例假失败。 */
 async function login(page: Page): Promise<void> {
   await page.goto("/login");
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 20_000 });
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 60_000 });
   // 等待 AppShell 导航出现（客户端渲染完成）
-  await expect(page.getByText("仪表盘").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("仪表盘").first()).toBeVisible({ timeout: 30_000 });
 }
 
 test("登录：demo 账号进入工作台", async ({ page }) => {
@@ -48,7 +50,7 @@ test("已登录：官网头部显示进入工作台，登录/注册页自动回�
 
 test("未登录：开发者门户跳转登录页", async ({ page }) => {
   await page.goto("/developer");
-  await expect(page).toHaveURL(/\/login(?:\?|$)/);
+  await expect(page).toHaveURL(/\/login(?:\?|$)/, { timeout: 30_000 }); // 冷启动编译留出余量
   await expect(page.getByRole("button", { name: "退出登录" })).toHaveCount(0);
 });
 
@@ -165,6 +167,42 @@ test("Agent：创建调研任务并完成报告", async ({ page }) => {
   // 调研结果报告出现：终态随 done 事件下发（多进程下 worker 生成，见
   // src/lib/agent/run-handler.ts），到达即为报告正文，而非空面板。
   await expect(page.getByText("调研结果").first()).toBeVisible({ timeout: 60_000 });
+});
+
+test("数据接口 429 时页面不白屏（统计/设置/管理/问答）", async ({ page }) => {
+  await login(page);
+
+  // 与真实限流一致的错误体：{error, retryAfter, dimension}。这些接口一旦返回
+  // 错误体、页面又把它当成功数据处理，就会白屏进 500 边界（PR #32 复盘）。
+  const rateLimited = (route: import("@playwright/test").Route) =>
+    route.fulfill({
+      status: 429,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "请求过于频繁，请稍后再试", retryAfter: 30, dimension: "user" }),
+    });
+  for (const pattern of [
+    "**/api/usage**",
+    "**/api/security**",
+    "**/api/admin**",
+    "**/api/knowledge-base**",
+    "**/api/chat/conversations**",
+  ]) {
+    await page.route(pattern, rateLimited);
+  }
+
+  // 三个整页数据页：渲染"请求失败 + 重试"回退，而不是 500 错误页
+  for (const path of ["/usage", "/settings", "/admin"]) {
+    await page.goto(path);
+    const fallback = page.getByRole("alert").filter({ hasText: "请求失败" });
+    await expect(fallback).toBeVisible({ timeout: 15_000 });
+    await expect(fallback.getByRole("button", { name: "重试" })).toBeVisible();
+    await expect(page.getByText("服务器开小差了")).toHaveCount(0);
+  }
+
+  // 问答页：知识库列表拿不到时降级为空态，但页面与导航仍然可用
+  await page.goto("/chat");
+  await expect(page.getByRole("link", { name: "仪表盘" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("服务器开小差了")).toHaveCount(0);
 });
 
 test("Agent：SSE error 事件在界面可见（队列繁忙 / 原始消息 / 流中断）", async ({ page }) => {
