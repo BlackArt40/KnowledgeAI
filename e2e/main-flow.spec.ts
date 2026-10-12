@@ -54,23 +54,48 @@ test("未登录：开发者门户跳转登录页", async ({ page }) => {
   await expect(page.getByRole("button", { name: "退出登录" })).toHaveCount(0);
 });
 
-test("官网：查看演示落到页内交互预览，并可切换三种模式", async ({ page }) => {
+test("官网：查看演示落到页内实时演示，复刻工作台界面并自动播放", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "查看演示" }).click();
 
-  // 目标是页内的交互式预览（标题"实时交互预览"），而不是功能卡片区
+  // 目标是页内的实时演示区（标题"实时演示"），而不是功能卡片区
   await expect(page).toHaveURL(/\/#demo$/);
   const demo = page.locator("#demo");
   await expect(demo).toBeInViewport();
-  await expect(demo.getByText("实时交互预览")).toBeVisible();
-  await expect(demo.getByText("2026 年 AI 工程师的就业趋势如何？")).toBeVisible();
+  await expect(demo.getByText("实时演示")).toBeVisible();
+  await expect(demo.getByRole("button", { name: "重新演示" })).toBeVisible();
 
-  // 预览可交互：问答 → 知识库管理 → Agent 调研
-  await demo.getByRole("button", { name: "知识库管理" }).click();
-  await expect(demo.getByText("解析、切片与向量化")).toBeVisible();
-  await demo.getByRole("button", { name: "Agent 调研" }).click();
+  // 复刻登录后工作台：侧边栏（工作区/协作与计费/系统分组）与顶栏账号
+  await expect(demo.getByRole("button", { name: "知识库", exact: true })).toBeVisible();
+  await expect(demo.getByRole("button", { name: "Agent 调研", exact: true })).toBeVisible();
+  await expect(demo.getByText("用量统计")).toBeVisible();
+  await expect(demo.getByText("演示账户")).toBeVisible();
+
+  // 默认在「智能问答」：提问输入 → 回答流式输出 → 引用来源进入右侧面板
+  await expect(demo.getByText("2026 年 AI 工程师的就业趋势如何？")).toBeVisible({ timeout: 15_000 });
+  await expect(demo.getByText(/^引用来源/)).toBeVisible(); // 右侧面板标题（空态提示文案也含该词，锚定开头）
+  await expect(demo.getByText("2026 AI 人才报告")).toBeVisible({ timeout: 15_000 });
+
+  // 仪表盘：欢迎语 + Agent 任务列表
+  await demo.getByRole("button", { name: "仪表盘", exact: true }).click();
+  await expect(demo.getByText("欢迎回来")).toBeVisible();
+  await expect(demo.getByText("Agent 任务")).toBeVisible();
+
+  // 知识库：三张卡片依次入库（处理中 → 就绪）
+  await demo.getByRole("button", { name: "知识库", exact: true }).click();
+  await expect(demo.getByText("就绪")).toHaveCount(3, { timeout: 15_000 });
+  await expect(demo.getByText("128 切片").first()).toBeVisible();
+
+  // Agent 调研：步骤逐个推进 → 报告生成
+  await demo.getByRole("button", { name: "Agent 调研", exact: true }).click();
   await expect(demo.getByText("规划", { exact: true })).toBeVisible();
-  await expect(demo.getByText("撰写", { exact: true })).toBeVisible();
+  await expect(demo.getByText("写作", { exact: true })).toBeVisible();
+  await expect(demo.getByText("调研报告已生成（1,240 字）")).toBeVisible({ timeout: 15_000 });
+
+  // 重新演示：动画重跑（先回到未完成态，再重新到达终态）
+  await demo.getByRole("button", { name: "重新演示" }).click();
+  await expect(demo.getByText("调研报告已生成（1,240 字）")).toBeHidden();
+  await expect(demo.getByText("调研报告已生成（1,240 字）")).toBeVisible({ timeout: 15_000 });
 
   // 回归（用户报告 2026-10-10）：回顶部后再点「查看演示」——URL 不得回退为 /
   // 或叠加为 #demo#demo，必须重新滚到演示区；window 标记保留证明是页内滚动，

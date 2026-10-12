@@ -52,7 +52,7 @@ export function Hero() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="rounded-full bg-card/70 px-7 backdrop-blur" asChild>
-              {/* 跳转页内交互式预览（下方 KnowledgeConsole，标题"实时交互预览"）。
+              {/* 跳转页内实时演示区（下方 KnowledgeConsole，标题"实时演示"）。
                   用原生 <a> 而非 <Link>（用户报告 2026-10-10）：同页锚点走客户端
                   路由器时，二次点击会触发"同页刷新"，其 URL 记账可能把不带 hash 的
                   / 写回地址栏（hash 不发给服务器，任何以响应/缓存为基准的写回都会
