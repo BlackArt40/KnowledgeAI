@@ -160,7 +160,7 @@ export function KnowledgeConsole() {
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-border/70 bg-background px-2 py-1.5">
             <span className="h-4 w-4 shrink-0 rounded bg-brand-gradient" />
-            <span className="flex-1 truncate text-[11px] font-medium">KnowledgeAI 团队</span>
+            <span className="flex-1 truncate text-[11px] font-medium">{t("page.hero.s47")}</span>
             <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
           </div>
 
