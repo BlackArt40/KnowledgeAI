@@ -62,6 +62,7 @@ export default withMermaid(defineConfig({
           text: '架构设计',
           items: [
             { text: '总体架构', link: '/architecture/overview' },
+            { text: '服务拆分实施手册', link: '/architecture/service-split' },
             { text: 'RAG 引擎架构', link: '/architecture/rag-engine' },
             { text: 'Agent 编排架构', link: '/architecture/agent-orchestration' },
             { text: 'UI 设计体系', link: '/architecture/design-system' },

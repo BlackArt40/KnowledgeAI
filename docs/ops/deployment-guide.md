@@ -1,10 +1,10 @@
 ---
 title: 部署指南
-description: KnowledgeAI 部署手册：Docker Compose 单机、CI Staging 自动部署、生产蓝绿切换与 Kubernetes 四方式
+description: KnowledgeAI 部署手册：三服务拆分部署（网关/业务/前端/AI）、Docker Compose 单机、CI Staging 自动部署、生产蓝绿切换与 Kubernetes
 type: how-to
 category: ops
 level: L2
-version: 1.0.0
+version: 1.2.0
 authors: [technical-writer]
 owner: devops-owner
 reviewed_at: 2026-08-20
@@ -16,11 +16,25 @@ related: [env-vars.md, monitoring.md, ../faq/faq.md]
 
 # 部署指南
 
-> 本文介绍 KnowledgeAI 的四种部署方式与升级/回滚流程。开始前请先阅读[环境变量全表](env-vars.md)完成配置。
+> 本文介绍 KnowledgeAI 的部署方式与升级/回滚流程。开始前请先阅读[环境变量全表](env-vars.md)完成配置。
 
 ## 部署架构
 
-生产部署由 **4 个服务**组成：
+**三服务拆分形态（>=1.3.0，服务拆分阶段 6 起的生产形态，见「方式五」）**：
+
+```mermaid
+flowchart LR
+  C["浏览器 / SDK"] --> GW["网关 nginx<br/>/api → 业务（多副本）<br/>其余 → 前端"]
+  GW --> BIZ["业务服务（Java ×N）"]
+  GW --> FE["前端（Next）"]
+  BIZ --> AI["AI 服务（Python，仅内网）"]
+  BIZ --> PG[("PostgreSQL")]
+  BIZ & AI --> RD[("Redis")]
+  AI --> VDB[("向量库")]
+  BIZ --> S3[("S3 / MinIO")]
+```
+
+**单体形态（<=1.2.x，本地开发 / 演示模式默认，方式一~四）**——生产部署由 **4 个服务**组成：
 
 | 服务 | 镜像/来源 | 职责 | 说明 |
 |------|-----------|------|------|
@@ -32,7 +46,8 @@ related: [env-vars.md, monitoring.md, ../faq/faq.md]
 **关键约束**：
 - `app` 与 `worker` **共享上传目录**（`/app/.uploads` 卷），worker 需要读取 app 写入的文档文件；
 - 容器内 `localhost` 是容器自己，`DATABASE_URL` / `REDIS_URL` 必须指向服务名或外部地址（见 [FAQ](../faq/faq.md)）；
-- 未配置 `DATABASE_URL` / `REDIS_URL` 时应用自动回退演示模式（数据不持久化）。
+- 未配置 `DATABASE_URL` / `REDIS_URL` 时应用自动回退演示模式（数据不持久化）；
+- **适用版本**：方式一~四描述单体形态；拆分生产形态（网关 + 业务 + 前端 + AI）见「方式五」。
 
 ## 方式一：Docker Compose（本地 / 单机）
 
@@ -118,6 +133,86 @@ kubectl apply -f k8s/deployment.yaml
   2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
      注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
+## 方式五：三服务拆分部署（>=1.3.0，生产形态）
+
+服务拆分阶段 6 产物（[service-split.md](../architecture/service-split.md) 6.1-6.3）：**网关(nginx) → 业务服务(Java ×N 副本) + 前端(Next) + AI 服务(Python)**，AI 仅内网可达（浏览器永不直连 Python）。前端继续**同域反代**（手册 6.1 推荐）：`NEXT_PUBLIC_API_BASE` 留空，浏览器只见网关一个源，Cookie 不跨域。
+
+### Docker Compose 一键起（A6.1）
+
+```bash
+# 1. 准备环境变量（密钥只进运行时 env，不进构建产物）
+cp deploy/env.split.example deploy/.env.split
+# 编辑 deploy/.env.split：至少设置 AUTH_SECRET / AI_INTERNAL_TOKEN
+
+# 2. 一键起全栈（网关 + 前端 + 业务 + AI + worker + Postgres + Redis + MinIO）
+docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --build
+
+# 3. 业务多副本（6.3：业务 ≥2 副本，撤销/限流/Agent 队列经 Redis 共享）
+docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --scale business=2
+
+# 4. 验证（网关默认 :8088，GATEWAY_PORT 可改）
+curl http://localhost:8088/api/health/ready   # 业务就绪（db/redis/ai/agentQueue/worker）
+curl -X POST http://localhost:8088/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"...","password":"..."}'
+```
+
+> 本机无 MinIO 镜像时的演练替代：叠加 `-f docker-compose.split.drill.yml`（moto S3 兼容层，阶段 2 验收同口径）。生产定义保持 `minio` 不变。
+
+### 滚动发布（A6.2/A6.6：全程无空窗）
+
+```bash
+# 1. 先扩一个新副本并等健康
+docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --scale business=3
+# 2. 网关优雅 reload（重新解析 upstream，不中断在途请求）
+docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gateway nginx -s reload
+# 3. 停一个旧副本（nginx proxy_next_upstream 对 error/502/503 自动换副本重试）
+# 4. 缩回目标副本数并再次 reload
+```
+
+### Kubernetes（A6.4 清单审计基线）
+
+`k8s/split.yaml`：三服务 + 网关清单，镜像占位符替换后 `kubectl apply -f k8s/split.yaml`（基础设施沿用 `k8s/deployment.yaml` 的 Postgres/Redis/MinIO 部分）。审计要点：
+
+- **AI 服务 = ClusterIP**：无 NodePort / 无 LoadBalancer / 无 Ingress（Python 不对公网）；
+- 前端 `app` 亦为 ClusterIP，**唯一公网入口是 gateway**（LoadBalancer）；
+- 探针：业务 startup/liveness `/actuator/health` + readiness `/api/health/ready`（DB/Redis/AI/Agent 队列降级即摘流量）；AI liveness/readiness `/health`；
+- 密钥经 Secret（`knowledgeai-runtime`）注入运行时环境变量，镜像构建不含密钥。
+
+### SSE 与网关（A6.3）
+
+网关配置（[deploy/nginx.conf](../../deploy/nginx.conf)）对 `/api/` 强制 `proxy_buffering off` + `proxy_read_timeout 3600s`，SSE（chat / agent-run）长流不缓冲、不掐断；业务侧 `spring.mvc.async.request-timeout=3600s` 对齐（Tomcat 默认 30s 异步超时会掐断长流——A6.3 演练实测暴露并已修复）。
+
+### 生产切换窗口（4.10：Next 业务 API 下线，部署时操作）
+
+服务拆分阶段 1-6 + 总检 G1-G10 全过后，生产入口仍指向单体（Next 承载业务 API）。本节是**上线窗口的执行手册**——把业务 API 正式切到业务服务并下线 Next 内业务路由（手册 [4.7/4.10](../architecture/service-split.md)，单次操作，约一个观察日 + 一个代码日）。
+
+**前置预检（全绿才开工）**：
+
+- [ ] 阶段 1-6 验收 + G1-G10 总检全过（评审记录：仓库 `deliverables/service-split/final-review-gmatrix-2026-10-13.md`）；
+- [ ] 拆分栈已在生产就位（方式五），`business ≥ 2` 副本、Redis 共享（撤销/限流/队列跨副本生效）；
+- [ ] 功能等价抽测通过：登录/2FA、KB CRUD、文档上传（同步 + binary 异步状态机）、chat/agent SSE、webhook 验签、分享链接语义码；
+- [ ] 数据库：Flyway 已迁移至最新（baseline 17 + 后续迁移），生产窗口内 Prisma 不再执行迁移；
+- [ ] 生产配置就位：`AUTH_SECRET`（与历史一致）、`AI_INTERNAL_TOKEN`、`CORS_ALLOWED_ORIGINS`（显式白名单）、`COOKIE_SECURE=true`；
+- [ ] 观测就位：`/api/health/ready` 告警、业务日志（Loki/结构化）、webhook 投递记录可查。
+
+**切换步骤**：
+
+1. **切流**：生产入口（DNS/LB/Ingress）指向拆分网关。切流即影子——网关把 `/api` 路由到业务服务，Next 内同名业务 handler 从此不接收生产流量（手册 4.10 的「停写内存、只写 DB」天然成立：DB 本就是写穿目标，业务服务直接读写同一库）。前端同域：`NEXT_PUBLIC_API_BASE` 留空，浏览器只见网关一个源，Cookie 不跨域；
+2. **观察 24h**：`/api/health/ready` 无 P0（AI 降级 503 属预期内自愈，不算 P0）；抽样验证登录/2FA、chat/agent SSE 帧序、webhook 验签、限流 429 与 `Retry-After`、撤销 401 跨副本生效；
+3. **代码下线**（24h 无 P0 后执行）：
+   - 代码搜索门禁：`grep -rn "__KAI_.*_STORE__" src/` —— 生产路径读取必须清零（业务 handler 删除后自然清零；测试/脚本引用单独评估）；
+   - 删除 Next 内业务 handler（`src/app/api/**` 中已被网关接管的业务路由；手册允许「改为 301 到业务服务或删除」，推荐删除——入口已在网关，Next 内无需重定向层）；
+   - 保留 Next 的页面/静态/PWA 职责（前端继续由网关 `/` 服务）；
+4. **收尾**：更新 [overview.md](../architecture/overview.md) 的适用版本标注（单体形态仅存于版本历史）；`AI_SERVICE_URL` 保持开启（前端内置的 chat 兜底逻辑不再有业务 API 可达，回退开关即网关注释切换）。
+
+**验证清单（切流后立即 + 24h 各跑一轮）**：登录/2FA 双分支、失败锁定、API Key scope 403、KB CRUD + 成员角色 PATCH + 审计链、文档索引状态机（ready/failed/轮询）、chat SSE（sources/token/done）、agent SSE（init/step/done/error/end）、webhook 三事件验签、分享链接 401/403/200/410、限流 429 + Retry-After——逐项对应各阶段验收文档的实测命令。
+
+**回滚预案（任一步可执行，无数据破坏）**：
+
+- 切回单体：生产入口 DNS/LB 指回 Next 单体入口即可——单体与业务服务读写同一 PostgreSQL（Flyway 只增不改历史表），内存 Store 水合即恢复原读路径；
+- 代码下线后回滚：`git revert` 恢复 Next 业务 handler（代码在版本库），重新部署单体；
+- `flyway_schema_history` 表仅记录基线，删除该表即回到 Prisma 单一治理（不推荐，仅数据层审计用）。
+
 ## 升级与回滚
 
 | 场景 | 操作 |
@@ -160,3 +255,5 @@ kubectl apply -f k8s/deployment.yaml
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版（依据 Dockerfile / compose / 部署脚本 / k8s 清单核对） |
+| 1.1.0 | 2026-10-13 | 服务拆分阶段 6：新增「方式五：三服务拆分部署」（compose 一键起 / 滚动发布 / k8s 拆分清单 / SSE 网关约束），部署架构区分单体（<=1.2.x）与三服务形态并标注适用版本 |
+| 1.2.0 | 2026-10-13 | 新增「生产切换窗口（4.10）」部署时操作：前置预检清单、切流/观察/代码下线步骤、验证清单与回滚预案（承接阶段 1-6 验收与 G1-G10 总检结论） |

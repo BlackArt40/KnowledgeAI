@@ -96,6 +96,30 @@ related: [deployment-guide.md, monitoring.md]
 
 > `pgvector` 需先在 PG 执行 `CREATE EXTENSION vector;`。
 
+## AI 服务（阶段 1 服务拆分）
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `AI_SERVICE_URL` | 否 | 空（单体模式） | 留空 = 进程内 TS RAG；配置后文档索引与问答生成走 Python AI 服务（`services/ai/`，FastAPI），Next 仅作 BFF。AI 服务不可用时问答返回 503（可重试），不静默回退本地 RAG |
+| `AI_INTERNAL_TOKEN` | 条件 | 空 | BFF → AI 服务的内部令牌（`X-Internal-Token`，两端必须一致）；AI 服务侧未配置该令牌时拒绝所有 `/internal/*` 调用（fail-closed） |
+
+> 阶段 2 起 AI 服务经预签名 URL（或 `S3_*` 凭据）从对象存储拉取文件，不读共享上传卷；AI 服务模式下解析二进制格式必须配置 `S3_*`（见「对象存储」，凭据与业务侧一致）。
+
+## 业务服务 / AI 服务拆分运行时（阶段 4-5，`services/`）
+
+以下变量仅在拆分部署（`services/business` + `services/ai`）中生效，不属于 Next 单体进程；`.env.example` 以注释示例同步（「服务拆分部署」块），本机拆分部署用 `deploy/env.split.example`：
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `QUEUE_MAX_DEPTH` | 否 | `100`（Python 侧） | Agent 任务队列（Redis List `agent:queue`）深度上限：`/internal/agent/run` 入队前检查 Redis List 长度，超限返回 429 `queue_busy`（ADR-0007/0008 背压语义）。与上方任务队列的 `QUEUE_MAX_DEPTH`（Next BullMQ）同名但独立生效 |
+| `REDIS_HOST` / `REDIS_PORT` | 否 | `localhost` / `6379` | `services/ai` 的 Redis 连接（队列 + 心跳 + 进度 Pub/Sub；`services/business` 同名变量见其 `application-pg.yml`） |
+| `COOKIE_SECURE` | 否 | `false` | 业务服务登录 Cookie（`kai-token`）的 `Secure` 标志（手册 6.1）：生产 https 部署必须 `true`；本地 http 部署保持 `false`（否则浏览器拒存 Cookie）。`HttpOnly`/`SameSite=Lax` 恒定 |
+| `GATEWAY_PORT` | 否 | `8088` | 拆分部署网关（nginx，`docker-compose.split.yml`）的宿主端口；`/api` → 业务服务多副本，其余 → 前端 |
+| `USAGE_ALERT_QA_LIMIT` | 否 | `0` | 业务服务 usage.alert webhook 的当日问答数阈值；`0` = 按 plan 判定（free 100，其余不限量） |
+| `AGENT_TASK_TIMEOUT_SECONDS` | 否 | `900` | 业务服务懒回收：queued/running 超过该秒数且无终态快照 → 标记 failed（worker 中途挂掉的可重试语义，A5.6） |
+| `AGENT_STREAM_TIMEOUT_SECONDS` | 否 | `300` | 业务服务 Agent SSE 转发硬超时（秒），超时关流 |
+| `TAVILY_API_KEY` / `SERPAPI_KEY` / `BRAVE_SEARCH_KEY` | 否 | 空 | AI 服务 Agent 外源搜索凭据（任一配置即启用 web 搜索；全空 = 演示回退）。与 Next 侧同名同义 |
+
 ## 对象存储
 
 | 变量 | 必填 | 默认值 | 说明 |

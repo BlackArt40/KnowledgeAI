@@ -72,6 +72,10 @@ tests/**/*测试报告.md
 # P7: SDK 运行缓存 + 静态分析工具产物
 __pycache__/
 *.pyc
+# 阶段 1 拆分：Python AI 服务本地虚拟环境（services/ai/.venv）
+.venv/
+# 阶段 4 拆分：Java 业务服务构建产物（services/business/target）
+services/business/target/
 .brooks-lint-history.json
 
 # 本地测试数据准备（仅本地使用，不提交 GitHub）
@@ -90,3 +94,4 @@ __pycache__/
 .mimosa/
 .workbuddy/
 _tmp_*
+knowledgeai_ai.egg-info/

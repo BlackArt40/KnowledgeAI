@@ -1,0 +1,63 @@
+# pg profile（M1-M3）：PostgreSQL 读事实源 + Flyway + Redis 限流 + Python AI 服务。
+# 红线（ADR-0009）：PostgreSQL 是唯一业务读路径；Redis 仅限流/缓存。
+spring:
+  autoconfigure:
+    exclude: ""
+  mvc:
+    async:
+      # SSE（chat/agent）走 StreamingResponseBody = MVC 异步请求：Tomcat 默认
+      # 30s async timeout 会在 30s 掐断长流（阶段 6 A6.3 演练实测暴露）。
+      # 3600s 与网关 proxy_read_timeout 对齐；流自身的硬超时见 agent.stream-*。
+      request-timeout: 3600000
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME:user}
+    password: ${DATASOURCE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 8
+  flyway:
+    enabled: true
+    # 手册 4.9：现有 17 个 Prisma 迁移为基线，此后新迁移仅由 Flyway 产出
+    baseline-on-migrate: true
+    baseline-version: "17"
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+auth:
+  secret: ${AUTH_SECRET:dev-secret-change-in-production}
+  # 6.1：kai-token Cookie Secure 标志（生产 https 必须 true；本地 http 部署 false）
+  cookie-secure: ${COOKIE_SECURE:false}
+
+ai:
+  # 手册 4.8：业务服务持有 AI_INTERNAL_TOKEN，/internal/* 契约同 ADR-0008
+  service-url: ${AI_SERVICE_URL:http://localhost:8000}
+  internal-token: ${AI_INTERNAL_TOKEN:}
+  # Python 不可用时 chat 返回可重试错误（阶段 1 降级语义，不回退本地生成）
+  timeout-ms: 120000
+
+# 手册 4.6：限流维度与现网 src/proxy.ts 一致（60s 窗口，Redis ZSET 滑动窗口）
+ratelimit:
+  per-minute: ${RATE_LIMIT_PER_MIN:60}        # authenticated user
+  anon-per-minute: ${RATE_LIMIT_ANON_PER_MIN:20}
+  kb-per-minute: ${RATE_LIMIT_KB_PER_MIN:60}  # per KB（in-route）
+
+usage:
+  # 手册 4.5：问答成功回调 recordQa（按 workspace 按日聚合，V18 表）
+  enabled: true
+  # 手册 5.5：usage.alert 阈值（0 = 按计划判定：free 100，其余不限量）
+  alert-qa-limit: ${USAGE_ALERT_QA_LIMIT:0}
+
+# 手册 5.1/5.3：Agent 任务（队列在 Python worker，业务服务入队 + SSE 转发）
+agent:
+  # 懒回收超时：queued/running 超过该秒数且无终态快照 → 标记 failed（A5.6）
+  task-timeout-seconds: ${AGENT_TASK_TIMEOUT_SECONDS:900}
+  # SSE 转发硬超时（秒），超时关流由懒回收兜底
+  stream-timeout-seconds: ${AGENT_STREAM_TIMEOUT_SECONDS:300}
+
+# 手册 5.5：Webhook 投递。SSRF 基线拒绝内网/回环；本地验收接收器用
+# SSRF_ALLOW_PRIVATE_HOSTS=true 放行（与仓库 smoke 套件同名环境策略）
+webhook:
+  allow-private-hosts: ${SSRF_ALLOW_PRIVATE_HOSTS:false}

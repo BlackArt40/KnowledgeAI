@@ -19,6 +19,49 @@ export function isStorageEnabled(): boolean {
   return getS3Config() !== null;
 }
 
+// ── 阶段 2 服务拆分：文档对象 key 派生 ─────────────────────────────────────
+// 上传（直传 + 分片 rename）与删除共用同一确定性 key：`${kbId}/${docId}-${safeName}`。
+// 删除时无需持久化 objectKey —— 由 kbId/docId/name 推导（与本地 `.uploads` 命名一致）。
+const SAFE_NAME_RE = /[^a-zA-Z0-9._\-\u4e00-\u9fa5]/g;
+
+export function docStorageKey(kbId: string, docId: string, filename: string): string {
+  const safeName = filename.replace(SAFE_NAME_RE, "_");
+  return `${kbId}/${docId}-${safeName}`;
+}
+
+/**
+ * 保存文档文件：S3 模式写对象（docStorageKey），本地模式写
+ * `.uploads/<kbId>/<docId>-<safeName>`（与既有本地命名兼容）。
+ * 返回写入的后端类型。
+ */
+export async function saveDocFile(
+  kbId: string,
+  docId: string,
+  filename: string,
+  data: Buffer | Uint8Array
+): Promise<"s3" | "local"> {
+  const key = docStorageKey(kbId, docId, filename);
+  if (isStorageEnabled()) {
+    await uploadToS3(key, data);
+    return "s3";
+  }
+  const kbDir = path.join(process.cwd(), ".uploads", kbId);
+  await fs.mkdir(kbDir, { recursive: true });
+  await fs.writeFile(path.join(kbDir, `${docId}-${filename.replace(SAFE_NAME_RE, "_")}`), data);
+  return "local";
+}
+
+/** 删除文档文件：S3 模式删对象，本地模式删文件（缺失时静默）。 */
+export async function deleteDocFile(kbId: string, docId: string, filename: string): Promise<void> {
+  const key = docStorageKey(kbId, docId, filename);
+  if (isStorageEnabled()) {
+    await deleteFromS3(key).catch(() => {});
+    return;
+  }
+  const safeName = filename.replace(SAFE_NAME_RE, "_");
+  await fs.unlink(path.join(process.cwd(), ".uploads", kbId, `${docId}-${safeName}`)).catch(() => {});
+}
+
 export interface UploadResult {
   key: string;      // storage key / path
   url: string;      // accessible URL

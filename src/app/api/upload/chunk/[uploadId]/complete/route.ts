@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getSession, deleteSession } from "@/lib/upload/store";
-import { isStorageEnabled, validateFile } from "@/lib/storage";
-import { completeMultipartUpload, downloadFromS3 } from "@/lib/storage/s3";
+import { isStorageEnabled, validateFile, docStorageKey } from "@/lib/storage";
+import { completeMultipartUpload, downloadFromS3, copyS3Object, deleteFromS3 } from "@/lib/storage/s3";
 import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
 import { canEditKb } from "@/lib/team/store";
 import { notify } from "@/lib/notifications/store";
@@ -96,6 +96,13 @@ export async function POST(_req: Request, { params }: Params) {
     // ── Clean up ────────────────────────────────────────────────
     if (session.tempDir) {
       await fs.rm(session.tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+    // 阶段 2：S3 模式把 pending 分片对象改名到 docStorageKey（kbId/docId 前缀，
+    // 删除路径可由 doc 信息确定性推导），保证「对象存储为文件唯一来源」。
+    if (isStorageEnabled() && session.s3Key) {
+      const dstKey = docStorageKey(session.kbId, doc.id, session.filename);
+      await copyS3Object(session.s3Key, dstKey).catch(() => {});
+      await deleteFromS3(session.s3Key).catch(() => {});
     }
     deleteSession(uploadId);
 

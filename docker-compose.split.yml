@@ -1,0 +1,201 @@
+# ── 阶段 6 拆分部署编排（service-split.md 6.1-6.3，A6.1 一键起）──────────────
+#
+# 形态：网关(nginx) → /api 反代业务服务(Java, 可 --scale business=N 多副本)；
+#       其余 → 前端(Next)。AI 服务与基础设施仅内网（不映射宿主端口）。
+#
+# 一键起（干净机器演练）：
+#   cp deploy/env.split.example deploy/.env.split   # 填 AUTH_SECRET（必填）
+#   docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --build
+#   docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --scale business=2
+#
+# 说明：
+#   - 前端继续同域（手册 6.1 推荐）：浏览器只见网关一个源，/api 由网关转业务，
+#     Cookie 不跨域；NEXT_PUBLIC_API_BASE 留空即同源。
+#   - AI 服务不映射宿主端口（契约 #1：Python 不对公网；A6.4 清单审计同口径）。
+#   - business 镜像由 services/business/Dockerfile 构建；Flyway 启动时自动迁移
+#     （baseline 17 + V18）。
+#   - 滚动发布（A6.2/A6.6）：先 `up -d --scale business=3` 待新副本健康，再
+#     `exec gateway nginx -s reload`（重新解析 upstream），最后缩回旧副本——
+#     全程网关健康探测无失败空窗。
+
+services:
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "${GATEWAY_PORT:-8088}:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app:
+        condition: service_started
+      business:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 前端（Next standalone：页面 + 静态 + PWA；其业务 API 由网关侧路由到业务服务）
+  app:
+    build: .
+    env_file: ${SPLIT_ENV_FILE:-deploy/.env.split}
+    environment:
+      DATABASE_URL: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
+      REDIS_URL: redis://redis:6379/0
+      # 6.1：前端继续同域 —— API 基址留空（浏览器走网关同源 /api）
+      NEXT_PUBLIC_API_BASE: ""
+      # 拆分形态：业务 API 在网关之后（Next 内同名路由被网关遮蔽）
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # 遗留队列 worker（Next BullMQ）：4.10 切换窗口前的 doc-process 兼容位；
+  # 拆分形态下业务上传走 Java（不经 BullMQ），该服务为空转兜底。
+  worker:
+    build: .
+    command: ["node", "worker.js"]
+    env_file: ${SPLIT_ENV_FILE:-deploy/.env.split}
+    environment:
+      DATABASE_URL: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
+      REDIS_URL: redis://redis:6379/0
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  # 业务服务（Java 17 + Spring Boot，ADR-0009）。多副本：up -d --scale business=2
+  business:
+    build: ./services/business
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET 必填}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DATASOURCE_URL: jdbc:postgresql://postgres:5432/knowledgeai
+      DATASOURCE_USERNAME: user
+      DATASOURCE_PASSWORD: knowledgeai-dev
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      AI_SERVICE_URL: http://ai:8000
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN 必填}
+      # Agent 队列 / 懒回收 / Webhook / 用量告警（阶段 5）
+      QUEUE_MAX_DEPTH: ${QUEUE_MAX_DEPTH:-100}
+      AGENT_TASK_TIMEOUT_SECONDS: ${AGENT_TASK_TIMEOUT_SECONDS:-900}
+      SSRF_ALLOW_PRIVATE_HOSTS: ${SSRF_ALLOW_PRIVATE_HOSTS:-false}
+      USAGE_ALERT_QA_LIMIT: ${USAGE_ALERT_QA_LIMIT:-0}
+      # 限流档位（对齐 src/proxy.ts 分级）
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
+      RATE_LIMIT_ANON_PER_MIN: ${RATE_LIMIT_ANON_PER_MIN:-20}
+      RATE_LIMIT_KB_PER_MIN: ${RATE_LIMIT_KB_PER_MIN:-60}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 8
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+
+  # AI 服务（Python RAG + Agent worker）。仅内网：不映射宿主端口（A6.4）。
+  # Agent 队列为 Redis BLPOP —— 本服务可水平扩（多副本 = 多消费者，6.3）。
+  ai:
+    build: ./services/ai
+    environment:
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN 必填}
+      AI_ALLOW_PRIVATE_FETCH: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      QUEUE_MAX_DEPTH: ${QUEUE_MAX_DEPTH:-100}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-knowledgeai-uploads}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      CHAT_MODEL: ${CHAT_MODEL:-gpt-4o}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb -p --ignore-existing local/$${S3_BUCKET:-knowledgeai-uploads} &&
+      echo 'minio-init: bucket ready'
+      "
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-knowledgeai-uploads}
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: knowledgeai-dev
+      POSTGRES_DB: knowledgeai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d knowledgeai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-data:
+  postgres-data:
+  minio-data:

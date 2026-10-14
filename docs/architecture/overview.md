@@ -1,17 +1,17 @@
 ---
 title: KnowledgeAI 总体架构
-description: KnowledgeAI 系统架构总览：内存存储与写穿数据库、Provider 适配层、后台队列、SSE 链路与可观测性
+description: KnowledgeAI 系统架构总览：三服务生产形态（网关/业务/前端/AI）、内存存储与写穿数据库、Provider 适配层、后台队列、SSE 链路与可观测性
 type: explanation
 category: architecture
 level: L1
-version: 1.2.0
+version: 1.3.0
 authors: [technical-writer]
 owner: 技术负责人
-reviewed_at: 2026-10-08
+reviewed_at: 2026-10-12
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [rag-engine.md, agent-orchestration.md, ../api/guide.md, ../standards/glossary.md]
+related: [rag-engine.md, agent-orchestration.md, service-split.md, ../api/guide.md, ../standards/glossary.md]
 ---
 
 # KnowledgeAI 总体架构
@@ -76,6 +76,38 @@ flowchart LR
   LLM --> LLMS
   VEC --> VDB
 ```
+
+## 生产形态：三服务拆分（>=1.3.0）
+
+自 [服务拆分](./service-split.md) 阶段 1-6 完成后，**生产部署形态为三服务**（本文其余章节描述的进程内 RAG / Agent / 队列实现仍适用于单体形态与开发模式，见下方「适用版本」）：
+
+```mermaid
+flowchart LR
+  C["浏览器 / SDK"] --> GW["网关 nginx<br/>/api → 业务；/ → 前端<br/>SSE 不缓冲（A6.3）"]
+  subgraph Split["三服务"]
+    BIZ["业务服务（Java 17 + Spring Boot）<br/>鉴权 / 租户 / 任务 / Webhook<br/>多副本 + Redis 共享状态"]
+    FE["前端（Next.js 16）<br/>页面 / 静态 / PWA"]
+    AI["AI 服务（Python FastAPI）<br/>RAG + LangGraph Agent worker<br/>仅内网（ClusterIP，无公网入口）"]
+  end
+  GW --> BIZ
+  GW --> FE
+  BIZ --> AI
+  BIZ --> PG2[("PostgreSQL")]
+  BIZ --> RD2[("Redis<br/>限流 · jti · agent:queue")]
+  AI --> RD2
+  AI --> VDB2[("pgvector / Chroma / Pinecone")]
+  BIZ --> S32[("S3 / MinIO")]
+```
+
+拆分要点（详见 [service-split.md](./service-split.md) 与各阶段验收文档）：
+
+- **浏览器永不直连 Python**（契约 #1）：AI 服务仅经业务服务的 `/internal/*`（内网令牌）可达；
+- **业务读路径 = PostgreSQL 唯一事实源**（ADR-0009 红线），Java 侧无内存事实源；
+- **跨语言兼容字节级锁定**：密码哈希（PBKDF2/legacy SHA-256）、JWT（HS256 claims）、API Key（AES-256-GCM + HKDF）、TOTP（RFC 6238）、Webhook 签名（HMAC-SHA256 `sha256=` hex）均有双向向量测试；
+- **Agent 队列**：Redis List `agent:queue`（Java LPUSH / Python BLPOP），进度经 Pub/Sub `agent:<taskId>` 由业务服务转 SSE；
+- **部署产物**：[docker-compose.split.yml](../../docker-compose.split.yml)（一键起全栈，`--scale business=N` 多副本）与 [k8s/split.yaml](../../k8s/split.yaml)（三服务 + 网关，探针见 6.4）。
+
+**适用版本标注（A6.7）**：本页「内存 Store + 写穿 DB」「进程内 Agent/队列」等章节描述的是**单体形态（<=1.2.x，演示 / 开发模式默认）**；三服务形态（>=1.3.0）下业务读路径由 Java + PostgreSQL 承接，进程内实现仅作为绞杀式迁移的回退开关保留（`AI_SERVICE_URL` 置空即回退单体）。
 
 ## 核心架构决策
 
@@ -187,6 +219,7 @@ flowchart LR
 - [ADR-0003：多租户隔离契约](adr/adr-0003-multi-tenant-isolation.md)
 - [ADR-0006：读路径存储演进](adr/adr-0006-read-path-storage-evolution.md)
 - [ADR-0007：队列背压](adr/adr-0007-queue-backpressure.md)
+- [服务拆分实施手册（国内常见三层）](service-split.md)
 - [术语表](../standards/glossary.md)
 
 ## 修订记录
@@ -195,4 +228,6 @@ flowchart LR
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版（依据 AGENTS.md 与源码核对） |
 | 1.1.0 | 2026-10-08 | 补记 2026-09～10 架构演进（多租户持久化、安全加固、PWA、CI 门禁） |
+| 1.2.1 | 2026-10-12 | 相关文档增加服务拆分实施手册 |
 | 1.2.0 | 2026-10-08 | 扩容就绪（D 组）：鉴权读路径共享化（ADR-0006）、队列背压（ADR-0007）、就绪探针附加降级位、k8s 前置条件刷新 |
+| 1.3.0 | 2026-10-13 | 服务拆分阶段 6：新增「生产形态：三服务拆分」章节（网关/业务/前端/AI 拓扑、部署产物、适用版本标注——单体章节适用于 <=1.2.x 与开发模式） |

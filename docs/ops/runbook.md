@@ -151,6 +151,27 @@ npx prisma migrate deploy
 > **若已执行破坏性迁移**（如 `20260816100000_drop_dead_tables`），**禁止直接回滚
 > 镜像**——老代码可能引用已删除的表。只能前向修复或快照恢复。
 
+### 对象存储（阶段 2：bucket 与 Postgres 缺一不可）
+
+阶段 2 起上传文件以对象存储为唯一来源（`service-split.md` G4），**知识库的完整恢复
+= Postgres 备份 + bucket 备份，二者缺一不可**：只恢复 DB 会得到 `ready` 文档行但对象
+已失（重新索引拉取 404）；只恢复 bucket 则元数据/会话丢失。
+
+```bash
+# 发布前：在 pg_dump 同一窗口做 bucket 备份（mc mirror 增量）
+mc alias set kai "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY"
+mc mirror --overwrite "kai/$S3_BUCKET" "./backup-bucket-$(date +%F-%H%M)/"
+
+# 恢复：先起 bucket 恢复对象，再 pg_restore，最后校验
+mc mirror "./backup-bucket-<ts>/" "kai/$S3_BUCKET"
+```
+
+**验收**（纳入发布前检查，与 RB-02 的 DB 验收同一清单）：
+
+- `mc ls "kai/$S3_BUCKET" --recursive | wc -l` 与删除计量一致（或 ≥ 上次备份）；
+- 抽查一个 `ready` 文档：`<kbId>/<docId>-<name>` 对象存在且业务侧可重新索引
+  （预签名 GET 200）。
+
 ---
 
 ## RB-03 队列积压 / 内存持续攀升

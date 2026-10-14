@@ -1,0 +1,44 @@
+# ── A6.1 本机演练覆盖（叠加在 docker-compose.split.yml 之上）─────────────────
+# 用法：docker compose -f docker-compose.split.yml -f docker-compose.split.drill.yml up -d --scale business=2
+# 差异：MinIO 镜像在本机不可得（Docker Hub 匿名配额 + 镜像源不可得），以
+# moto server（S3 兼容，阶段 2 验收同口径）替代；minio-init 改用 AI 镜像内的
+# boto3 建桶。生产定义（docker-compose.split.yml 的 minio/mc）保持不变。
+
+services:
+  minio:
+    build:
+      context: ./deploy
+      dockerfile: moto.Dockerfile
+    image: knowledgeai-moto-s3:latest
+    command: []
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9000')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: knowledgeai-ai:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      python -c "
+      import boto3, os
+      s3 = boto3.client('s3', endpoint_url='http://minio:9000',
+                        aws_access_key_id=os.environ.get('S3_ACCESS_KEY', 'minioadmin'),
+                        aws_secret_access_key=os.environ.get('S3_SECRET_KEY', 'minioadmin'),
+                        region_name='us-east-1')
+      bucket = os.environ.get('S3_BUCKET', 'knowledgeai-uploads')
+      try:
+          s3.create_bucket(Bucket=bucket)
+      except s3.exceptions.BucketAlreadyOwnedByYou:
+          pass
+      print('moto-init: bucket ready')
+      "
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-knowledgeai-uploads}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}

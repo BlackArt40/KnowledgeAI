@@ -85,8 +85,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // M-3: max text indexed per file (mirrors the upload route cap).
 const MAX_TEXT = 2 * 1024 * 1024;
 
-/** Locate + read the uploaded file for a doc (.uploads/<kbId>/<docId>-*). */
-async function readUploadedFile(doc: KbDocument): Promise<Buffer | null> {
+/** Locate the uploaded file for a doc (.uploads/<kbId>/<docId>-*) and return
+ *  its absolute path, or null. Shared by local parsing (readUploadedFile) and
+ *  the remote AI-service pipeline (file:// index source). */
+export async function getUploadedFilePath(doc: KbDocument): Promise<string | null> {
   const base = path.resolve(process.cwd(), ".uploads");
   const dir = path.resolve(base, doc.kbId);
   if (!dir.startsWith(base + path.sep)) return null; // containment: never leave .uploads
@@ -96,7 +98,17 @@ async function readUploadedFile(doc: KbDocument): Promise<Buffer | null> {
     if (!match) return null;
     const file = path.resolve(dir, match);
     if (!file.startsWith(dir + path.sep)) return null;
-    return fs.readFile(file);
+    return file;
+  } catch {
+    return null;
+  }
+}
+
+async function readUploadedFile(doc: KbDocument): Promise<Buffer | null> {
+  const file = await getUploadedFilePath(doc);
+  if (!file) return null;
+  try {
+    return await fs.readFile(file);
   } catch {
     return null;
   }
@@ -238,6 +250,129 @@ export async function processDocInQueue(docId: string): Promise<void> {
         log.warn({ err: e }, "[kb] graph index error")
       );
       // P7-1: notify webhook subscribers when a document becomes queryable.
+      const { emitWebhookEvent } = await import("@/lib/webhooks/store");
+      void emitWebhookEvent(kb.workspaceId, "kb.ready", {
+        kbId: kb.id,
+        kbName: kb.name,
+        docId: d.id,
+        docName: d.name,
+        chunks: d.chunks,
+        status: "ready",
+      }).catch((e) => log.warn({ err: e }, "[kb] webhook emit failed"));
+    }
+  } catch (err) {
+    const d = store.docs.get(docId);
+    if (d) {
+      d.status = "failed";
+      d.error = err instanceof Error ? err.message : "处理失败";
+      store.docs.set(docId, d);
+      void persistDoc(d);
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Remote pipeline (stage 1 service split, docs/architecture/service-split.md).
+// When AI_SERVICE_URL is set the doc-process queue task routes here: parsing /
+// chunking / embedding / indexing run in the Python AI service, while status
+// transitions, progress broadcast, graph indexing and the kb.ready webhook
+// stay in this process (business concerns). Mirrors processDocInQueue's
+// status/error contract so the queue handler can swap them transparently.
+// ---------------------------------------------------------------------------
+
+const REMOTE_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  word: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  markdown: "text/markdown",
+  text: "text/plain",
+  csv: "text/csv",
+  subtitle: "text/plain",
+};
+
+export async function processDocInQueueRemote(docId: string): Promise<void> {
+  const store = getStore();
+  const doc = store.docs.get(docId);
+  if (!doc) throw new Error(`Document not found: ${docId}`);
+  const kb = store.kbs.get(doc.kbId);
+
+  const setStage = (status: DocStatus, progress: number) => {
+    const d = store.docs.get(docId);
+    if (!d) return;
+    d.status = status;
+    d.progress = progress;
+    store.docs.set(docId, d);
+    void persistDoc(d);
+    publish(`kb:${d.kbId}`, {
+      type: "doc_status",
+      kbId: d.kbId,
+      docId,
+      status: d.status,
+      progress: d.progress,
+    });
+  };
+
+  try {
+    // text-like docs carry inline content already; binary formats are handed
+    // to Python via a short-TTL presigned GET on the stored object (stage 2:
+    // object storage is the only file source - no shared volume protocol).
+    if (!doc.content && doc.type !== "web") {
+      const buf = await readUploadedFile(doc);
+      if (buf && isTextLike(doc.type)) {
+        doc.content = buf.toString("utf-8").slice(0, MAX_TEXT);
+        store.docs.set(docId, doc);
+        void persistDoc(doc);
+      }
+    }
+    setStage("parsing", 30);
+
+    const { remoteIndexDocument } = await import("@/lib/rag/remote");
+    // 阶段 3（手册 3.2）：禁止默认租户回退 —— KB 缺失即无法确定归属，明确失败。
+    if (!kb) throw new Error("知识库不存在，无法确定文档的租户归属");
+    let source: { type: "content"; content: string } | { type: "presignedUrl"; url: string };
+    if (doc.content) {
+      source = { type: "content", content: doc.content };
+    } else {
+      const { isStorageEnabled, getPresignedDownloadUrl, docStorageKey } = await import("@/lib/storage");
+      if (!isStorageEnabled()) {
+        throw new Error("AI 服务模式下解析二进制格式需配置对象存储（S3_ENDPOINT/S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY）");
+      }
+      // 预签名 GET：TTL 10 分钟（≤ 手册 2.4 的 15 分钟上限），bucket 私有
+      source = {
+        type: "presignedUrl",
+        url: await getPresignedDownloadUrl(docStorageKey(doc.kbId, doc.id, doc.name), 600),
+      };
+    }
+    const result = await remoteIndexDocument({
+      workspaceId: kb.workspaceId,
+      kbId: doc.kbId,
+      docId: doc.id,
+      filename: doc.name,
+      mime: REMOTE_MIME[doc.type] ?? "application/octet-stream",
+      source,
+      settings: {
+        chunkSize: kb.settings.chunkSize,
+        chunkOverlap: kb.settings.chunkOverlap,
+      },
+    });
+    if (!result.ok || typeof result.chunks !== "number") {
+      throw new Error(result.message ? `AI 服务索引失败: ${result.message}` : "AI 服务索引失败");
+    }
+    setStage("vectorizing", 90);
+
+    const d = store.docs.get(docId);
+    if (!d) return;
+    d.status = "ready";
+    d.progress = 100;
+    d.chunks = result.chunks;
+    store.docs.set(docId, d);
+    void persistDoc(d);
+
+    if (kb) {
+      // 图谱抽取留在业务侧（kg/ 属后续阶段迁移范围）
+      void indexDocGraph(kb.id, d.id, d.content ?? "").catch((e) =>
+        log.warn({ err: e }, "[kb] graph index error")
+      );
       const { emitWebhookEvent } = await import("@/lib/webhooks/store");
       void emitWebhookEvent(kb.workspaceId, "kb.ready", {
         kbId: kb.id,
@@ -439,13 +574,28 @@ export function updateKbSettings(
 export async function deleteKb(id: string): Promise<boolean> {
   seed();
   const store = getStore();
-  for (const [docId, doc] of store.docs) {
-    if (doc.kbId === id) store.docs.delete(docId);
-  }
+  const docs = [...store.docs.values()].filter((d) => d.kbId === id);
+  for (const doc of docs) store.docs.delete(doc.id);
   await vsClearKb(id);
   void deleteKbFromDb(id);
   // P7-3: drop the KB's knowledge graph (entities + relations).
   void clearKbGraph(id);
+  // 阶段 2（service-split.md 2.5）：逐个删除文档文件（S3 对象或本地文件），
+  // 并经 index-cleanup 清理检索索引（含远端）。
+  void import("@/lib/storage")
+    .then(({ deleteDocFile }) =>
+      Promise.allSettled(docs.map((d) => deleteDocFile(id, d.id, d.name)))
+    )
+    .catch((e) => log.warn({ err: e }, "[kb] kb file delete failed"));
+  void import("@/lib/queue")
+    .then(({ enqueue }) =>
+      enqueue("index-cleanup", {
+        kbId: id,
+        // 阶段 3：删除路径强制租户过滤（KB 行此刻仍在内存中，先取归属）
+        workspaceId: store.kbs.get(id)?.workspaceId,
+      })
+    )
+    .catch((e) => log.warn({ err: e }, "[kb] index-cleanup enqueue failed"));
   // Clean up local files for this KB (fire-and-forget)
   const kbDir = path.join(process.cwd(), ".uploads", id);
   void fs.rm(kbDir, { recursive: true, force: true }).catch(() => {});
@@ -585,6 +735,24 @@ export async function deleteDocument(docId: string): Promise<boolean> {
   if (doc) await vsClearDoc(doc.kbId, docId);
   if (doc) void deleteDocFromDb(docId);
   const ok = store.docs.delete(docId);
-  if (ok && doc) publish(`kb:${doc.kbId}`, { type: "doc_deleted", kbId: doc.kbId, docId });
+  if (ok && doc) {
+    publish(`kb:${doc.kbId}`, { type: "doc_deleted", kbId: doc.kbId, docId });
+    // 阶段 2（service-split.md 2.5）：业务侧删除文件（S3 对象或本地文件），
+    // 并经 index-cleanup 队列清理检索索引（AI 服务开启时为远端 DELETE，
+    // 单体模式为进程内向量库——重复清除无害）。失败随队列重试/死信。
+    void import("@/lib/storage")
+      .then(({ deleteDocFile }) => deleteDocFile(doc.kbId, docId, doc.name))
+      .catch((e) => log.warn({ err: e }, "[kb] doc file delete failed"));
+    void import("@/lib/queue")
+      .then(({ enqueue }) =>
+        enqueue("index-cleanup", {
+          kbId: doc.kbId,
+          docId,
+          // 阶段 3：删除路径强制租户过滤 —— workspaceId 随载荷传给远端
+          workspaceId: getKb(doc.kbId)?.workspaceId,
+        })
+      )
+      .catch((e) => log.warn({ err: e }, "[kb] index-cleanup enqueue failed"));
+  }
   return ok;
 }
