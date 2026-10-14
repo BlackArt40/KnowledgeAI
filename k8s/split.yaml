@@ -1,0 +1,269 @@
+# ⚠️ 示例清单（EXAMPLE ONLY）—— 三服务拆分形态（阶段 6，service-split.md 6.3/6.4）
+#
+# 与单体示例 k8s/deployment.yaml 的关系：本文件描述拆分后的目标生产形态——
+#   gateway(nginx) → business(Java ×N 副本) + app(Next 前端) + ai(Python RAG/Agent)
+#   + redis + postgres(pgvector) + minio。基础设施部分沿用 k8s/deployment.yaml 的
+#   单体清单（PVC/Postgres/Redis/MinIO），本文件只含三服务与网关。
+#
+# A6.4 审计基线（本清单满足）：
+#   - ai 服务为 ClusterIP，无 NodePort / 无 LoadBalancer（Python 不对公网，契约 #1）；
+#   - 浏览器唯一入口是 gateway（LoadBalancer/Ingress）；app(前端) 亦为 ClusterIP；
+#   - 密钥只经 Secret 注入 business / ai / app 运行时环境变量，不进镜像层（A6.5）。
+#
+# 探针（6.4）：
+#   business: startup/liveness /actuator/health，readiness /api/health/ready
+#             （DB/Redis/AI/agentQueueDepth/agentWorker —— 降级 503 自动摘流量）
+#   ai:       liveness/readiness GET /health
+#   app:      liveness /api/health（Next），readiness /api/health/ready
+#
+# 用法（镜像占位符替换后）：
+#   kubectl apply -f k8s/split.yaml
+#   kubectl -n knowledgeai set env deploy/business AUTH_SECRET=... AI_INTERNAL_TOKEN=...
+#
+# 多副本前置（对齐单体清单的扩容门）：business 的撤销/限流/Agent 队列全部经
+# Redis 共享（JtiRevocationService / RateLimiter / agent:queue），REDIS_HOST 必须
+# 指向集群内 Redis；uploads 卷仅 app 需要且已由对象存储承接（阶段 2）。
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  labels: { app: gateway }
+data:
+  nginx.conf: |
+    worker_processes auto;
+    events { worker_connections 1024; }
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      keepalive_timeout 75s;
+      upstream business { server business:8080 max_fails=2 fail_timeout=5s; }
+      upstream frontend { server app:3000; }
+      server {
+        listen 80;
+        location /api/ {
+          proxy_pass http://business;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Connection "";
+          proxy_buffering off;           # SSE：网关不缓冲（A6.3）
+          proxy_cache off;
+          proxy_read_timeout 3600s;
+          proxy_send_timeout 3600s;
+          proxy_next_upstream error timeout http_502 http_503;  # A6.2 副本故障重试
+          proxy_connect_timeout 3s;
+        }
+        location / {
+          proxy_pass http://frontend;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+        }
+      }
+      map $http_upgrade $connection_upgrade { default upgrade; "" close; }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: knowledgeai-runtime
+  labels: { app: knowledgeai }
+stringData:
+  # 占位：部署时经 kubectl create secret / 外部密钥系统注入真实值（A6.5：
+  # 密钥只进运行时环境变量，不进镜像与前端包）
+  AUTH_SECRET: "replace-at-deploy-time"
+  AI_INTERNAL_TOKEN: "replace-at-deploy-time"
+  POSTGRES_PASSWORD: "replace-at-deploy-time"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: business
+  labels: { app: business, tier: backend }
+spec:
+  replicas: 2 # 6.3：业务 ≥2 副本（撤销/限流/Agent 队列经 Redis 共享）
+  selector:
+    matchLabels: { app: business }
+  template:
+    metadata:
+      labels: { app: business }
+    spec:
+      containers:
+        - name: business
+          image: ghcr.io/knowledgeai/business:PLACEHOLDER
+          ports: [{ containerPort: 8080 }]
+          env:
+            - name: AUTH_SECRET
+              valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: AUTH_SECRET } }
+            - name: AI_INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: AI_INTERNAL_TOKEN } }
+            - name: COOKIE_SECURE
+              value: "true" # 生产 https（6.1）
+            - name: DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/knowledgeai
+            - name: DATASOURCE_USERNAME
+              value: user
+            - name: DATASOURCE_PASSWORD
+              valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: POSTGRES_PASSWORD } }
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: AI_SERVICE_URL
+              value: http://ai:8000 # 仅内网（A6.4：ai 无公网暴露）
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8080 }
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8080 }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/health/ready, port: 8080 } # 降级 503 → 摘流量（6.4）
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: business
+  labels: { app: business }
+spec:
+  type: ClusterIP
+  selector: { app: business }
+  ports: [{ port: 8080, targetPort: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai
+  labels: { app: ai, tier: backend }
+spec:
+  replicas: 1 # 可水平扩：agent:queue 为 Redis BLPOP，多副本 = 多消费者（6.3）
+  selector:
+    matchLabels: { app: ai }
+  template:
+    metadata:
+      labels: { app: ai }
+    spec:
+      containers:
+        - name: ai
+          image: ghcr.io/knowledgeai/ai:PLACEHOLDER
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: AI_INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: AI_INTERNAL_TOKEN } }
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: AI_ALLOW_PRIVATE_FETCH
+              value: "true"
+            - name: S3_ENDPOINT
+              value: http://minio:9000
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+---
+# A6.4 审计点：ai 服务仅 ClusterIP —— 无 NodePort、无 LoadBalancer、无 Ingress。
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai
+  labels: { app: ai }
+spec:
+  type: ClusterIP
+  selector: { app: ai }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels: { app: app, tier: frontend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: app }
+  template:
+    metadata:
+      labels: { app: app }
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/knowledgeai/app:PLACEHOLDER
+          ports: [{ containerPort: 3000 }]
+          env:
+            - name: NEXT_PUBLIC_API_BASE
+              value: "" # 6.1：同域反代，浏览器走网关同源 /api
+            - name: DATABASE_URL
+              value: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
+            - name: REDIS_URL
+              value: redis://redis:6379/0
+            - name: AI_INTERNAL_TOKEN
+              valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: AI_INTERNAL_TOKEN } }
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/health/ready, port: 3000 }
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  labels: { app: app }
+spec:
+  type: ClusterIP # 前端不直接暴露 —— 唯一入口是 gateway（A6.4）
+  selector: { app: app }
+  ports: [{ port: 3000, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  labels: { app: gateway, tier: edge }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: gateway }
+  template:
+    metadata:
+      labels: { app: gateway }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          volumeMounts:
+            - { name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true }
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap: { name: gateway-config }
+---
+# 唯一公网入口（浏览器只直连网关；G1：浏览器永不直连 Python）
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  labels: { app: gateway }
+spec:
+  type: LoadBalancer
+  selector: { app: gateway }
+  ports: [{ port: 80, targetPort: 80 }]

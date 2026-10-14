@@ -1,0 +1,28 @@
+# 业务服务配置（M1）。默认无数据库（M0 形态可独立启动）；连库用 pg profile：
+#   DATASOURCE_URL=postgresql://user:pwd@host:5432/knowledgeai \
+#     java -jar business.jar --spring.profiles.active=pg
+server:
+  port: 8080
+
+spring:
+  application:
+    name: knowledgeai-business
+  # M0 默认形态：无 DataSource（红线见 ADR-0009 —— pg profile 下才有读路径）
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+
+auth:
+  # 生产必须显式注入（与现网 getAuthSecret 同语义）；演示回退仅本地
+  secret: ${AUTH_SECRET:dev-secret-change-in-production}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

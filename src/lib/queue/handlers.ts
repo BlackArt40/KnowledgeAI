@@ -38,7 +38,15 @@ const docProcessHandler: JobHandler = async (payload) => {
   const start = Date.now();
   try {
     await runWithTraceId(payload.traceId as string | undefined, "doc-process", async () => {
-      await processDocInQueue(docId);
+      // 阶段 1 服务拆分：AI_SERVICE_URL 配置后解析/切片/索引走 Python AI 服务，
+      // 状态推进/webhook/图谱仍在本进程（processDocInQueueRemote）。
+      const { isAiServiceEnabled } = await import("@/lib/rag/remote");
+      if (isAiServiceEnabled()) {
+        const { processDocInQueueRemote } = await import("@/lib/kb/store");
+        await processDocInQueueRemote(docId);
+      } else {
+        await processDocInQueue(docId);
+      }
     });
     recordDoc(Date.now() - start, true);
     return { ok: true, data: { docId } };
@@ -133,6 +141,19 @@ const agentRunHandler: JobHandler = async (payload) => {
 
 const indexCleanupHandler: JobHandler = async (payload) => {
   try {
+    // 阶段 1 服务拆分：AI_SERVICE_URL 配置后远端索引清理走 Python（返回失败
+    // 让队列重试；单侧残留会造成已删文档仍可被检索）。
+    // 阶段 3：workspaceId 随载荷透传 —— Python 侧删除同样强制租户过滤。
+    const { isAiServiceEnabled, remoteClearIndex } = await import("@/lib/rag/remote");
+    if (isAiServiceEnabled()) {
+      const ws = typeof payload.workspaceId === "string" ? payload.workspaceId : undefined;
+      if (payload.docId && payload.kbId) {
+        await remoteClearIndex({ workspaceId: ws, kbId: payload.kbId as string, docId: payload.docId as string });
+      } else if (payload.kbId) {
+        await remoteClearIndex({ workspaceId: ws, kbId: payload.kbId as string });
+      }
+      return { ok: true };
+    }
     const { clearDoc, clearKb } = await import("@/lib/rag/vector-store");
     if (payload.docId && payload.kbId) {
       await clearDoc(payload.kbId as string, payload.docId as string);

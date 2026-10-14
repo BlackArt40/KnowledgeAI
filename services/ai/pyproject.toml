@@ -1,0 +1,30 @@
+[project]
+name = "knowledgeai-ai"
+version = "1.0.0"
+description = "KnowledgeAI AI service - Python RAG / generation (stage 1 service split)"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "httpx>=0.27",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "boto3>=1.34",
+    # 阶段 5：Agent 队列与流水线（ADR-0008：LangGraph 仅限 agent 模块）
+    "redis>=5",
+    "langgraph>=0.2,<0.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

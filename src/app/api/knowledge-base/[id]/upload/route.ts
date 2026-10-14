@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { getKb, addDocument, deleteDocument, markDocFailed } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
 import { canEditKb } from "@/lib/team/store";
 import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
-import { validateFile } from "@/lib/storage";
+import { validateFile, saveDocFile } from "@/lib/storage";
 import { fetchUrlContent } from "@/lib/rag/fetcher";
 import { withApiTrace } from "@/lib/obs/trace";
 import { log } from "@/lib/obs/log";
@@ -15,12 +13,6 @@ import { log } from "@/lib/obs/log";
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-const UPLOAD_DIR = path.join(process.cwd(), ".uploads");
-
-async function ensureDir(p: string) {
-  await fs.mkdir(p, { recursive: true });
-}
 
 // POST /api/knowledge-base/[id]/upload
 // multipart/form-data "files" (one or more) OR JSON { url, name } for a web link.
@@ -84,15 +76,6 @@ async function handleUpload(req: Request, { params }: Params) {
     return NextResponse.json({ error: "未检测到文件" }, { status: 400 });
   }
 
-  // Containment: the route param joins the upload root - pin the resolved
-  // directory under it so a crafted id can't traverse out of .uploads.
-  const baseDir = path.resolve(UPLOAD_DIR);
-  const kbDir = path.resolve(baseDir, id);
-  if (!kbDir.startsWith(baseDir + path.sep)) {
-    return NextResponse.json({ error: "非法知识库路径" }, { status: 400 });
-  }
-  await ensureDir(kbDir);
-
   const created: KbDocument[] = [];
   const errors: string[] = [];
 
@@ -125,13 +108,14 @@ async function handleUpload(req: Request, { params }: Params) {
       continue;
     }
     const buf = Buffer.concat(chunks);
-    const safeName = file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fa5]/g, "_");
     // M-3: create the doc FIRST (skip the auto-enqueue) so the background
     // doc-process worker can locate the file by docId, then write the file,
     // then enqueue - parsing now happens in the queue, not the request thread.
     const doc = addDocument({ kbId: id, name: file.name, size: file.size, skipEnqueue: true });
     try {
-      await fs.writeFile(path.join(kbDir, `${doc.id}-${safeName}`), buf);
+      // 阶段 2：存储抽象统一落盘 —— S3 模式写对象（docStorageKey），
+      // 本地模式写 `.uploads/<kbId>/<docId>-<safeName>`（回退，仅单体模式）。
+      await saveDocFile(id, doc.id, file.name, buf);
     } catch {
       errors.push(`${file.name} 保存失败`);
       await deleteDocument(doc.id).catch(() => {});

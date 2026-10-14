@@ -97,6 +97,23 @@ jobs:
       - name: Unit tests with coverage
         run: pnpm test:unit
 
+  # ── AI 服务契约测试（阶段 3）：租户硬化负例 + SSE/内部令牌契约入 CI ──
+  # service-split.md 阶段 3 退出标准：「A3.1～A3.3 必须自动化并纳入 CI」。
+  ai-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/ai/pyproject.toml
+      - name: Install AI service
+        run: pip install -e "services/ai[dev]"
+      - name: AI service contract tests (tenant isolation + auth + SSE)
+        run: python -m pytest services/ai/tests -q
+
   # ── 集成测试：demo 模式起 dev server，跑 functional + api + performance ──
   # 提高限流阈值避免测试流量误触 429（默认 200/min 用户级）
   integration:

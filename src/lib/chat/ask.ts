@@ -12,6 +12,7 @@
 
 import { getKb, getDocument } from "@/lib/kb/store";
 import { retrieve } from "@/lib/rag/retriever";
+import { isAiServiceEnabled, remoteRetrieve, remoteGenerateStream } from "@/lib/rag/remote";
 import { generateStream } from "@/lib/rag/generator";
 import { searchExternal } from "@/lib/external/provider";
 import { rateLimit, kbRateLimit, rateLimitResponse, getRateLimitLimits } from "@/lib/rate-limit";
@@ -183,7 +184,24 @@ export async function handleChatRequest(
   // provider resolves THIS user's configured model.
   const doRag = async () => {
     const topK = Math.min(Math.max(body.topK ?? kb.settings.topK, 1), 20);
-    let chunks: RetrievedChunk[] = await retrieve(kbId, effectiveQuery, topK);
+    // 阶段 1 服务拆分：AI_SERVICE_URL 配置后检索走 Python AI 服务。降级策略
+    // （阶段 1 固定）：服务不可用 → 503 + Retry-After，不静默回退本地 RAG。
+    let chunks: RetrievedChunk[];
+    if (isAiServiceEnabled()) {
+      try {
+        chunks = await remoteRetrieve(authUser.workspaceId, kbId, effectiveQuery, topK);
+      } catch (err) {
+        log.error({ err }, "[chat] remote retrieve failed");
+        return early(
+          Response.json(
+            { error: "AI 服务暂时不可用，请稍后重试", retryable: true },
+            { status: 503, headers: { "Retry-After": "30" } }
+          )
+        );
+      }
+    } else {
+      chunks = await retrieve(kbId, effectiveQuery, topK);
+    }
     // P7-3: GraphRAG - when the KB has a knowledge graph, re-rank the
     // retrieved chunks via entity expansion (neighbor entities boost the
     // semantically-related chunks). Deterministic in demo mode.
@@ -267,7 +285,20 @@ export async function handleChatRequest(
 
           // M-10: pass the request's abort signal so a client disconnect
           // cancels the underlying LLM fetch (not just this loop).
-          const gen = generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages, req.signal);
+          // 阶段 1 服务拆分：AI 服务开启时生成走 Python（远端 sources 帧跳过，
+          // BFF 已用过滤后的 chunks 发送 sources 事件），事件名/顺序不变。
+          const gen = isAiServiceEnabled()
+            ? remoteGenerateStream({
+                workspaceId: authUser.workspaceId,
+                kbId,
+                conversationId: conv.id,
+                query: effectiveQuery,
+                chunks,
+                history,
+                temperature: body.temperature ?? 0.3,
+                signal: req.signal,
+              })
+            : generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages, req.signal);
           let result;
           while (true) {
             // Stop generating as soon as the client disconnects / aborts.

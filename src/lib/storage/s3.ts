@@ -147,6 +147,27 @@ export async function deleteFromS3(key: string): Promise<void> {
 }
 
 /**
+ * Copy an object within the bucket (server-side, no data transfer).
+ * 阶段 2：分片上传完成后把 pending 对象改名到 docStorageKey（kbId/docId 前缀），
+ * 让删除路径可以由 doc 信息确定性推导 key，无需持久化 objectKey。
+ */
+export async function copyS3Object(srcKey: string, dstKey: string): Promise<void> {
+  const loaded = await loadS3();
+  const config = getS3Config();
+  if (!loaded || !config) throw new Error("S3 not configured");
+
+  await loaded.client.send(
+    new (loaded.mod as unknown as {
+      CopyObjectCommand: new (input: unknown) => unknown;
+    }).CopyObjectCommand({
+      Bucket: config.bucket,
+      CopySource: `/${config.bucket}/${srcKey}`,
+      Key: dstKey,
+    })
+  );
+}
+
+/**
  * Generate a presigned URL for direct browser upload (bypasses the server).
  * The browser PUTs the file directly to S3 using this URL.
  */
