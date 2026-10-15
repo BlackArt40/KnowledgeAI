@@ -20,6 +20,7 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+import redis
 import redis.asyncio as aioredis
 
 from . import settings
@@ -155,6 +156,10 @@ async def _worker_loop() -> None:
             await _run_one(job)
         except asyncio.CancelledError:
             raise
+        except redis.exceptions.TimeoutError:
+            # BLPOP 的 5 秒空转超时与底层 socket 读超时存在竞态（评审 #2）：
+            # 空转轮询周期性抛 TimeoutError 属预期，静默续跑——不刷 ERROR 日志
+            continue
         except Exception as e:
             # 单任务失败不拖垮 worker（连接抖动等），退避后继续
             logger.error("worker loop error", extra={"fields": {"err": str(e)}})

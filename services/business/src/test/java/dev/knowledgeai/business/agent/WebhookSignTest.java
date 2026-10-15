@@ -59,11 +59,23 @@ class WebhookSignTest {
                 "http://localhost:5099/hook",
                 "http://metadata.google.internal/computeMetadata/v1/",
                 "file:///etc/passwd",
+                // 评审 #4：IPv6 本地地址段（回环/全零/ULA/链路本地/IPv4-mapped）
+                "http://[::1]:5099/hook",
+                "http://[::]/hook",
+                "http://[fc00::1]/hook",
+                "http://[fd12:3456::a]/hook",
+                "http://[fe80::1]/hook",
+                "http://[::ffff:10.0.0.5]/hook",
+                "http://[::ffff:127.0.0.1]/hook",
         };
         for (String url : blocked) {
             assertTrue(!WebhookService.targetAllowed(url, false), "应当拒绝: " + url);
         }
-        String[] allowed = {"https://hooks.example.com/x", "https://webhook.company.cn/receive"};
+        String[] allowed = {
+                "https://hooks.example.com/x",
+                "https://webhook.company.cn/receive",
+                "http://[2606:4c00::a]/hook", // 公网 IPv6 单播放行
+        };
         for (String url : allowed) {
             assertTrue(WebhookService.targetAllowed(url, false), "应当放行: " + url);
         }

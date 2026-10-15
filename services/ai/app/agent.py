@@ -416,9 +416,11 @@ def build_dag(template_id: str, enabled_agents: List[str]) -> tuple:
 # ── LangGraph 组装 ─────────────────────────────────────────────────────────
 
 
-def _build_graph(emit: EmitFn):
+def _build_graph(emit: EmitFn, order: List[str]):
     """每次执行构建图实例：emit 通过闭包绑定（不进 state channel——
-    LangGraph 按 TypedDict 注解建 channel，未注解的键会被丢弃）。"""
+    LangGraph 按 TypedDict 注解建 channel，未注解的键会被丢弃）。
+    order = 按模板顺序排列的启用角色子序列（评审 #5：与 TS orchestrator 的
+    enabledNodes 语义对齐——未启用的角色不执行；子序列连边保持拓扑通路）。"""
 
     async def planner(s: AgentState) -> Dict[str, Any]:
         return await _planner_node(s, emit)
@@ -432,16 +434,14 @@ def _build_graph(emit: EmitFn):
     async def writer(s: AgentState) -> Dict[str, Any]:
         return await _writer_node(s, emit)
 
+    node_fns = {"planner": planner, "searcher": searcher, "analyzer": analyzer, "writer": writer}
     g = StateGraph(AgentState)
-    g.add_node("planner", planner)
-    g.add_node("searcher", searcher)
-    g.add_node("analyzer", analyzer)
-    g.add_node("writer", writer)
-    g.add_edge(START, "planner")
-    g.add_edge("planner", "searcher")
-    g.add_edge("searcher", "analyzer")
-    g.add_edge("analyzer", "writer")
-    g.add_edge("writer", END)
+    for name in order:
+        g.add_node(name, node_fns[name])
+    g.add_edge(START, order[0])
+    for i in range(len(order) - 1):
+        g.add_edge(order[i], order[i + 1])
+    g.add_edge(order[-1], END)
     return g.compile()
 
 
@@ -471,7 +471,11 @@ async def run_pipeline(job: Dict[str, Any], emit: EmitFn) -> Dict[str, Any]:
         "parallel_executed": False,
         "report": "",
     }
-    graph = _build_graph(emit)
+    # 启用节点 = job.agents ∩ 模板角色（按模板顺序取子序列；评审 #5 对齐 TS
+    # enabledNodes 语义——未启用角色不执行；非法/空列表回退模板默认）
+    enabled = {r for r in (job.get("agents") or tpl["agents"]) if r in tpl["agents"]}
+    order = [r for r in tpl["agents"] if r in enabled] or tpl["agents"]
+    graph = _build_graph(emit, order)
     try:
         # stream_mode="updates"：每节点完成即产出增量 → 实时发 step 帧
         final: Dict[str, Any] = {}

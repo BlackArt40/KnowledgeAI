@@ -171,9 +171,25 @@ public class WebhookService {
             if (!scheme.equals("http") && !scheme.equals("https")) return false;
             if (allowPrivate) return true;
             String host = (u.getHost() == null ? "" : u.getHost()).toLowerCase();
+            // Java URI.getHost() 对 IPv6 字面量保留方括号（"[::1]"）——先剥掉
+            if (host.startsWith("[") && host.endsWith("]")) {
+                host = host.substring(1, host.length() - 1);
+            }
             if (host.isEmpty() || host.equals("localhost") || host.equals("0.0.0.0")
-                    || host.equals("::1") || host.endsWith(".local") || host.endsWith(".internal")) {
+                    || host.endsWith(".local") || host.endsWith(".internal")) {
                 return false;
+            }
+            if (host.contains(":")) {
+                // IPv6 字面量：IPv4-mapped（::ffff:a.b.c.d）折回 IPv4 判定；
+                // 其余拦全零/回环/ULA（fc00::/7）/链路本地（fe80::/10）——与
+                // Python external.is_public_url 同口径（评审 #4）
+                if (host.startsWith("::ffff:")) {
+                    host = host.substring(7);
+                } else {
+                    return !(host.equals("::1") || host.equals("::")
+                            || host.startsWith("fe80") || host.startsWith("fc")
+                            || host.startsWith("fd"));
+                }
             }
             String[] parts = host.split("\\.");
             if (parts.length == 4) {
