@@ -75,6 +75,17 @@ public class AgentEventBus {
         public RedisMessageListenerContainer agentListenerContainer(RedisConnectionFactory connectionFactory) {
             RedisMessageListenerContainer container = new RedisMessageListenerContainer();
             container.setConnectionFactory(connectionFactory);
+            // 单线程派发（评审修复）：容器默认 SimpleAsyncTaskExecutor 每消息一线程，
+            // done（大帧）与 end（小帧）背靠背发布时并发竞速——end 先被 relay 处理会
+            // 提前 return 关流，done 帧丢失。单线程保证同 channel 帧按发布顺序派发。
+            container.setTaskExecutor(new java.util.concurrent.ThreadPoolExecutor(
+                    1, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
+                    new java.util.concurrent.LinkedBlockingQueue<>(),
+                    r -> {
+                        Thread t = new Thread(r, "agent-frame-dispatch");
+                        t.setDaemon(true);
+                        return t;
+                    }));
             return container;
         }
     }
