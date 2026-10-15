@@ -204,6 +204,16 @@ public class AgentController {
                 writeFrame(out, "{\"type\":\"end\"}");
             } catch (Exception e) {
                 // 客户端断开或 IO 异常：订阅已在 try-with-resources 中退订
+            } finally {
+                // 断连/超时兜底：worker 若已写终态快照则立即回填行状态，
+                // 消除「已完成但显示 queued」的失真窗口（仍在跑时快照不存在，
+                // 保持 queued 属正确状态，后续由懒回收兜底）
+                try {
+                    String snap = redis.opsForValue().get("agent:final:" + taskId);
+                    if (snap != null) hydrateFinal(taskId, snap);
+                } catch (Exception ignored) {
+                    // 回填失败留给懒回收
+                }
             }
         };
         return ResponseEntity.ok()
@@ -414,6 +424,16 @@ public class AgentController {
         if (task.get("kbId") != null) job.put("kbId", task.get("kbId"));
         if (task.get("kbName") != null) job.put("kbName", task.get("kbName"));
         job.put("outputFormat", task.get("outputFormat"));
+        // 透传原任务的自定义 agent 角色选择（PG text[] ::text 渲染 {a,b}）
+        String agentsStr = task.get("agents") == null ? "" : task.get("agents").toString();
+        if (!agentsStr.isBlank()) {
+            java.util.List<String> agents = new java.util.ArrayList<>();
+            for (String s : agentsStr.replace("{", "").replace("}", "")
+                    .replace("[", "").replace("]", "").replace("\"", "").split(",")) {
+                if (!s.isBlank()) agents.add(s.trim());
+            }
+            if (!agents.isEmpty()) job.put("agents", agents);
+        }
         job.put("maxSteps", task.get("maxSteps") == null ? 5 : ((Number) task.get("maxSteps")).intValue());
         job.put("template", task.get("template") == null ? "default" : task.get("template"));
         job.put("userId", user.id());

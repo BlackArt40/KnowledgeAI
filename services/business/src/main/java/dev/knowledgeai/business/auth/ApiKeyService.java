@@ -50,12 +50,25 @@ public class ApiKeyService {
                         rs.getString(1), rs.getString(2), rs.getString(3),
                         rs.getString(4), rs.getString(5)));
         for (ApiKeyRow row : rows) {
-            // keyHash = encryptToString(secret)（JSON {iv,data,tag}）或 legacy 明文
+            // keyHash = encryptToString(secret)（JSON {iv,data,tag}）或 legacy 明文。
+            // 快速淘汰（评审 #6）：AES-GCM 密文长度是明文长度的确定性函数（随机 IV
+            // 只影响内容不改变长度），长度不符直接跳过——避免每请求 O(活跃键数) 次
+            // AES-GCM 解密；密文长度本身公开，不泄漏信息。
+            if (row.secretPlain().length() != expectedStoredLength(secret)
+                    && !constantTimeEquals(row.secretPlain(), secret)) {
+                continue;
+            }
             String plain = decryptStored(row.secretPlain());
             if (plain.isEmpty()) continue;
             if (constantTimeEquals(plain, secret)) return Optional.of(row);
         }
         return Optional.empty();
+    }
+
+    /** encryptToString 产物的确定性长度：JSON 骨架 52 字符 + iv(16B→24 b64)
+     *  + tag(16B→24 b64) + data(明文 n 字节 → 4*ceil(n/3) b64)。 */
+    static int expectedStoredLength(String plain) {
+        return 76 + 4 * ((plain.length() + 2) / 3);
     }
 
     /** scope 判定（对齐现网 apikeys/scopes.ts 的 scope 矩阵）。

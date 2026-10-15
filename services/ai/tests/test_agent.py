@@ -103,6 +103,35 @@ def test_pipeline_templates():
     assert task["outline"][0] == "背景概述"  # 回退 default 模板
 
 
+def test_pipeline_agent_filter():
+    """评审 #5：agents 过滤语义对齐 TS enabledNodes——未启用角色不执行。"""
+    frames: list = []
+
+    async def emit(frame):
+        frames.append(frame)
+
+    job = {"taskId": "t_filter", "workspaceId": "ws_default",
+           "topic": "过滤验证", "agents": ["planner", "writer"]}
+    task = asyncio.run(agent.run_pipeline(job, emit))
+    # 只跑 planner（有 step）与 writer（无 step 帧）——searcher/analyzer 跳过
+    assert [f["step"]["role"] for f in frames] == ["planner"]
+    assert [n["status"] for n in task["dagNodes"]] == ["done", "skipped", "skipped", "done"]
+    assert task["citations"] == []  # 未执行检索
+    assert task["report"].startswith("# 过滤验证 调研报告")
+
+    # 非法角色被剔除（对齐 TS：enabledNodes 只含合法子集）；仅剩 planner 执行
+    job2 = {**job, "taskId": "t_bogus", "agents": ["planner", "bogus-role"]}
+    task2 = asyncio.run(agent.run_pipeline(job2, emit))
+    assert task2["status"] == "done"
+    assert len(task2["steps"]) == 1
+
+    # 全部非法 → 回退模板默认（四节点全跑）
+    job3 = {**job, "taskId": "t_fallback", "agents": ["bogus-only"]}
+    task3 = asyncio.run(agent.run_pipeline(job3, emit))
+    assert task3["status"] == "done"
+    assert len(task3["steps"]) == 3
+
+
 def test_external_demo_fallback_shape():
     results = asyncio.run(external.search_external("任意主题", 4))
     assert len(results) == 4

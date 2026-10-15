@@ -1,6 +1,7 @@
 package dev.knowledgeai.business.share;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.knowledgeai.business.auth.ApiKeyService;
 import dev.knowledgeai.business.auth.KaiJwtService;
 import dev.knowledgeai.business.auth.Pbkdf2PasswordService;
 import dev.knowledgeai.business.auth.UserRepository;
@@ -61,6 +62,12 @@ public class DocShareController {
     public ResponseEntity<Map<String, Object>> create(Authentication authentication,
                                                       @PathVariable String kbId, @PathVariable String docId,
                                                       @RequestBody CreateShareRequest body) {
+        // G2 评审修复：写类 /api/v1 路由必须校验 scope——API Key principal 角色硬编码
+        // EDITOR，无此守卫时任意 scope 的 key 可创建分享链接（含设置访问密码）
+        String scopeDenial = ApiKeyService.scopeDenied(authentication, "kb:write");
+        if (scopeDenial != null) {
+            return ResponseEntity.status(403).body(Map.of("error", scopeDenial));
+        }
         KaiJwtService.AuthUser user = (KaiJwtService.AuthUser) authentication.getPrincipal();
         if (!List.of("OWNER", "ADMIN", "EDITOR").contains(user.role().toUpperCase())) {
             return ResponseEntity.status(403).body(Map.of("error", "无编辑权限"));
@@ -109,6 +116,10 @@ public class DocShareController {
     @DeleteMapping("/api/v1/knowledge-bases/{kbId}/documents/{docId}/share")
     public ResponseEntity<Map<String, Object>> revoke(Authentication authentication,
                                                       @PathVariable String kbId, @PathVariable String docId) {
+        String scopeDenial = ApiKeyService.scopeDenied(authentication, "kb:write");
+        if (scopeDenial != null) {
+            return ResponseEntity.status(403).body(Map.of("error", scopeDenial));
+        }
         KaiJwtService.AuthUser user = (KaiJwtService.AuthUser) authentication.getPrincipal();
         if (!List.of("OWNER", "ADMIN", "EDITOR").contains(user.role().toUpperCase())) {
             return ResponseEntity.status(403).body(Map.of("error", "无编辑权限"));
