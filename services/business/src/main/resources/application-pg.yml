@@ -17,7 +17,8 @@ spring:
       maximum-pool-size: 8
   flyway:
     enabled: true
-    # 手册 4.9：现有 17 个 Prisma 迁移为基线，此后新迁移仅由 Flyway 产出
+    # 手册 4.9：17 个 Prisma 历史迁移已收编为 Flyway V1-V17（空库全量建表；
+    # 既有 Prisma 库经 baseline-on-migrate=17 跳过 ≤17），此后新迁移仅由 Flyway 产出
     baseline-on-migrate: true
     baseline-version: "17"
     locations: classpath:db/migration
