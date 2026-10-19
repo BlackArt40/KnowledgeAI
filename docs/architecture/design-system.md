@@ -5,13 +5,16 @@ type: explanation
 category: architecture
 level: L1
 version: 1.1.0
-authors: [product-team]
+authors:
+  - product-team
 owner: 产品负责人
 reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [overview.md, ../getting-started/product-overview.md]
+related:
+  - overview.md
+  - ../getting-started/product-overview.md
 ---
 
 # KnowledgeAI · UI 设计体系
