@@ -5,13 +5,16 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.1
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: agent-owner
 reviewed_at: 2026-10-09
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [overview.md, ../standards/glossary.md]
+related:
+  - overview.md
+  - ../standards/glossary.md
 ---
 
 # Agent 编排架构

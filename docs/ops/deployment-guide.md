@@ -5,13 +5,17 @@ type: how-to
 category: ops
 level: L2
 version: 1.2.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: devops-owner
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [env-vars.md, monitoring.md, ../faq/faq.md]
+related:
+  - env-vars.md
+  - monitoring.md
+  - ../faq/faq.md
 ---
 
 # 部署指南

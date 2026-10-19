@@ -5,13 +5,16 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../overview.md, ../agent-orchestration.md]
+related:
+  - ../overview.md
+  - ../agent-orchestration.md
 ---
 
 # ADR-0002：后台任务队列

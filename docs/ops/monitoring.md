@@ -5,13 +5,17 @@ type: how-to
 category: ops
 level: L2
 version: 1.2.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: devops-owner
 reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [deployment-guide.md, env-vars.md, ../faq/faq.md]
+related:
+  - deployment-guide.md
+  - env-vars.md
+  - ../faq/faq.md
 ---
 
 # 监控与告警

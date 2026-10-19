@@ -5,13 +5,19 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-10-13
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../service-split.md, adr-0001-in-memory-store-write-through-db.md, adr-0003-multi-tenant-isolation.md, adr-0006-read-path-storage-evolution.md, adr-0008-ai-service-framework.md]
+related:
+  - ../service-split.md
+  - adr-0001-in-memory-store-write-through-db.md
+  - adr-0003-multi-tenant-isolation.md
+  - adr-0006-read-path-storage-evolution.md
+  - adr-0008-ai-service-framework.md
 ---
 
 # ADR-0009：业务服务语言选型（Java 17 + Spring Boot 3）

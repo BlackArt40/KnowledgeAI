@@ -5,13 +5,16 @@ type: reference
 category: ops
 level: L2
 version: 1.2.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: devops-owner
 reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [deployment-guide.md, monitoring.md]
+related:
+  - deployment-guide.md
+  - monitoring.md
 ---
 
 # 环境变量全表

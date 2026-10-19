@@ -5,13 +5,17 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../overview.md, adr-0002-background-job-queue.md, adr-0006-read-path-storage-evolution.md]
+related:
+  - ../overview.md
+  - adr-0002-background-job-queue.md
+  - adr-0006-read-path-storage-evolution.md
 ---
 
 # ADR-0007：队列背压

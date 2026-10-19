@@ -5,13 +5,17 @@ type: tutorial
 category: getting-started
 level: L2
 version: 1.1.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术文档负责人
 reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [onboarding.md, ../architecture/overview.md, ../standards/glossary.md]
+related:
+  - onboarding.md
+  - ../architecture/overview.md
+  - ../standards/glossary.md
 ---
 
 # 快速开始

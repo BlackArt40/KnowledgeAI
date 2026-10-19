@@ -5,7 +5,8 @@ type: reference
 category: standards
 level: L1
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术负责人
 reviewed_at: 2026-08-20
 review_interval: 180

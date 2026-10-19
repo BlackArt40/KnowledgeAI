@@ -5,13 +5,18 @@ type: tutorial
 category: getting-started
 level: L1
 version: 1.0.1
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术负责人
 reviewed_at: 2026-09-29
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [quickstart.md, project-structure.md, contribution-guide.md, ../architecture/overview.md]
+related:
+  - quickstart.md
+  - project-structure.md
+  - contribution-guide.md
+  - ../architecture/overview.md
 ---
 
 # 新成员入门指南

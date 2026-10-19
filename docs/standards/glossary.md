@@ -5,13 +5,15 @@ type: reference
 category: standards
 level: L1
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术文档负责人
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [doc-writing-standards.md]
+related:
+  - doc-writing-standards.md
 ---
 
 # 术语表

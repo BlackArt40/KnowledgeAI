@@ -5,13 +5,19 @@ type: reference
 category: faq
 level: L1
 version: 1.1.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术文档负责人
 reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../ops/deployment-guide.md, ../ops/env-vars.md, ../ops/monitoring.md, ../api/guide.md, ../api/errors.md]
+related:
+  - ../ops/deployment-guide.md
+  - ../ops/env-vars.md
+  - ../ops/monitoring.md
+  - ../api/guide.md
+  - ../api/errors.md
 ---
 
 # 常见问题与故障排查

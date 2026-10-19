@@ -5,13 +5,16 @@ type: how-to
 category: getting-started
 level: L1
 version: 1.0.0
-authors: [KnowledgeAI Dev]
+authors:
+  - KnowledgeAI Dev
 owner: KnowledgeAI Dev
 reviewed_at: 2026-08-29
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [getting-started/quickstart.md, getting-started/onboarding.md]
+related:
+  - getting-started/quickstart.md
+  - getting-started/onboarding.md
 ---
 
 # 账号与邮箱安全

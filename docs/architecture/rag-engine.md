@@ -5,13 +5,16 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: rag-owner
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [overview.md, ../standards/glossary.md]
+related:
+  - overview.md
+  - ../standards/glossary.md
 ---
 
 # RAG 引擎架构
