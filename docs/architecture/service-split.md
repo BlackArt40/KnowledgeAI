@@ -441,6 +441,10 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 **退出**：A6.1～A6.5 必须。Vue 重写不阻塞退出。
 
+### 前端替换（Vue 3 绞杀重写，2026-10-16 起）
+
+上表「可选：Vue3 重写」**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 28 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（27 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
+
 ---
 
 ## 跨阶段验收矩阵（总检）
@@ -512,3 +516,4 @@ KnowledgeAI/          # 现仓库
 | 1.0.0 | 2026-10-12 | 初版：国内三层拆法的七阶段工作包与验收标准 |
 | 1.1.0 | 2026-10-12 | 修订：related 补齐 ADR-0006/Webhook；阶段 2 补环境变量 parity 要求；阶段 1 格式归属澄清；引入 ADR-0008（AI 服务框架选型） |
 | 1.2.0 | 2026-10-13 | 阶段 1-6 全部实施完成：部署产物落库（docker-compose.split.yml 一键起 + 滚动发布、deploy/nginx.conf 网关、k8s/split.yaml 三服务清单）；阶段 6 演练实测暴露并修复 Tomcat 默认 30s 异步超时掐断 SSE（业务侧 spring.mvc.async.request-timeout 对齐网关）；ADR-0008 修订 1.1.0（Agent 队列 arq → 语言中立 Redis List） |
+| 1.3.0 | 2026-10-16 | 阶段 6「可选 Vue3 重写」启动实施（V1）：frontend/ 认证/静态/分享 11 路由 + 网关绞杀切流机制（routes.conf + switch-frontend.sh，秒级回退）；共享资产单源复用，/api 契约冻结 |

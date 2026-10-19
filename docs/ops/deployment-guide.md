@@ -213,6 +213,43 @@ docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gat
 - 代码下线后回滚：`git revert` 恢复 Next 业务 handler（代码在版本库），重新部署单体；
 - `flyway_schema_history` 表仅记录基线，删除该表即回到 Prisma 单一治理（不推荐，仅数据层审计用）。
 
+## 前端切流与回退（V1 起，Vue 3 绞杀重写；V6 已全量接管）
+
+`frontend/`（Vue 3 + Element Plus + Vite，pnpm workspace 包 `kai-frontend`）已**全量接管 28 个页面**（V6 起 Next 页面层已删除，Next 仅服务 `/api/**` 与 `public/` 静态资产）。已迁移路由清单维护在 `deploy/nginx/routes.conf`（单一事实源，现 27 条），切换唯一入口是 `scripts/deploy/switch-frontend.sh`；switch conf 为空时全部页面流量走 Next 兜底（`location /`，仅 API 与静态资产有意义——页面兜底只在回滚到 V5 之前代码时才成立），`/api/*` 反代业务服务的配置不受前端切流影响。首页 `location = /` 优先返回构建期预渲染的 `dist/home.html`（SEO 静态首帧，产物缺失自动回退 SPA index.html）。
+
+### 前置
+
+```bash
+pnpm -C frontend build     # 产出 frontend/dist（compose 挂载为网关 /srv/vue，只读）
+```
+
+### 切流
+
+```bash
+# 1. 编辑 deploy/nginx/routes.conf：追加（或删除）已迁移路径；
+#    精确路由写 /path，动态段路由写 /prefix/*（如 /share-doc/*）
+# 2. 应用（自动备份当前 routes.conf 到 routes.conf.bak → 生成 switch conf
+#    → 网关内 nginx -t 校验 → reload；校验失败自动回写占位 conf 并 reload）
+scripts/deploy/switch-frontend.sh apply
+```
+
+### 回退（任一，秒级、无状态）
+
+```bash
+scripts/deploy/switch-frontend.sh rollback    # 恢复上一次 apply 前的 routes.conf
+scripts/deploy/switch-frontend.sh revert-all  # 清空路由：页面流量回 Next 兜底
+```
+
+> V6 起 Next 已无页面层——revert-all 只在回滚到 V5 之前代码（Next 仍带页面）时才成立；
+> 当前形态下它仅用于演练/状态还原（未知页面路径由 Next 404）。
+
+### 验证
+
+- 已切页面返回 Vue 首帧（HTML 含 `id="app"`，静态资源走 `/assets/`，与 `/_next/static` 不冲突）；
+- 未切页面路径由 Next 兜底 404（V6 起 `location /` 仅服务 `/api/**` 与 `public/` 静态资产——vendor/widget/PWA 单源）；
+- 登录会话有效：`kai-token` Cookie 由服务端 Set-Cookie 签发，Vue 页面与 `/api/**` 同域共享；
+- `clean-machine-drill.sh` 内置 5.5 切流演练段：apply → Vue 断言 → revert-all → Next 断言 → 状态还原。
+
 ## 升级与回滚
 
 | 场景 | 操作 |
@@ -248,7 +285,7 @@ docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gat
 
 - [环境变量全表](env-vars.md)
 - [监控与告警](monitoring.md)
-- [常见问题与故障排查](../faq/faq.md)（四段式排障见 [故障排查手册](../faq/faq.md#troubleshooting)）
+- [常见问题与故障排查](../faq/faq.md)
 
 ## 修订记录
 
@@ -257,3 +294,4 @@ docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gat
 | 1.0.0 | 2026-08-20 | 初版（依据 Dockerfile / compose / 部署脚本 / k8s 清单核对） |
 | 1.1.0 | 2026-10-13 | 服务拆分阶段 6：新增「方式五：三服务拆分部署」（compose 一键起 / 滚动发布 / k8s 拆分清单 / SSE 网关约束），部署架构区分单体（<=1.2.x）与三服务形态并标注适用版本 |
 | 1.2.0 | 2026-10-13 | 新增「生产切换窗口（4.10）」部署时操作：前置预检清单、切流/观察/代码下线步骤、验证清单与回滚预案（承接阶段 1-6 验收与 G1-G10 总检结论） |
+| 1.3.0 | 2026-10-16 | 前端绞杀重写 V1（Vue 3 + Element Plus + Vite）：新增「前端切流与回退」节——deploy/nginx/routes.conf 单一事实源 + scripts/deploy/switch-frontend.sh 唯一入口（apply/rollback/revert-all，nginx -t 失败自动回写占位）；compose 网关挂载 switch conf 与 frontend/dist |
