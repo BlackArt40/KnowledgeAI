@@ -5,13 +5,18 @@ type: how-to
 category: api
 level: L2
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: api-owner
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [reference.md, errors.md, webhooks.md, sdk.md]
+related:
+  - reference.md
+  - errors.md
+  - webhooks.md
+  - sdk.md
 ---
 
 # API 使用指南

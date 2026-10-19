@@ -5,7 +5,8 @@ type: reference
 category: getting-started
 level: L1
 version: 1.5.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术文档负责人
 reviewed_at: 2026-10-12
 review_interval: 180

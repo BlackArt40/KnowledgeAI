@@ -5,13 +5,15 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../overview.md]
+related:
+  - ../overview.md
 ---
 
 # ADR-0001：内存存储 + 写穿数据库

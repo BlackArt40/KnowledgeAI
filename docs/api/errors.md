@@ -5,13 +5,16 @@ type: reference
 category: api
 level: L2
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: api-owner
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [guide.md, reference.md]
+related:
+  - guide.md
+  - reference.md
 ---
 
 # 错误码表

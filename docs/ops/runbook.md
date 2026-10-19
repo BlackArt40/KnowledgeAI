@@ -5,13 +5,17 @@ type: how-to
 category: ops
 level: L2
 version: 1.0.0
-authors: [devops-owner]
+authors:
+  - devops-owner
 owner: devops-owner
 reviewed_at: 2026-09-30
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [deployment-guide.md, monitoring.md, env-vars.md]
+related:
+  - deployment-guide.md
+  - monitoring.md
+  - env-vars.md
 ---
 
 # 运维 Runbook

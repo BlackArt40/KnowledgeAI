@@ -5,13 +5,17 @@ type: explanation
 category: architecture
 level: L1
 version: 1.1.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-10-12
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../service-split.md, adr-0002-background-job-queue.md, adr-0007-queue-backpressure.md]
+related:
+  - ../service-split.md
+  - adr-0002-background-job-queue.md
+  - adr-0007-queue-backpressure.md
 ---
 
 # ADR-0008：AI 服务框架选型

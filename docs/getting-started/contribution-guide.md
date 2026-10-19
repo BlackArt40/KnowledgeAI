@@ -5,13 +5,17 @@ type: how-to
 category: getting-started
 level: L1
 version: 1.0.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术负责人
 reviewed_at: 2026-08-20
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [onboarding.md, ../standards/doc-writing-standards.md, ../standards/doc-review-checklist.md]
+related:
+  - onboarding.md
+  - ../standards/doc-writing-standards.md
+  - ../standards/doc-review-checklist.md
 ---
 
 # 贡献指南

@@ -5,13 +5,18 @@ type: explanation
 category: architecture
 level: L1
 version: 1.0.0
-authors: [tech-lead]
+authors:
+  - tech-lead
 owner: 技术负责人
 reviewed_at: 2026-10-08
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [../overview.md, adr-0001-in-memory-store-write-through-db.md, adr-0003-multi-tenant-isolation.md, adr-0007-queue-backpressure.md]
+related:
+  - ../overview.md
+  - adr-0001-in-memory-store-write-through-db.md
+  - adr-0003-multi-tenant-isolation.md
+  - adr-0007-queue-backpressure.md
 ---
 
 # ADR-0006：读路径存储演进（鉴权态共享化）
