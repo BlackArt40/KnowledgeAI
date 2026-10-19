@@ -52,8 +52,11 @@ describe("memory limiter (no REDIS_URL)", () => {
   it("reports a resetAt inside the window", async () => {
     const now = Date.now();
     const r = await rateLimit("ip:1.2.3.4", 5);
+    // resetAt 由 await 之后的内部 Date.now() 计算——上界必须用调用后的时间戳，
+    // 否则跨毫秒边界时 resetAt(内部now+60s) 会比 now+60s 大 1ms（CI 实测 flake）。
+    const after = Date.now();
     expect(r.resetAt).toBeGreaterThan(now);
-    expect(r.resetAt).toBeLessThanOrEqual(now + 60_000);
+    expect(r.resetAt).toBeLessThanOrEqual(after + 60_000);
   });
 
   it("collects dashboard stats with the right dimension kind", async () => {
