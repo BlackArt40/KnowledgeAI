@@ -2,7 +2,9 @@
 // (normalized via normalizeLocale). Components should use the useFormat()
 // hook (src/lib/i18n/use-format.ts) which binds the current locale; plain
 // callers (e.g. exportConversation) pass the locale explicitly.
-import { normalizeLocale } from "@/lib/i18n/translate";
+// Relative import (not "@/lib/i18n/translate") so this module stays portable
+// for the Vue frontend's @shared alias (V0, design log 十五·二十七).
+import { normalizeLocale } from "./i18n/translate";
 
 function intlLocale(locale: string): string {
   return normalizeLocale(locale) === "en" ? "en-US" : "zh-CN";

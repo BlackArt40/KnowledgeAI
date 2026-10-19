@@ -2,6 +2,13 @@
 
 # dependencies
 /node_modules
+# V0 (Vue 3 重写): frontend/ 为独立 workspace 包，依赖在根 node_modules + 本地链接
+/frontend/node_modules/
+# frontend 构建产物（网关切流挂载用）
+/frontend/dist/
+# frontend Playwright 本地产物（CI artifact 已另行上传）
+/frontend/test-results/
+/frontend/playwright-report/
 /.pnp
 .pnp.*
 .yarn/*
@@ -89,6 +96,9 @@ services/business/target/
 
 # smoke runner reports (scripts/smoke/run-all.ts)
 /scripts/smoke/.report/
+
+# 前端绞杀切流：apply 备份不提交（frontend-switch.conf 生成后随切流提交，留下审计轨迹）
+deploy/nginx/routes.conf.bak
 
 # agent tooling state / scratch artifacts (session-local, never source)
 .mimosa/

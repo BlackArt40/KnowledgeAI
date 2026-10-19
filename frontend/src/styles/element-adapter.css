@@ -1,0 +1,73 @@
+/* Element Plus 变量 ← KnowledgeAI design tokens（styles/tokens.css）适配层。
+   必须在 element-plus/theme-chalk/{index,dark}/css-vars 之后加载（main.ts 控制
+   顺序）：EP 暗色变量挂在 html.dark（特异性高于 :root），因此这里对暗色重写
+   一份同名块，后加载者胜出。所有取值都从本项目令牌派生 —— 主题三模式与品牌
+   色切换（getBrandCss/applyBrandColor）改动 --primary 等后自动传导到 EP 组件。 */
+
+:root {
+  --el-color-primary: hsl(var(--primary));
+  --el-color-primary-light-3: color-mix(in srgb, hsl(var(--primary)) 70%, #fff);
+  --el-color-primary-light-5: color-mix(in srgb, hsl(var(--primary)) 50%, #fff);
+  --el-color-primary-light-7: color-mix(in srgb, hsl(var(--primary)) 30%, #fff);
+  --el-color-primary-light-8: color-mix(in srgb, hsl(var(--primary)) 20%, #fff);
+  --el-color-primary-light-9: color-mix(in srgb, hsl(var(--primary)) 10%, #fff);
+  --el-color-primary-dark-2: color-mix(in srgb, hsl(var(--primary)) 80%, #000);
+
+  --el-color-success: hsl(var(--success));
+  --el-color-warning: hsl(var(--warning));
+  --el-color-danger: hsl(var(--destructive));
+  --el-color-error: hsl(var(--destructive));
+
+  --el-bg-color: hsl(var(--card));
+  --el-bg-color-page: hsl(var(--background));
+  --el-bg-color-overlay: hsl(var(--popover));
+
+  --el-text-color-primary: hsl(var(--foreground));
+  --el-text-color-regular: hsl(var(--foreground));
+  --el-text-color-secondary: hsl(var(--muted-foreground));
+  --el-text-color-placeholder: hsl(var(--muted-foreground));
+
+  --el-border-color: hsl(var(--border));
+  --el-border-color-light: hsl(var(--border));
+  --el-border-color-lighter: hsl(var(--border));
+  --el-border-color-extra-light: hsl(var(--border));
+  --el-fill-color-blank: hsl(var(--card));
+
+  --el-border-radius-base: var(--radius);
+  --el-border-radius-small: calc(var(--radius) - 4px);
+  --el-font-family: var(--font-sans);
+}
+
+html.dark {
+  /* 暗色下 EP 的 light-N 梯度混入深底色而非白色 */
+  --el-color-primary-light-3: color-mix(in srgb, hsl(var(--primary)) 70%, #0f0f12);
+  --el-color-primary-light-5: color-mix(in srgb, hsl(var(--primary)) 50%, #0f0f12);
+  --el-color-primary-light-7: color-mix(in srgb, hsl(var(--primary)) 30%, #0f0f12);
+  --el-color-primary-light-8: color-mix(in srgb, hsl(var(--primary)) 20%, #0f0f12);
+  --el-color-primary-light-9: color-mix(in srgb, hsl(var(--primary)) 10%, #0f0f12);
+  --el-color-primary-dark-2: color-mix(in srgb, hsl(var(--primary)) 80%, #000);
+
+  --el-color-success: hsl(var(--success));
+  --el-color-warning: hsl(var(--warning));
+  --el-color-danger: hsl(var(--destructive));
+  --el-color-error: hsl(var(--destructive));
+
+  --el-bg-color: hsl(var(--card));
+  --el-bg-color-page: hsl(var(--background));
+  --el-bg-color-overlay: hsl(var(--popover));
+
+  --el-text-color-primary: hsl(var(--foreground));
+  --el-text-color-regular: hsl(var(--foreground));
+  --el-text-color-secondary: hsl(var(--muted-foreground));
+  --el-text-color-placeholder: hsl(var(--muted-foreground));
+
+  --el-border-color: hsl(var(--border));
+  --el-border-color-light: hsl(var(--border));
+  --el-border-color-lighter: hsl(var(--border));
+  --el-border-color-extra-light: hsl(var(--border));
+  --el-fill-color-blank: hsl(var(--card));
+
+  --el-border-radius-base: var(--radius);
+  --el-border-radius-small: calc(var(--radius) - 4px);
+  --el-font-family: var(--font-sans);
+}
