@@ -30,7 +30,7 @@ related: [overview.md, rag-engine.md, agent-orchestration.md, adr/adr-0001-in-me
 
 | 层 | 建议实现 | 承接现有模块 |
 |----|----------|----------------|
-| 前端 | 继续 React + TypeScript（不必为对齐国内而重写 Vue） | `src/app/(app)`、`src/components/` |
+| 前端 | 继续 React + TypeScript（不必为对齐国内而重写 Vue）<br/>**〔已被推翻〕**——2026-10 拍板 Vue 3 绞杀重写并已收官（V0-V8），见下文「前端替换」节 | 原 `src/app/(app)`、`src/components/`（已删除，Vue 等价物在 `frontend/`） |
 | 业务服务 | Java 17+ Spring Boot，或 Go | `auth/` `workspace/` `team/` `billing/` `kb/`（元数据）`chat/`（会话）`apikeys/` `webhooks/`（投递）`proxy.ts`（限流） |
 | AI 服务 | Python 3.12 + FastAPI + 独立 worker | `rag/` `llm/` `kg/` `external/` `agent/` |
 

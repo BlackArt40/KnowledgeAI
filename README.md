@@ -11,14 +11,14 @@
 | 智能问答 | RAG 检索 + 流式生成 + 引用溯源 + 联网搜索开关 | 异步 RAG + LLM Provider + SSE + 外部 Web 源 |
 | Agent 调研 | 多 Agent 编排（规划→检索→分析→撰写） | SSE 流式 + Markdown 报告 |
 | 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB / 实时协作（在线状态 + KB 实时变更 + 共享会话）/ 文档级权限 + 临时分享链接 / 多租户 Workspace 隔离与切换 | 4 角色 × 10 能力 + SSE 实时推送 + 继承链权限 + 租户隔离 |
-| 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 触摸手势（滑开抽屉·滑切会话·长按操作）/ 相机拍照上传 / 可安装 + 离线访问已加载内容 | 手写 Service Worker + Sheet 抽屉 + 手势 hooks（零新依赖） |
+| 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 相机拍照上传 / 可安装 + 离线访问已加载内容 | Sheet 抽屉 + 手写 Service Worker（零新依赖） |
 | 全局搜索 | Cmd+K 命令面板 / 覆盖知识库·文档·对话·Agent 任务·设置 / 分类 Tab + 高亮 / 最近搜索 / 快捷操作 / 深链直达（会话·任务·设置区块·新建 KB） | 单端点内存检索（<100ms）+ 键盘导航 + localStorage 历史 |
-| 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | 自研渲染器 + 反馈持久化 + 2-gram 推荐打分（零新依赖） |
+| 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | markdown-it 渲染（html:false 净化 + `[n]` 引用 chip 注入）+ 反馈持久化 + 2-gram 推荐打分（零新依赖） |
 | 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（1293 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | i18next（Context + useT + 静态扫描零残留断言） |
-| 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量 token + matchMedia 监听 + SSR 品牌注入 |
+| 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量令牌单源（frontend tokens.css）+ matchMedia 监听 + 客户端品牌注入 |
 | 应用监控 | 分布式追踪（API→RAG→LLM 全链路 span 树）/ QPS·错误率·延迟 P50/P95/P99 仪表盘 / LLM Token·成本·模型分布 / 前端+后端错误自动上报 Sentry | 自研 ALS 追踪 + 内存 SLI 存储 + Sentry Envelope 零依赖直投（SENTRY_DSN 门控） |
 | 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
-| CI/CD | GitHub Actions 七 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E / 文档门禁 / 验收 smoke / smoke-infra）/ 依赖漏洞审计（critical 阻断）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 84–86%）+ Playwright + pnpm audit + buildx/GHCR + 蓝绿脚本（secrets 门控） |
+| CI/CD | GitHub Actions 九 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / AI 服务契约 / 集成三套件 / Playwright E2E + 前端 E2E / 文档门禁 / 验收 smoke / smoke-infra / 前端四门禁）/ 依赖漏洞审计（critical 阻断）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 80%+）+ Playwright（双套件）+ pnpm audit + buildx/GHCR + 蓝绿脚本（secrets 门控） |
 | 健康检查 | 存活探针（/api/health，与依赖解耦）/ 就绪探针（DB·Redis·LLM 连通性，不可用返回 503）/ 数据库检查 / 就绪失败自动告警（站内通知 admin + 日志 + Sentry）/ Docker·K8s 三探针配置 | 真实连通性探测（SELECT 1 / Redis connect / /models）+ 转移告警状态机（10 分钟重报去重） |
 | 开放 API | OpenAPI 3.0 规范 + `/docs` Swagger UI 交互式文档 / `/api/v1` 版本化表面（KB·流式问答·Agent·Webhook，API Key scope 强制）/ Webhook 事件推送（kb.ready·agent.completed·usage.alert，HMAC 签名 + 队列重试 + 死信）/ 三语言官方 SDK（JavaScript / Python / Go）/ 开发者门户（用量统计 + Webhook 管理 + 集成市场） | 手写 OpenAPI + swagger-ui-dist + scope 校验 + webhook-deliver 队列 + 零依赖 SDK |
 | 集成市场 | Embeddable Widget（单文件独立部署）/ Slack·飞书·钉钉群机器人（token 哈希鉴权 + 独立限流）/ Chrome 扩展（右键选中即问答）/ n8n·Zapier（API + Webhook 工作流） | 自包含 JS 组件 + 平台消息适配器 + MV3 扩展 + CORS 放行 |
@@ -32,11 +32,11 @@
 
 ## 🛠 技术栈
 
-- **框架**：Next.js 16（App Router · Turbopack · Route Handlers · SSE 流式）
-- **样式**：Tailwind CSS v4 + CSS 变量设计令牌（系统 / 亮 / 暗三模式 + 高对比度 + 品牌色）
-- **组件**：shadcn 风格自建组件库（17 个基础组件）
-- **图标**：lucide-react + 自绘品牌图标
-- **语言**：TypeScript 严格模式 · React 19
+- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/` 单仓目录，pnpm workspace 包 `kai-frontend`，28/28 页面全量承载 + 首页 SEO 预渲染 + PWA）
+- **后端/API**：Next.js 16 纯 API（Route Handlers + SSE 流式 + proxy 中间件限流）
+- **共享单源**：i18next 语言包 / SSE 解析 / 主题引擎 / 格式化经 `@shared` 别名前后端复用（禁止拷贝）
+- **样式**：Element Plus 主题适配 + CSS 变量设计令牌（`frontend/src/styles/tokens.css` 单源：系统 / 亮 / 暗 + 高对比度 + 品牌色）
+- **语言**：TypeScript 严格模式（前端 vue-tsc / 后端 tsc 双门禁）
 - **生产适配**：LLM Provider（含运行时导入外部模型）/ Payment / Database / Storage / Rate Limit / Auth
 
 ## 🚀 快速开始
@@ -45,15 +45,21 @@
 # 安装依赖
 pnpm install
 
-# 开发模式
-pnpm dev          # → http://localhost:3000
+# 后端 API（:3000，演示模式无需任何环境变量）
+pnpm dev
 
-# 生产构建
+# 前端页面（另开终端，:5173，/api 经 vite 代理到 :3000）
+pnpm -C frontend dev        # → http://localhost:5173
+
+# 生产构建（后端 standalone + 前端 dist 含 SEO 预渲染首页）
 pnpm build
+pnpm -C frontend build
 pnpm start
+pnpm -C frontend preview    # 本地预览前端构建产物（:4173）
 
 # 代码检查
 pnpm lint
+pnpm -C frontend lint && pnpm -C frontend typecheck
 ```
 
 ## 🔑 演示账号
@@ -86,21 +92,18 @@ docker run -p 3000:3000 --env-file .env.local knowledgeai
 ## 📁 项目结构
 
 ```
+frontend/               # Vue 3 前端（28/28 页面全量承载）
+├── src/
+│   ├── views/          # 页面（工作台 / 知识库 / 聊天 / Agent / 账务 / 管理端 / 门户）
+│   ├── components/     # 业务组件（AppShell / 聊天气泡 / 营销区等）
+│   ├── lib/            # 前端工具（markdown 渲染 / 语音 composables / i18n 胶水）
+│   ├── api/            # 类型化 API 客户端（与 /api 契约一一对应）
+│   ├── styles/         # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
+│   └── pwa/            # Service Worker 注册
+├── e2e/                # 前端 Playwright 套件（31 用例，CI e2e job）
+└── dist/               # 构建产物（网关切流挂载 /srv/vue，gitignored）
 src/
-├── app/
-│   ├── (app)/          # 工作台页面（AppShell 包裹）
-│   ├── (auth)/         # 登录 / 注册 / 验证
-│   ├── api/            # 100+ Route Handlers
-│   ├── privacy/        # 隐私政策
-│   ├── terms/          # 服务条款
-│   ├── maintenance/    # 维护页
-│   ├── not-found.tsx   # 404
-│   └── error.tsx       # 500
-├── components/
-│   ├── ui/             # 基础组件库
-│   ├── app/            # 工作台组件
-│   ├── marketing/      # 落地页组件
-│   └── icons/          # 品牌图标
+├── app/                # Next 纯 API：/api/** Route Handlers + 最小根 layout
 ├── proxy.ts            # 中间件（限流 + DB 水合）
 └── lib/
     ├── rag/             # RAG 引擎（全异步：嵌入/检索/生成）
@@ -119,11 +122,16 @@ src/
     ├── db/              # ⭐ 数据库适配（Prisma 写穿：client/persist/hydrate）
     ├── storage/         # ⭐ 文件存储适配（S3 / 本地）
     ├── auth/            # ⭐ JWT 认证 + 角色守卫（Web Crypto + guard.ts）
+    ├── voice/           # 语音 STT/TTS 封装（Vue 侧经 @shared 复用）
+    ├── theme/           # 主题引擎（Vue 侧经 @shared 复用）
+    ├── i18n/            # ⭐ 语言包单源（zh-CN / en，前后端共用）
     └── config.ts        # ⭐ Provider 状态聚合
+deploy/nginx/           # 前端切流路由表（routes.conf 单一事实源 + 生成的 switch conf）
 prisma/                 # 数据库 schema + 迁移 + 种子
-scripts/                # 运维脚本（清理/迁移/CI 检查）
+scripts/                # 运维脚本（切流 / 演练 / 清理 / 迁移 / CI 检查）
 └── smoke/              # 验收 smoke 套件（run-all.ts 分组调度，CI 的 smoke / smoke-infra 两个 job）
 tests/                  # 集成测试（需 dev server）
+e2e/                    # 根 Playwright 主流程套件（双 webServer）
 docs/                   # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
 ```
 

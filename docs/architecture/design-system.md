@@ -26,20 +26,20 @@ related: [overview.md, ../getting-started/product-overview.md]
 
 ## 一、技术栈
 
-- **框架**：Next.js 16（App Router、Turbopack、Route Handlers、SSE 流式）
-- **样式**：Tailwind CSS v4 + CSS 变量设计令牌
-- **组件**：shadcn 风格自建组件库 17 个（Button / Card / Input / Label / Badge / Separator / Skeleton / Avatar / Dialog / Select / Slider / Progress / Tabs / Switch / Table / DropdownMenu / Sheet）
-- **图标**：lucide-react + 自绘品牌图标
-- **字体**：Geist Sans / Geist Mono；**主题**：系统 / 亮 / 暗三模式 + 高对比度（WCAG AA）+ Workspace 品牌色（P5-5）
+- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/`，28/28 页面全量承载；首页构建期 SEO 预渲染）
+- **后端**：Next.js 16 纯 API（Route Handlers + SSE 流式；页面层已退役）
+- **样式**：Element Plus 主题适配（`element-adapter.css` 映射 EP 变量）+ CSS 变量设计令牌单源（`frontend/src/styles/tokens.css`）
+- **图标**：`@element-plus/icons-vue` + 自绘 SVG
+- **主题**：系统 / 亮 / 暗三模式 + 高对比度（WCAG AA，令牌见 tokens.css）+ Workspace 品牌色（客户端注入，P5-5 引擎）
 
 ---
 
 ## 二、设计系统
 
 围绕**靛蓝（Indigo）**品牌色构建，辅以紫罗兰渐变高亮。
-- 主色 `--primary`：亮 `hsl(243 75% 59%)` / 暗 `hsl(243 80% 67%)`；品牌渐变 `bg-brand-gradient`
-- 语义色 `success` / `warning` / `destructive`；圆角 `0.75rem`；柔和阴影；`max-w-6xl`
-- 动效：aurora 极光、marquee 跑马灯、打字机流式、处理进度条、卡片 hover 上浮
+- 主色 `--primary`：亮 `hsl(243 75% 59%)` / 暗 `hsl(243 80% 67%)`；品牌渐变 `--brand-from/--via/--to`
+- 语义色 `success` / `warning` / `destructive`；圆角 `--radius 0.75rem`；柔和阴影
+- 动效：aurora 极光、marquee 跑马灯、打字机流式、处理进度条、卡片 hover 上浮；主题切换 `theme-transition` 交叉淡入（尊重 prefers-reduced-motion）
 
 ---
 
@@ -54,5 +54,6 @@ related: [overview.md, ../getting-started/product-overview.md]
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.2.0 | 2026-10-19 | 前端绞杀重写收官（V0-V8）：技术栈改为 Vue 3 + Element Plus + Vite，令牌单源迁至 frontend/src/styles/tokens.css，高对比度覆盖规则随迁（WCAG AA 断言恢复） |
 | 1.1.0 | 2026-09-23 | 删除已完成的「后续开发计划」与重复的页面清单；组件数校正为 17 |
 | 1.0.0 | 2026-08-20 | 初版（原《设计说明.md》第一部分） |
