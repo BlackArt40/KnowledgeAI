@@ -83,8 +83,10 @@ test("agent 全流程：运行 → 报告渲染 → ?task= 深链接 → 清理"
   const topic = `V4-E2E-调研-${Date.now()}`;
   await page.locator(".topic-input").fill(topic);
   await page.locator(".run-btn").click();
-  // 时间线出现，随后报告渲染（demo 编排秒级完成）
-  await expect(page.locator(".timeline").first()).toBeVisible({ timeout: 20_000 });
+  // 运行反馈：真实 LLM 模式先见时间线（steps 渐进）；demo（CI）模式编排
+  // 秒级完成且 done 后 task.steps 为空 → timeline 隐藏、直接切报告视图。
+  // 等「时间线或报告」任一出现，双模式通用。
+  await expect(page.locator(".timeline, .report").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".report").first()).toBeVisible({ timeout: 30_000 });
   // 历史任务侧栏出现本次任务，深链接打开
   const tasks = await page.request.get("/api/agent/tasks");

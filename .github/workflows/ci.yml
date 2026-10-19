@@ -251,11 +251,9 @@ jobs:
           done
           curl -sf http://localhost:3000/api/health > /dev/null
 
-      - name: Smoke - http group
-        run: npx tsx scripts/smoke/run-all.ts --group http --elevate 5000
-
-      # ui 组用 CDP 驱动 Chrome（runner 自带 /usr/bin/google-chrome）；
-      # V6：页面由 vite preview（:4173，frontend dist）承载——先构建并拉起
+      # V8 修正：preview 提前到 http 组之前——test-openapi 的 /docs 断言打
+      # PAGE_URL(:4173)，http 组在 preview 缺席时会 ECONNREFUSED（本地 preview
+      # 常驻所以从未暴露）。ui 组复用同一 preview。
       - name: Build frontend + start preview
         run: |
           pnpm --filter kai-frontend build > /tmp/fe-build.log 2>&1
@@ -265,6 +263,12 @@ jobs:
             sleep 2
           done
           curl -sf http://localhost:4173/ > /dev/null
+
+      - name: Smoke - http group
+        run: npx tsx scripts/smoke/run-all.ts --group http --elevate 5000
+
+      # ui 组用 CDP 驱动 Chrome（runner 自带 /usr/bin/google-chrome）；
+      # 页面由上方已拉起的 vite preview（:4173，frontend dist）承载
       - name: Smoke - ui group
         run: npx tsx scripts/smoke/run-all.ts --group ui --elevate 5000
 
