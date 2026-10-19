@@ -41,7 +41,9 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   // ── lib: no server ───────────────────────────────────────────────────
   lib("test-2fa", { note: "otplib TOTP + backup codes" }),
   lib("test-agent-graph"),
-  lib("test-chat-markdown", { file: "test-chat-markdown.tsx" }),
+  // V6：test-chat-markdown 退役——原脚本 SSR 渲染的 React ChatMarkdown 组件
+  // 已随 Next 页面层删除；等价断言迁移为 frontend/src/lib/markdown.test.ts
+  //（frontend 包 vitest，CI frontend job 执行）。
   lib("test-chunker"),
   lib("test-cleanup"),
   lib("test-conversation"),
@@ -71,7 +73,8 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   http("test-monitoring"),
   http("test-multimodal", { note: "image-text assertions self-skip when OCR packs are absent" }),
   http("test-openapi"),
-  http("test-pwa"),
+  // V6：test-pwa 退役——原脚本探活 :3000 的页面路径（Next 页面层已删）；
+  // 真 SW 注册/缓存验证已由 ui 组 test-mobile-pwa（打 preview）以 27/27 覆盖。
   http("test-realtime"),
   http("test-report-enhance"),
   http("test-sdk", { prereq: ["go", "python"], note: "runs the JS/Python/Go SDKs against the live server" }),

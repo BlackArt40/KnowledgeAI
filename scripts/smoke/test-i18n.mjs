@@ -9,7 +9,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9777;
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-i18n-shots";
@@ -129,6 +129,8 @@ async function main() {
     check("default: <html lang> is zh-CN", zhState.lang === "zh-CN", zhState.lang);
 
     // ── 2. switch to English via the Globe dropdown ─────────────────────
+    // V6：AppShell 语言切换为 EP el-dropdown——菜单项是 .el-dropdown-menu__item
+    //（teleport 到 body），不再是 Radix 的 button/role=menuitem。
     const switched = await evalJs(`(() => {
       const globe = [...document.querySelectorAll("button")].find((b) =>
         ["切换语言", "Switch language"].includes(b.getAttribute("aria-label")));
@@ -138,8 +140,8 @@ async function main() {
     })()`);
     await sleep(400);
     const pickedEn = await evalJs(`(() => {
-      const btns = [...document.querySelectorAll("button")];
-      const en = btns.find((b) => b.textContent.trim() === "English");
+      const items = [...document.querySelectorAll(".el-dropdown-menu__item")];
+      const en = items.find((i) => i.textContent.trim() === "English");
       if (!en) return "no-en-btn";
       en.click();
       return "clicked";
@@ -182,8 +184,9 @@ async function main() {
     })()`);
     await sleep(300);
     await evalJs(`(() => {
-      const btns = [...document.querySelectorAll("button")];
-      const zh = btns.find((b) => b.textContent.trim() === "中文");
+      // 菜单项文本随当前 UI 语言：zh 包下是「中文」，en 包下是 "Chinese"
+      const items = [...document.querySelectorAll(".el-dropdown-menu__item")];
+      const zh = items.find((i) => ["中文", "Chinese"].includes(i.textContent.trim()));
       if (zh) zh.click();
     })()`);
     await sleep(400);
@@ -199,18 +202,23 @@ async function main() {
     await send("Page.navigate", { url: `${BASE}/settings?tab=profile` });
     await sleep(3000);
     const profileLang = await evalJs(`(() => {
-      const selects = [...document.querySelectorAll("button")];
-      const trigger = selects.find((b) => b.getAttribute("role") === "combobox");
+      // V6：EP el-select 触发器（wrapper 带 role=combobox 或容器本身）
+      const trigger = document.querySelector(".el-select__wrapper[role=combobox]")
+        || document.querySelector(".el-select .el-select__wrapper")
+        || document.querySelector(".el-select");
       return trigger ? trigger.textContent.trim() : "no-select";
     })()`);
     check("settings: language picker present in profile", profileLang !== "no-select", profileLang);
     // switch to en via the profile picker (persists to /api/auth/me)
     const pickerEn = await evalJs(`(async () => {
-      const trigger = [...document.querySelectorAll("button")].find((b) => b.getAttribute("role") === "combobox");
+      const trigger = document.querySelector(".el-select__wrapper[role=combobox]")
+        || document.querySelector(".el-select .el-select__wrapper")
+        || document.querySelector(".el-select");
       if (!trigger) return "no-trigger";
       trigger.click();
-      await new Promise((r) => setTimeout(r, 300));
-      const items = [...document.querySelectorAll("[role=option]")];
+      await new Promise((r) => setTimeout(r, 400));
+      // EP 选项 teleport 到 body 下的 .el-select-dropdown
+      const items = [...document.querySelectorAll(".el-select-dropdown__item")];
       const en = items.find((i) => i.textContent.trim() === "English");
       if (!en) return "no-option";
       en.click();

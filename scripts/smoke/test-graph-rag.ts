@@ -158,6 +158,17 @@ async function main() {
 
   // ── 2. GraphRAG 精度对比 ─────────────────────────────────────────────
   console.log("\n── 2. GraphRAG vs 纯向量 ──");
+  // 环境自适应（V8）：「干扰项骗过纯检索」的前提只在词面型嵌入（demo/
+  // 本地哈希——CI 形态）下成立。配置了真实嵌入（EMBEDDING_MODEL）时，
+  // 语义检索本就该把答案文档排前——plain 基线不被骗是嵌入质量更好，
+  // 非缺陷。此时跳过 2 条前提依赖断言，保留 GraphRAG 自身正确性断言
+  //（top-1 命中答案集 + 干扰项沉底 + graphRag 完美）。
+  const cfg = await req("GET", "/api/admin/config", { token });
+  const embProvider = (cfg.data?.providers ?? []).find((p) => p?.id === "embedding");
+  const realEmbedding = !!embProvider?.enabled;
+  if (realEmbedding) {
+    console.log("  (真实嵌入已配置——plain 基线语义命中答案文档属预期，跳过 2 条前提依赖断言)");
+  }
   const QUERY = "晨曦科技在储能领域的合作伙伴是哪家公司？";
 
   // graphRag OFF（纯向量/BM25 基线）
@@ -166,8 +177,9 @@ async function main() {
   const plainOrder = (plain ?? []).map((c) => c.docId);
   const plainTop1 = plainOrder[0];
   check("baseline (no graph): retrieval returns chunks", plainOrder.length >= 3, plainOrder.join(","));
-  const plainDistractorFirst = plainTop1 === docIds["distractor.txt"];
-  check("baseline: distractor ranks top-1 (plain retrieval fooled by term repetition)", plainDistractorFirst, `top1=${plainTop1}`);
+  if (!realEmbedding) {
+    check("baseline: distractor ranks top-1 (plain retrieval fooled by term repetition)", plainTop1 === docIds["distractor.txt"], `top1=${plainTop1}`);
+  }
 
   // graphRag ON（默认）。答案集 = 提到「蓝海集团」（正确答案实体）的文档。
   const ANSWER_DOCS = new Set([docIds["relation.txt"], docIds["answer.txt"]]);
@@ -180,9 +192,12 @@ async function main() {
   check("graphRag: distractor pushed below the answer sources", gragDistractorPos < 0 || gragDistractorPos >= gragOrder.length - 1, `distractorPos=${gragDistractorPos} order=${gragOrder.join(",")}`);
 
   // 精度对比:precision@1 必须严格优于基线（基线 top-1 = 干扰项）
+  // ——该断言依赖「基线被骗」前提，仅在词面型嵌入（demo）下有意义。
   const plainP1 = ANSWER_DOCS.has(plainTop1) ? 1 : 0;
   const gragP1 = ANSWER_DOCS.has(gragTop1) ? 1 : 0;
-  check("precision@1: graphRag > plain vector", gragP1 > plainP1, `plain=${plainP1} graphRag=${gragP1}`);
+  if (!realEmbedding) {
+    check("precision@1: graphRag > plain vector", gragP1 > plainP1, `plain=${plainP1} graphRag=${gragP1}`);
+  }
   check("precision@1: graphRag perfect", gragP1 === 1, `graphRag=${gragP1}`);
 
   // ── 3. 汇总 ──────────────────────────────────────────────────────────

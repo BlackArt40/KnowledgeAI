@@ -2,14 +2,20 @@
 // headless Chrome via CDP.
 //   - opens /knowledge-base/[id]/graph for a KB with entities
 //   - asserts nodes + edges render in the SVG
-//   - clicks a node -> neighbor highlight + detail panel appear
-// Run: npx node scripts/smoke/test-graph-ui.mjs  (requires `pnpm dev`)
+//   - clicks a node -> neighbor edges highlight (primary color) + non-neighbor
+//     nodes/edges dim to 0.25 opacity
+// V6: 页面由 vite preview（:4173）承载 Vue 3 + Element Plus 版 KbGraphView，
+// 断言已从 Next（React）DOM 改写为 Vue DOM：
+//   - 图例/统计行按 Vue 版结构断言（.legend-item / .hint）
+//   - 选中高亮按 Vue 版实现断言（primary 边 + 0.25 变暗），非 Next 的
+//     stroke-width 2.5 / 详情面板 / 邻居 chips（Vue 侧未实现后两者）
+// Run: npx node scripts/smoke/test-graph-ui.mjs  (requires `pnpm dev` + vite preview :4173)
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9400 + Math.floor(Math.random() * 200); // 随机端口，避免残留实例冲突
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-graph-shots";
@@ -172,46 +178,75 @@ async function main() {
     // ── 1. 图谱页面渲染 ────────────────────────────────────────────────
     console.log("\n── 1. 图谱页面 ──");
     await send("Page.navigate", { url: `${BASE}/knowledge-base/${kbWithGraph.id}/graph` });
-    await sleep(3500);
+    await sleep(4000);
     const nodeCount = await evalJs("document.querySelectorAll('svg[viewBox=\"0 0 900 560\"] circle').length");
     check("graph page: nodes rendered", nodeCount >= 3, `circles=${nodeCount}`);
     const edgeCount = await evalJs("document.querySelectorAll('svg[viewBox=\"0 0 900 560\"] line').length");
     check("graph page: edges rendered", edgeCount >= 1, `lines=${edgeCount}`);
-    const legend = await evalJs("document.body.textContent.includes('组织') || document.body.textContent.includes('Organization') || document.body.textContent.includes('人物')");
-    check("graph page: legend present", legend === true);
-    const title = await evalJs("document.body.textContent.includes('已自动抽取') || document.body.textContent.includes('Auto-extracted')");
-    check("graph page: stats line rendered", title === true);
+    // V6: Vue 版图例渲染原始类型名（person/org/concept/event），非 Next 的
+    // 「组织/人物」译文——断言 .legend-item 数量 + 类型名出现。
+    const legend = await evalJs(`(() => {
+      const items = document.querySelectorAll('.legend-item');
+      const text = document.body.textContent;
+      return { count: items.length, typed: text.includes('person') || text.includes('org') || text.includes('concept') || text.includes('event') };
+    })()`);
+    check("graph page: legend present", legend.count >= 2 && legend.typed === true, JSON.stringify(legend));
+    // V6: Vue 版统计行是「N <s3> · M edges」的 .hint 段落，非 Next 的
+    // 「已自动抽取 …」——断言 .hint 存在且含 edges 计数。
+    const stats = await evalJs(`(() => {
+      const hint = document.querySelector('.hint');
+      return hint ? /\\d+/.test(hint.textContent) && hint.textContent.includes('edges') : false;
+    })()`);
+    check("graph page: stats line rendered", stats === true);
+    // V7: 边坐标锚定断言——@shared/kg/layout 输出边端点是 label，组件已统一
+    // 换算到 id 空间；修复前 find 恒失败导致所有线塌在 (0,0)。节点坐标被
+    // layout clamp 在 [30, W-30]/[30, H-30]，合法边不可能全零。
+    const anchored = await evalJs(`(() => {
+      const lines = document.querySelectorAll('svg[viewBox="0 0 900 560"] line');
+      let zero = 0;
+      for (const l of lines) {
+        if (!+l.getAttribute('x1') && !+l.getAttribute('y1') && !+l.getAttribute('x2') && !+l.getAttribute('y2')) zero++;
+      }
+      return { total: lines.length, zero };
+    })()`);
+    check("graph page: edges anchored to node positions", anchored.total >= 1 && anchored.zero === 0, JSON.stringify(anchored));
     await shot("01-graph");
 
-    // ── 2. 交互: 点击节点 → 高亮 + 详情面板 ─────────────────────────────
+    // ── 2. 交互: 点击节点 → 选中描边 + 邻接边 primary 高亮 + 其余变暗 ──
     console.log("\n── 2. 交互 ──");
-    const firstNodeLabel = await evalJs(`(() => {
-      const g = document.querySelectorAll('svg g[cursor]')[0] || document.querySelectorAll('svg g.cursor-pointer')[0];
-      return g?.textContent ?? null;
-    })()`);
+    // V6: Vue 版节点 g 的类名是 .node（cursor:pointer 在 scoped CSS 里），
+    // 不是 Next 的 g[cursor]/g.cursor-pointer。
+    // V7: 点击目标改为必然有邻接边的节点——取 API 图数据里首条端点齐全的边
+    // 的 source label，按 layout 的 mentions 降序换算成 DOM 序索引，保证
+    // 「邻接边 primary 高亮」断言确定性（此前点 g.node[0]，可能无邻接边）。
+    const labels = new Set(kbWithGraph.nodes.map((n) => n.label));
+    const hubEdge = kbWithGraph.edges.find((e) => labels.has(e.source) && labels.has(e.target));
+    const sortedNodes = [...kbWithGraph.nodes].sort((a, b) => b.mentions - a.mentions);
+    const hubIdx = Math.max(0, sortedNodes.findIndex((n) => n.label === hubEdge?.source));
+    check("setup: hub node resolved for click", hubEdge != null && hubIdx >= 0, `hub=${hubEdge?.source} idx=${hubIdx}`);
     await evalJs(`(() => {
-      const g = document.querySelectorAll('svg g.cursor-pointer')[0];
+      const g = document.querySelectorAll('svg g.node')[${hubIdx}];
       if (g) g.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       return true;
     })()`);
     await sleep(600);
-    const detailPanel = await evalJs(`(() => {
-      const text = document.body.textContent;
-      return text.includes("被提及") || text.includes("Mentioned");
+    // V7 断言（边高亮已修复）：KbGraphView 现把 layout 输出的 label 端点统一
+    // 换算到节点 id 空间，选中语义完整——选中节点白描边 + 邻接边 primary 色
+    // （opacity 0.7）+ 非邻接节点/边变暗（opacity 0.25）。详情面板
+    // （「被提及…」）与邻居 chips 在 Vue 侧未迁移，相关断言仍移除。
+    const clickState = await evalJs(`(() => {
+      const svg = document.querySelector('svg[viewBox="0 0 900 560"]');
+      if (!svg) return null;
+      return {
+        selectedStroke: svg.querySelectorAll('circle[stroke="hsl(var(--foreground))"]').length,
+        primaryEdges: svg.querySelectorAll('line[stroke="hsl(var(--primary))"]').length,
+        dimmedCircles: svg.querySelectorAll('circle[opacity="0.25"]').length,
+        dimmedLines: svg.querySelectorAll('line[opacity="0.25"]').length,
+      };
     })()`);
-    check("node click: detail panel appears", detailPanel === true);
-    const highlightActive = await evalJs(`(() => {
-      const lines = [...document.querySelectorAll('svg[viewBox="0 0 900 560"] line')];
-      const wide = lines.filter((l) => l.getAttribute('stroke-width') === '2.5');
-      return wide.length > 0;
-    })()`);
-
-    check("node click: neighbor edges highlighted", highlightActive === true);
-    const neighborChips = await evalJs(`(() => {
-      const btns = [...document.querySelectorAll('button')].filter((b) => b.className.includes('rounded-full'));
-      return btns.length;
-    })()`);
-    check("node click: neighbor chips listed", neighborChips >= 1, `chips=${neighborChips}`);
+    check("node click: node selected (stroke highlight)", !!clickState && clickState.selectedStroke >= 1, JSON.stringify(clickState));
+    check("node click: adjacent edges highlighted (primary)", !!clickState && clickState.primaryEdges >= 1, JSON.stringify(clickState));
+    check("node click: non-neighbor nodes/edges dimmed", !!clickState && clickState.dimmedCircles >= 1 && clickState.dimmedLines >= 1, JSON.stringify(clickState));
     await shot("02-selected");
 
     // ── 3. 汇总 ─────────────────────────────────────────────────────────

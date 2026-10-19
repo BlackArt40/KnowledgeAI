@@ -1,7 +1,8 @@
 // @ts-nocheck
 // P5-4 acceptance: NO hard-coded Chinese UI strings remain in client-facing
-// code (src/app + src/components tsx/ts). Skips:
-//   - comments (// and /* */)
+// code. V6：Next 页面层已退役（src/app 只剩 /api），UI 扫描范围收缩为
+// frontend/src（Vue 3 + EP，.vue 模板 + ts/tsx）。Skips:
+//   - comments (// and /* */ and <!-- -->)
 //   - the language packs themselves (src/lib/i18n/messages)
 //   - server-side API error messages & lib prompts (out of UI scope)
 //   - t("...") call sites (the key is English)
@@ -12,7 +13,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ROOT = join(process.cwd(), "src"); // UI scope: src/app + src/components only
+const ROOT = join(process.cwd(), "src"); // 语言包仍单源在 src/lib（@shared 共享）
+// V6：frontend/src 是唯一的客户端 UI 代码（Next 前端已退役）
+const FRONTEND_ROOT = join(process.cwd(), "frontend/src");
 const ZH = JSON.parse(readFileSync(join(ROOT, "lib/i18n/messages/zh-CN.json"), "utf8"));
 const EN = JSON.parse(readFileSync(join(ROOT, "lib/i18n/messages/en.json"), "utf8"));
 
@@ -27,7 +30,10 @@ function collectTsxFiles(dir: string): string[] {
       if (p.includes("i18n/messages")) continue;
       if (p.includes("/api")) continue; // server API error messages are out of UI scope
       out.push(...collectTsxFiles(p));
-    } else if (/\.(tsx|ts)$/.test(name)) {
+    } else if (/\.(tsx|ts|vue)$/.test(name)) {
+      // 单测断言里会出现语言包原值（如 expect(t("common.save")).toBe("保存")），
+      // 不是 UI 字符串 —— 豁免
+      if (/\.test\.(ts|tsx)$/.test(name)) continue;
       out.push(p);
     }
   }
@@ -38,7 +44,8 @@ function collectTsxFiles(dir: string): string[] {
 function stripComments(src: string): string {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/<!--[\s\S]*?-->/g, ""); // Vue SFC template comments
 }
 
 function collectKeys(obj: unknown, prefix = ""): string[] {
@@ -76,10 +83,9 @@ async function main() {
   check("i18n: no orphan keys in en.json", orphanInEn.length === 0, `${orphanInEn.length}`);
 
   // ── 2. residual Chinese in UI code ────────────────────────────────────
-  const files = [
-    ...collectTsxFiles(join(ROOT, "app")),
-    ...collectTsxFiles(join(ROOT, "components")),
-  ];
+  // V6：src/app 下已无页面层（只剩 /api，collectTsxFiles 本就跳过 /api）——
+  // UI 扫描仅 frontend/src。
+  const files = [...collectTsxFiles(FRONTEND_ROOT)];
   const offenders: string[] = [];
   let tCallSites = 0;
   for (const f of files) {

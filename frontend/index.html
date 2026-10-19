@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>KnowledgeAI</title>
+    <!--
+      首帧主题/语言预置脚本：与 Next 侧 src/app/layout.tsx 的 themeScript 逐字
+      同步（localStorage key: kai-theme / kai-hc / kai-locale）。两端必须一起改，
+      同步义务记录在 design log 十五·二十七。
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('kai-theme');
+          var m = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (t === 'dark' || ((!t || t === 'system') && m)) document.documentElement.classList.add('dark');
+          if (localStorage.getItem('kai-hc') === '1') document.documentElement.classList.add('high-contrast');
+          var l = localStorage.getItem('kai-locale');
+          if (l === 'en') {
+            document.documentElement.lang = 'en';
+            document.cookie = 'kai-locale=en; path=/; max-age=31536000';
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

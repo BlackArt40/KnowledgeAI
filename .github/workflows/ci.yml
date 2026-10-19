@@ -97,6 +97,32 @@ jobs:
       - name: Unit tests with coverage
         run: pnpm test:unit
 
+  # ── Vue 3 前端（frontend/，V0 起）：独立四门禁，与 Next 八门禁并存 ──────
+  # 绞杀迁移期间根仓门禁保持不动；frontend 门禁随阶段扩展（design log 十五·二十七）
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck (vue-tsc)
+        run: pnpm --filter kai-frontend typecheck
+      - name: Lint
+        run: pnpm --filter kai-frontend lint
+      - name: Unit tests
+        run: pnpm --filter kai-frontend test
+      - name: Build
+        run: pnpm --filter kai-frontend build
+
   # ── AI 服务契约测试（阶段 3）：租户硬化负例 + SSE/内部令牌契约入 CI ──
   # service-split.md 阶段 3 退出标准：「A3.1～A3.3 必须自动化并纳入 CI」。
   ai-contract:
@@ -138,10 +164,20 @@ jobs:
           RATE_LIMIT_PER_MIN=2000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=1000 \
           pnpm dev > /tmp/dev.log 2>&1 &
           for i in $(seq 1 60); do
-            curl -sf http://localhost:3000/login > /dev/null && break
+            curl -sf http://localhost:3000/api/health > /dev/null && break
             sleep 2
           done
-          curl -sf http://localhost:3000/login > /dev/null
+          curl -sf http://localhost:3000/api/health > /dev/null
+      # V6：Next 纯 API——页面由 frontend dist 的 vite preview（:4173）承载
+      - name: Build frontend + start preview
+        run: |
+          pnpm --filter kai-frontend build > /tmp/fe-build.log 2>&1
+          pnpm --filter kai-frontend exec vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/ > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:4173/ > /dev/null
       - name: Functional tests
         run: node tests/functional/functional-test.mjs
       - name: API tests
@@ -215,10 +251,24 @@ jobs:
           done
           curl -sf http://localhost:3000/api/health > /dev/null
 
+      # V8 修正：preview 提前到 http 组之前——test-openapi 的 /docs 断言打
+      # PAGE_URL(:4173)，http 组在 preview 缺席时会 ECONNREFUSED（本地 preview
+      # 常驻所以从未暴露）。ui 组复用同一 preview。
+      - name: Build frontend + start preview
+        run: |
+          pnpm --filter kai-frontend build > /tmp/fe-build.log 2>&1
+          pnpm --filter kai-frontend exec vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/ > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:4173/ > /dev/null
+
       - name: Smoke - http group
         run: npx tsx scripts/smoke/run-all.ts --group http --elevate 5000
 
-      # ui 组用 CDP 驱动 Chrome（runner 自带 /usr/bin/google-chrome）
+      # ui 组用 CDP 驱动 Chrome（runner 自带 /usr/bin/google-chrome）；
+      # 页面由上方已拉起的 vite preview（:4173，frontend dist）承载
       - name: Smoke - ui group
         run: npx tsx scripts/smoke/run-all.ts --group ui --elevate 5000
 
@@ -338,8 +388,17 @@ jobs:
         run: npx prisma generate
       - name: Install Playwright chromium
         run: pnpm exec playwright install --with-deps chromium
+      # V6：页面由 vite preview 承载——webServer[1] 的 command 内含构建；
+      # 此处显式构建一次以便构建错误在独立步骤暴露（含 SEO 预渲染）
+      - name: Build frontend (Vue dist + prerendered home)
+        run: pnpm --filter kai-frontend build
       - name: E2E tests
         run: pnpm test:e2e
+      # V7：frontend/e2e 并入 CI（31 用例：认证/工作台/知识库/聊天+Agent/管理端
+      # 门禁）——其 webServer 自动拉起 Next dev(:3000, 抬高限流) + vite dev(:5173)，
+      # 根 e2e 结束时已释放端口，无冲突
+      - name: Frontend E2E tests (Vue suite)
+        run: pnpm --filter kai-frontend test:e2e
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -347,7 +406,8 @@ jobs:
           name: playwright-report
           path: |
             test-results/
-            playwright-report/
+            frontend/test-results/
+            frontend/playwright-report/
           retention-days: 7
 
   # ── 文档门禁：docs 站点构建（死链即失败）+ Frontmatter 校验 + OpenAPI 参考漂移 ──

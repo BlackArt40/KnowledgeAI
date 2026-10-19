@@ -1,15 +1,20 @@
 // P6-1 acceptance verification in a real headless Chrome via CDP:
 // the /admin/monitoring dashboard renders the SLI sections (QPS chart,
 // latency percentiles, LLM by-model table, RAG/doc/agent cards, recent
-// traces with expandable span trees, recent errors), and non-admins are
-// redirected away.
-// Run: node scripts/smoke/test-monitoring-ui.mjs  (requires `pnpm dev`)
+// traces with expandable span trees, recent errors), and non-admins cannot
+// see the dashboard.
+// V6: 页面由 vite preview（:4173）承载 Vue 3 + Element Plus 版
+// MonitoringView。i18n 文案断言（同语言包 key）不变；区块结构为 .mon-page
+// 下的 .stat 卡 / table.tbl / UsageChart svg / .trace-row 展开行。非 admin
+// 访问仍被重定向：AppShell routeGuard 对受限路由 router.replace("/dashboard")，
+// 与 Next 版 RESTRICTED 路由表语义一致。
+// Run: node scripts/smoke/test-monitoring-ui.mjs  (requires `pnpm dev` + vite preview :4173)
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9783;
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-monitoring-shots";
@@ -207,14 +212,19 @@ async function main() {
     check("span tree: span 名称与类型 chips", spanTree.apiSpan === true && spanTree.kindChips === true, JSON.stringify(spanTree));
     await shot("2-span-tree");
 
-    // ── 3. editor is redirected away ────────────────────────────────────
+    // ── 3. 非 admin 访问控制 ────────────────────────────────────────────
     console.log("\n── 3. 非 admin 访问控制 ──");
     await login("editor@knowledgeai.dev");
     await send("Page.navigate", { url: `${BASE}/admin/monitoring` });
-    await sleep(2500);
-    const editorUrl = await evalJs(`window.location.pathname`);
-    check("editor: /admin/monitoring 被重定向", editorUrl !== "/admin/monitoring", editorUrl);
-    check("editor: 无监控内容", !(await evalJs(`document.body.innerText.includes("可观测性")`)));
+    await sleep(3000);
+    // V6: 重定向守卫在 Vue 侧仍存在——AppShell 的 routeGuard 对受限路由
+    // router.replace("/dashboard")（对应 Next 版 RESTRICTED 路由表），断言不变。
+    const editorState = await evalJs(`(() => {
+      const text = document.body.innerText;
+      return { url: window.location.pathname, noDashboard: !text.includes("可观测性") };
+    })()`);
+    check("editor: /admin/monitoring 被重定向", editorState.url !== "/admin/monitoring", editorState.url);
+    check("editor: 无监控内容", editorState.noDashboard === true, JSON.stringify(editorState));
 
     console.log(`\n${results.join("\n")}`);
     console.log(`\nMonitoring UI acceptance: ${results.length - failures}/${results.length} passed${failures ? `, ${failures} FAILED` : ""} (screenshots: ${OUT_DIR})`);

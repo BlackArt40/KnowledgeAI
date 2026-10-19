@@ -1,6 +1,7 @@
-// P6-3: Playwright config - E2E for the key user flow
-// (login -> upload -> Q&A -> Agent). The webServer entry auto-starts
-// `pnpm dev` on port 3000 (reused when one is already running locally).
+// P6-3 → V6：E2E 关键用户流程（登录 → 上传 → 问答 → Agent）。
+// V6 退役后 Next 只服务 /api/**，页面由 vite preview（:4173，服务 frontend
+// dist 含 SEO 预渲染 home.html）承载——双 webServer：Next dev 提供 API、
+// preview 提供页面，用例统一打 :4173（/api 经 preview proxy 到 :3000）。
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
@@ -10,29 +11,37 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:4173",
     headless: true,
-    // 固定中文 locale：应用按 Accept-Language 选择语言包，E2E 断言基于中文文案
+    // 固定中文 locale：应用按语言包渲染，E2E 断言基于中文文案
     locale: "zh-CN",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000/login",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    // 每条用例独立登录，套件本身会打出十几次匿名请求（/api/auth/* 均走 anon
-    // 档 20/min）——达到档位后 login 直接 429，用例表现为"登录失败"。与 CI
-    // integration 任务一致，给 E2E 的 server 抬高限额；限流档位本身由 smoke
-    // 的 limits 组断言，不靠这里覆盖。
-    env: {
-      RATE_LIMIT_PER_MIN: "2000",
-      RATE_LIMIT_ANON_PER_MIN: "1000",
-      RATE_LIMIT_KB_PER_MIN: "2000",
-      RATE_LIMIT_KEY_PER_MIN: "5000",
-      RATE_LIMIT_AGENT_PER_MIN: "60",
+  webServer: [
+    {
+      // Next dev：纯 API（V6 后无页面路由），沿用高限流 env（套件十几次
+      // 匿名请求会撞 20/min 档；限流档位本身由 smoke limits 组断言）
+      command: "pnpm dev",
+      url: "http://localhost:3000/api/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: {
+        RATE_LIMIT_PER_MIN: "2000",
+        RATE_LIMIT_ANON_PER_MIN: "1000",
+        RATE_LIMIT_KB_PER_MIN: "2000",
+        RATE_LIMIT_KEY_PER_MIN: "5000",
+        RATE_LIMIT_AGENT_PER_MIN: "60",
+      },
     },
-  },
+    {
+      // vite preview：构建（含 SEO 预渲染）后服务 frontend/dist @ :4173
+      command:
+        "pnpm --filter kai-frontend build && pnpm --filter kai-frontend exec vite preview --port 4173 --strictPort",
+      url: "http://localhost:4173",
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
+    },
+  ],
 });

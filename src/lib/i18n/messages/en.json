@@ -54,7 +54,8 @@
       "s22": "Disable",
       "s23": "Delete",
       "s24": "What features does the product have?",
-      "s26": "Calls in last 24h"
+      "s26": "Calls in last 24h",
+      "s27": "No API keys yet. Create one to call /api/v1/*."
     },
     "billing": {
       "s0": "Ends at period end",
@@ -503,7 +504,11 @@
       "s79": "Save tags",
       "s80": "Citations from AI answers will appear here",
       "s81": "Relevance {pct}%",
-      "s82": "Follow-ups"
+      "s82": "Follow-ups",
+      "s83": "Voice input",
+      "s84": "Stop voice input",
+      "s85": "Read aloud",
+      "s86": "Stop reading"
     },
     "global-search": {
       "s0": "Global search",

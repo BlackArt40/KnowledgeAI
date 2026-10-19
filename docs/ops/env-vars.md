@@ -28,6 +28,12 @@ related: [deployment-guide.md, monitoring.md]
 
 > 历史变量 `NEXT_PUBLIC_APP_NAME` 已废弃：应用显示名现在由管理后台系统设置维护。
 
+## 前端（frontend/，Vue 3 重写 · V0 起）
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `VITE_API_BASE` | 否 | 空（同源 `/api`） | frontend/（Vue 3 + Vite）构建期变量：API 请求前缀。留空 = 同源 `/api`（经网关反代，推荐）；跨域部署填网关完整地址，并配合 `CORS_ALLOWED_ORIGINS`。注意：这是**构建期**变量（`import.meta.env`），改后需重新 `pnpm -C frontend build` |
+
 ## 数据库
 
 | 变量 | 必填 | 默认值 | 说明 |

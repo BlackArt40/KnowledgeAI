@@ -56,6 +56,13 @@ if [[ ! -f deploy/.env.drill ]]; then
 else
   ok "复用现有 deploy/.env.drill"
 fi
+# compose 插值自足：app/worker 的 env_file: ${SPLIT_ENV_FILE:-deploy/.env.split}
+# 必须解析到演练 env（deploy/.env.split 是生产本地文件，演练机不保证存在）——
+# 否则 compose config 加载即报 "env file not found"，up/exec/ps 全挂
+if ! grep -q '^SPLIT_ENV_FILE=' deploy/.env.drill; then
+  echo "SPLIT_ENV_FILE=deploy/.env.drill" >> deploy/.env.drill
+fi
+ok "SPLIT_ENV_FILE 指向演练 env（compose 插值自足）"
 
 BASE="docker compose -f docker-compose.split.yml"
 echo "── 2/6 MinIO 可达性探测 ──"
@@ -65,6 +72,17 @@ if docker pull -q minio/minio:latest >/dev/null 2>&1; then
 else
   COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.split.drill.yml"
   echo "  ⚠️ MinIO 镜像不可得 → 自动切 moto S3 兼容层（阶段 2 同口径；生产仍为 MinIO）"
+fi
+
+echo "── 2.5/6 前端产物（V1，Vue 3 重写）──"
+# 必须在起栈【之前】构建：网关以 bind mount 挂 ./frontend/dist，栈启动后
+# vite 清空重建目录会让 macOS Docker 的目录视图失同步（实测踩坑）；起栈前
+# 构建则挂载绑定的是稳定目录。无 pnpm 的干净机器跳过（保持全 Next 形态）。
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm -C frontend build >/dev/null 2>&1 && ok "Vue 前端构建（frontend/dist，起栈前）" \
+    || echo "  ⚠️ frontend build 失败 → 切流演练将跳过（保持全 Next）"
+else
+  echo "  ⚠️ 无 pnpm → 跳过前端构建与切流演练（保持全 Next 形态）"
 fi
 
 echo "── 3/6 一键起全栈（business ×2，首建需数分钟）──"
@@ -99,7 +117,14 @@ ok "种子写入（owner@knowledgeai.dev / password123）"
 
 GW="http://127.0.0.1:$GATEWAY_PORT"
 echo "── 5/6 过网关冒烟 ──"
-check "$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$GW/")" "200" "前端首页"
+# app healthy ≠ Next 首页就绪（首次请求需现场渲染），502/超时重试 ~30s
+HOME_CODE=""
+for _ in 1 2 3 4 5 6; do
+  HOME_CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$GW/")
+  [ "$HOME_CODE" = "200" ] && break
+  sleep 5
+done
+check "$HOME_CODE" "200" "前端首页"
 READY=$(curl -s -m 10 "$GW/api/health/ready")
 [[ "$(echo "$READY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ok'))")" == "True" ]] \
   && ok "就绪探针 ok:true" || bad "就绪探针: $READY"
@@ -131,6 +156,56 @@ check "$AGENT_DONE" "1" "agent SSE（init/step×3/done/end）"
 if [[ "$AGENT_DONE" != "1" ]]; then echo "  └─ agent 帧序片段: $(head -c 400 /tmp/drill-agent-sse.txt)"; fi
 
 check "$(curl -s -o /dev/null -w '%{http_code}' -m 10 -H "Authorization: Bearer $TOKEN" "$GW/api/agent/tasks/nonexistent")" "404" "任务详情越权/不存在 404（带 token）"
+
+echo "── 5.5/6 前端切流演练（V1，Vue 3 绞杀重写）──"
+# dist 已在 2.5 步构建（起栈前）；此处只做切流/回退开关演练
+if [ -f frontend/dist/index.html ]; then
+  cp deploy/nginx/routes.conf /tmp/drill-routes.orig
+  SPLIT_ENV_FILE=deploy/.env.drill scripts/deploy/switch-frontend.sh apply > /tmp/drill-switch-apply.log 2>&1 \
+    && ok "switch apply（routes.conf → 网关）" || bad "switch apply 失败（见 /tmp/drill-switch-apply.log）"
+  docker exec knowledgeai-gateway-1 sh -c 'ls /srv/vue | head -3; grep -c "location = /login" /etc/nginx/frontend-switch.conf' > /tmp/drill-switch-inspect.log 2>&1 || true
+  # 断言带重试（最多 ~15s），覆盖 nginx 优雅重载的秒级窗口
+  LOGIN_HTML=""
+  for _ in 1 2 3 4 5; do
+    LOGIN_HTML=$(curl -s -m 10 "$GW/login")
+    echo "$LOGIN_HTML" | grep -q 'id="app"' && break
+    sleep 3
+  done
+  echo "$LOGIN_HTML" > /tmp/drill-login.html 2>/dev/null || true
+  echo "$LOGIN_HTML" | grep -q 'id="app"' && ok "登录页已切 Vue（精确 location 优先于兜底）" \
+    || bad "登录页未切到 Vue"
+  # V4：/chat 也已由 Vue 接管（与 /login 同款首帧断言）
+  CHAT_HTML=""
+  for _ in 1 2 3 4 5; do
+    CHAT_HTML=$(curl -s -m 10 "$GW/chat")
+    echo "$CHAT_HTML" | grep -q 'id="app"' && break
+    sleep 3
+  done
+  echo "$CHAT_HTML" | grep -q 'id="app"' && ok "问答页 /chat 已切 Vue" \
+    || bad "问答页 /chat 未切到 Vue"
+  # V5：首页 / 已切 Vue（优先返回预渲染 home.html）
+  HOME_HTML=$(curl -s -m 10 "$GW/")
+  echo "$HOME_HTML" | grep -q 'id="app"' && ok "首页 / 已切 Vue（预渲染 SEO 首帧）" \
+    || bad "首页 / 未切到 Vue"
+  echo "$LOGIN_HTML" | grep -q '/assets/' && ok "Vue 资源走 /assets/（与 /_next/static 不冲突）" \
+    || bad "未发现 /assets/ 引用"
+  SPLIT_ENV_FILE=deploy/.env.drill scripts/deploy/switch-frontend.sh revert-all >/dev/null 2>&1 \
+    && ok "switch revert-all（秒级回退开关：全部流量回 Next）" || bad "switch revert-all 失败"
+  AFTER_HTML=""
+  for _ in 1 2 3 4 5; do
+    AFTER_HTML=$(curl -s -m 10 "$GW/login")
+    echo "$AFTER_HTML" | grep -q '_next' && break
+    sleep 3
+  done
+  echo "$AFTER_HTML" | grep -q '_next' && ok "回退后登录页回到 Next" \
+    || bad "回退后仍非 Next 页面"
+  # 演练结束恢复路由表：revert-all 已把清空【前】的路由备份进 routes.conf.bak，
+  # rollback 恢复路由表并重新 apply（conf 与路由表保持一致，留下审计轨迹）
+  SPLIT_ENV_FILE=deploy/.env.drill scripts/deploy/switch-frontend.sh rollback >/dev/null 2>&1 \
+    && ok "switch rollback（路由表恢复至演练前 + conf 同步）" || bad "switch rollback 失败"
+  grep -q '^/login$' deploy/nginx/routes.conf && grep -q '^/usage$' deploy/nginx/routes.conf && ok "routes.conf 完整性（27 路由在位）" \
+    || bad "routes.conf 恢复异常"
+fi
 
 echo "── 6/6 汇总 ──"
 echo "PASS=$pass FAIL=$fail"

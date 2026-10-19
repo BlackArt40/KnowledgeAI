@@ -1,7 +1,9 @@
 # ── 阶段 6 拆分部署编排（service-split.md 6.1-6.3，A6.1 一键起）──────────────
 #
 # 形态：网关(nginx) → /api 反代业务服务(Java, 可 --scale business=N 多副本)；
-#       其余 → 前端(Next)。AI 服务与基础设施仅内网（不映射宿主端口）。
+#       页面由 frontend-switch.conf 切到 Vue 静态(/srv/vue)，其余兜底 Next
+#       （V6 起 Next 纯 API + public/ 单源静态资产）。AI 服务与基础设施仅内网
+#       （不映射宿主端口）。
 #
 # 一键起（干净机器演练）：
 #   cp deploy/env.split.example deploy/.env.split   # 填 AUTH_SECRET（必填）
@@ -25,6 +27,10 @@ services:
       - "${GATEWAY_PORT:-8088}:80"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 前端绞杀切流（V1 起）：switch conf 由 scripts/deploy/switch-frontend.sh
+      # 维护（空占位 = 全部流量走 Next）；Vue 静态构建挂到 /srv/vue
+      - ./deploy/nginx/frontend-switch.conf:/etc/nginx/frontend-switch.conf:ro
+      - ./frontend/dist:/srv/vue:ro
     depends_on:
       app:
         condition: service_started
@@ -32,7 +38,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # 前端（Next standalone：页面 + 静态 + PWA；其业务 API 由网关侧路由到业务服务）
+  # Next（V6 起纯 API：页面全由 Vue 承载）+ public/ 单源静态资产
+  # （vendor/widget/PWA 经网关 location / 兜底可达）
   app:
     build: .
     env_file: ${SPLIT_ENV_FILE:-deploy/.env.split}

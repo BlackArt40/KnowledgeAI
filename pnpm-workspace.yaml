@@ -1,3 +1,9 @@
+# V0（Vue 3 前端绞杀重写）：frontend/ 加入 workspace —— overrides（含 vue
+# pin）与 allowBuilds 自动覆盖 frontend 依赖，lockfile 单一（design log 十五·二十七）。
+packages:
+  - "."
+  - "frontend"
+
 allowBuilds:
   '@prisma/engines': true
   '@prisma/client': true

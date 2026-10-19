@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { SMOKE_ALL_GROUPS, SMOKE_GROUPS, SMOKE_MANIFEST, type SmokeEntry, type SmokeGroup, type SmokePrereq } from "./lib/manifest";
-import { resolveSmokeBase } from "./lib/base-url";
+import { resolvePageBase, resolveSmokeBase } from "./lib/base-url";
 import { DEMO_PASSWORD } from "./lib/demo";
 import { ocrAvailable } from "./lib/ocr-available";
 
@@ -192,9 +192,12 @@ function runScript(entry: SmokeEntry, base: string, timeoutMs: number): Promise<
   const started = Date.now();
 
   return new Promise<Result>((done) => {
+    // V6：ui 组条目的 BASE_URL 指向页面承载端（vite preview :4173），其余组
+    // 仍指向 dev server（:3000）。PAGE_URL 供 ui 脚本显式覆盖页面基址。
+    const envBase = entry.group === "ui" ? resolvePageBase() : base;
     const child = spawn(cmd, args, {
       cwd: ROOT,
-      env: { ...process.env, BASE_URL: base },
+      env: { ...process.env, BASE_URL: envBase, ...(entry.group === "ui" ? { PAGE_URL: envBase } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let out = "";

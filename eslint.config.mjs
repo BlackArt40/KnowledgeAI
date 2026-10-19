@@ -22,6 +22,9 @@ const eslintConfig = defineConfig([
     // P7-1: vendored swagger-ui assets (minified third-party bundle copied
     // from node_modules by scripts/tools/copy-swagger-ui.mjs)
     "public/vendor/**",
+    // V0 (Vue 3 重写): frontend/ 有独立 eslint flat config + vue-tsc 门禁，
+    // 根 ESLint（next 规则集）不适用，避免 Vue SFC 误报
+    "frontend/**",
     // P7-2: standalone integration products (VS Code extension uses CommonJS
     // require - VS Code host API; Chrome extension + widget are plain JS).
     "integrations/**",
