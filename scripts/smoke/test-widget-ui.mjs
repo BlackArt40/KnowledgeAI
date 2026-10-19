@@ -3,13 +3,18 @@
 //   - opens /widget/demo.html, fills API key + KB, boots the widget
 //   - asserts the floating button renders, the panel opens, a question gets
 //     a streamed bot answer
-// Run: MODE=widget npx node scripts/smoke/test-widget-ui.mjs  (requires `pnpm dev`)
+// V6: vite preview（:4173）对 /widget/* 只会回退到 SPA index.html（public/
+// 静态资产仍归 Next），而挂件与宿主页是框架无关的独立资产。脚本先探测 BASE
+// 侧是否真的服务挂件脚本（非 SPA fallback HTML），否则回退 Next :3000 的
+// public/widget/demo.html 作为宿主页（endpoint 同源 :3000，demo 模式 CORS 放行）。
+// 断言对象是挂件自身的 IIFE DOM（.kaiw-*），与框架无关、原样保留。
+// Run: MODE=widget npx node scripts/smoke/test-widget-ui.mjs  (requires `pnpm dev` + vite preview :4173)
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9334;
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-widget-shots";
@@ -57,6 +62,19 @@ async function main() {
   const kbId = kbs.kbs?.[0]?.id;
   check("setup: api key + kb", !!apiKey && !!kbId);
 
+  // V6: 解析挂件宿主页地址——BASE 侧（vite preview）对 /widget/* 回退 SPA
+  // index.html，此时回退 Next :3000（public/widget/ 的唯一真实来源）。
+  let widgetBase = BASE;
+  try {
+    const body = await fetch(`${BASE}/widget/kai-widget.js`).then((r) => r.text());
+    if (body.trimStart().startsWith("<!doctype") || body.trimStart().startsWith("<!DOCTYPE")) {
+      widgetBase = "http://localhost:3000";
+    }
+  } catch {
+    widgetBase = "http://localhost:3000";
+  }
+  console.log(`widget host: ${widgetBase}/widget/demo.html`);
+
   const chrome = spawn(CHROME, [
     "--headless=new",
     ...LOCALE_ARGS,
@@ -76,7 +94,7 @@ async function main() {
   try {
     await waitForPort(PORT);
     const target = await fetch(
-      `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(BASE + "/widget/demo.html")}`,
+      `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(widgetBase + "/widget/demo.html")}`,
       { method: "PUT" }
     ).then((r) => r.json());
 
@@ -128,8 +146,9 @@ async function main() {
     const api = await evalJs("typeof window.KnowledgeAIWidget?.init === 'function'");
     check("widget script loaded + init API", api === true);
 
-    // 填写表单并加载组件
+    // 填写表单并加载组件（V6: endpoint 字段显式指向宿主解析出的服务地址）
     await evalJs(`(() => {
+      document.getElementById("endpoint").value = ${JSON.stringify(widgetBase)};
       document.getElementById("apiKey").value = ${JSON.stringify(apiKey)};
       document.getElementById("kbId").value = ${JSON.stringify(kbId)};
       return true;
@@ -161,10 +180,11 @@ async function main() {
     await evalJs("document.querySelector('.kaiw-send').click()");
     await shot("02-asking");
 
-    // 等待流式回答（demo 生成约 1-3s，轮询 15s）
+    // 等待流式回答（V6: 本环境配置了真实 LLM，上游首 token 延迟实测可达
+    // 80-100s，轮询上限放宽到 120s）
     let answered = false;
     let text = "";
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 240; i++) {
       text = await evalJs(
         "Array.from(document.querySelectorAll('.kaiw-msg.kaiw-bot')).map(el => el.textContent).join('')"
       );

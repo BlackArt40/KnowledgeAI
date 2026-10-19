@@ -5,7 +5,7 @@
  *    login page, manifest, icons)
  *  - navigate requests: network-first; on failure serve an explicit
  *    "service unavailable / offline" page (never a stale cached page)
- *  - /_next/static/* (hashed JS/CSS chunks): stale-while-revalidate so a
+ *  - /assets/* (Vite hashed JS/CSS chunks): stale-while-revalidate so a
  *    loaded app works offline and updates in the background when online
  *  - /api/*: network-only - API responses contain tenant/user data and must
  *    never be cached
@@ -33,7 +33,7 @@
  *      mask a dead origin behind a plausible-looking cached page.
  */
 
-const VERSION = "p5-1-v3";
+const VERSION = "v6-vue-1";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 /** Runtime endpoint that can retire this worker (E3). */
@@ -172,7 +172,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Hashed Next.js build assets: stale-while-revalidate.
-  if (url.pathname.startsWith("/_next/static/")) {
+  if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
       caches.match(request).then((cached) => {
         const network = fetch(request).then((response) => cachePut(request, response));

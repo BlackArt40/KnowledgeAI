@@ -1,11 +1,15 @@
 // ===========================================================================
 // KnowledgeAI · 功能测试 (Functional Tests)
 // 运行: node tests/functional/functional-test.mjs
-// 前置: pnpm dev (dev server running on http://localhost:3000)
+// 前置: pnpm dev（:3000，API）+ vite preview（:4173，页面——V6 后 Next 纯 API，
+//       页面由 frontend dist 承载；起法见文件末尾「运行方式」）
 // ===========================================================================
 
 import fs from "fs";
 import { login, api, BASE } from "../helpers.mjs";
+
+// 双基址：API 流程打 :3000；页面检查打 :4173（SPA 壳 + 预渲染首页）
+const PAGE_BASE = process.env.PAGE_BASE ?? "http://localhost:4173";
 
 const results = [];
 let passCount = 0, failCount = 0;
@@ -18,7 +22,7 @@ function log(name, path, status, ok, detail = "") {
 }
 
 async function fetchPage(path) {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${PAGE_BASE}${path}`);
   const html = await res.text();
   return { status: res.status, html, size: html.length };
 }
@@ -28,6 +32,9 @@ async function fetchPage(path) {
 function checkContent(html, needles) {
   return needles.every((n) => html.includes(n));
 }
+
+// V6：页面为 Vue SPA 壳（CSR），除预渲染首页外无 SSR 内容——断言壳标记
+const shellOk = (html) => html.includes('id="app"');
 
 async function main() {
   console.log("\n╔══════════════════════════════════════════════╗");
@@ -39,21 +46,19 @@ async function main() {
   const loggedIn = await login();
   console.log(`${loggedIn ? "✅" : "❌"} 登录 owner@knowledgeai.dev ${loggedIn ? "" : "| 后续 API 流程将 401"}`);
 
-  // ── 1. 公开页面 ──
+  // ── 1. 公开页面（/ 为预渲染 home.html，保留内容断言；其余为 SPA 壳） ──
   console.log("── 公开页面 ──");
   let p = await fetchPage("/");
-  log("落地页", "/", p.status, p.status === 200 && checkContent(p.html, ["KnowledgeAI", "知识"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("落地页", "/", p.status, p.status === 200 && checkContent(p.html, ["KnowledgeAI", "知识"]), `${(p.size/1024).toFixed(0)}KB SEO预渲染`);
 
   p = await fetchPage("/login");
-  log("登录页", "/login", p.status, p.status === 200 && checkContent(p.html, ["登录", "密码"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("登录页", "/login", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   p = await fetchPage("/register");
-  // The register form is client-rendered (i18n), so assert on the SSR
-  // marketing copy instead of the form labels.
-  log("注册页", "/register", p.status, p.status === 200 && checkContent(p.html, ["知识助手"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("注册页", "/register", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   p = await fetchPage("/verify-email");
-  log("邮箱验证", "/verify-email", p.status, p.status === 200, `${(p.size/1024).toFixed(0)}KB`);
+  log("邮箱验证", "/verify-email", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   // ── 2. 工作台页面 ──
   console.log("\n── 工作台页面 ──");
@@ -73,8 +78,8 @@ async function main() {
 
   for (const pg of appPages) {
     p = await fetchPage(pg.path);
-    const contentOk = checkContent(p.html, pg.needles);
-    log(pg.name, pg.path, p.status, p.status === 200 && contentOk, `${(p.size/1024).toFixed(0)}KB content=${contentOk ? "✓" : "✗"}`);
+    const contentOk = shellOk(p.html);
+    log(pg.name, pg.path, p.status, p.status === 200 && contentOk, `${(p.size/1024).toFixed(0)}KB shell=${contentOk ? "✓" : "✗"}`);
   }
 
   // ── 3. 知识库详情页 ──
@@ -83,24 +88,33 @@ async function main() {
   const kbId = kbRes.kbs?.[0]?.id;
   if (kbId) {
     p = await fetchPage(`/knowledge-base/${kbId}`);
-    log("知识库详情", `/knowledge-base/${kbId}`, p.status, p.status === 200, `${(p.size/1024).toFixed(0)}KB`);
+    log("知识库详情", `/knowledge-base/${kbId}`, p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
   }
 
   // ── 4. 特殊页面 ──
   console.log("\n── 特殊页面 ──");
   p = await fetchPage("/privacy");
-  log("隐私政策", "/privacy", p.status, p.status === 200 && checkContent(p.html, ["隐私", "GDPR"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("隐私政策", "/privacy", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   p = await fetchPage("/terms");
-  log("服务条款", "/terms", p.status, p.status === 200 && checkContent(p.html, ["条款", "免责"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("服务条款", "/terms", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   p = await fetchPage("/maintenance");
-  log("维护页面", "/maintenance", p.status, p.status === 200 && checkContent(p.html, ["维护"]), `${(p.size/1024).toFixed(0)}KB`);
+  log("维护页面", "/maintenance", p.status, p.status === 200 && shellOk(p.html), `${(p.size/1024).toFixed(0)}KB shell`);
 
   // ── 5. 错误页面 ──
   console.log("\n── 错误页面 ──");
+  // V6：未知页面路径由 preview 的 SPA fallback 交前端路由渲染 NotFound（200+壳）；
+  // API 侧未知路径由 Next 返回 404 JSON——两层各断言各的。
   p = await fetchPage("/this-page-does-not-exist");
-  log("404页面", "/nonexistent", p.status, p.status === 404 && checkContent(p.html, ["404"]), `status=${p.status}`);
+  log("404页面(SPA)", "/nonexistent", p.status, p.status === 200 && shellOk(p.html), `status=${p.status} shell`);
+  let api404Status = 0;
+  try {
+    api404Status = (await fetch(`${BASE}/api/definitely-not-an-api`)).status;
+  } catch {
+    /* 网络失败按非 404 处理 */
+  }
+  log("404接口(API)", "/api/nonexistent", api404Status, api404Status === 404, `status=${api404Status}`);
 
   // ── 6. 用户流程测试 ──
   console.log("\n── 用户流程测试 ──");
@@ -231,8 +245,9 @@ ${results.filter(r => r.path.includes("flow") || r.path.includes("SSE")).map((r,
 ## 运行方式
 
 \`\`\`bash
-# 1. 启动开发服务器
-pnpm dev
+# 1. 启动 Next API（:3000）与页面 preview（:4173）
+pnpm dev &
+pnpm -C frontend build && pnpm -C frontend exec vite preview --port 4173
 
 # 2. 运行功能测试
 node tests/functional/functional-test.mjs

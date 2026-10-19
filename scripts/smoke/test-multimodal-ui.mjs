@@ -1,14 +1,21 @@
 // P7-4 acceptance verification: multimodal chat UI in headless Chrome (CDP).
-//   - chat page has the attach-image button, the voice-input mic button and
-//     the read-aloud (TTS) button on assistant messages
+//   - chat page has the attach-image button + the voice-input mic button
 //   - attaching an image shows a preview thumbnail with a remove control
-// Run: npx node scripts/smoke/test-multimodal-ui.mjs  (requires `pnpm dev`)
+//   - sending the question with the attachment streams an assistant answer
+//     whose action row carries the read-aloud (TTS) button
+// V6: 页面由 vite preview（:4173）承载 Vue 3 + Element Plus 版 ChatView，
+// 断言已按 Vue DOM 改写（composer 的 .ask-input/.send-btn、附件预览
+// .attach-row、气泡 .bubble-user/.bubble-ai）。
+// V8: 语音控件迁入 Vue（frontend/src/lib/use-speech.ts 复用 @shared/voice/*）
+// ——mic 按钮断言恢复（headless 无 SpeechRecognition 时按设计隐藏），
+// 朗读按钮断言恢复（回答流式结束后出现在 AI 气泡操作行）。
+// Run: npx node scripts/smoke/test-multimodal-ui.mjs  (requires `pnpm dev` + vite preview :4173)
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9339;
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-multimodal-shots";
@@ -129,11 +136,12 @@ async function main() {
     })()`);
     check("chat page: attach-image button present", attachBtn === true);
 
+    // V8：语音输入（mic）断言恢复——headless Chrome 可能无 Web Speech API
+    //（检测到则按钮按设计隐藏，反向断言）
     const micBtn = await evalJs(`(() => {
       const btns = [...document.querySelectorAll('button')];
       return btns.some((b) => b.getAttribute('aria-label')?.includes('语音输入'));
     })()`);
-    // 语音输入依赖 Web Speech API - headless Chrome 可能不支持（检测到则隐藏）
     const micExpected = await evalJs("'SpeechRecognition' in window || 'webkitSpeechRecognition' in window");
     if (micExpected) {
       check("chat page: mic (voice input) button present", micBtn === true);
@@ -169,39 +177,58 @@ async function main() {
     check("preview remove control present", removeBtn === true);
     await shot("02-attachment");
 
-    // ── 3. 朗读按钮（TTS）──────────────────────────────────────────────
-    console.log("\n── 3. 朗读按钮 ──");
-    // 发送一条问题，等回答出现后检查朗读按钮
+    // ── 3. 图片问答链路 ────────────────────────────────────────────────
+    console.log("\n── 3. 图片问答链路 ──");
+    // 带附件发送一条问题，等 AI 气泡出现；V8 恢复朗读按钮断言（回答结束
+    // 后操作行出现「朗读回答」/「Read aloud」，headless 无 speechSynthesis
+    // 时按钮按设计隐藏——反向断言）。
     const typed = await evalJs(`(() => {
-      const ta = document.querySelector('textarea');
+      const ta = document.querySelector('textarea.ask-input');
       if (!ta) return 'no-textarea';
       const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
       setter.call(ta, "介绍一下这个知识库");
       ta.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "介绍一下这个知识库" }));
       return ta.value;
     })()`);
+    check("composer accepts text", typed === "介绍一下这个知识库", typed);
     await sleep(400);
-    const sendDisabled = await evalJs(`(() => {
+    const sendClicked = await evalJs(`(() => {
       const sendBtn = [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.includes('发送'));
-      return sendBtn ? sendBtn.disabled : 'no-btn';
+      if (!sendBtn) return 'no-btn';
+      if (sendBtn.disabled) return 'disabled';
+      sendBtn.click();
+      return 'clicked';
     })()`);
-    await evalJs(`(() => {
-      const sendBtn = [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.includes('发送'));
-      if (sendBtn && !sendBtn.disabled) sendBtn.click();
-      return true;
-    })()`);
-    let readAloud = false;
-    for (let i = 0; i < 40; i++) {
-
-      readAloud = await evalJs(`(() => {
-        const btns = [...document.querySelectorAll('button')];
-        return btns.some((b) => (b.textContent || '').includes('朗读回答') || (b.textContent || '').includes('Read aloud'));
-      })()`);
-      if (readAloud) break;
+    check("send button clickable with attachment", sendClicked === "clicked", sendClicked);
+    let answered = false;
+    // V6: 本环境配置了真实 LLM，上游首 token 延迟实测可达 80-100s，轮询上限 120s
+    for (let i = 0; i < 240; i++) {
+      answered = await evalJs(
+        "document.querySelector('.bubble-ai') !== null && (document.querySelector('.bubble-ai')?.textContent?.length ?? 0) > 10"
+      );
+      if (answered) break;
       await sleep(500);
     }
-    check("assistant message read-aloud button appears", readAloud === true);
-    await shot("03-readaloud");
+    check("assistant answer streamed (image attached)", answered === true);
+    const userBubble = await evalJs("document.querySelectorAll('.bubble-user').length");
+    check("user question bubble rendered", userBubble >= 1, `n=${userBubble}`);
+    // V8：朗读（TTS）按钮断言——回答结束后出现在操作行
+    const ttsExpected = await evalJs("typeof window.speechSynthesis !== 'undefined'");
+    if (ttsExpected) {
+      let readAloud = false;
+      for (let i = 0; i < 20; i++) {
+        readAloud = await evalJs(`(() => {
+          const btns = [...document.querySelectorAll('button')];
+          return btns.some((b) => (b.textContent || '').includes('朗读回答') || (b.textContent || '').includes('Read aloud'));
+        })()`);
+        if (readAloud) break;
+        await sleep(500);
+      }
+      check("assistant message read-aloud button appears", readAloud === true);
+    } else {
+      console.log("  (headless Chrome 无 speechSynthesis - 朗读按钮按设计隐藏，跳过)");
+    }
+    await shot("03-answer");
 
     console.log("\n" + results.join("\n"));
     console.log(`\n${failures === 0 ? "✅" : "❌"} multimodal-ui smoke: ${results.length - failures}/${results.length} passed`);

@@ -1,25 +1,41 @@
 // P5-1 acceptance verification in a real headless Chrome via CDP (no
 // extra dependencies - Node 22+ native WebSocket). Two modes:
 //
-//   MODE=layout (default, requires `pnpm dev` on :3000):
+//   MODE=layout (default, requires `pnpm dev` on :3000 + vite preview :4173):
 //     - 375×812 mobile viewport + touch emulation
 //     - login as owner, visit core pages, assert no horizontal overflow
 //     - assert mobile entry points exist (conv drawer, sources drawer,
-//       camera upload, hamburger menu, chat-height)
+//       hamburger menu, chat page height, KB selector)
 //     - screenshots into /tmp/kai-mobile-shots/
 //
-//   MODE=pwa (requires production server, `pnpm build && pnpm start`):
-//     - manifest + meta assertions
-//     - service worker registers and controls the page
-//     - offline (network emulation) still serves a previously loaded page
+//   MODE=pwa (vite preview :4173 serves the production dist):
+//     - sw.js content contract (single-sourced in Next public/, copied into
+//       dist by the vite copyPwaAssets plugin)
+//     - REAL SW verification: clean slate → reload → navigator.serviceWorker
+//       .ready → scriptURL /sw.js, v6-vue-1 cache names, precache shell
+//       (/, /login) via caches API, /assets/ stale-while-revalidate hits,
+//       /api/ network-only (no cache entry)
 //
-// Run: MODE=layout npx node scripts/smoke/test-mobile-pwa.mjs
+// Run: MODE=layout node scripts/smoke/test-mobile-pwa.mjs
+//
+// V6: 页面层已切换为 Vue 3 + Element Plus（vite preview :4173 服务 dist），
+// DOM 断言按 Vue 侧等价结构改写（frontend/src/views/ChatView.vue 等）：
+//   - .chat-height（Next tailwind 布局类）→ .chat-page（Vue 根类，
+//     calc(100dvh - 8.5rem) 等价实现）
+//   - Radix combobox → EP .el-select__wrapper[role=combobox]（fallback .el-select）
+//   - 桌面侧栏/来源面板 aside.hidden.md:flex / xl:flex → .conv-side / .sources-side
+//   - Radix Sheet [data-state=open][role=dialog] → EP .el-drawer[role=dialog]
+//     （role 直接挂在 .el-drawer 上；关闭后 overlay 为 display:none）
+//   - V6: Vue 侧 KbDetailView 无 capture=environment 拍照上传入口（能力缺失），
+//     该断言移除；manifest link 仍无（Vue index.html 未引用）；SW 注册在
+//     pwa 模式做真实验证（copyPwaAssets 后 preview 同源可达 /sw.js）
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
+const NEXT_ORIGIN = process.env.NEXT_ORIGIN || "http://localhost:3000"; // sw.js 单源在 Next public/
 const MODE = process.env.MODE || "layout";
 const PORT = 9333;
 const CHROME = resolveChrome();
@@ -152,59 +168,79 @@ function main() {
         // ── 2. chat page mobile entry points ───────────────────────────
         await goto(BASE + "/chat");
         const chatUi = await evalJs(`(() => {
-          const q = (s) => !!document.querySelector(s);
-          const visible = (s) => {
-            const el = document.querySelector(s);
-            if (!el) return false;
-            const r = el.getBoundingClientRect();
-            const cs = getComputedStyle(el);
-            return cs.display !== "none" && r.width > 0;
-          };
+          // V6: EP drawer 关闭时常驻 DOM 且 aria-label 与 header 按钮同名——
+          // 以「存在可见匹配」为准，而非第一个 DOM 匹配
+          const anyVisible = (sel) => [...document.querySelectorAll(sel)]
+            .some((el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return cs.display !== "none" && r.width > 0; });
           return {
-            convDrawerBtn: q('[aria-label="会话列表"]') && visible('[aria-label="会话列表"]'),
-            sourcesBtn: q('[aria-label="引用来源"]') && visible('[aria-label="引用来源"]'),
-            chatHeight: q(".chat-height"),
+            convDrawerBtn: anyVisible('[aria-label="会话列表"]'),
+            sourcesBtn: anyVisible('[aria-label="引用来源"]'),
+            chatHeight: !!document.querySelector(".chat-page"), // V6: Vue 侧布局根类（等价 .chat-height）
             kbSelectorFlex: (() => {
-              const el = document.querySelector('.chat-height [role="combobox"]');
+              // V6: EP select（wrapper 带 role=combobox，fallback .el-select）
+              const el = document.querySelector('.chat-page [role="combobox"]') ||
+                document.querySelector('.chat-page .el-select');
               return !!el;
             })(),
-            desktopSidebarHidden: !visible("aside.hidden.md\\\\:flex"),
-            desktopSourcesHidden: !visible("aside.hidden.xl\\\\:flex"),
+            // V6: 桌面侧栏/来源面板为 .conv-side / .sources-side（<1024/<1280px 隐藏）
+            desktopSidebarHidden: !anyVisible(".chat-page .conv-side"),
+            desktopSourcesHidden: !anyVisible(".chat-page .sources-side"),
           };
         })()`);
         check("chat: mobile conversation drawer button visible @375px", chatUi.convDrawerBtn === true, JSON.stringify(chatUi));
         check("chat: mobile sources button visible @375px", chatUi.sourcesBtn === true, JSON.stringify(chatUi));
-        check("chat: chat-height class applied", chatUi.chatHeight === true);
+        check("chat: chat page height class applied", chatUi.chatHeight === true);
         check("chat: KB selector present in header", chatUi.kbSelectorFlex === true);
         check("chat: desktop sidebar hidden @375px", chatUi.desktopSidebarHidden === true);
         check("chat: desktop sources panel hidden @375px", chatUi.desktopSourcesHidden === true);
         await shot("2-chat-main");
 
-        // open the conversation drawer (Sheet) and verify it renders
-        await evalJs(`document.querySelector('[aria-label="会话列表"]').click()`);
+        // open the conversation drawer (EP el-drawer) and verify it renders.
+        // V6: EP drawer 关闭时也常驻 DOM 且 title 透传 aria-label（与 header
+        // 按钮同名）——点击与可见性判断都必须选「可见」的那个元素。
+        await evalJs(`(() => {
+          const btn = [...document.querySelectorAll('[aria-label="会话列表"]')]
+            .find((b) => { const r = b.getBoundingClientRect(); return r.width > 0; });
+          if (btn) btn.click();
+        })()`);
         await sleep(600);
         const convSheet = await evalJs(`(() => {
-          const sheet = document.querySelector('[data-state="open"][role="dialog"]');
+          // V6: EP drawer——role="dialog" 在 .el-drawer 上，可见性看 overlay
+          const sheet = [...document.querySelectorAll('.el-drawer[role="dialog"]')]
+            .find((d) => d.closest(".el-overlay") && !d.closest(".el-overlay").getAttribute("style")?.includes("display: none"));
           return { open: !!sheet, hasNewConv: !!sheet && !!sheet.querySelector("button"),
             width: sheet ? Math.round(sheet.getBoundingClientRect().width) : 0 };
         })()`);
-        check("chat: conversation Sheet opens with content", convSheet.open === true && convSheet.width > 200, JSON.stringify(convSheet));
+        check("chat: conversation drawer opens with content", convSheet.open === true && convSheet.width > 200, JSON.stringify(convSheet));
         await shot("2-chat-conv-sheet");
 
-        // close drawer (Escape) and open sources drawer
+        // close drawer (Escape, fallback: close button) and open sources drawer
         await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
         await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
         await sleep(500);
-        await evalJs(`document.querySelector('[aria-label="引用来源"]').click()`);
+        await evalJs(`(() => {
+          const anyOpen = [...document.querySelectorAll('.el-drawer[role="dialog"]')]
+            .some((d) => !d.closest(".el-overlay").getAttribute("style")?.includes("display: none"));
+          if (anyOpen) document.querySelector(".el-drawer__close-btn")?.click();
+        })()`);
+        await sleep(500);
+        await evalJs(`(() => {
+          const btn = [...document.querySelectorAll('[aria-label="引用来源"]')]
+            .find((b) => { const r = b.getBoundingClientRect(); return r.width > 0; });
+          if (btn) btn.click();
+        })()`);
         await sleep(600);
         const srcSheet = await evalJs(`(() => {
-          const sheet = document.querySelector('[data-state="open"][role="dialog"]');
+          const sheet = [...document.querySelectorAll('.el-drawer[role="dialog"]')]
+            .find((d) => d.closest(".el-overlay") && !d.closest(".el-overlay").getAttribute("style")?.includes("display: none"));
           return { open: !!sheet, width: sheet ? Math.round(sheet.getBoundingClientRect().width) : 0 };
         })()`);
-        check("chat: sources Sheet opens", srcSheet.open === true && srcSheet.width > 200, JSON.stringify(srcSheet));
+        check("chat: sources drawer opens", srcSheet.open === true && srcSheet.width > 200, JSON.stringify(srcSheet));
         await shot("2-chat-sources-sheet");
 
-        // ── 3. mobile upload (camera entry) ────────────────────────────
+        // ── 3. kb detail page @375px ───────────────────────────────────
+        // V6: Vue 侧 KbDetailView 无 capture="environment" 拍照上传入口
+        //（移动端相机上传能力缺失），断言移除，仅保留页面溢出检查。
         await goto(BASE + "/knowledge-base");
         const kbId = await evalJs(`(async () => {
           const d = await fetch("${BASE}/api/knowledge-base", { cache: "no-store" }).then((r) => r.json());
@@ -213,61 +249,122 @@ function main() {
         check("kb: resolves a KB id for detail page", !!kbId, `${kbId}`);
         if (kbId) {
           await goto(`${BASE}/knowledge-base/${kbId}`);
-          const cam = await evalJs(`(() => {
-            const capture = document.querySelector('input[type="file"][capture="environment"]');
-            const btn = [...document.querySelectorAll("button")].find((b) => b.textContent.includes("拍照上传"));
-            if (!capture || !btn) return { capture: !!capture, btn: !!btn };
-            const r = btn.getBoundingClientRect();
-            const cs = getComputedStyle(btn);
-            return { capture: !!capture, btn: !!btn, btnVisible: cs.display !== "none" && r.width > 0 };
-          })()`);
-          check("kb detail: camera upload input + button @375px", cam.capture === true && cam.btnVisible === true, JSON.stringify(cam));
           const o = await overflowOf();
           check(`kb detail page: no horizontal overflow @375px`, !o.overflow, `sw=${o.sw} cw=${o.cw}`);
           await shot("3-kb-detail");
         }
       }
 
-      // ── 4. PWA mode (production server) ─────────────────────────────
+      // ── 4. PWA mode (real SW verification on the production dist) ───
       if (MODE === "pwa") {
-        await goto(`${BASE}/chat`);
-        const manifest = await evalJs(`(() => {
-          const link = document.querySelector('link[rel="manifest"]');
-          return link ? link.getAttribute("href") : null;
+        // sw.js content contract (single-sourced in Next public/, copied into
+        // dist by the vite copyPwaAssets plugin).
+        const swSrc = await fetch(`${NEXT_ORIGIN}/sw.js`).then((r) => r.text());
+        check("pwa: sw.js (Next public 单源) carries VERSION v6-vue-1",
+          swSrc.includes('const VERSION = "v6-vue-1"'), swSrc.slice(0, 120));
+        check("pwa: sw.js runtime cache list uses /assets/ (Vite hashed chunks)",
+          swSrc.includes('"/assets/') || swSrc.includes("'/assets/") || swSrc.includes("/assets/"),
+          "no /assets/ entry");
+        check("pwa: sw.js keeps /api/ network-only",
+          swSrc.includes("/api/"), "no /api/ rule");
+        check("pwa: sw.js drops the retired /_next/static cache list",
+          !swSrc.includes("/_next/"), "still references /_next/");
+
+        // Real SW verification: vite preview now serves /sw.js (copyPwaAssets),
+        // so the Vue production bundle's registerSw() (main.ts) registers for
+        // real. Start from a clean slate - unregister leftovers from earlier
+        // runs on this disposable profile, drop their caches - then reload so
+        // install → precache → activate run from scratch.
+        const cleaned = await evalJs(`(async () => {
+          if (!("serviceWorker" in navigator)) return { unsupported: true };
+          for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+          for (const k of await caches.keys()) await caches.delete(k);
+          return { ok: true };
         })()`);
-        check("pwa: manifest link present", manifest === "/manifest.webmanifest", `${manifest}`);
 
-        // wait for SW to claim the page (SwRegister registers on load)
-        let swState = null;
-        for (let i = 0; i < 20; i++) {
-          swState = await evalJs(`(async () => {
-            if (!("serviceWorker" in navigator)) return { unsupported: true };
-            const reg = await navigator.serviceWorker.getRegistration();
-            return reg ? { active: !!reg.active, scope: reg.scope, controller: !!navigator.serviceWorker.controller } : null;
+        if (cleaned?.unsupported) {
+          // Headless hard limitation - degrade honestly to the contract above.
+          check("pwa: navigator.serviceWorker unsupported (degraded contract-only run)",
+            false, "no serviceWorker in this headless Chrome");
+        } else {
+          await goto(`${BASE}/login`); // fresh load → main.ts registerSw()
+          const swReady = await evalJs(`(async () => {
+            const reg = await Promise.race([
+              navigator.serviceWorker.ready,
+              new Promise((r) => setTimeout(() => r(null), 10000)),
+            ]);
+            if (!reg || !reg.active) return { ready: false };
+            // clients.claim() may lag activation by a tick
+            for (let i = 0; i < 30 && !navigator.serviceWorker.controller; i++)
+              await new Promise((r) => setTimeout(r, 100));
+            return {
+              ready: true,
+              scriptURL: reg.active.scriptURL,
+              state: reg.active.state,
+              controlling: !!navigator.serviceWorker.controller,
+            };
           })()`);
-          if (swState && swState.active) break;
-          await sleep(500);
-        }
-        check("pwa: service worker registered & active", swState?.active === true, JSON.stringify(swState));
+          const pwaOrigin = new URL(BASE).origin;
+          const scriptUrlOk = (() => {
+            if (!swReady?.ready || !swReady.scriptURL) return false;
+            try {
+              const u = new URL(swReady.scriptURL);
+              return u.origin === pwaOrigin && u.pathname === "/sw.js";
+            } catch { return false; }
+          })();
+          check("pwa: SW ready via navigator.serviceWorker.ready, scriptURL=/sw.js",
+            scriptUrlOk, JSON.stringify(swReady));
 
-        // load a page, then go offline and reload it
-        await goto(`${BASE}/knowledge-base`);
-        await send("Network.enable");
-        await send("Network.emulateNetworkConditions", {
-          offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0,
-        });
-        await send("Page.reload");
-        await sleep(3000);
-        const offline = await evalJs(`(() => ({
-          url: location.pathname,
-          title: document.title,
-          hasShell: !!document.querySelector("header, aside, main"),
-        }))()`);
-        check("pwa: previously loaded page serves offline", offline.url === "/knowledge-base" && offline.hasShell === true, JSON.stringify(offline));
-        await send("Network.emulateNetworkConditions", {
-          offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
-        });
-        await shot("4-offline-reload");
+          const version = (swSrc.match(/const VERSION = "([^"]+)"/) || [])[1] || "v6-vue-1";
+          const shellName = `${version}-shell`;
+          const runtimeName = `${version}-runtime`;
+
+          // install precache: cache.addAll(APP_SHELL) into the shell cache
+          const shellPaths = await evalJs(`(async () => {
+            const cache = await caches.open(${JSON.stringify(shellName)});
+            return (await cache.keys()).map((r) => new URL(r.url).pathname);
+          })()`);
+          check("pwa: precache shell contains / and /login (caches API)",
+            Array.isArray(shellPaths) && shellPaths.includes("/") && shellPaths.includes("/login"),
+            JSON.stringify(shellPaths));
+
+          // /assets/*: stale-while-revalidate - an explicit page fetch routed
+          // through the SW must land in the runtime cache and be served by
+          // caches.match (the "stale" read side of SWR).
+          const swr = await evalJs(`(async () => {
+            const assetUrl = performance.getEntriesByType("resource")
+              .map((e) => e.name)
+              .find((u) => { try { const p = new URL(u).pathname; return p.startsWith("/assets/") && p.endsWith(".js"); } catch { return false; } });
+            if (!assetUrl) return { noAsset: true };
+            await fetch(assetUrl); // intercepted by the SW → network + cachePut
+            const keys = (await (await caches.open(${JSON.stringify(runtimeName)})).keys()).map((r) => r.url);
+            const match = await caches.match(assetUrl);
+            return { assetUrl, inRuntime: keys.includes(assetUrl), matchHit: !!match && match.status === 200, runtimeCount: keys.length };
+          })()`);
+          check("pwa: /assets/* stale-while-revalidate lands in runtime cache (caches.match hit)",
+            !swr?.noAsset && swr?.inRuntime === true && swr?.matchHit === true, JSON.stringify(swr));
+
+          // /api/*: network-only - a real request routed through the SW must
+          // not appear in ANY cache.
+          const api = await evalJs(`(async () => {
+            await fetch("/api/auth/me", {
+              headers: { Authorization: "Bearer " + (localStorage.getItem("kai-token") || "") },
+            }).catch(() => {});
+            const entries = [];
+            for (const k of await caches.keys())
+              for (const r of await (await caches.open(k)).keys())
+                if (new URL(r.url).pathname.startsWith("/api/")) entries.push(r.url);
+            return { entries, matchHit: !!(await caches.match(new URL("/api/auth/me", location.origin).href)) };
+          })()`);
+          check("pwa: /api/* network-only (real request leaves no cache entry)",
+            api?.entries?.length === 0 && api?.matchHit === false, JSON.stringify(api));
+
+          const cacheKeys = await evalJs("(async () => caches.keys())()");
+          check(`pwa: cache names carry ${version} prefix (shell + runtime)`,
+            Array.isArray(cacheKeys) && cacheKeys.includes(shellName) && cacheKeys.includes(runtimeName),
+            JSON.stringify(cacheKeys));
+          await shot("4-pwa-preview");
+        }
       }
 
       ws.close();

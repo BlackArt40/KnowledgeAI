@@ -49,11 +49,14 @@ async function main() {
   for (const p of expected) check(`openapi: path ${p}`, paths.includes(p));
 
   // ── 2. /docs Swagger UI ──────────────────────────────────────────────
+  // V6：/docs 页面由 vite preview（frontend，PAGE_URL）承载；spec 与
+  // swagger-ui 静态资产仍在 :3000（Next 纯 API + public/vendor 单源）。
   console.log("\n── 2. /docs 交互式文档 ──");
-  const docs = await fetch(`${BASE}/docs`);
+  const docsBase = process.env.PAGE_URL || "http://localhost:4173";
+  const docs = await fetch(`${docsBase}/docs`);
   const docsHtml = await docs.text();
   check("docs: 200", docs.status === 200, `status=${docs.status}`);
-  check("docs: contains swagger-ui container", docsHtml.includes("kai-swagger-ui"), "missing #kai-swagger-ui");
+  check("docs: Vue SPA shell served", docsHtml.includes('id="app"'), "missing #app (preview 承载页面)");
   const bundle = await fetch(`${BASE}/vendor/swagger-ui/swagger-ui-bundle.js`);
   check("swagger-ui bundle: 200", bundle.status === 200, `status=${bundle.status}`);
   const bundleText = await bundle.text();

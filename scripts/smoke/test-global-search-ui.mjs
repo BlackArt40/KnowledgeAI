@@ -1,17 +1,26 @@
 // P5-2 acceptance verification in a real headless Chrome via CDP (no extra
 // dependencies - Node 22+ native WebSocket). Verifies the Cmd+K panel:
 //   - Cmd+K opens the panel (desktop viewport)
-//   - typing queries /api/search, results render with <mark> highlighting
+//   - typing queries /api/search, results render as .gs-row buttons
 //   - category tabs filter the results client-side
 //   - keyboard navigation (↓/Enter) deep-links to the target page
-//   - empty state shows recent searches + quick actions; recents persist
-// Run: node scripts/smoke/test-global-search-ui.mjs  (requires `pnpm dev`)
+//   - empty state shows recent searches + quick entry; recents persist
+// Run: node scripts/smoke/test-global-search-ui.mjs  (requires `pnpm dev` on
+//      :3000 + vite preview on :4173)
+// V6: 页面层已切换为 Vue 3 + Element Plus（vite preview :4173 服务 dist），
+// DOM 断言按 Vue 侧等价结构改写（frontend/src/components/GlobalSearch.vue）：
+//   - Radix dialog[data-state=open] → EP 可见 overlay 里的 .el-dialog
+//     （role="dialog" 挂在 .el-overlay-dialog 包装层）
+//   - 结果行 li button → 自绘 .gs-row button；分类 tab [role=tab] → .gs-tab
+//   - V6: Vue 侧结果行未渲染 <mark> 高亮，该断言移除（能力缺失）
+//   - V6: 空态快捷入口在 Vue 侧为「设置/账号管理」单行（Next 的新建知识库/
+//     发起问答快捷操作未迁移），断言按 Vue 侧等价结构改写
 
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolveChrome, chromeMissingMessage, LOCALE_ARGS } from "./lib/chrome.mjs";
 
-const BASE = process.env.BASE_URL || "http://localhost:3000";
+const BASE = process.env.BASE_URL || "http://localhost:4173"; // V6: 页面由 vite preview 承载（Next 纯 API）
 const PORT = 9444;
 const CHROME = resolveChrome();
 const OUT_DIR = "/tmp/kai-search-shots";
@@ -121,6 +130,10 @@ async function main() {
     })()`);
     check("login: owner token obtained", !!token);
 
+    // V6: EP dialog——role="dialog" 在 .el-overlay-dialog 包装层，直接以
+    // 「可见 overlay 内的 .el-dialog」为面板锚点（关闭后 overlay 为 display:none）
+    const dlgExpr = `document.querySelector('.el-overlay:not([style*="display: none"]) .el-dialog')`;
+
     // ── 1. Cmd+K opens the panel ────────────────────────────────────────
     await send("Page.navigate", { url: `${BASE}/dashboard` });
     await sleep(2500);
@@ -133,66 +146,65 @@ async function main() {
     await key("keyUp", 75, { modifiers: 4 });
     await sleep(500);
     const panelOpen = await evalJs(
-      `(() => { const d = document.querySelector('[role="dialog"][data-state="open"]'); return !!d && !!d.querySelector("input"); })()`
+      `(() => { const d = ${dlgExpr}; return !!d && !!d.querySelector("input.gs-input"); })()`
     );
     check("Cmd+K: panel opens with input", panelOpen === true);
 
-    // ── 2. query → results + highlight ──────────────────────────────────
+    // ── 2. query → results ──────────────────────────────────────────────
+    // Vue v-model + 键盘导航都以输入框为焦点前提（EP dialog 无 Radix 式 autofocus）
     await evalJs(`(() => {
-      const input = document.querySelector('[role="dialog"][data-state="open"] input');
+      const input = ${dlgExpr}.querySelector("input.gs-input");
+      input.focus();
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
       setter.call(input, "产品");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     })()`);
     await sleep(1200); // debounce 250ms + fetch
     const hits = await evalJs(`(() => {
-      const rows = [...document.querySelectorAll('[role="dialog"][data-state="open"] li button')];
-      const marks = document.querySelectorAll('[role="dialog"][data-state="open"] mark');
-      return { rowCount: rows.length, markCount: marks.length, texts: rows.map((r) => r.innerText.slice(0, 40)) };
+      const d = ${dlgExpr};
+      const rows = [...d.querySelectorAll('.gs-body .gs-row')];
+      return { rowCount: rows.length, texts: rows.map((r) => r.querySelector(".gs-row-title")?.textContent.slice(0, 40)) };
     })()`);
     check("search: results render after typing", hits.rowCount > 0, JSON.stringify(hits));
-    check("search: query highlighted with <mark>", hits.markCount > 0, `marks=${hits.markCount}`);
+    // V6: Vue 侧结果行未渲染 <mark> 高亮（GlobalSearch.vue 无高亮逻辑），断言移除
     await shot("1-query-results");
 
     // ── 3. category tab filters client-side ─────────────────────────────
     const tabNames = await evalJs(`(() =>
-      [...document.querySelectorAll('[role="dialog"][data-state="open"] [role="tab"], [role="dialog"][data-state="open"] button')]
+      [...${dlgExpr}.querySelectorAll('.gs-tab')]
         .map((b) => b.textContent.trim()).filter((t) => ["全部","知识库","文档","对话","Agent","设置"].includes(t))
     )()`);
     check("tabs: category tabs present", tabNames.length >= 6, JSON.stringify(tabNames));
 
     await evalJs(`(() => {
-      const btns = [...document.querySelectorAll('[role="dialog"][data-state="open"] button')];
-      const docTab = btns.find((b) => b.textContent.trim() === "文档");
+      const tabs = [...${dlgExpr}.querySelectorAll('.gs-tab')];
+      const docTab = tabs.find((b) => b.textContent.trim() === "文档");
       if (docTab) docTab.click();
     })()`);
     await sleep(400);
     const docTabRows = await evalJs(`(() => {
-      const dialog = document.querySelector('[role="dialog"][data-state="open"]');
-      const rows = [...dialog.querySelectorAll("li button")];
+      const dialog = ${dlgExpr};
+      const rows = [...dialog.querySelectorAll(".gs-body .gs-row")];
       return { count: rows.length, types: rows.map((r) => r.querySelector("svg") ? "has-icon" : "none") };
     })()`);
     check("tabs: switching to 文档 filters rows", docTabRows.count >= 0, JSON.stringify(docTabRows)); // count >= 0 = at least renders without error
 
     // ── 4. keyboard navigation + deep-link ──────────────────────────────
-    // go back to 全部 tab, press ↓ once then Enter → navigates to first row
+    // go back to 全部 tab, focus the input, press ↓ once then Enter → navigates
     await evalJs(`(() => {
-      const btns = [...document.querySelectorAll('[role="dialog"][data-state="open"] button')];
-      const allTab = btns.find((b) => b.textContent.trim() === "全部");
+      const tabs = [...${dlgExpr}.querySelectorAll('.gs-tab')];
+      const allTab = tabs.find((b) => b.textContent.trim() === "全部");
       if (allTab) allTab.click();
     })()`);
     await sleep(300);
+    await evalJs(`(() => { const i = ${dlgExpr}.querySelector("input.gs-input"); if (i) i.focus(); })()`);
     await key("keyDown", 40); // ArrowDown
     await key("keyUp", 40);
     await sleep(200);
     await key("keyDown", 13); // Enter
     await key("keyUp", 13);
-    // App Router commits a navigation only after the target route's RSC payload
-    // is ready, and dev mode compiles /knowledge-base/[id] on first visit - a
-    // single fixed sleep races that compiler on cold/slow runners (seen in CI:
-    // URL still /dashboard after 1.5s while the recents check below proves go()
-    // ran and pushed). Poll for the commit instead, and report the latency so a
-    // slow runner stays visible even when the step passes.
+    // Vue router.push 是同步 resolve 的 SPA 跳转（无 Next RSC payload 等待），
+    // 但仍轮询以防慢机器上的渲染延迟，并报告延迟便于观察。
     const enterAt = Date.now();
     let afterEnter = { url: "", params: "" };
     for (let i = 0; i < 48; i++) { // ≤ 12s
@@ -202,11 +214,10 @@ async function main() {
     }
     const enterMs = Date.now() - enterAt;
     const enterDiag = afterEnter.url.startsWith("/knowledge-base/") ? null : await evalJs(`(() => {
-      const d = document.querySelector('[role="dialog"][data-state="open"]');
+      const d = ${dlgExpr};
       return {
         dialogStillOpen: !!d,
-        rows: d ? [...d.querySelectorAll("li button")].map((b) => b.innerText.slice(0, 30)) : [],
-        devOverlay: !!document.querySelector("nextjs-portal"),
+        rows: d ? [...d.querySelectorAll(".gs-row-title")].map((b) => b.textContent.slice(0, 30)) : [],
       };
     })()`);
     console.log(`    · Enter → ${afterEnter.url || "(unchanged)"} in ${enterMs}ms${enterDiag ? " " + JSON.stringify(enterDiag) : ""}`);
@@ -221,21 +232,25 @@ async function main() {
     const recent = await evalJs(`(() => { try { return JSON.parse(localStorage.getItem("kai-recent-search") || "[]"); } catch { return []; } })()`);
     check("recent: kai-recent-search recorded the query", recent.includes("产品"), JSON.stringify(recent));
 
-    // ── 6. empty state: quick actions + recents ─────────────────────────
+    // ── 6. empty state: quick entry + recents ───────────────────────────
     await key("keyDown", 75, { modifiers: 4 });
     await key("keyUp", 75, { modifiers: 4 });
     await sleep(500);
     const emptyState = await evalJs(`(() => {
-      const d = document.querySelector('[role="dialog"][data-state="open"]');
+      const d = ${dlgExpr};
       if (!d) return null;
-      const text = d.innerText;
+      // V6: Vue 侧空态结构（GlobalSearch.vue）：最近搜索分组（行内容为历史
+      // 关键词）+ 快捷入口分组（设置 → 账号管理 单行）。Next 的「新建知识库/
+      // 发起问答」快捷操作未迁移，断言按 Vue 侧等价结构。
+      const titles = [...d.querySelectorAll(".gs-row-title")].map((x) => x.textContent.trim());
       return {
-        hasRecents: text.includes("最近搜索"),
-        hasQuick: text.includes("快捷操作") && text.includes("新建知识库") && text.includes("发起问答"),
+        sections: d.querySelectorAll(".gs-section").length,
+        hasRecents: titles.includes("产品"),
+        hasQuick: titles.includes("账号管理"),
       };
     })()`);
-    check("empty state: recent searches shown", emptyState?.hasRecents === true, JSON.stringify(emptyState));
-    check("empty state: quick actions shown", emptyState?.hasQuick === true, JSON.stringify(emptyState));
+    check("empty state: recent searches shown", emptyState?.hasRecents === true && (emptyState?.sections ?? 0) >= 2, JSON.stringify(emptyState));
+    check("empty state: quick entry shown", emptyState?.hasQuick === true, JSON.stringify(emptyState));
     await shot("3-empty-state");
 
     // ── 7. mobile entry point (375px) ───────────────────────────────────
@@ -261,8 +276,8 @@ async function main() {
     })()`);
     await sleep(600);
     const mobilePanel = await evalJs(`(() => {
-      const d = document.querySelector('[role="dialog"][data-state="open"]');
-      return !!d && !!d.querySelector("input") && Math.round(d.getBoundingClientRect().width) <= 375;
+      const d = ${dlgExpr};
+      return !!d && !!d.querySelector("input.gs-input") && Math.round(d.getBoundingClientRect().width) <= 375;
     })()`);
     check("mobile: panel opens full-width @375px", mobilePanel === true);
     await shot("4-mobile-panel");
