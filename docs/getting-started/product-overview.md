@@ -26,7 +26,7 @@ related: [quickstart.md, project-structure.md, ../architecture/overview.md, ../a
 
 | 技术领域  | 在产品中的体现                     |
 | --------- | ---------------------------------- |
-| 全栈开发  | Next.js前后端 + PostgreSQL + Redis |
+| 全栈开发  | Vue 3 前端（frontend/）+ Next.js 纯 API + PostgreSQL + Redis |
 | AI/ML应用 | RAG问答 + Agent调研 + 文档处理     |
 | 云原生    | Docker部署 + K8s编排 + CI/CD       |
 | 系统设计  | 多租户 + 微服务 + 消息队列         |

@@ -22,7 +22,7 @@ related: [rag-engine.md, agent-orchestration.md, service-split.md, ../api/guide.
 
 ## 架构总览
 
-KnowledgeAI 是单仓库的全栈应用：Next.js 16（App Router）承载页面与 API，PostgreSQL（Prisma）负责持久化，Redis 可选（限流 / 队列 / 事件总线），各外部服务通过 Provider 适配层接入。
+KnowledgeAI 是单仓库的全栈应用：**Vue 3 前端（`frontend/`）承载全部页面，Next.js 16 纯 API** 承载 `/api/**` 与业务库，PostgreSQL（Prisma）负责持久化，Redis 可选（限流 / 队列 / 事件总线），各外部服务通过 Provider 适配层接入。
 
 ```mermaid
 flowchart LR
@@ -31,8 +31,10 @@ flowchart LR
     SDK["JS / Python / Go SDK"]
     Bot["群机器人 / 扩展"]
   end
-  subgraph Next["Next.js 16（App Router）"]
-    Pages["页面与 UI"]
+  subgraph FE["Vue 3 前端（frontend/）"]
+    VUE["28 页面 / PWA<br/>首页 SEO 预渲染"]
+  end
+  subgraph Next["Next.js 16 纯 API"]
     V1["/api/v1 版本化 API"]
     LEGACY["/api/* 内部 API"]
     PROXY["proxy.ts 中间件<br/>限流 · DB 水合触发"]
@@ -58,8 +60,9 @@ flowchart LR
     VDB[("pgvector / Chroma / Pinecone")]
   end
 
-  Web --> Pages
-  Web --> LEGACY
+  Web --> VUE
+  VUE --> LEGACY
+  VUE --> V1
   SDK --> V1
   Bot --> V1
   LEGACY --> PROXY
@@ -86,7 +89,7 @@ flowchart LR
   C["浏览器 / SDK"] --> GW["网关 nginx<br/>/api → 业务；/ → 前端<br/>SSE 不缓冲（A6.3）"]
   subgraph Split["三服务"]
     BIZ["业务服务（Java 17 + Spring Boot）<br/>鉴权 / 租户 / 任务 / Webhook<br/>多副本 + Redis 共享状态"]
-    FE["前端（Next.js 16）<br/>页面 / 静态 / PWA"]
+    FE["前端（Vue 3 静态 + Next API 兜底）<br/>页面 / 静态 / PWA<br/>单源资产 vendor/widget 经兜底可达"]
     AI["AI 服务（Python FastAPI）<br/>RAG + LangGraph Agent worker<br/>仅内网（ClusterIP，无公网入口）"]
   end
   GW --> BIZ
