@@ -47,7 +47,10 @@ export const useThemeStore = defineStore("theme", {
     init() {
       applyBrandColor(this.brandColor);
       subscribeSystemTheme(() => {
-        if (this.mode === "system") applyTheme("system");
+        // 系统跟随回放是「默认态的重申」而非用户选择——不持久化，保持
+        // kai-theme 缺失 = 跟随系统的契约（CI 实测：回放会把 "system" 写进
+        // localStorage，破坏「未存储」默认态，test-theme-ui 断言失败）。
+        if (this.mode === "system") applyTheme("system", { persist: false });
       });
     },
   },
