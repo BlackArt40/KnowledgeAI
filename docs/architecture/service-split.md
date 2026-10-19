@@ -5,13 +5,28 @@ type: how-to
 category: architecture
 level: L2
 version: 1.2.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术负责人
 reviewed_at: 2026-10-12
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [overview.md, rag-engine.md, agent-orchestration.md, adr/adr-0001-in-memory-store-write-through-db.md, adr/adr-0002-background-job-queue.md, adr/adr-0003-multi-tenant-isolation.md, adr/adr-0006-read-path-storage-evolution.md, adr/adr-0007-queue-backpressure.md, adr/adr-0008-ai-service-framework.md, adr/adr-0009-business-service-language.md, ../api/guide.md, ../api/webhooks.md, ../ops/deployment-guide.md, ../standards/glossary.md]
+related:
+  - overview.md
+  - rag-engine.md
+  - agent-orchestration.md
+  - adr/adr-0001-in-memory-store-write-through-db.md
+  - adr/adr-0002-background-job-queue.md
+  - adr/adr-0003-multi-tenant-isolation.md
+  - adr/adr-0006-read-path-storage-evolution.md
+  - adr/adr-0007-queue-backpressure.md
+  - adr/adr-0008-ai-service-framework.md
+  - adr/adr-0009-business-service-language.md
+  - ../api/guide.md
+  - ../api/webhooks.md
+  - ../ops/deployment-guide.md
+  - ../standards/glossary.md
 ---
 
 # 服务拆分实施手册（国内常见三层）

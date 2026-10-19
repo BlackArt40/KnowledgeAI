@@ -5,13 +5,18 @@ type: explanation
 category: getting-started
 level: L1
 version: 1.1.0
-authors: [product-team]
+authors:
+  - product-team
 owner: 产品负责人
 reviewed_at: 2026-09-23
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [quickstart.md, project-structure.md, ../architecture/overview.md, ../architecture/design-system.md]
+related:
+  - quickstart.md
+  - project-structure.md
+  - ../architecture/overview.md
+  - ../architecture/design-system.md
 ---
 
 # KnowledgeAI 产品概述

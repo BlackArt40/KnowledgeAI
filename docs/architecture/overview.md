@@ -5,13 +5,19 @@ type: explanation
 category: architecture
 level: L1
 version: 1.3.0
-authors: [technical-writer]
+authors:
+  - technical-writer
 owner: 技术负责人
 reviewed_at: 2026-10-12
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
-related: [rag-engine.md, agent-orchestration.md, service-split.md, ../api/guide.md, ../standards/glossary.md]
+related:
+  - rag-engine.md
+  - agent-orchestration.md
+  - service-split.md
+  - ../api/guide.md
+  - ../standards/glossary.md
 ---
 
 # KnowledgeAI 总体架构

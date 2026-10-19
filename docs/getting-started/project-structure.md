@@ -5,7 +5,8 @@ type: explanation
 category: getting-started
 level: L1
 version: 1.1.0
-authors: [product-team]
+authors:
+  - product-team
 owner: 技术负责人
 reviewed_at: 2026-10-19
 review_interval: 180

@@ -43,7 +43,7 @@ function collectMarkdown(dir: string): string[] {
   return out;
 }
 
-/** 解析简化的 YAML frontmatter（键值 + 字符串数组 + 数字），失败返回 null。 */
+/** 解析简化的 YAML frontmatter（键值 + 行内数组 + 块序列 + 数字），失败返回 null。 */
 function parseFrontmatter(content: string): Record<string, unknown> | null {
   if (!content.startsWith("---\n") && !content.startsWith("---\r\n")) return null;
   const end = content.indexOf("\n---", 4);
@@ -53,6 +53,16 @@ function parseFrontmatter(content: string): Record<string, unknown> | null {
   for (const rawLine of block.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
+    // 块序列项（"- item"）：追加到上一个键的数组——与行内 [a, b] 等价，
+    // 两种写法都合法（块序列可避免行内方括号被编辑器 markdown lint 误报）。
+    if (line.startsWith("- ")) {
+      const item = line.slice(2).trim().replace(/^["']|["']$/g, "");
+      const lastKey = Object.keys(data).pop();
+      if (!lastKey) continue;
+      if (!Array.isArray(data[lastKey])) data[lastKey] = data[lastKey] === "" ? [] : [String(data[lastKey])];
+      (data[lastKey] as unknown[]).push(item);
+      continue;
+    }
     const idx = line.indexOf(":");
     if (idx === -1) return null;
     const key = line.slice(0, idx).trim();
