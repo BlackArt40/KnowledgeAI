@@ -16,8 +16,9 @@ export interface SharedDoc {
 export type ShareErrorCode = "needPassword" | "expired" | "exhausted" | "notFound";
 
 export async function fetchSharedDoc(token: string, password?: string): Promise<SharedDoc> {
-  const qs = password ? `?password=${encodeURIComponent(password)}` : "";
-  return api.get<SharedDoc>(`/api/share/doc/${encodeURIComponent(token)}${qs}`);
+  // 密码走请求头：query 会进入访问日志 / Referer / 浏览器历史。
+  const headers = password !== undefined ? { "x-share-password": password } : undefined;
+  return api.get<SharedDoc>(`/api/share/doc/${encodeURIComponent(token)}`, headers ? { headers } : {});
 }
 
 export interface SharedReport {

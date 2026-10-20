@@ -54,6 +54,27 @@ export async function request<T = unknown>(path: string, opts: RequestOptions = 
   return data as T;
 }
 
+/** Streaming (SSE) request: same base URL / credentials / 401 handling as
+ *  request(), but returns the raw Response for consumeSseStream(). */
+export async function streamRequest(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal
+): Promise<Response> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    credentials: "include",
+    signal,
+  });
+  if (res.status === 401) {
+    if (typeof window !== "undefined") window.location.href = "/login";
+    throw new ApiError(401, undefined, "未登录");
+  }
+  return res;
+}
+
 export const api = {
   get: <T>(path: string, opts: Omit<RequestOptions, "method" | "body"> = {}) =>
     request<T>(path, opts),

@@ -2,13 +2,14 @@
 // 携带一次性明文 secret、PATCH（启停/改名）、DELETE 撤销、logs 调用日志。
 import { request } from "./client";
 
-export const SCOPES: { id: string; label: string }[] = [
-  { id: "kb:read", label: "知识库读取" },
-  { id: "kb:write", label: "知识库写入" },
-  { id: "chat:read", label: "问答调用" },
-  { id: "agent:run", label: "Agent 调研" },
-  { id: "team:read", label: "团队信息" },
-  { id: "webhooks:write", label: "Webhook 管理" },
+/** labelKey 指向共享语言包，渲染处经 t() 取文案（切 en 时不再残留中文）。 */
+export const SCOPES: { id: string; labelKey: string }[] = [
+  { id: "kb:read", labelKey: "page.api-keys.s28" },
+  { id: "kb:write", labelKey: "page.api-keys.s29" },
+  { id: "chat:read", labelKey: "page.api-keys.s30" },
+  { id: "agent:run", labelKey: "page.api-keys.s31" },
+  { id: "team:read", labelKey: "page.api-keys.s32" },
+  { id: "webhooks:write", labelKey: "page.api-keys.s33" },
 ];
 
 export interface ApiKey {
@@ -17,6 +18,7 @@ export interface ApiKey {
   scopes: string[];
   createdAt: number;
   lastUsedAt?: number | null;
+  expiresAt?: number | null;
   enabled?: boolean;
   [key: string]: unknown;
 }

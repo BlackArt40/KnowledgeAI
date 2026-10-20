@@ -11,8 +11,17 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AgentComposer: typeof import('./components/agent/AgentComposer.vue')['default']
+    AgentRunPanel: typeof import('./components/agent/AgentRunPanel.vue')['default']
+    AgentShareDialog: typeof import('./components/agent/AgentShareDialog.vue')['default']
+    AgentSideColumn: typeof import('./components/agent/AgentSideColumn.vue')['default']
     AppLogo: typeof import('./components/AppLogo.vue')['default']
     AppShell: typeof import('./components/AppShell.vue')['default']
+    ChatComposer: typeof import('./components/chat/ChatComposer.vue')['default']
+    ChatEmptyState: typeof import('./components/chat/ChatEmptyState.vue')['default']
+    ChatHeader: typeof import('./components/chat/ChatHeader.vue')['default']
+    ChatMessages: typeof import('./components/chat/ChatMessages.vue')['default']
+    ChatTagDialog: typeof import('./components/chat/ChatTagDialog.vue')['default']
     ConversationSidebar: typeof import('./components/chat/ConversationSidebar.vue')['default']
     ElDropdown: typeof import('element-plus/es')['ElDropdown']
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']

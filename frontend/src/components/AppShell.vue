@@ -16,7 +16,7 @@ import AppLogo from "@/components/AppLogo.vue";
 import ThemeToggle from "@/components/ThemeToggle.vue";
 import GlobalSearch from "@/components/GlobalSearch.vue";
 import { fetchCurrentUser } from "@/api/auth";
-import { ApiError } from "@/api/client";
+import { ApiError, api } from "@/api/client";
 import {
   createWorkspace, fetchWorkspaces, switchTo,
   type Workspace,
@@ -201,10 +201,9 @@ async function createWs() {
 }
 
 async function logout() {
-  localStorage.removeItem("kai-token");
   userMenuOpen.value = false;
   try {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await api.post("/api/auth/logout");
   } catch {
     /* offline: leave anyway */
   }

@@ -34,7 +34,6 @@ async function handleSubmit() {
   loading.value = true;
   try {
     const data = await register(name.value, email.value, password.value);
-    if (data.token) localStorage.setItem("kai-token", data.token);
     if (data.needsVerification) {
       const emailParam = encodeURIComponent(data.user?.email ?? email.value);
       const demoToken = data.demoVerifyUrl ? `&demoUrl=${encodeURIComponent(data.demoVerifyUrl)}` : "";

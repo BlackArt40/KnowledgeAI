@@ -7,6 +7,7 @@ import App from "./App.vue";
 import { router } from "./router";
 import { initLocale } from "./lib/i18n";
 import { getI18nInstance } from "@shared/i18n/translate";
+import { clientLog } from "@shared/obs/log-browser";
 import { registerSw } from "./pwa/sw-register";
 
 // 样式顺序：EP 基础 → EP 暗色变量 → 本项目 tokens → EP 变量适配（最后加载者胜，
@@ -25,6 +26,11 @@ app.use(router);
 app.use(I18NextVue, { i18next: getI18nInstance() });
 
 initLocale();
+
+// 全局错误兜底：未捕获的组件异常至少进入浏览器日志，便于排查白屏。
+app.config.errorHandler = (err, _instance, info) => {
+  clientLog.error({ err, info }, "[vue] unhandled error");
+};
 
 // P5-1 → V6：PWA 注册（仅生产；dev 下缓存会与 HMR 抢新产物）
 registerSw();

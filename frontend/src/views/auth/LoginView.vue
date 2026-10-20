@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // 登录页（复刻 src/app/(auth)/login/page.tsx，契约冻结）：
 // step1 {email,password} → {token} | {requires2FA} | {mustEnroll2FA,preAuthToken}
-// step2 追加 totpCode（6 位验证码或含 - 的恢复码）。成功后 localStorage kai-token
-// + 跳 /dashboard（Next 侧 V2 前用整页跳转，Vue router 未接管该路由）。
+// step2 追加 totpCode（6 位验证码或含 - 的恢复码）。会话由服务端 HttpOnly
+// Cookie 承载；成功后跳 /dashboard（Next 侧 V2 前用整页跳转）。
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
@@ -80,10 +80,7 @@ async function handleSubmit() {
       step.value = "2fa";
       return;
     }
-    if (data.token) {
-      localStorage.setItem("kai-token", data.token);
-      goDashboard();
-    }
+    if (data.token) goDashboard();
   } catch (e) {
     error.value = e instanceof ApiError && e.message ? e.message : t("page.login.s11");
   } finally {
@@ -102,7 +99,6 @@ async function handle2FA() {
   try {
     const data = await login(email.value, password.value, code);
     if (data.token) {
-      localStorage.setItem("kai-token", data.token);
       goDashboard();
     } else {
       error.value = t("page.login.s14");

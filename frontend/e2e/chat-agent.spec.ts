@@ -38,8 +38,13 @@ test("SSE 契约：/api/chat 事件名 sources/token/done 不变", async ({ page
 });
 
 test("SSE 契约：/api/agent/run 事件名 init/step/done 不变", async ({ page }) => {
+  test.setTimeout(180_000);
   await login(page);
-  const res = await page.request.post("/api/agent/run", { data: { topic: "V4 SSE 契约验证" } });
+  // Demo agent runs can take ~50s; the default 30s request timeout is too short.
+  const res = await page.request.post("/api/agent/run", {
+    data: { topic: "V4 SSE 契约验证" },
+    timeout: 120_000,
+  });
   expect(res.ok()).toBeTruthy();
   const text = await res.text();
   expect(text).toContain('"type":"init"');
@@ -77,6 +82,7 @@ test("chat 全流程：?kb= 深链接 → 发问 → 流式回复 → 会话入�
 });
 
 test("agent 全流程：运行 → 报告渲染 → ?task= 深链接 → 清理", async ({ page }) => {
+  test.setTimeout(180_000);
   await login(page);
   await page.goto("/agent");
   await expect(page.locator(".agent-page")).toBeVisible({ timeout: 20_000 });
@@ -87,7 +93,7 @@ test("agent 全流程：运行 → 报告渲染 → ?task= 深链接 → 清理"
   // 秒级完成且 done 后 task.steps 为空 → timeline 隐藏、直接切报告视图。
   // 等「时间线或报告」任一出现，双模式通用。
   await expect(page.locator(".timeline, .report").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".report").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".report").first()).toBeVisible({ timeout: 120_000 });
   // 历史任务侧栏出现本次任务，深链接打开
   const tasks = await page.request.get("/api/agent/tasks");
   const list = ((await tasks.json()) as { tasks?: { id: string; topic: string }[] }).tasks ?? [];

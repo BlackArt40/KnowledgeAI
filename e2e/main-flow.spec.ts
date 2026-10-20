@@ -204,8 +204,8 @@ test("Agent：创建调研任务并完成报告", async ({ page }) => {
   await expect(topicBox).toHaveValue(topic);
   await page.locator(".run-btn").click();
 
-  // 运行中按钮变为「调研中…」，结束后恢复「开始调研」
-  await expect(page.locator(".run-btn").getByText("调研中…")).toBeVisible({ timeout: 15_000 });
+  // 运行中按钮变为「停止调研」；演示模式可能在断言前就结束，因此两种文案都可
+  await expect(page.locator(".run-btn").getByText(/停止调研|开始调研/)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".run-btn").getByText("开始调研")).toBeVisible({ timeout: 240_000 });
   // 调研结果报告出现：终态随 done 事件下发，到达即为报告正文而非空面板
   await expect(page.locator(".report").first()).toBeVisible({ timeout: 60_000 });

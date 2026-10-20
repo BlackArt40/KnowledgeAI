@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 文档分享公开页（P4-2，令牌即凭据）：GET /api/share/doc/[token]?password=…
+// 文档分享公开页（P4-2，令牌即凭据）：GET /api/share/doc/[token]，密码走 x-share-password 头。
 // 错误码 → UI：needPassword(401)/expired(410)/exhausted(403)/notFound(404)。
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
