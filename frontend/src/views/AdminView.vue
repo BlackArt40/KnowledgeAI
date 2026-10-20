@@ -10,7 +10,7 @@ import {
   User, TrendCharts, Coin, Collection, ChatLineRound, MagicStick, Box, Search,
   Setting, Odometer, WarningFilled, CircleCheck, Document, RefreshRight, CreditCard,
 } from "@element-plus/icons-vue";
-import { formatRelative } from "@shared/format";
+import { formatMoney, formatRelative } from "@shared/format";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/api/admin";
 import {
   fetchOverview, fetchAdminUsers, fetchAdminKbs, fetchAdminConfig, patchAdminConfig,
@@ -143,7 +143,7 @@ const statCards = computed(() => {
   return [
     { icon: User, label: t("page.admin.s49"), value: s.totalUsers.toLocaleString(), tint: "qa" },
     { icon: TrendCharts, label: t("page.admin.s50"), value: s.activeUsers30d.toLocaleString(), tint: "api" },
-    { icon: Coin, label: t("page.admin.s68"), value: `¥${s.monthlyRevenue.toLocaleString()}`, tint: "storage" },
+    { icon: Coin, label: t("page.admin.s68"), value: formatMoney(s.monthlyRevenue), tint: "storage" },
     { icon: Collection, label: t("page.admin.s52"), value: s.totalKbs.toLocaleString(), tint: "sky" },
     { icon: ChatLineRound, label: t("page.admin.s53"), value: s.qaThisMonth.toLocaleString(), tint: "agent" },
     { icon: MagicStick, label: t("page.admin.s54"), value: s.agentTasksThisMonth.toLocaleString(), tint: "pink" },
@@ -231,7 +231,7 @@ const maxRev = computed(() => Math.max(...(overview.value?.revenueTrend ?? []).m
               <div
                 class="rev-bar"
                 :style="{ height: `${(r.revenue / maxRev) * 100}%` }"
-                :title="`¥${r.revenue.toLocaleString()}`"
+                :title="formatMoney(r.revenue)"
               />
             </div>
             <span class="rev-month">{{ r.month }}</span>

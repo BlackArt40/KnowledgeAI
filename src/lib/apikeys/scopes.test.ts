@@ -29,6 +29,7 @@ function apiKey(scopes: string[]): ApiKey {
     createdAt: Date.now(),
     lastUsed: null,
     calls: 0,
+    expiresAt: null,
   };
 }
 

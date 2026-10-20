@@ -10,9 +10,33 @@
 // ---------------------------------------------------------------------------
 
 import type { PrismaClient } from "./types";
+import { withDbRetry } from "./retry";
 import { log } from "@/lib/obs/log";
 
 let _prisma: PrismaClient | null = null;
+
+/**
+ * Wrap the Prisma client so every delegate call gets the transient retry
+ * layer. Model delegates (`user`, `apiKey`, ...) are plain objects with
+ * async methods; the proxy recurses one level and leaves promises/arrays
+ * untouched.
+ */
+function withRetryProxy<T extends object>(target: T): T {
+  return new Proxy(target, {
+    get(obj, prop, receiver) {
+      if (typeof prop === "symbol") return Reflect.get(obj, prop, receiver);
+      const value = Reflect.get(obj, prop, receiver);
+      if (typeof value === "function") {
+        return (...args: unknown[]) =>
+          withDbRetry(() => (value as (...a: unknown[]) => Promise<unknown>).apply(obj, args));
+      }
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return withRetryProxy(value as object);
+      }
+      return value;
+    },
+  }) as T;
+}
 
 /**
  * Get the Prisma client (lazy singleton).
@@ -23,7 +47,7 @@ export async function getDb(): Promise<PrismaClient | null> {
   if (_prisma) return _prisma;
   try {
     const { PrismaClient } = await import("@prisma/client");
-    _prisma = new PrismaClient() as unknown as PrismaClient;
+    _prisma = withRetryProxy(new PrismaClient() as unknown as PrismaClient);
     log.info("[db] Prisma client initialized");
     return _prisma;
   } catch {

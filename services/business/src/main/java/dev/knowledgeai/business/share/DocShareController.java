@@ -124,6 +124,17 @@ public class DocShareController {
         if (!List.of("OWNER", "ADMIN", "EDITOR").contains(user.role().toUpperCase())) {
             return ResponseEntity.status(403).body(Map.of("error", "无编辑权限"));
         }
+        // 安全评审 P0：kbId 必须参与归属校验。此前只按 docId 撤销，任一租户的
+        // EDITOR 知道他人 docId 就能撤销其分享链接（跨 workspace IDOR）。与
+        // create 使用同一三元组（docId + kbId + workspaceId）校验。
+        String workspaceId = users.findWorkspaceIdByUserId(user.id());
+        List<String> ownedDocs = jdbc.query(
+                "SELECT d.id FROM \"KbDocument\" d JOIN \"KnowledgeBase\" k ON d.\"kbId\" = k.id "
+                        + "WHERE d.id = ? AND d.\"kbId\" = ? AND k.\"workspaceId\" = ?",
+                (rs, n) -> rs.getString(1), docId, kbId, workspaceId);
+        if (ownedDocs.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "文档不存在"));
+        }
         String token = redisGet("share:index:doc:" + docId);
         if (token != null) {
             try {

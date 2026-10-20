@@ -11,8 +11,9 @@ import {
 } from "@element-plus/icons-vue";
 import { fetchMonitoring, fetchTrace, type MonitoringData, type TraceSpan } from "@/api/admin";
 import UsageChart from "@/components/UsageChart.vue";
+import { formatMoney, formatPercent } from "@shared/format";
 
-const { t } = useTranslation();
+const { t, i18next } = useTranslation();
 
 const data = ref<MonitoringData | null>(null);
 const loading = ref(true);
@@ -57,8 +58,7 @@ function fmtUptime(ms: number): string {
 }
 
 function fmtUsd(v: number): string {
-  if (v < 0.01) return `$${v.toFixed(4)}`;
-  return `$${v.toFixed(3)}`;
+  return formatMoney(v, i18next.language, "USD");
 }
 
 const qpsSeries = computed(() => (data.value?.requests.perMinute ?? []).map((p) => p.count));
@@ -80,7 +80,7 @@ const statCards = computed(() => {
   return [
     { label: t("page.monitoring.s4"), value: String(lastMinute.value?.count ?? 0), sub: t("page.monitoring.s36") },
     { label: t("page.monitoring.s5"), value: String(d.requests.total), sub: t("page.monitoring.s42") },
-    { label: t("page.monitoring.s6"), value: `${d.requests.errorRate.toFixed(1)}%`, sub: `${d.requests.errors} errors` },
+    { label: t("page.monitoring.s6"), value: formatPercent(d.requests.errorRate), sub: `${d.requests.errors} errors` },
     {
       label: t("page.monitoring.s7"),
       value: fmtMs(d.requests.latency.p50),

@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { Lock, ArrowLeft, CopyDocument, Check, Download, Clock } from "@element-plus/icons-vue";
-import MarkdownIt from "markdown-it";
+import { renderMarkdown } from "@/lib/markdown";
 import { fetchSharedReport, type SharedReport } from "@/api/share";
 import { ApiError } from "@/api/client";
 import { formatRelative } from "@shared/format";
@@ -15,8 +15,6 @@ import { formatRelative } from "@shared/format";
 const { t } = useTranslation();
 const route = useRoute();
 const id = String(route.params.id ?? "");
-
-const md = new MarkdownIt({ html: false, linkify: true, breaks: true });
 
 const data = ref<SharedReport | null>(null);
 const error = ref<string | null>(null);
@@ -52,7 +50,7 @@ onMounted(() => {
   void fetchPublic();
 });
 
-const reportHtml = computed(() => (data.value ? md.render(data.value.report) : ""));
+const reportHtml = computed(() => (data.value ? renderMarkdown(data.value.report) : ""));
 
 function copyReport() {
   if (!data.value?.report) return;

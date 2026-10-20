@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { verifyPreAuthToken, createToken } from "@/lib/auth/session";
-import { start2FAEnrollment, verify2FAEnrollment, addSession, recordLogin, is2FAEnabled } from "@/lib/security/store";
+import { start2FAEnrollment, verify2FAEnrollment, addSession, recordLogin, is2FAEnabled, is2FAVerificationLocked } from "@/lib/security/store";
 import { renderOtpAuthQR } from "@/lib/security/qr";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 import { notify } from "@/lib/notifications/store";
+import { ensureHydrated } from "@/lib/db/hydrate";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 //   { preAuthToken, action: "enroll" }                 -> start enrollment
 //   { preAuthToken, action: "verify", code: "123456" } -> activate 2FA + issue session
 export async function POST(req: Request) {
+  await ensureHydrated();
   let body: { preAuthToken?: string; action?: "enroll" | "verify"; code?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
@@ -57,8 +59,20 @@ export async function POST(req: Request) {
       if (!body.code || !/^\d{6}$/.test(body.code.trim())) {
         return NextResponse.json({ error: "请输入 6 位验证码" }, { status: 400 });
       }
+      if (is2FAVerificationLocked(preAuth.id)) {
+        return NextResponse.json(
+          { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+          { status: 429 }
+        );
+      }
       const ok = verify2FAEnrollment(preAuth.id, body.code.trim());
       if (!ok) {
+        if (is2FAVerificationLocked(preAuth.id)) {
+          return NextResponse.json(
+            { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+            { status: 429 }
+          );
+        }
         return NextResponse.json({ error: "验证码不正确，请重试" }, { status: 400 });
       }
       // Enrollment complete: create the real session now.

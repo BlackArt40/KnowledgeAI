@@ -11,5 +11,6 @@ export async function GET(req: Request) {
   if (!can(u.role as never, "member.manage")) {
     return NextResponse.json({ error: "权限不足" }, { status: 403 });
   }
-  return NextResponse.json({ audit: listAudit() });
+  // P2: audit list is now bounded like /api/admin/audit (previously unbounded).
+  return NextResponse.json({ audit: listAudit().slice(0, 200) });
 }

@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # 环境配置（与 TS 侧 provider fallback 模式一致：env 门控真实实现 + 演示回退）。
 #   AI_INTERNAL_TOKEN     内部调用令牌（BFF -> AI 服务），缺省为空 = 拒绝所有内部调用
-#   AI_ALLOW_PRIVATE_FETCH http(s) 源是否允许私网地址（compose 内网 MinIO 需要，默认 true；
+#   AI_ALLOW_PRIVATE_FETCH http(s) 源是否允许私网地址（默认 false，fail-closed；
 #                          配置了 S3_ENDPOINT 时该端点主机始终放行）
 #   S3_ENDPOINT 等        source.type=s3 拉取对象的凭据（与业务侧一致；presignedUrl 不需要）
 #   OPENAI_API_KEY 等     配置后走 OpenAI 兼容生成/嵌入，未配置 = 本地抽取式（演示模式）
@@ -17,7 +17,9 @@ def _env(name: str, default: str = "") -> str:
 
 
 AI_INTERNAL_TOKEN = _env("AI_INTERNAL_TOKEN")
-AI_ALLOW_PRIVATE_FETCH = _env("AI_ALLOW_PRIVATE_FETCH", "true").lower() in ("1", "true", "yes")
+# P2: fail-closed by default. Internal MinIO still works because
+# `is_s3_endpoint_host()` always allows the configured S3 endpoint.
+AI_ALLOW_PRIVATE_FETCH = _env("AI_ALLOW_PRIVATE_FETCH", "false").lower() in ("1", "true", "yes")
 
 # 阶段 2：对象存储（source.type=s3 用；presignedUrl 由 BFF 生成、无需凭据）
 S3_ENDPOINT = _env("S3_ENDPOINT").rstrip("/")

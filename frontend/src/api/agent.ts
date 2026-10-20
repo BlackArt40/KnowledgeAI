@@ -47,6 +47,13 @@ export function restoreAgentVersion(taskId: string, versionId: string): Promise<
   });
 }
 
+/** GET 当前分享配置（与 PUT 同路径）。 */
+export function fetchAgentShare(
+  taskId: string
+): Promise<{ shareConfig?: import("@shared/agent/types").ShareConfig | null }> {
+  return request(`/api/agent/tasks/${encodeURIComponent(taskId)}/share`);
+}
+
 /** PUT 分享配置（enabled/expiresAt/password/maxViews）。 */
 export function putAgentShare(
   taskId: string,

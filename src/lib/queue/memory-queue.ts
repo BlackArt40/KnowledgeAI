@@ -20,6 +20,7 @@ interface Job {
   attempts: number;       // attempts made so far (0 = never run)
   maxAttempts: number;    // default 3, mirrors BullMQ config
   nextRetryAt?: number;   // epoch ms; set when a failed job is waiting for backoff
+  dedupeKey?: string;     // taskId/docId while queued or active
 }
 
 const MAX_ATTEMPTS = 3;
@@ -44,11 +45,28 @@ export class MemoryQueue implements JobQueue {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   async enqueue(type: JobType, payload: Record<string, unknown>): Promise<string> {
+    // P1: duplicate enqueue (double click / reconnect / retry) reuses the
+    // live job instead of running the same task twice. Checked before
+    // backpressure so a duplicate at the cap isn't rejected.
+    const payloadId = typeof payload.taskId === "string"
+      ? payload.taskId
+      : typeof payload.docId === "string" ? payload.docId : undefined;
+    const dedupeKey = payloadId ? `${type}-${payloadId}` : undefined;
+    if (dedupeKey) {
+      for (const existing of this.jobs.values()) {
+        if (existing.dedupeKey === dedupeKey
+            && (existing.status === "queued" || existing.status === "active")) {
+          return existing.id;
+        }
+      }
+    }
+
     // X5/X6 backpressure: refuse new work once the backlog hits the cap so an
     // unbounded queue can't grow the process into an OOM kill.
     const maxDepth = queueMaxDepth();
     const depth = this.pendingDepth();
     if (depth >= maxDepth) throw new QueueBackpressureError(depth, maxDepth);
+
     const id = `job_${Date.now()}_${++this.jobCounter}`;
     const job: Job = {
       id,
@@ -58,6 +76,7 @@ export class MemoryQueue implements JobQueue {
       createdAt: Date.now(),
       attempts: 0,
       maxAttempts: MAX_ATTEMPTS,
+      dedupeKey,
     };
     this.jobs.set(id, job);
     this.queue.push(id);
@@ -199,11 +218,15 @@ export class MemoryQueue implements JobQueue {
    */
   private trimJobs(): void {
     if (this.jobs.size <= MAX_JOBS) return;
+    // Newest first, so the OLDEST entries are at the end.
     const terminal = [...this.jobs.values()]
       .filter((j) => j.status === "completed" || j.status === "failed")
       .sort((a, b) => b.createdAt - a.createdAt);
     const excess = this.jobs.size - MAX_JOBS;
-    for (const j of terminal.slice(excess)) {
+    // P1: slice(excess) deleted everything except the newest `excess` jobs -
+    // far more than intended and including recent history. Keep the newest,
+    // drop the oldest `excess` terminal jobs.
+    for (const j of terminal.slice(-excess)) {
       this.jobs.delete(j.id);
     }
   }

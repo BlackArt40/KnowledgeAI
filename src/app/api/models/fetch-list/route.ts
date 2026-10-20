@@ -18,8 +18,10 @@ export async function POST(req: Request) {
   if (!baseUrl) return NextResponse.json({ error: "Base URL 不能为空" }, { status: 400 });
 
   // F1: GET {baseUrl}/models is server-side and user-controlled - SSRF guard.
+  // The validated URL object is what we actually request (never the raw input).
+  let target: string;
   try {
-    await resolveSafeModelBaseUrl(baseUrl);
+    target = (await resolveSafeModelBaseUrl(baseUrl)).toString().replace(/\/$/, "");
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "模型地址不被允许" },
@@ -30,15 +32,48 @@ export async function POST(req: Request) {
   const start = Date.now();
 
   try {
-    const res = await fetch(`${baseUrl}/models`, {
-      method: "GET",
-      headers: { ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-      signal: AbortSignal.timeout(15000),
-    });
+    // Security review P0: a public host can 302 to the cloud metadata service,
+    // so redirects MUST be followed manually and every hop re-validated with
+    // the same SSRF policy (see src/lib/security/ssrf.ts).
+    const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+    const MAX_REDIRECTS = 3;
+    let requestUrl = `${target}/models`;
+    let res: Response | null = null;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      res = await fetch(requestUrl, {
+        method: "GET",
+        headers: { ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+        redirect: "manual",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!REDIRECT_STATUS.has(res.status)) break;
+      const location = res.headers.get("location");
+      if (!location) {
+        return NextResponse.json({ error: `HTTP ${res.status}（重定向缺少 Location）`, latency: Date.now() - start }, { status: 502 });
+      }
+      // Follow the Location as-is (RFC 7231), but validate the hop first.
+      const next = new URL(location, requestUrl).toString();
+      try {
+        await resolveSafeModelBaseUrl(next);
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "重定向目标不被允许" },
+          { status: 400 }
+        );
+      }
+      requestUrl = next;
+      if (hop === MAX_REDIRECTS) {
+        return NextResponse.json({ error: "重定向次数过多", latency: Date.now() - start }, { status: 502 });
+      }
+    }
+    if (!res) {
+      return NextResponse.json({ error: "连接失败", latency: Date.now() - start }, { status: 502 });
+    }
     const latency = Date.now() - start;
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return NextResponse.json({ error: `HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`, latency });
+      // Never echo the upstream body: it can contain internal host names or
+      // metadata responses (the original SSRF leak channel).
+      return NextResponse.json({ error: `HTTP ${res.status}`, latency });
     }
 
     const data = await res.json();
@@ -60,8 +95,9 @@ export async function POST(req: Request) {
     const chat = models.filter((m) => !EMBED_PATTERNS.test(m.toLowerCase()));
 
     return NextResponse.json({ ok: true, models, chat, embedding, count: models.length, latency });
-  } catch (err) {
+  } catch {
     const latency = Date.now() - start;
-    return NextResponse.json({ error: err instanceof Error ? err.message : "连接失败", latency });
+    // Generic message: err.message can leak internal hostnames / DNS details.
+    return NextResponse.json({ error: "连接失败", latency });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import path from "path";
 import { getRequestUser } from "@/lib/auth/guard";
 import { isStorageEnabled, readFile } from "@/lib/storage";
+import { isFileKeyOwnedBy } from "@/lib/storage/file-key";
 import { withApiTrace } from "@/lib/obs/trace";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,12 @@ async function handleGET(req: Request, { params }: Params) {
   }
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  // P0 IDOR: possession of a key was treated as authorization. Keys are now
+  // namespaced by owner (`<userId>__<uuid>.ext`); 404 (not 403) so the route
+  // does not confirm that someone else's file exists.
+  if (!isFileKeyOwnedBy(key, u.id)) {
+    return NextResponse.json({ error: "文件不存在" }, { status: 404 });
+  }
 
   try {
     const data = await readFile(key);

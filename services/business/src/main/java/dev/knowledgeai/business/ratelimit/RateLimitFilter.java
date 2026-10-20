@@ -28,15 +28,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final RateLimiter limiter;
     private final int userLimit;
     private final int anonLimit;
+    /** 受信代理跳数：XFF 从右往左数，客户端可伪造的左段一律不采信。 */
+    private final int trustedProxyHops;
     /** Redis 不可达时置位（就绪探针/监控读取，对齐 rateLimitDegraded 语义）。 */
     private final AtomicBoolean degraded = new AtomicBoolean(false);
 
     public RateLimitFilter(RateLimiter limiter,
                            @Value("${ratelimit.per-minute:60}") int userLimit,
-                           @Value("${ratelimit.anon-per-minute:20}") int anonLimit) {
+                           @Value("${ratelimit.anon-per-minute:20}") int anonLimit,
+                           @Value("${ratelimit.trusted-proxy-hops:1}") int trustedProxyHops) {
         this.limiter = limiter;
         this.userLimit = userLimit;
         this.anonLimit = anonLimit;
+        this.trustedProxyHops = Math.max(1, trustedProxyHops);
     }
 
     public boolean isDegraded() {
@@ -80,9 +84,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    private static String clientIp(HttpServletRequest request) {
+    private String clientIp(HttpServletRequest request) {
+        // P2: the leftmost XFF entry is supplied by the client. Use the hop
+        // appended by the nearest trusted proxy instead (rightmost), so a
+        // spoofed header can't rotate rate-limit buckets.
         String xff = request.getHeader("X-Forwarded-For");
-        return xff != null && !xff.isBlank() ? xff.split(",")[0].trim()
-                : request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
+        if (xff != null && !xff.isBlank()) {
+            String[] parts = xff.split(",");
+            int index = Math.max(0, parts.length - trustedProxyHops);
+            String candidate = parts[index].trim();
+            if (!candidate.isEmpty()) return candidate;
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) return realIp.trim();
+        return request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
     }
 }

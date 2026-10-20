@@ -12,6 +12,56 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+describe("MemoryQueue idempotency", () => {
+  it("reuses a live job for the same task/document id", async () => {
+    const queue = new MemoryQueue();
+    let release!: (r: { ok: boolean }) => void;
+    queue.registerHandler("doc-process", () =>
+      new Promise((resolve) => {
+        release = resolve;
+      })
+    );
+
+    const first = await queue.enqueue("doc-process", { docId: "doc_1" });
+    await tick();
+    const duplicate = await queue.enqueue("doc-process", { docId: "doc_1" });
+    const other = await queue.enqueue("doc-process", { docId: "doc_2" });
+
+    expect(duplicate).toBe(first);
+    expect(other).not.toBe(first);
+
+    release({ ok: true });
+    await tick();
+  });
+});
+
+describe("MemoryQueue terminal-job trimming", () => {
+  it("evicts only the oldest excess terminal jobs", () => {
+    const queue = new MemoryQueue();
+    const jobs = (queue as unknown as { jobs: Map<string, unknown> }).jobs;
+    for (let i = 0; i < 120; i++) {
+      jobs.set(`j${i}`, {
+        id: `j${i}`,
+        type: "doc-process",
+        payload: {},
+        status: "completed",
+        createdAt: i,
+        attempts: 1,
+        maxAttempts: 3,
+      });
+    }
+
+    (queue as unknown as { trimJobs: () => void }).trimJobs();
+
+    expect(jobs.size).toBe(100);
+    // P1: the old slice(excess) deleted almost everything; only j0..j19 go.
+    expect(jobs.has("j0")).toBe(false);
+    expect(jobs.has("j19")).toBe(false);
+    expect(jobs.has("j20")).toBe(true);
+    expect(jobs.has("j119")).toBe(true);
+  });
+});
+
 describe("MemoryQueue stats", () => {
   it("reports active, waiting and concurrency while saturated", async () => {
     const queue = new MemoryQueue();

@@ -11,7 +11,12 @@
 
 import { getDb, isDbEnabled } from "./client";
 import { decryptFromString } from "@/lib/crypto";
-import type { PrismaUser, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
+import { hydrateSecurityState } from "@/lib/security/store";
+import { markNotificationsHydrated } from "@/lib/notifications/store";
+import { hydrateUserUsage, hydrateWorkspaceUsage } from "@/lib/billing/store";
+import type { UsagePoint } from "@/lib/billing/types";
+import type { SecurityState } from "@/lib/security/types";
+import type { PrismaUser, PrismaUserSecurity, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";
 import { log } from "@/lib/obs/log";
 
@@ -80,6 +85,8 @@ export async function hydrateFromDb(): Promise<void> {
     counts.tasks = tasks.length;
 
     // ── Extended models (P0-1 expansion) ──────────────────────────────
+    // P0: 2FA secrets / sessions / login history must survive restarts.
+    const security = await hydrateSecurityStates();
     const convs = await hydrateConversations();
     const models = await hydrateModelConfigs();
     const notifs = await hydrateNotifications();
@@ -88,6 +95,8 @@ export async function hydrateFromDb(): Promise<void> {
     const audit = await hydrateAudit();
     const keys = await hydrateApiKeys();
     const billing = await hydrateBilling();
+    // P1: workspace QA/Agent counters (quota + usage.alert source).
+    const usage = await hydrateUsage();
     // P5-5: workspace rows (brand color survives restarts).
     const workspaces = await hydrateWorkspace();
     // P7-1: webhook subscription rows (delivery state survives restarts).
@@ -102,7 +111,7 @@ export async function hydrateFromDb(): Promise<void> {
     // seeded === false) so demo rows cannot mix with DB rows.
     markSeeded();
     log.info(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${security} security, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}, usage=${usage}`
     );
   } catch (err) {
     log.error({ err }, "[db] Hydration failed");
@@ -125,6 +134,8 @@ function ensureStores(): void {
   const g = globalThis as Record<string, unknown>;
   if (!g.__KAI_USER_STORE__)
     g.__KAI_USER_STORE__ = { users: new Map(), emailIndex: new Map(), seeded: false };
+  if (!g.__KAI_SECURITY_STORE__)
+    g.__KAI_SECURITY_STORE__ = { byUser: new Map() };
   if (!g.__KAI_KB_STORE__)
     g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
   if (!g.__KAI_CHAT_STORE__)
@@ -210,6 +221,60 @@ function markSeeded(): void {
   if (teamStore) teamStore.seeded = true;
 }
 
+async function hydrateSecurityStates(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db.userSecurity.findMany({});
+  for (const row of rows) hydrateSecurityRow(row);
+  return rows.length;
+}
+
+/** Decrypt a stored secret. A rotated AUTH_SECRET must not silently disable
+ *  2FA - we return null instead of throwing, and `enabled` stays true. */
+function decryptOrNull(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  try {
+    return decryptFromString(value);
+  } catch {
+    return null;
+  }
+}
+
+function hydrateSecurityRow(row: PrismaUserSecurity): void {
+  const tf = (row.twoFactor ?? {}) as Record<string, unknown>;
+  const backupCodes = Array.isArray(tf.backupCodes)
+    ? tf.backupCodes.filter((c): c is string => typeof c === "string")
+    : [];
+  const pendingBackupCodes = Array.isArray(tf.pendingBackupCodes)
+    ? tf.pendingBackupCodes.filter((c): c is string => typeof c === "string")
+    : [];
+  const privacy = (row.privacy ?? {}) as Record<string, unknown>;
+  const method = tf.method === "app" || tf.method === "sms" ? tf.method : null;
+  hydrateSecurityState(row.userId, {
+    twoFactor: {
+      enabled: tf.enabled === true,
+      method,
+      secret: decryptOrNull(tf.secret),
+      backupCodes,
+      backupCodesRemaining: backupCodes.length,
+      enrolledAt: typeof tf.enrolledAt === "number" ? tf.enrolledAt : null,
+      pendingSecret: decryptOrNull(tf.pendingSecret),
+      pendingBackupCodes,
+      lastUsedStep: typeof tf.lastUsedStep === "number" ? tf.lastUsedStep : null,
+    },
+    sessions: Array.isArray(row.sessions) ? (row.sessions as SecurityState["sessions"]) : [],
+    loginHistory: Array.isArray(row.loginHistory)
+      ? (row.loginHistory as SecurityState["loginHistory"])
+      : [],
+    privacy: {
+      analytics: privacy.analytics !== false,
+      crashReports: privacy.crashReports !== false,
+      trainingOptIn: privacy.trainingOptIn === true,
+      dataRetentionDays: typeof privacy.dataRetentionDays === "number" ? privacy.dataRetentionDays : 90,
+    },
+  });
+}
+
 function hydrateUser(u: PrismaUser): void {
   const g = globalThis as unknown as { __KAI_USER_STORE__?: { users: Map<string, unknown>; emailIndex: Map<string, string>; seeded: boolean } };
   if (!g.__KAI_USER_STORE__) return;
@@ -225,7 +290,7 @@ function hydrateUser(u: PrismaUser): void {
     plan: ((u as unknown as { plan?: string | null }).plan || "free").toLowerCase(),
     status: u.status.toLowerCase(),
     createdAt: u.createdAt.getTime(),
-    lastLoginAt: null as number | null,
+    lastLoginAt: (u as unknown as { lastLoginAt?: Date | null }).lastLoginAt?.getTime() ?? null,
     // P5-4: UI language preference.
     locale: (u as unknown as { locale?: string | null }).locale ?? "zh-CN",
     // P3-2: OAuth provider links (provider -> providerAccountId).
@@ -494,13 +559,21 @@ async function hydrateNotifications(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   try {
-    const notifs = await (db as unknown as {
+    const d = db as unknown as {
       notification: { findMany: (o?: unknown) => Promise<unknown[]> };
-    }).notification.findMany({
+      notificationPrefs: { findMany: (o?: unknown) => Promise<unknown[]> };
+    };
+    const notifs = await d.notification.findMany({
       orderBy: { createdAt: "desc" },
       take: 1000,
     });
-    const g = globalThis as unknown as { __KAI_NOTIF_STORE__?: { notificationsByUser: Map<string, unknown[]> } };
+    const prefs = await d.notificationPrefs.findMany({});
+    const g = globalThis as unknown as {
+      __KAI_NOTIF_STORE__?: {
+        notificationsByUser: Map<string, unknown[]>;
+        prefsByUser?: Map<string, unknown>;
+      };
+    };
     if (!g.__KAI_NOTIF_STORE__) return 0;
     let count = 0;
     for (const n of notifs as unknown as { id: string; userId: string; type: string; title: string; body: string; read: boolean; link: string | null; createdAt: Date }[]) {
@@ -517,9 +590,105 @@ async function hydrateNotifications(): Promise<number> {
       g.__KAI_NOTIF_STORE__.notificationsByUser.set(n.userId, list);
       count++;
     }
+    if (!g.__KAI_NOTIF_STORE__.prefsByUser) g.__KAI_NOTIF_STORE__.prefsByUser = new Map();
+    for (const p of prefs as unknown as {
+      userId: string; emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean;
+    }[]) {
+      g.__KAI_NOTIF_STORE__.prefsByUser.set(p.userId, {
+        emailDigest: p.emailDigest,
+        kbReady: p.kbReady,
+        agentDone: p.agentDone,
+        securityAlert: p.securityAlert,
+      });
+    }
+    // Keep the same 50-item cap as notify() so memory doesn't grow beyond the
+    // in-process contract (DB retains the full history).
+    for (const list of g.__KAI_NOTIF_STORE__.notificationsByUser.values()) {
+      (list as { createdAt: number }[]).sort((a, b) => b.createdAt - a.createdAt).splice(50);
+    }
+    markNotificationsHydrated();
     return count;
   } catch (err) {
     log.error({ err }, "[db] hydrateNotifications error");
+    throw err;
+  }
+}
+
+/** Hydrate current-month workspace usage from UsageDaily (quota source). */
+async function hydrateUsage(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+  try {
+    const d = db as unknown as {
+      usageDaily: { findMany: (o?: unknown) => Promise<unknown[]> };
+      userUsageDaily: { findMany: (o?: unknown) => Promise<unknown[]> };
+    };
+    const rows = await d.usageDaily.findMany({ where: { day: { gte: monthStart } } });
+    const totals = new Map<string, { qa: number; agent: number }>();
+    for (const r of rows as unknown as {
+      workspaceId: string;
+      qaCount: bigint | number;
+      agentCount: bigint | number;
+    }[]) {
+      const t = totals.get(r.workspaceId) ?? { qa: 0, agent: 0 };
+      t.qa += Number(r.qaCount);
+      t.agent += Number(r.agentCount);
+      totals.set(r.workspaceId, t);
+    }
+    for (const [workspaceId, t] of totals) {
+      hydrateWorkspaceUsage(workspaceId, t.qa, t.agent);
+    }
+
+    // Per-user counters + 14-day trend. Query from the earlier of the month
+    // start and the 14-day window so early-month rows aren't dropped.
+    const trendStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 13));
+    const userQueryStart = new Date(Math.min(monthStart.getTime(), trendStart.getTime()));
+    const userRows = await d.userUsageDaily.findMany({ where: { day: { gte: userQueryStart } } });
+    type DayCounts = { qa: number; api: number; agent: number };
+    const userAgg = new Map<string, {
+      qa: number; api: number; agent: number;
+      days: Map<string, DayCounts>;
+    }>();
+    for (const r of userRows as unknown as {
+      userId: string;
+      day: Date;
+      qaCount: bigint | number;
+      apiCount: bigint | number;
+      agentCount: bigint | number;
+    }[]) {
+      const key = r.day.toISOString().slice(0, 10);
+      const agg = userAgg.get(r.userId) ?? { qa: 0, api: 0, agent: 0, days: new Map() };
+      const day = agg.days.get(key) ?? { qa: 0, api: 0, agent: 0 };
+      day.qa += Number(r.qaCount);
+      day.api += Number(r.apiCount);
+      day.agent += Number(r.agentCount);
+      agg.days.set(key, day);
+      if (r.day >= monthStart) {
+        agg.qa += Number(r.qaCount);
+        agg.api += Number(r.apiCount);
+        agg.agent += Number(r.agentCount);
+      }
+      userAgg.set(r.userId, agg);
+    }
+    for (const [userId, agg] of userAgg) {
+      const trend: UsagePoint[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const day = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - i));
+        const rec = agg.days.get(day.toISOString().slice(0, 10)) ?? { qa: 0, api: 0, agent: 0 };
+        trend.push({
+          date: `${day.getUTCMonth() + 1}/${day.getUTCDate()}`,
+          qa: rec.qa,
+          api: rec.api,
+          agent: rec.agent,
+        });
+      }
+      hydrateUserUsage(userId, { qa: agg.qa, api: agg.api, agent: agg.agent }, trend);
+    }
+    return rows.length + userRows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateUsage error");
     throw err;
   }
 }
@@ -867,7 +1036,7 @@ async function hydrateApiKeys(): Promise<number> {
 }
 
 /** Hydrate subscriptions / invoices / orders so billing pages show history
- *  after restart. Usage counters are runtime metrics and stay in memory. */
+ *  after restart. (Workspace usage is hydrated by hydrateUsage below.) */
 async function hydrateBilling(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;

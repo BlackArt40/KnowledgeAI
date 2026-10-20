@@ -14,6 +14,7 @@ import { ApiError, request } from "@/api/client";
 import { oauthSignIn } from "@shared/auth/oauth-signin";
 import { formatRelative } from "@shared/format";
 import { getI18nInstance } from "@shared/i18n/translate";
+import { applyLocale, type Locale } from "@/lib/i18n";
 import {
   deleteAccount, fetchSecurity, patchPrivacy, revokeAllSessions, revokeSession, twofa,
   type SecurityState,
@@ -236,7 +237,6 @@ async function saveProfile() {
     if (d && (d as { user?: { name: string } }).user) {
       me.value = { ...me.value, name: d.user!.name };
       profileName.value = d.user!.name;
-      if (d.token) localStorage.setItem("kai-token", d.token);
       curPwd.value = "";
       newPwd.value = "";
       confirmPwd.value = "";
@@ -252,19 +252,14 @@ async function saveProfile() {
 }
 
 async function setLocale(v: string) {
-  void i18n.changeLanguage(v);
-  document.cookie = `kai-locale=${v}; path=/; max-age=31536000`;
-  document.documentElement.lang = v === "en" ? "en" : "zh-CN";
+  const next: Locale = v === "en" ? "en" : "zh-CN";
+  // 单源实现：localStorage + cookie + <html lang> 三写（@/lib/i18n）。
+  applyLocale(next);
   try {
-    localStorage.setItem("kai-locale", v);
+    await request("/api/auth/me", { method: "PATCH", body: { locale: next } });
   } catch {
-    /* ignore */
+    /* 本地偏好已生效；服务端同步失败不阻塞 UI */
   }
-  await fetch("/api/auth/me", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ locale: v }),
-  }).catch(() => {});
 }
 
 // ── 通知偏好 ─────────────────────────────────────────────────────────────

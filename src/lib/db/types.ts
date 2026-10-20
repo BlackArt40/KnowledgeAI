@@ -17,6 +17,16 @@ export interface PrismaUser {
   updatedAt: Date;
 }
 
+/** P0: one row per user - 2FA / sessions / login history / privacy state. */
+export interface PrismaUserSecurity {
+  userId: string;
+  twoFactor: unknown;
+  sessions: unknown;
+  loginHistory: unknown;
+  privacy: unknown;
+  updatedAt: Date;
+}
+
 export interface PrismaKb {
   id: string;
   name: string;
@@ -89,6 +99,7 @@ export interface PrismaApiKey {
   status: string;
   calls: number;
   lastUsed: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
 }
 
@@ -217,6 +228,11 @@ export interface PrismaClient {
   loginEvent: {
     findMany(opts?: { where?: unknown; orderBy?: unknown }): Promise<PrismaLoginEvent[]>;
     create(opts: { data: unknown }): Promise<PrismaLoginEvent>;
+  };
+  userSecurity: {
+    findMany(opts?: { where?: unknown }): Promise<PrismaUserSecurity[]>;
+    upsert(opts: { where: { userId: string }; update: unknown; create: unknown }): Promise<unknown>;
+    deleteMany(opts: { where: { userId: string } }): Promise<unknown>;
   };
   workspace: {
     findUnique(opts: { where: { id: string } }): Promise<PrismaWorkspace | null>;

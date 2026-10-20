@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ModelConfig, ModelConfigSafe, ProviderPreset, ProviderId } from "./types";
-import { deleteModelConfigFromDb } from "@/lib/db/persist";
+import { deleteModelConfigFromDb, persistModelConfig } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 
 // ── Provider presets ────────────────────────────────────────────────────
@@ -170,6 +170,9 @@ export function createModel(
     createdAt: Date.now(),
   };
   userModels(userId).set(m.id, m);
+  // P1: create/update used to be memory-only while hydrateModelConfigs() read
+  // DB rows - every restart dropped the user's provider config and API key.
+  void persistModelConfig(m);
   return m;
 }
 
@@ -208,6 +211,7 @@ export function updateModel(
   }
 
   models.set(id, m);
+  void persistModelConfig(m);
   return m;
 }
 
@@ -221,6 +225,7 @@ export function setTestResult(userId: string, id: string, ok: boolean) {
   if (!m) return;
   m.lastTestedAt = Date.now();
   m.lastTestOk = ok;
+  void persistModelConfig(m);
 }
 
 /** The active model config for a user.

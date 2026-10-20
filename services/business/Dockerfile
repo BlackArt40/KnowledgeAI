@@ -11,9 +11,12 @@ RUN mvn -q -B package -DskipTests
 FROM eclipse-temurin:17-jre
 # curl 供容器 HEALTHCHECK（/actuator/health）
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 appgroup \
+    && useradd --system --uid 10001 --gid appgroup appuser
 WORKDIR /app
 COPY --from=build /build/target/*.jar app.jar
+USER appuser
 EXPOSE 8080
 # pg profile 是生产形态（ADR-0009 红线：无 DB 无业务）；配置全部经环境变量注入
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar", "--spring.profiles.active=pg"]

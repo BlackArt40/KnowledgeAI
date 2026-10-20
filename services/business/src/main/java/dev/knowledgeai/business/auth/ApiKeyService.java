@@ -1,6 +1,8 @@
 package dev.knowledgeai.business.auth;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -32,33 +34,46 @@ public class ApiKeyService {
     private final JdbcTemplate jdbc;
     private final byte[] authSecret;
 
-    public record ApiKeyRow(String id, String userId, String scopes, String status, String secretPlain) {
+    public record ApiKeyRow(String id, String userId, String scopes, String status,
+                            String secretPlain, Long expiresAt) {
     }
 
     public ApiKeyService(JdbcTemplate jdbc,
-                         @Value("${auth.secret:${AUTH_SECRET:dev-secret-change-in-production}}") String authSecret) {
+                         @Value("${auth.secret}") String authSecret) {
         this.jdbc = jdbc;
-        this.authSecret = authSecret.getBytes(StandardCharsets.UTF_8);
+        this.authSecret = AuthSecret.require(authSecret, "ApiKeyService");
     }
 
     /** 校验 kai_sk_ 明文 secret → 返回（keyId, userId, scopes）或 empty。 */
     public Optional<ApiKeyRow> validate(String secret) {
         if (secret == null || !secret.startsWith("kai_sk_") || secret.length() < 10) return Optional.empty();
         List<ApiKeyRow> rows = jdbc.query(
-                "SELECT id, \"userId\", scopes::text, status, \"keyHash\" FROM \"ApiKey\" WHERE status = 'active'",
+                "SELECT id, \"userId\", scopes::text, status, \"keyHash\", \"expiresAt\" "
+                        + "FROM \"ApiKey\" WHERE status = 'active'",
                 (rs, n) -> new ApiKeyRow(
                         rs.getString(1), rs.getString(2), rs.getString(3),
-                        rs.getString(4), rs.getString(5)));
+                        rs.getString(4), rs.getString(5),
+                        rs.getTimestamp(6) == null ? null : rs.getTimestamp(6).getTime()));
         for (ApiKeyRow row : rows) {
-            // keyHash = encryptToString(secret)（JSON {iv,data,tag}）或 legacy 明文。
+            // P2: expired keys are rejected even if the secret is correct.
+            if (row.expiresAt() != null && row.expiresAt() <= System.currentTimeMillis()) continue;
+
+            String stored = row.secretPlain();
+            if (stored == null) continue;
+            // P2: new keys store `sha256$<hex>` (one-way).
+            if (stored.startsWith("sha256$")) {
+                if (constantTimeEquals(stored, "sha256$" + sha256Hex(secret))) return Optional.of(row);
+                continue;
+            }
+            // Legacy: keyHash = encryptToString(secret)（JSON {iv,data,tag}）或明文。
             // 快速淘汰（评审 #6）：AES-GCM 密文长度是明文长度的确定性函数（随机 IV
             // 只影响内容不改变长度），长度不符直接跳过——避免每请求 O(活跃键数) 次
             // AES-GCM 解密；密文长度本身公开，不泄漏信息。
-            if (row.secretPlain().length() != expectedStoredLength(secret)
-                    && !constantTimeEquals(row.secretPlain(), secret)) {
+            if (stored.length() != expectedStoredLength(secret)
+                    && !constantTimeEquals(stored, secret)) {
                 continue;
             }
-            String plain = decryptStored(row.secretPlain());
+            String plain = decryptStored(stored);
             if (plain.isEmpty()) continue;
             if (constantTimeEquals(plain, secret)) return Optional.of(row);
         }
@@ -69,6 +84,19 @@ public class ApiKeyService {
      *  + tag(16B→24 b64) + data(明文 n 字节 → 4*ceil(n/3) b64)。 */
     static int expectedStoredLength(String plain) {
         return 76 + 4 * ((plain.length() + 2) / 3);
+    }
+
+    /** SHA-256 hex (lowercase), matching Node's crypto.createHash("sha256"). */
+    static String sha256Hex(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) sb.append(String.format("%02x", b & 0xff));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /** scope 判定（对齐现网 apikeys/scopes.ts 的 scope 矩阵）。

@@ -122,7 +122,7 @@ public class AgentController {
                 kbName, body.outputFormat() == null ? "report" : body.outputFormat(),
                 status, agentsJson, body.maxSteps() == null ? 5 : body.maxSteps(),
                 body.template() == null ? "default" : body.template(), workspaceId);
-        usage.recordAgent(workspaceId);
+        usage.recordAgent(workspaceId, user.id());
 
         // 订阅先于入队（防丢首帧，与 TS run-handler 一致）
         AgentEventBus.FrameChannel channel = eventBus.subscribe(taskId);

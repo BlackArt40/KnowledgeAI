@@ -46,3 +46,19 @@ export function formatDateTime(ts: number, locale: string = "zh-CN"): string {
 export function formatNumber(n: number, locale: string = "zh-CN"): string {
   return new Intl.NumberFormat(intlLocale(locale)).format(n);
 }
+
+/** `value` is already a percentage (1.2 -> "1.2%"), matching backend fields. */
+export function formatPercent(value: number, locale: string = "zh-CN", digits = 1): string {
+  return `${new Intl.NumberFormat(intlLocale(locale), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)}%`;
+}
+
+export function formatMoney(amount: number, locale: string = "zh-CN", currency = "CNY"): string {
+  return new Intl.NumberFormat(intlLocale(locale), {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}

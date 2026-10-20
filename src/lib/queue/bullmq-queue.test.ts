@@ -121,12 +121,20 @@ describe("BullMQQueue dual-queue topology", () => {
     expect(mocks.queues[0].add).toHaveBeenCalledWith(
       "doc-process",
       { type: "doc-process", payload: { docId: "doc_1" } },
-      expect.objectContaining({ attempts: 3, removeOnFail: 50 })
+      expect.objectContaining({
+        attempts: 3,
+        removeOnFail: { age: 300, count: 100 },
+        jobId: "doc-process-doc_1",
+      })
     );
     expect(mocks.queues[1].add).toHaveBeenCalledWith(
       "agent-run",
       { type: "agent-run", payload: { taskId: "task_1" } },
-      expect.objectContaining({ attempts: 3, removeOnFail: 50 })
+      expect.objectContaining({
+        attempts: 3,
+        removeOnFail: { age: 300, count: 100 },
+        jobId: "agent-run-task_1",
+      })
     );
   });
 

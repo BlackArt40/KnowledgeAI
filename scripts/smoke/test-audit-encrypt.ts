@@ -65,7 +65,10 @@ async function main() {
   const { createKey, validateApiKey, listKeys } = await import("../../src/lib/apikeys/store");
   const created = createKey("p3-4-test", ["kb:read"], "usr_owner");
   const stored = listKeys("usr_owner").find((k) => k.id === created.id);
-  check("apikey: in-memory secret is ENCRYPTED at rest", stored ? isEncrypted(stored.secret) : false);
+  // Legacy rows are AES-encrypted; new keys are sha256$ one-way hashes.
+  check("apikey: in-memory secret is hashed/encrypted at rest", stored
+    ? isEncrypted(stored.secret) || stored.secret.startsWith("sha256$")
+    : false);
   check("apikey: validateApiKey still works with plaintext secret", !!validateApiKey(created.secret));
   check("apikey: wrong secret rejected", validateApiKey("kai_sk_wrongsecret00000000000000000000") === null);
 
@@ -152,7 +155,9 @@ async function main() {
     const code = generateTOTP(totpSecret);
     const verify2fa = await req("POST", "/api/security/2fa", { token: editorToken, body: { action: "verify", code } });
     check("audit-flow: 2fa enabled", verify2fa.status === 200);
-    const code2 = generateTOTP(totpSecret);
+    // Enrollment consumed the current TOTP step (replay protection); use a
+    // backup code when available, otherwise the next step.
+    const code2 = enroll.data?.backupCodes?.[0] ?? generateTOTP(totpSecret, Date.now() + 30_000);
     const disable2fa = await req("POST", "/api/security/2fa", { token: editorToken, body: { action: "disable", code: code2 } });
     check("audit-flow: 2fa disabled", disable2fa.status === 200);
   } else {

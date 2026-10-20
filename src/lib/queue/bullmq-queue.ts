@@ -123,11 +123,18 @@ export class BullMQQueue implements JobQueue {
     const counts = await queue.getJobCounts("waiting", "delayed");
     const depth = (counts.waiting ?? 0) + (counts.delayed ?? 0);
     if (depth >= maxDepth) throw new QueueBackpressureError(depth, maxDepth);
+    // P1: idempotency - one queue job per task/document while it is alive.
+    // BullMQ job ids must not contain ':' (Redis key separator).
+    const payloadId = typeof payload.taskId === "string"
+      ? payload.taskId
+      : typeof payload.docId === "string" ? payload.docId : undefined;
+    const jobId = payloadId ? `${type}-${payloadId}`.replace(/:/g, "-") : undefined;
     const job = await queue.add(type, { type, payload }, {
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
-      removeOnComplete: 100,
-      removeOnFail: 50,
+      removeOnComplete: { age: 300, count: 100 },
+      removeOnFail: { age: 300, count: 100 },
+      ...(jobId ? { jobId } : {}),
     });
     return job.id;
   }

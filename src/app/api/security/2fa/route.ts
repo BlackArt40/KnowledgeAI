@@ -4,10 +4,12 @@ import {
   verify2FAEnrollment,
   disable2FA,
   verify2FALogin,
+  is2FAVerificationLocked,
 } from "@/lib/security/store";
 import { renderOtpAuthQR } from "@/lib/security/qr";
 import { getRequestUser } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
+import { ensureHydrated } from "@/lib/db/hydrate";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,7 @@ export const dynamic = "force-dynamic";
 //   { enable: true }                          -> legacy: start enrollment (backward compat)
 //   { enable: false }                         -> legacy: disable (backward compat)
 export async function POST(req: Request) {
+  await ensureHydrated();
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
@@ -55,8 +58,20 @@ export async function POST(req: Request) {
       if (!body.code || !/^\d{6}$/.test(body.code.trim())) {
         return NextResponse.json({ error: "请输入 6 位验证码" }, { status: 400 });
       }
+      if (is2FAVerificationLocked(u.id)) {
+        return NextResponse.json(
+          { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+          { status: 429 }
+        );
+      }
       const ok = verify2FAEnrollment(u.id, body.code.trim());
       if (!ok) {
+        if (is2FAVerificationLocked(u.id)) {
+          return NextResponse.json(
+            { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+            { status: 429 }
+          );
+        }
         return NextResponse.json({ error: "验证码不正确，请重试" }, { status: 400 });
       }
       recordAudit({
@@ -78,8 +93,20 @@ export async function POST(req: Request) {
       if (!body.code) {
         return NextResponse.json({ error: "关闭两步验证需要验证码" }, { status: 400 });
       }
+      if (is2FAVerificationLocked(u.id)) {
+        return NextResponse.json(
+          { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+          { status: 429 }
+        );
+      }
       const ok = verify2FALogin(u.id, body.code.trim());
       if (!ok) {
+        if (is2FAVerificationLocked(u.id)) {
+          return NextResponse.json(
+            { error: "验证码失败次数过多，请 15 分钟后重试", locked: true },
+            { status: 429 }
+          );
+        }
         return NextResponse.json({ error: "验证码不正确" }, { status: 400 });
       }
       const tf = disable2FA(u.id);

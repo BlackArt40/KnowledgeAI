@@ -22,16 +22,24 @@ class ApiKeyServiceTest {
     }
 
     @Test
+    void sha256MatchesTheNodeVector() {
+        // Node: crypto.createHash("sha256").update("kai_sk_test123").digest("hex")
+        assertEquals(
+                "020827b9e4671bd918eadd3e7d629e70146d4d74a31a7283bf863c841713003c",
+                ApiKeyService.sha256Hex("kai_sk_test123"));
+    }
+
+    @Test
     void hasScopeParsesPostgresArrayRendering() {
         // PG `text[]::text` 渲染 {a,b}——阶段 4 遗留缺陷（剥 [] 漏 {}）的回归锁定
         ApiKeyService.ApiKeyRow row = new ApiKeyService.ApiKeyRow(
-                "ak_1", "usr_1", "{chat:read,agent:run}", "active", "cipher");
+                "ak_1", "usr_1", "{chat:read,agent:run}", "active", "cipher", null);
         assertTrue(ApiKeyService.hasScope(row, "chat:read"));
         assertTrue(ApiKeyService.hasScope(row, "agent:run"));
         assertFalse(ApiKeyService.hasScope(row, "kb:write"));
 
         ApiKeyService.ApiKeyRow quoted = new ApiKeyService.ApiKeyRow(
-                "ak_2", "usr_1", "{\"kb:read\"}", "active", "cipher");
+                "ak_2", "usr_1", "{\"kb:read\"}", "active", "cipher", null);
         assertTrue(ApiKeyService.hasScope(quoted, "kb:read"));
         assertFalse(ApiKeyService.hasScope(quoted, "kb:write"));
     }

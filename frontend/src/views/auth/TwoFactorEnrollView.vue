@@ -54,7 +54,6 @@ async function handleVerify() {
     if (data?.token) {
       sessionStorage.removeItem("kai-2fa-preauth");
       sessionStorage.removeItem("kai-2fa-email");
-      localStorage.setItem("kai-token", data.token);
       window.location.href = "/dashboard";
     }
   } catch (e) {

@@ -1,7 +1,7 @@
 import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
 import { getUserById, updateUserPlan } from "@/lib/auth/store";
-import { persistInvoice, persistOrder, persistSubscription } from "@/lib/db/persist";
+import { persistInvoice, persistOrder, persistSubscription, deleteBillingDataFromDb, bumpWorkspaceUsage, bumpUserUsage } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
 
@@ -191,6 +191,8 @@ export function recordQa(userId: string, workspaceId?: string): void {
   const u = getUsage(userId);
   u.qaUsed += 1;
   u.apiCalls += 1;
+  // P1: per-user counters must survive restarts (billing page / admin totals).
+  void bumpUserUsage(userId, "qa");
   const today = dayLabel(0);
   let pt = u.trend[u.trend.length - 1];
   if (!pt || pt.date !== today) {
@@ -204,6 +206,8 @@ export function recordQa(userId: string, workspaceId?: string): void {
   if (workspaceId) {
     const w = getWorkspaceUsage(workspaceId);
     w.qaUsed += 1;
+    // P1: quota counters were memory-only (restart reset every workspace).
+    void bumpWorkspaceUsage(workspaceId, "qa");
     // P7-1: fire the usage.alert webhook once per workspace+limit crossing.
     void maybeEmitUsageAlert(workspaceId);
   }
@@ -280,8 +284,34 @@ export function getWorkspaceUsage(workspaceId: string): WorkspaceUsage {
 }
 
 /** Meter an agent task for a workspace (P4-3). */
-export function recordAgentTask(workspaceId: string): void {
+export function recordAgentTask(workspaceId: string, userId?: string): void {
   getWorkspaceUsage(workspaceId).agentTasks += 1;
+  void bumpWorkspaceUsage(workspaceId, "agent");
+  if (userId) void bumpUserUsage(userId, "agent");
+}
+
+/** Hydrate a workspace's monthly counters from UsageDaily. */
+export function hydrateWorkspaceUsage(
+  workspaceId: string,
+  qaUsed: number,
+  agentTasks: number
+): void {
+  const u = getWorkspaceUsage(workspaceId);
+  u.qaUsed = qaUsed;
+  u.agentTasks = agentTasks;
+}
+
+/** Hydrate a user's monthly counters + 14-day trend from UserUsageDaily. */
+export function hydrateUserUsage(
+  userId: string,
+  totals: { qa: number; api: number; agent: number },
+  trend: UsagePoint[]
+): void {
+  const u = getUsage(userId);
+  u.qaUsed = totals.qa;
+  u.apiCalls = totals.api;
+  u.agentTasks = totals.agent;
+  u.trend = trend;
 }
 
 /** Meter storage for a workspace (P4-3). */
@@ -390,4 +420,5 @@ export function deleteBillingData(userId: string): void {
   for (const [id, order] of s.orders) {
     if (order.userId === userId) s.orders.delete(id);
   }
+  void deleteBillingDataFromDb(userId);
 }

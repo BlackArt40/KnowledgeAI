@@ -9,9 +9,9 @@ import {
   type ApiKey,
 } from "@/api/apikeys";
 import { ApiError } from "@/api/client";
-import { formatRelative } from "@shared/format";
+import { formatDate, formatRelative } from "@shared/format";
 
-const { t } = useTranslation();
+const { t, i18next } = useTranslation();
 
 const keys = ref<ApiKey[]>([]);
 const loading = ref(true);
@@ -136,8 +136,13 @@ function keyDisplay(k: ApiKey): string {
           </span>
           <span class="key-meta">
             <span class="mono">{{ keyDisplay(k) }}</span>
-            · {{ formatRelative(k.createdAt) }}
-            <span v-if="k.lastUsedAt"> · {{ t("page.api-keys.s5") }} {{ formatRelative(k.lastUsedAt) }}</span>
+            · {{ formatRelative(k.createdAt, i18next.language) }}
+            <span v-if="k.lastUsedAt"> · {{ t("page.api-keys.s5") }} {{ formatRelative(k.lastUsedAt, i18next.language) }}</span>
+            <span v-if="k.expiresAt"> · {{ t("page.api-keys.s34") }} {{ formatDate(k.expiresAt, i18next.language) }}</span>
+            <span
+              v-if="k.expiresAt && k.expiresAt <= Date.now()"
+              class="badge"
+            >{{ t("page.api-keys.s35") }}</span>
           </span>
           <span class="scopes">
             <span
@@ -181,7 +186,7 @@ function keyDisplay(k: ApiKey): string {
               :key="s.id"
               :value="s.id"
             >
-              {{ s.label }}（{{ s.id }}）
+              {{ t(s.labelKey) }}（{{ s.id }}）
             </el-checkbox>
           </el-checkbox-group>
         </div>

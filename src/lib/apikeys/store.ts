@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
 import { getDb, isDbEnabled } from "@/lib/db/client";
-import { encryptToString, decryptFromString, isEncrypted } from "@/lib/crypto";
+import { decryptFromString, isEncrypted } from "@/lib/crypto";
 import { uid, genSecret } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
 
@@ -20,6 +20,27 @@ function mask(s: string) {
   return s.slice(0, 12) + "…" + s.slice(-4);
 }
 
+// ── P2: one-way hashing + expiry ─────────────────────────────────────────
+// New keys are stored as `sha256$<hex>`; the plaintext only exists in the
+// creation response. Legacy rows (AES-GCM ciphertext / old plaintext) keep
+// validating through the previous path until they are rotated.
+
+const HASH_PREFIX = "sha256$";
+
+function hashSecret(secret: string): string {
+  return HASH_PREFIX + crypto.createHash("sha256").update(secret, "utf-8").digest("hex");
+}
+
+/** New keys expire after API_KEY_TTL_DAYS (default 365; <= 0 = never). */
+function defaultExpiry(): number | null {
+  const days = Number.parseInt(process.env.API_KEY_TTL_DAYS ?? "365", 10);
+  return Number.isFinite(days) && days > 0 ? Date.now() + days * 86_400_000 : null;
+}
+
+function isExpired(k: ApiKey): boolean {
+  return k.expiresAt !== null && k.expiresAt <= Date.now();
+}
+
 // ── CRUD (per-user) ──────────────────────────────────────────────────────
 
 export function listKeys(userId: string): ApiKey[] {
@@ -28,7 +49,12 @@ export function listKeys(userId: string): ApiKey[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export function createKey(name: string, scopes: string[], userId: string): ApiKey {
+export function createKey(
+  name: string,
+  scopes: string[],
+  userId: string,
+  expiresAt: number | null = defaultExpiry()
+): ApiKey {
   const secret = genSecret();
   const key: ApiKey = {
     userId,
@@ -41,10 +67,11 @@ export function createKey(name: string, scopes: string[], userId: string): ApiKe
     createdAt: Date.now(),
     lastUsed: null,
     calls: 0,
+    expiresAt,
   };
-  // P3-4: store the secret ENCRYPTED (in-memory + DB write-through via
-  // persistApiKey). The plaintext is only returned once, in this response.
-  const stored: ApiKey = { ...key, secret: encryptToString(secret) };
+  // P2: store only a one-way hash. Even with DB + AUTH_SECRET access an
+  // attacker cannot recover the key. The plaintext is returned exactly once.
+  const stored: ApiKey = { ...key, secret: hashSecret(secret) };
   store().keys.unshift(stored);
   void persistApiKey(stored);
   return key;
@@ -78,12 +105,17 @@ export function listLogs(userId: string): CallLog[] {
 
 // ── API key validation + call logging ────────────────────────────────────
 
-/** Resolve a key's stored secret to plaintext. Encrypted values decrypt with
- *  the current AUTH_SECRET; legacy plaintext (pre-P3-4) is used as-is; a
- *  failed decryption (key rotated / data corrupt) yields "" -> invalid. */
-function storedSecretOf(k: ApiKey): string {
-  if (!isEncrypted(k.secret)) return k.secret;
-  try { return decryptFromString(k.secret); } catch { return ""; }
+/** Resolve a LEGACY stored secret to plaintext. Encrypted values decrypt with
+ *  the current AUTH_SECRET; old plaintext (pre-P3-4) is used as-is; a failed
+ *  decryption yields "" -> invalid. Hashed keys are handled before this call. */
+function storedSecretOf(stored: string): string {
+  if (!isEncrypted(stored)) return stored;
+  try { return decryptFromString(stored); } catch { return ""; }
+}
+
+function matchesStored(stored: string, presented: string): boolean {
+  if (stored.startsWith(HASH_PREFIX)) return safeEqual(stored, hashSecret(presented));
+  return safeEqual(storedSecretOf(stored), presented);
 }
 
 /** Constant-time string comparison (F10). Returns false on a length mismatch
@@ -103,9 +135,11 @@ function safeEqual(a: string, b: string): boolean {
  *  which adds a throttled DB fallback so keys created on other instances are
  *  honored without a restart. */
 export function validateApiKey(secret: string): ApiKey | null {
-  // F10: `storedSecretOf(k) === secret` short-circuited on the first differing
-  // character, leaking a prefix oracle for a long-lived credential.
-  const k = store().keys.find((k) => k.status === "active" && safeEqual(storedSecretOf(k), secret));
+  // F10: compare in constant time. P2: reject expired keys and hash the
+  // presented secret when the row stores `sha256$...`.
+  const k = store().keys.find(
+    (k) => k.status === "active" && !isExpired(k) && matchesStored(k.secret, secret)
+  );
   return k ?? null;
 }
 
@@ -134,6 +168,7 @@ export interface ApiKeyRow {
   status: string;
   calls: number;
   lastUsed: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
 }
 
@@ -153,6 +188,7 @@ export function mergeApiKeyRow(r: ApiKeyRow): void {
     status: r.status as KeyStatus,
     calls: r.calls,
     lastUsed: r.lastUsed ? r.lastUsed.getTime() : null,
+    expiresAt: r.expiresAt ? r.expiresAt.getTime() : null,
     createdAt: r.createdAt.getTime(),
   });
 }

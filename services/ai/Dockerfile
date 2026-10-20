@@ -7,7 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY pyproject.toml ./
 COPY app ./app
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . \
+    && useradd --create-home --uid 10001 appuser
+
+USER appuser
 
 EXPOSE 8000
 

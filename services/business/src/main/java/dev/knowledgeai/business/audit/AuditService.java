@@ -23,9 +23,9 @@ public class AuditService {
     private final byte[] secret;
 
     public AuditService(JdbcTemplate jdbc,
-                        @Value("${auth.secret:${AUTH_SECRET:dev-secret-change-in-production}}") String secret) {
+                        @Value("${auth.secret}") String secret) {
         this.jdbc = jdbc;
-        this.secret = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        this.secret = dev.knowledgeai.business.auth.AuthSecret.require(secret, "AuditService");
     }
 
     /** 登录事件（对齐现网 recordLogin）。 */

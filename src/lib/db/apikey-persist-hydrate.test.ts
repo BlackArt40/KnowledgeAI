@@ -33,7 +33,8 @@ function makeDb() {
     "user", "knowledgeBase", "kbDocument", "agentTask", "conversation",
     "modelConfig", "notification", "team", "systemConfig", "securityAudit",
     "subscription", "invoice", "order", "workspace", "webhookSubscription",
-    "botIntegration", "kgEntity", "kgRelation",
+    "botIntegration", "kgEntity", "kgRelation", "userSecurity", "notificationPrefs",
+    "usageDaily", "userUsageDaily",
   ]) {
     // findUnique: some hydrators (team / systemConfig) read single rows -
     // P1-10 makes a missing method throw, so the fake must cover them.
@@ -74,6 +75,7 @@ describe("API key persist → hydrate round-trip (P0-5)", () => {
       status: "active",
       calls: 0,
       lastUsed: null,
+      expiresAt: null,
       createdAt: Date.now(),
     });
 

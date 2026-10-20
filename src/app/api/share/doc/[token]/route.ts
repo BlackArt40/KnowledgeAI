@@ -12,7 +12,12 @@ type Params = { params: Promise<{ token: string }> };
 // the knowledge base.
 export async function GET(req: Request, { params }: Params) {
   const { token } = await params;
-  const password = new URL(req.url).searchParams.get("password") ?? undefined;
+  // P2: prefer the header (query strings leak into access logs / Referer).
+  // Query is kept for backwards compatibility with already-shared links.
+  const password =
+    req.headers.get("x-share-password") ??
+    new URL(req.url).searchParams.get("password") ??
+    undefined;
   const result = checkDocShare(token, password);
 
   if (!result.ok) {

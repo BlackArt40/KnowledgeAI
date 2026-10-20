@@ -51,6 +51,8 @@ services:
       # 拆分形态：业务 API 在网关之后（Next 内同名路由被网关遮蔽）
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+      # P1: 队列消费由下方遗留 worker 服务承担，web 只入队。
+      QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
@@ -68,6 +70,8 @@ services:
     environment:
       DATABASE_URL: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
       REDIS_URL: redis://redis:6379/0
+      # P1: explicit worker role (web only produces).
+      QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
     healthcheck:
@@ -118,7 +122,7 @@ services:
     build: ./services/ai
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN 必填}
-      AI_ALLOW_PRIVATE_FETCH: "true"
+      AI_ALLOW_PRIVATE_FETCH: "${AI_ALLOW_PRIVATE_FETCH:-false}"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       QUEUE_MAX_DEPTH: ${QUEUE_MAX_DEPTH:-100}

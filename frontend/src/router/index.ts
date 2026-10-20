@@ -188,3 +188,24 @@ export const router = createRouter({
     },
   ],
 });
+
+// 发版后旧 chunk 404 会让动态 import 失败并白屏：自动整页刷新一次；
+// 30s 内重复失败则不再刷新，避免 chunk 真缺失时无限循环。
+const CHUNK_RELOAD_KEY = "kai-chunk-reload-at";
+router.onError((err) => {
+  const msg = String((err as Error)?.message ?? err);
+  if (!/Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg)) return;
+  let last = 0;
+  try {
+    last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) ?? "0");
+  } catch {
+    /* private mode */
+  }
+  if (Date.now() - last < 30_000) return;
+  try {
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+  } catch {
+    /* private mode */
+  }
+  window.location.reload();
+});
