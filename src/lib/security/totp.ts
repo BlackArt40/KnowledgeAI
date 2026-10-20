@@ -7,7 +7,7 @@
 // TOTP app. otplib's epoch is in SECONDS (not ms).
 // ---------------------------------------------------------------------------
 
-import { generateSecret as otplibSecret, generateSync, generateURI, verifySync } from "otplib";
+import { generateSecret as otplibSecret, generateSync, generateURI } from "otplib";
 import crypto from "crypto"; // backup codes only (SHA-256 hashing, not TOTP)
 
 // ── TOTP core ────────────────────────────────────────────────────────────
@@ -42,17 +42,31 @@ export function generateTOTP(secret: string, timestamp: number = Date.now()): st
  * ±1 step means epochTolerance = period (30s).
  */
 export function verifyTOTP(secret: string, token: string, timestamp: number = Date.now()): boolean {
+  return verifyTOTPWithStep(secret, token, timestamp).valid;
+}
+
+/**
+ * Verify a TOTP code and return the matching time step (seconds/30).
+ *
+ * Callers that persist auth state MUST use this variant: storing the accepted
+ * step lets them reject a second use of the same code inside the ±1 step
+ * tolerance window (replay protection).
+ */
+export function verifyTOTPWithStep(
+  secret: string,
+  token: string,
+  timestamp: number = Date.now()
+): { valid: boolean; step: number | null } {
   const code = token.replace(/\s/g, "");
-  if (!/^\d{6}$/.test(code)) return false;
-  return verifySync({
-    secret,
-    token: code,
-    algorithm: "sha1",
-    digits: DIGITS,
-    period: STEP,
-    epoch: Math.floor(timestamp / 1000),
-    epochTolerance: WINDOW * STEP,
-  }).valid;
+  if (!/^\d{6}$/.test(code)) return { valid: false, step: null };
+  const currentStep = Math.floor(timestamp / 1000 / STEP);
+  for (let offset = -WINDOW; offset <= WINDOW; offset++) {
+    const step = currentStep + offset;
+    if (generateTOTP(secret, step * STEP * 1000) === code) {
+      return { valid: true, step };
+    }
+  }
+  return { valid: false, step: null };
 }
 
 // ── OTPAuth URI (for QR codes) ───────────────────────────────────────────

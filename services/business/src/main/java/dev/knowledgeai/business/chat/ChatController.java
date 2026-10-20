@@ -186,7 +186,7 @@ public class ChatController {
                                 jdbc.update("INSERT INTO \"Message\" (id, \"conversationId\", role, content, citations, \"createdAt\") "
                                                 + "VALUES (?, ?, ?, ?, ?::jsonb, now())",
                                         messageId, convId, "assistant", assistantText.toString(), citations);
-                                usage.recordQa(workspaceId);
+                                usage.recordQa(workspaceId, user.id());
                                 // 重组 done（对齐现网：messageId/conversationId/citations）
                                 out.write(("data: {\"type\":\"done\",\"messageId\":\"" + messageId
                                         + "\",\"conversationId\":\"" + convId + "\",\"citations\":"

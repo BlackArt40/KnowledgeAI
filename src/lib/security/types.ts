@@ -8,6 +8,9 @@ export interface TwoFactor {
   pendingSecret: string | null; // secret during enrollment (not yet verified)
   pendingBackupCodes: string[]; // hashed backup codes staged during enrollment,
                                 // committed to `backupCodes` only on successful verify
+  /** Last accepted TOTP time step (30s). Prevents replaying the same code
+   *  within the ±1 step tolerance window. Internal - stripped from API snapshots. */
+  lastUsedStep?: number | null;
 }
 
 export interface Session {

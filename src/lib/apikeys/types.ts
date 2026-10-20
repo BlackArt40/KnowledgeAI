@@ -11,6 +11,8 @@ export interface ApiKey {
   createdAt: number;
   lastUsed: number | null;
   calls: number;
+  /** Epoch ms; null = never expires (legacy keys default to null). */
+  expiresAt: number | null;
 }
 
 export interface CallLog {

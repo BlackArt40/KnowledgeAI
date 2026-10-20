@@ -28,7 +28,8 @@ spring:
       port: ${REDIS_PORT:6379}
 
 auth:
-  secret: ${AUTH_SECRET:dev-secret-change-in-production}
+  # 必填：缺失时启动失败（AuthSecret.require 亦会拒绝公开默认值）。
+  secret: ${AUTH_SECRET}
   # 6.1：kai-token Cookie Secure 标志（生产 https 必须 true；本地 http 部署 false）
   cookie-secure: ${COOKIE_SECURE:false}
 
@@ -44,6 +45,8 @@ ratelimit:
   per-minute: ${RATE_LIMIT_PER_MIN:60}        # authenticated user
   anon-per-minute: ${RATE_LIMIT_ANON_PER_MIN:20}
   kb-per-minute: ${RATE_LIMIT_KB_PER_MIN:60}  # per KB（in-route）
+  # XFF 从右往左第 N 跳视为客户端（单层 nginx = 1；CDN + nginx = 2）。
+  trusted-proxy-hops: ${TRUSTED_PROXY_HOPS:1}
 
 usage:
   # 手册 4.5：问答成功回调 recordQa（按 workspace 按日聚合，V18 表）

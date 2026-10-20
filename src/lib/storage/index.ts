@@ -12,6 +12,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getS3Config, uploadToS3, downloadFromS3, deleteFromS3, getPresignedUploadUrl } from "./s3";
+import { buildOwnedFileKey } from "./file-key";
 
 export { getPresignedUploadUrl, getPresignedDownloadUrl } from "./s3";
 
@@ -95,13 +96,16 @@ export function validateFile(filename: string, size: number): { ok: boolean; err
 
 // ── Core operations ──────────────────────────────────────────────────────
 
-/** Save a file. Returns storage key + accessible URL. */
+/** Save a file. Returns storage key + accessible URL.
+ *  `ownerId` is required: the key is namespaced so `/api/files/[key]` can
+ *  enforce ownership (see file-key.ts). */
 export async function saveFile(
   filename: string,
-  data: Buffer | Uint8Array
+  data: Buffer | Uint8Array,
+  ownerId: string
 ): Promise<UploadResult> {
   const ext = path.extname(filename);
-  const key = `${randomUUID()}${ext}`;
+  const key = buildOwnedFileKey(ownerId, randomUUID(), ext);
 
   if (isStorageEnabled()) {
     return uploadToS3(key, data);

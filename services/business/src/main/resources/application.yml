@@ -13,9 +13,8 @@ spring:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
 
-auth:
-  # 生产必须显式注入（与现网 getAuthSecret 同语义）；演示回退仅本地
-  secret: ${AUTH_SECRET:dev-secret-change-in-production}
+# auth.secret 只在 pg profile 定义（application-pg.yml），且无默认值：
+# 缺少 AUTH_SECRET 时应用直接启动失败，而不是回退到公开默认密钥。
 
 management:
   endpoints:

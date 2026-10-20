@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { verifyCredentials, sanitize, isAccountLocked } from "@/lib/auth/store";
 import { createToken, createPreAuthToken } from "@/lib/auth/session";
 import { notify } from "@/lib/notifications/store";
-import { addSession, recordLogin, is2FAEnabled, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
+import { addSession, recordLogin, is2FAEnabled, is2FAVerificationLocked, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 import { recordAudit } from "@/lib/security/audit";
+import { ensureHydrated } from "@/lib/db/hydrate";
 export const dynamic = "force-dynamic";
 
 // POST /api/auth/login { email, password, totpCode? }
@@ -14,6 +15,10 @@ export const dynamic = "force-dynamic";
 //                               but not yet enabled
 //   3. Otherwise              -> { user, token } (session issued)
 export async function POST(req: Request) {
+  // P0: hydration is otherwise fire-and-forget (proxy). If the first request
+  // after a restart is a login, 2FA state may not be loaded yet and the check
+  // below would be skipped - await it before making any auth decision.
+  await ensureHydrated();
   let body: { email?: string; password?: string; totpCode?: string };
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
@@ -58,6 +63,15 @@ export async function POST(req: Request) {
         message: "请输入两步验证码",
       });
     }
+    // P0: a stolen password must not allow unlimited TOTP guessing. The
+    // lockout is enforced inside verify2FALogin (5 fails / 15 min); check it
+    // up front so a locked user gets an explicit 429 instead of a generic 401.
+    if (is2FAVerificationLocked(user.id)) {
+      return NextResponse.json(
+        { error: "两步验证失败次数过多，请 15 分钟后重试", locked: true },
+        { status: 429 }
+      );
+    }
     // Verify TOTP or backup code. A wrong code is a failed login attempt -
     // record it so brute-force tries surface in the user's login history.
     if (!verify2FALogin(user.id, body.totpCode.trim())) {
@@ -70,6 +84,12 @@ export async function POST(req: Request) {
         detail: "TOTP/恢复码验证失败",
         ip: info.ip,
       });
+      if (is2FAVerificationLocked(user.id)) {
+        return NextResponse.json(
+          { error: "两步验证失败次数过多，请 15 分钟后重试", locked: true },
+          { status: 429 }
+        );
+      }
       return NextResponse.json({ error: "两步验证码不正确" }, { status: 401 });
     }
   } else if (mustEnroll2FA(user.id, user.role)) {

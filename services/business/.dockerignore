@@ -1,0 +1,6 @@
+# Maven build output must not enter the Docker build context.
+target/
+*.class
+*.log
+.idea/
+*.iml

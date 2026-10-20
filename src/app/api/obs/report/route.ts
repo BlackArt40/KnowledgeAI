@@ -21,10 +21,19 @@ export async function POST(req: Request) {
   }
   const err = new Error(body.message.slice(0, 2000));
   if (body.stack) err.stack = body.stack.slice(0, 8000);
+  // P2: bound every client-controlled field before it enters the error ring /
+  // Sentry (log-injection and quota-exhaustion surface).
+  const rawTags = body.tags && typeof body.tags === "object" ? body.tags : {};
+  const tags = Object.fromEntries(
+    Object.entries(rawTags)
+      .filter(([, v]) => typeof v === "string")
+      .slice(0, 20)
+      .map(([k, v]) => [k.slice(0, 50), String(v).slice(0, 200)])
+  );
   const record = reportError(err, {
     source: "client",
-    context: body.url ? `url: ${body.url}` : undefined,
-    tags: body.tags,
+    context: typeof body.url === "string" ? `url: ${body.url.slice(0, 2000)}` : undefined,
+    tags,
   });
   // Forward to Sentry with a browser platform tag (reportError defaulted to
   // "node" for server-side source strings; client events must say javascript).

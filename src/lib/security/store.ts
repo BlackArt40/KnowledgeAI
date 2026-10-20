@@ -1,6 +1,7 @@
 import type { SecurityState, TwoFactor, PrivacySettings, Session } from "./types";
 import type { ClientInfo } from "./ua";
-import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTP, verifyBackupCode } from "./totp";
+import { generateSecret, generateOTPAuthURI, generateBackupCodes, hashBackupCode, verifyTOTPWithStep, verifyBackupCode } from "./totp";
+import { persistSecurityState, deleteSecurityStateFromDb } from "@/lib/db/persist";
 import { revokeJti } from "@/lib/auth/session";
 import { deleteConversationsOlderThan } from "@/lib/chat/store";
 import { getConfig } from "@/lib/admin/store";
@@ -23,15 +24,89 @@ function store(): Store {
   return g.__KAI_SECURITY_STORE__;
 }
 
+function blankTwoFactor(): TwoFactor {
+  return {
+    enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0,
+    enrolledAt: null, pendingSecret: null, pendingBackupCodes: [], lastUsedStep: null,
+  };
+}
+
 function blank(): UserState {
   return {
-    twoFactor: { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] },
+    twoFactor: blankTwoFactor(),
     sessions: [],
     loginHistory: [],
     privacy: { analytics: true, crashReports: true, trainingOptIn: false, dataRetentionDays: 90 },
     seeded: false,
     authVersion: 2,
   };
+}
+
+/** Write-through helper: the DB is the only thing that survives a restart. */
+function save(userId: string, st: UserState): void {
+  void persistSecurityState(userId, {
+    twoFactor: st.twoFactor,
+    sessions: st.sessions,
+    loginHistory: st.loginHistory,
+    privacy: st.privacy,
+  });
+}
+
+// ── 2FA verification lockout ─────────────────────────────────────────────
+// A stolen password must not allow unlimited TOTP guessing (10^6 space). After
+// 5 consecutive wrong codes the user is locked for 15 minutes. In-memory is
+// sufficient for the single-instance deployment; multi-instance would need
+// Redis like the password lockout in auth/store.ts.
+declare global {
+  var __KAI_2FA_LOCKOUT__: Map<string, { fails: number; lockedUntil: number }> | undefined;
+}
+
+const MAX_2FA_FAILS = 5;
+const TWO_FA_LOCKOUT_MS = 15 * 60_000;
+
+function twoFaLockout(): Map<string, { fails: number; lockedUntil: number }> {
+  if (!globalThis.__KAI_2FA_LOCKOUT__) globalThis.__KAI_2FA_LOCKOUT__ = new Map();
+  return globalThis.__KAI_2FA_LOCKOUT__;
+}
+
+/** Is 2FA verification (login / disable / enrollment) locked for this user? */
+export function is2FAVerificationLocked(userId: string): boolean {
+  const st = twoFaLockout().get(userId);
+  if (!st) return false;
+  if (st.lockedUntil > Date.now()) return true;
+  if (st.lockedUntil > 0) {
+    st.fails = 0;
+    st.lockedUntil = 0;
+  }
+  return false;
+}
+
+function note2FAFailure(userId: string): void {
+  const ls = twoFaLockout();
+  const st = ls.get(userId) ?? { fails: 0, lockedUntil: 0 };
+  st.fails++;
+  if (st.fails >= MAX_2FA_FAILS) st.lockedUntil = Date.now() + TWO_FA_LOCKOUT_MS;
+  ls.set(userId, st);
+}
+
+function clear2FAFailures(userId: string): void {
+  twoFaLockout().delete(userId);
+}
+
+/** Load a persisted security row into the in-memory store (hydrate). */
+export function hydrateSecurityState(userId: string, state: SecurityState): void {
+  store().byUser.set(userId, {
+    twoFactor: {
+      ...state.twoFactor,
+      backupCodesRemaining: state.twoFactor.backupCodes.length,
+    },
+    sessions: state.sessions,
+    loginHistory: state.loginHistory,
+    privacy: state.privacy,
+    // seeded=true prevents seed() from wiping the hydrated 2FA state.
+    seeded: true,
+    authVersion: 2,
+  });
 }
 
 function stateFor(userId: string): UserState {
@@ -55,7 +130,7 @@ function seed(userId: string) {
   if (st.seeded) return;
   st.seeded = true;
 
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] };
+  st.twoFactor = blankTwoFactor();
   // sessions & loginHistory start empty - populated by real logins below.
 }
 
@@ -65,9 +140,11 @@ function snapshot(st: UserState): SecurityState {
   // 剩余" without revealing the hashes (which must never be displayed as if
   // they were usable codes). backupCodesRemaining is derived from
   // backupCodes.length so it can never drift from reality.
+  // lastUsedStep is internal replay-protection state - keep it out of the API.
+  const twoFactor = { ...st.twoFactor, lastUsedStep: undefined };
   return {
     twoFactor: {
-      ...st.twoFactor,
+      ...twoFactor,
       backupCodes: [],
       backupCodesRemaining: st.twoFactor.backupCodes.length,
       pendingBackupCodes: [],
@@ -101,6 +178,7 @@ export function recordLogin(
     ts: Date.now(),
   });
   if (st.loginHistory.length > 50) st.loginHistory.length = 50;
+  save(userId, st);
 }
 
 /** Register the current login as an active session (others become non-current). */
@@ -117,6 +195,7 @@ export function addSession(userId: string, info: ClientInfo): Session[] {
     current: true,
     lastActive: Date.now(),
   });
+  save(userId, st);
   return st.sessions;
 }
 
@@ -145,6 +224,7 @@ export function ensureCurrentSession(userId: string, info: ClientInfo): void {
     ts: Date.now(),
   });
   if (st.loginHistory.length > 50) st.loginHistory.length = 50;
+  save(userId, st);
 }
 
 /** Start 2FA enrollment: generate TOTP secret + backup codes.
@@ -168,16 +248,23 @@ export function start2FAEnrollment(userId: string, email: string): {
   // 2FA is still disabled, avoiding an inconsistent "enabled:false but 8 codes
   // remaining" state if the user abandons enrollment mid-flow.
   st.twoFactor.pendingBackupCodes = backupCodes.map(hashBackupCode);
+  // Persist the pending secret so an interrupted enrollment survives a restart.
+  save(userId, st);
   return { secret, qrCodeUri, backupCodes };
 }
 
 /** Verify the TOTP code during enrollment and activate 2FA. */
 export function verify2FAEnrollment(userId: string, code: string): boolean {
   seed(userId);
+  if (is2FAVerificationLocked(userId)) return false;
   const st = stateFor(userId);
   const secret = st.twoFactor.pendingSecret;
   if (!secret) return false;
-  if (!verifyTOTP(secret, code)) return false;
+  const totp = verifyTOTPWithStep(secret, code);
+  if (!totp.valid || totp.step === null) {
+    note2FAFailure(userId);
+    return false;
+  }
   st.twoFactor.enabled = true;
   st.twoFactor.secret = secret;
   st.twoFactor.pendingSecret = null;
@@ -185,24 +272,44 @@ export function verify2FAEnrollment(userId: string, code: string): boolean {
   st.twoFactor.backupCodes = st.twoFactor.pendingBackupCodes;
   st.twoFactor.pendingBackupCodes = [];
   st.twoFactor.enrolledAt = Date.now();
+  st.twoFactor.lastUsedStep = totp.step;
+  clear2FAFailures(userId);
+  save(userId, st);
   return true;
 }
 
 /** Verify a TOTP code or backup code for login (when 2FA is enabled). */
 export function verify2FALogin(userId: string, code: string): boolean {
   seed(userId);
+  if (is2FAVerificationLocked(userId)) return false;
   const st = stateFor(userId);
-  if (!st.twoFactor.enabled || !st.twoFactor.secret) return false;
-  // Try TOTP code first
-  if (verifyTOTP(st.twoFactor.secret, code)) return true;
+  if (!st.twoFactor.enabled) return false;
+  // Try TOTP code first. Reject a step that was already consumed: the ±1 step
+  // tolerance otherwise makes the same 6-digit code reusable for ~90 seconds.
+  if (st.twoFactor.secret) {
+    const totp = verifyTOTPWithStep(st.twoFactor.secret, code);
+    if (totp.valid && totp.step !== null) {
+      if (st.twoFactor.lastUsedStep != null && totp.step <= st.twoFactor.lastUsedStep) {
+        note2FAFailure(userId);
+        return false;
+      }
+      st.twoFactor.lastUsedStep = totp.step;
+      clear2FAFailures(userId);
+      save(userId, st);
+      return true;
+    }
+  }
   // Try backup code (one-time use: consumed + auto-invalidated on success)
   const { valid, remaining } = verifyBackupCode(code, st.twoFactor.backupCodes);
   if (valid) {
     st.twoFactor.backupCodes = remaining;
     // backupCodesRemaining is a derived value: snapshot()/exportData() recompute
     // it from backupCodes.length, so it need not be maintained here.
+    clear2FAFailures(userId);
+    save(userId, st);
     return true;
   }
+  note2FAFailure(userId);
   return false;
 }
 
@@ -233,7 +340,9 @@ export function mustEnroll2FA(userId: string, role: string): boolean {
 export function disable2FA(userId: string): TwoFactor {
   seed(userId);
   const st = stateFor(userId);
-  st.twoFactor = { enabled: false, method: null, secret: null, backupCodes: [], backupCodesRemaining: 0, enrolledAt: null, pendingSecret: null, pendingBackupCodes: [] };
+  st.twoFactor = blankTwoFactor();
+  clear2FAFailures(userId);
+  save(userId, st);
   return st.twoFactor;
 }
 
@@ -245,6 +354,7 @@ export function revokeSession(userId: string, id: string): Session[] {
   // P1-3: the session id doubles as the JWT's jti - blacklist it so the
   // 7-day token is invalidated immediately (previously it stayed valid).
   if (removed) revokeJti(removed.id);
+  save(userId, st);
   return st.sessions;
 }
 
@@ -255,6 +365,7 @@ export function revokeAllSessions(userId: string): Session[] {
   st.sessions = st.sessions.filter((x) => x.current);
   // P1-3: blacklist every revoked session's jti (keeps the current one live).
   for (const s of removed) revokeJti(s.id);
+  save(userId, st);
   return st.sessions;
 }
 
@@ -262,6 +373,7 @@ export function updatePrivacy(userId: string, patch: Partial<PrivacySettings>): 
   seed(userId);
   const st = stateFor(userId);
   st.privacy = { ...st.privacy, ...patch };
+  save(userId, st);
   return st.privacy;
 }
 
@@ -271,6 +383,7 @@ export function trimLoginHistory(userId: string, cutoff: number): number {
   const st = stateFor(userId);
   const before = st.loginHistory.length;
   st.loginHistory = st.loginHistory.filter((e) => e.ts >= cutoff);
+  save(userId, st);
   return before - st.loginHistory.length;
 }
 
@@ -294,6 +407,8 @@ export function runRetentionCleanup(userId: string): {
 /** Delete all security data for a user (account deletion). */
 export function deleteSecurityData(userId: string): void {
   store().byUser.delete(userId);
+  clear2FAFailures(userId);
+  void deleteSecurityStateFromDb(userId);
 }
 
 // GDPR: export the user's data as a JSON string

@@ -1,9 +1,12 @@
 package dev.knowledgeai.business.auth;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Profile("pg")
 public class AuthController {
+
+    /** 原子地“认领”一个 TOTP 时步：仅当 step > 已记录的 step 时成功。
+     *  Redis 不可用时返回失败（登录的 secret 读取同样依赖 Redis，属 fail-closed）。 */
+    private static final DefaultRedisScript<Long> CLAIM_TOTP_STEP = new DefaultRedisScript<>(
+            "local last = tonumber(redis.call('GET', KEYS[1]) or '0')\n"
+                    + "if tonumber(ARGV[1]) <= last then return 0 end\n"
+                    + "redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])\n"
+                    + "return 1",
+            Long.class);
 
     private final UserRepository users;
     private final Pbkdf2PasswordService passwords;
@@ -96,7 +108,12 @@ public class AuthController {
                 return ResponseEntity.status(401).body(Map.of(
                         "requires2FA", true, "message", "请输入两步验证码"));
             }
-            if (secret.isEmpty() || !totp.verify(secret, totpCode)) {
+            OptionalLong matchedStep = secret.isEmpty()
+                    ? OptionalLong.empty()
+                    : totp.verifyStep(secret, totpCode, System.currentTimeMillis() / 1000);
+            // Reject a code whose time step was already consumed: the ±1 step
+            // tolerance otherwise makes the same 6-digit code reusable for ~90s.
+            if (matchedStep.isEmpty() || !claimTotpStep(user.id(), matchedStep.getAsLong())) {
                 lockout.recordFailure(email);
                 return ResponseEntity.status(401).body(Map.of("error", "两步验证码不正确"));
             }
@@ -132,6 +149,18 @@ public class AuthController {
             return redisTemplate.opsForValue().get(key);
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    private boolean claimTotpStep(String userId, long step) {
+        try {
+            Long accepted = redisTemplate.execute(
+                    CLAIM_TOTP_STEP,
+                    List.of("2fa:laststep:" + userId),
+                    Long.toString(step), "300");
+            return accepted != null && accepted == 1L;
+        } catch (Exception e) {
+            return false;
         }
     }
 

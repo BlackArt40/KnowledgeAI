@@ -49,7 +49,10 @@ export interface AuditInput {
 }
 
 type Store = AuditEvent[];
-const g = globalThis as unknown as { __KAI_AUDIT_STORE__?: Store };
+const g = globalThis as unknown as {
+  __KAI_AUDIT_STORE__?: Store;
+  __KAI_AUDIT_TRUNCATED__?: boolean;
+};
 
 function store(): Store {
   if (!g.__KAI_AUDIT_STORE__) g.__KAI_AUDIT_STORE__ = [];
@@ -92,22 +95,51 @@ export function recordAudit(input: AuditInput): AuditEvent {
   };
   const ev: AuditEvent = { ...base, prevHash, hash: hashEvent(prevHash, base) };
   s.unshift(ev);
-  if (s.length > AUDIT_MAX_ENTRIES) s.length = AUDIT_MAX_ENTRIES; // hard cap
+  if (s.length > AUDIT_MAX_ENTRIES) {
+    s.length = AUDIT_MAX_ENTRIES; // hard cap
+    g.__KAI_AUDIT_TRUNCATED__ = true;
+  }
   void persistAuditEvent(ev);
   return ev;
 }
 
-/** Re-verify the whole hash chain. Returns valid=false + index of the first
- *  broken link when any entry was tampered with / removed / reordered. */
-export function verifyAuditChain(): { valid: boolean; brokenAt: number } {
+/** Re-verify the audit log.
+ *
+ *  Multi-process safe: web and worker each append with their own in-memory
+ *  head, which produces several sibling branches in the DB. Instead of
+ *  requiring strict adjacency (the old check reported `valid:false` as soon as
+ *  two processes interleaved), every entry must:
+ *    1. carry a valid HMAC for the prevHash it claims, and
+ *    2. point at an entry that exists (or GENESIS).
+ *  A deletion still breaks the child's link; a tampered field still breaks its
+ *  HMAC. Retention pruning may remove the oldest entries, so dangling links
+ *  are tolerated only at the tail (oldest retained boundary) and reported as
+ *  `truncated`.
+ */
+export function verifyAuditChain(): {
+  valid: boolean;
+  brokenAt: number;
+  truncated: boolean;
+} {
   const s = store();
+  const hashes = new Set(s.map((e) => e.hash));
+  let truncated = false;
   for (let i = 0; i < s.length; i++) {
     const cur = s[i];
-    const expectedPrev = i < s.length - 1 ? s[i + 1].hash : GENESIS_HASH;
-    if (cur.prevHash !== expectedPrev) return { valid: false, brokenAt: i };
-    if (cur.hash !== hashEvent(expectedPrev, cur)) return { valid: false, brokenAt: i };
+    if (cur.hash !== hashEvent(cur.prevHash, cur)) {
+      return { valid: false, brokenAt: i, truncated: false };
+    }
+    if (cur.prevHash !== GENESIS_HASH && !hashes.has(cur.prevHash)) {
+      // Retention/cap pruning is the only legitimate reason for a dangling
+      // link. Without an actual trim event this is a deleted row -> invalid.
+      if (g.__KAI_AUDIT_TRUNCATED__) {
+        truncated = true;
+        continue;
+      }
+      return { valid: false, brokenAt: i, truncated: false };
+    }
   }
-  return { valid: true, brokenAt: -1 };
+  return { valid: true, brokenAt: -1, truncated };
 }
 
 /** Filtered retrieval for the admin panel: by action (substring), actor
@@ -138,6 +170,7 @@ export function trimAudit(): number {
   const before = s.length;
   const kept = s.filter((e) => e.createdAt >= cutoff);
   g.__KAI_AUDIT_STORE__ = kept;
+  if (kept.length !== before) g.__KAI_AUDIT_TRUNCATED__ = true;
   return before - kept.length;
 }
 

@@ -14,11 +14,13 @@ async function handleGET(req: Request) {
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const url = new URL(req.url);
   const kbId = url.searchParams.get("kbId");
-  const limit = url.searchParams.get("limit");
   const archivedOnly = url.searchParams.get("archived") === "1";
+  // P2: `limit` used to be unbounded (and NaN produced an empty list).
+  const rawLimit = Number.parseInt(url.searchParams.get("limit") ?? "", 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : undefined;
   const list = kbId
     ? listConversations(kbId, u.id).filter((c) => c.workspaceId === u.workspaceId)
-    : listAllConversations(limit ? parseInt(limit, 10) : undefined, u.id).filter((c) => c.workspaceId === u.workspaceId);
+    : listAllConversations(limit, u.id).filter((c) => c.workspaceId === u.workspaceId);
   return NextResponse.json({
     conversations: list.filter((c) => (archivedOnly ? !!c.archived : !c.archived)),
   });

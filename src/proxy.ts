@@ -7,6 +7,7 @@ import { verifyToken } from "@/lib/auth/session";
 import { startCleanupTimer } from "@/lib/storage/cleanup";
 import { logEdge } from "@/lib/obs/log-edge";
 import { corsHeaders } from "@/lib/security/cors";
+import { clientIpFromHeaders } from "@/lib/security/client-ip";
 
 // ---------------------------------------------------------------------------
 // Rate Limiting Proxy
@@ -53,9 +54,8 @@ interface Tier {
 // first hydration, in which case the request is treated as anonymous.
 async function tierOf(req: NextRequest): Promise<Tier> {
   const limits = getRateLimitLimits();
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || req.headers.get("x-real-ip")
-    || "unknown";
+  // P2: leftmost XFF is client-controlled; trust the nearest proxy's hop.
+  const ip = clientIpFromHeaders(req.headers);
 
   const cookieToken = req.headers.get("cookie")
     ?.split(";")
@@ -87,11 +87,13 @@ export async function proxy(req: NextRequest) {
   // Start periodic cleanup timer (idempotent, auto-starts on first request)
   startCleanupTimer();
 
-  // Hydrate in-memory stores from DB on first API request (fire-and-forget).
+  // P1: await hydration before serving the request. Fire-and-forget let the
+  // first requests after a restart read empty stores (and race writes against
+  // the rows being loaded). It is a one-time cost; later calls return at once.
   // NOTE: the proxy only matches /api/* (see config.matcher below), so this
   // guard is effectively always true - kept as a cheap safety net.
   if (!pathname.startsWith("/_next")) {
-    void ensureHydrated();
+    await ensureHydrated();
   }
 
   // L-9: the old `if (!pathname.startsWith("/api/")) return next()` branch was

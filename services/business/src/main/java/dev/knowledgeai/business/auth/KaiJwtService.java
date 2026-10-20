@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 /**
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
  * （双向由 KaiJwtServiceTest 的跨语言向量 + verify script 双向锁定）。
  */
 @Service
+@Profile("pg")
 public class KaiJwtService {
 
     private static final long DEFAULT_TTL_SECONDS = 7 * 86400L;
@@ -34,8 +36,8 @@ public class KaiJwtService {
 
     private final byte[] secret;
 
-    public KaiJwtService(@Value("${auth.secret:${AUTH_SECRET:dev-secret-change-in-production}}") String secret) {
-        this.secret = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    public KaiJwtService(@Value("${auth.secret}") String secret) {
+        this.secret = AuthSecret.require(secret, "KaiJwtService");
     }
 
     public record AuthUser(String id, String email, String name, String role) {

@@ -9,6 +9,7 @@ import {
   BOT_PLATFORMS,
   type BotPlatform,
 } from "@/lib/integrations/bots";
+import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import { withApiTrace } from "@/lib/obs/trace";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +28,15 @@ async function handleGET(req: Request) {
 }
 
 async function handlePOST(req: Request) {
+  // P2: creating a bot mints a long-lived callback token - same privilege
+  // level as webhook management. Require the write scope + a non-viewer role.
+  const scope = await requireApiKeyScope(req, "kb:write");
+  if (scope.error) return scope.error;
   const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
 
   let body: { name?: string; platform?: string; kbId?: string };
   try {

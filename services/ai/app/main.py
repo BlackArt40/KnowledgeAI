@@ -10,11 +10,13 @@
 # ---------------------------------------------------------------------------
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
+import socket
 import time
 from typing import AsyncGenerator, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import FastAPI, Request
@@ -76,7 +78,8 @@ app = FastAPI(title="KnowledgeAI AI Service", version="1.0.0", docs_url=None, re
 
 TRACE_HEADER = "X-Trace-Id"
 
-_BAD_HOST_PREFIXES = ("127.", "10.", "192.168.", "169.254.", "172.16.", "172.17.", "172.18.", "172.19.", "172.30.", "172.31.")
+_MAX_REDIRECTS = 3
+_REDIRECT_STATUS = {301, 302, 303, 307, 308}
 
 
 class _HttpException(Exception):
@@ -221,19 +224,56 @@ class SourceError(Exception):
         self.message = message
 
 
+def _is_private_ip(ip: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return True  # unparseable -> fail closed
+    return (
+        addr.is_private
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_reserved
+        or addr.is_multicast
+        or addr.is_unspecified
+    )
+
+
 def _assert_public_http(url: str) -> None:
-    """SSRF 基线：拒绝回环/私网/链路本地字面量与云元数据地址，但放行
-    已配置的 S3 端点主机（内网 MinIO 是该部署的生产配置）。DNS 解析级复查
-    在预签名 URL 模式下由对象存储签名兜底（伪造的查询参数无法通过签名校验）。"""
+    """SSRF 基线：拒绝回环/私网/链路本地/云元数据地址，但放行已配置的
+    S3 端点主机（内网 MinIO 是该部署的生产配置）。主机名会做 DNS 解析，
+    任一 A/AAAA 记录落在私网即拒绝（DNS rebinding 安全）。"""
     host = (urlparse(url).hostname or "").lower()
     if settings.AI_ALLOW_PRIVATE_FETCH or settings.is_s3_endpoint_host(host):
         return
-    if (
-        host in ("localhost", "0.0.0.0", "::1", "")
-        or host.endswith(".local")
-        or host.startswith(_BAD_HOST_PREFIXES)
-    ):
+    if host in ("", "localhost", "0.0.0.0", "::1"):
         raise SourceError("forbidden_source", "内网地址被抓取且未开启 AI_ALLOW_PRIVATE_FETCH")
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError as e:
+        raise SourceError("fetch_error", "源地址解析失败") from e
+    if not infos:
+        raise SourceError("fetch_error", "源地址无有效解析结果")
+    for info in infos:
+        ip = info[4][0]
+        if _is_private_ip(ip):
+            raise SourceError("forbidden_source", "内网地址被抓取且未开启 AI_ALLOW_PRIVATE_FETCH")
+
+
+def _fetch_public(url: str) -> httpx.Response:
+    """GET with manual redirects; every hop is re-validated (no open redirect
+    from a public host into the metadata service)."""
+    current = url
+    for _ in range(_MAX_REDIRECTS + 1):
+        _assert_public_http(current)
+        res = httpx.get(current, timeout=settings.FETCH_TIMEOUT_S, follow_redirects=False)
+        if res.status_code not in _REDIRECT_STATUS:
+            return res
+        location = res.headers.get("location")
+        if not location:
+            raise SourceError("fetch_error", "源地址重定向缺少 Location")
+        current = urljoin(current, location)
+    raise SourceError("fetch_error", "源地址重定向次数过多")
 
 
 _s3_client = None
@@ -289,9 +329,8 @@ def _load_source(source: IndexSource) -> bytes:
         url = (source.url or "").strip()
         if not (url.startswith("http://") or url.startswith("https://")):
             raise SourceError("invalid_request", "presignedUrl 仅支持 http(s)://")
-        _assert_public_http(url)
         try:
-            res = httpx.get(url, timeout=settings.FETCH_TIMEOUT_S, follow_redirects=True)
+            res = _fetch_public(url)
             res.raise_for_status()
         except SourceError:
             raise

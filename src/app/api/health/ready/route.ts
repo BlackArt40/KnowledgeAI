@@ -3,6 +3,8 @@ import { checkReadiness, alertOnReadiness, readinessState } from "@/lib/health/r
 import { rateLimitDegradation } from "@/lib/rate-limit";
 import { jtiStoreDegradation } from "@/lib/auth/jti-shared";
 import { queueBackpressureSnapshot } from "@/lib/queue";
+import { getRequestUser } from "@/lib/auth/guard";
+import { dbRetrySnapshot } from "@/lib/db/retry";
 
 export const dynamic = "force-dynamic";
 
@@ -30,15 +32,24 @@ export async function GET(req: Request) {
   return withApiTrace(req, "api /api/health/ready", async () => {
     const checks = await checkReadiness();
     alertOnReadiness(checks);
+    // P2: anonymous probes get status/latency only. `detail` can contain
+    // internal hostnames and driver errors; expose it to owner/admin only.
+    const verbose = new URL(req.url).searchParams.get("verbose") === "1";
+    const u = verbose ? await getRequestUser(req) : null;
+    const canSeeDetail = u !== null && ["owner", "admin"].includes(u.role);
+    const safeChecks = canSeeDetail
+      ? checks
+      : checks.map((c) => ({ name: c.name, status: c.status, latencyMs: c.latencyMs }));
     const degraded = checks.filter((c) => c.status === "degraded").map((c) => c.name);
     const s = readinessState();
     const rateLimit = rateLimitDegradation();
     const revocation = jtiStoreDegradation();
     const queue = await queueBackpressureSnapshot();
+    const dbRetries = dbRetrySnapshot();
     return Response.json(
       {
         status: degraded.length > 0 ? "degraded" : "ok",
-        checks,
+        checks: safeChecks,
         degraded,
         degradedSince: degraded.length > 0 ? s.degradedSince : null,
         rateLimit,
@@ -47,6 +58,7 @@ export async function GET(req: Request) {
         revocationDegraded: revocation.degraded,
         queue,
         queueBackpressured: queue.backpressured,
+        dbRetries,
         ts: Date.now(),
       },
       { status: degraded.length > 0 ? 503 : 200 }

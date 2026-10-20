@@ -38,20 +38,48 @@ public class UsageService {
     }
 
     public void recordQa(String workspaceId) {
+        recordQa(workspaceId, null);
+    }
+
+    public void recordQa(String workspaceId, String userId) {
+        LocalDate today = LocalDate.now();
         jdbc.update(
                 "INSERT INTO \"UsageDaily\" (\"workspaceId\", \"day\", \"qaCount\", \"agentCount\") "
                         + "VALUES (?, ?, 1, 0) "
                         + "ON CONFLICT (\"workspaceId\", \"day\") DO UPDATE SET \"qaCount\" = \"UsageDaily\".\"qaCount\" + 1",
-                workspaceId, LocalDate.now());
+                workspaceId, today);
+        // P1: per-user counters (billing page / admin monthly totals).
+        if (userId != null && !userId.isBlank()) {
+            jdbc.update(
+                    "INSERT INTO \"UserUsageDaily\" (\"userId\", \"day\", \"qaCount\", \"apiCount\", \"agentCount\") "
+                            + "VALUES (?, ?, 1, 1, 0) "
+                            + "ON CONFLICT (\"userId\", \"day\") DO UPDATE SET "
+                            + "\"qaCount\" = \"UserUsageDaily\".\"qaCount\" + 1, "
+                            + "\"apiCount\" = \"UserUsageDaily\".\"apiCount\" + 1",
+                    userId, today);
+        }
         maybeAlert(workspaceId);
     }
 
     public void recordAgent(String workspaceId) {
+        recordAgent(workspaceId, null);
+    }
+
+    public void recordAgent(String workspaceId, String userId) {
+        LocalDate today = LocalDate.now();
         jdbc.update(
                 "INSERT INTO \"UsageDaily\" (\"workspaceId\", \"day\", \"qaCount\", \"agentCount\") "
                         + "VALUES (?, ?, 0, 1) "
                         + "ON CONFLICT (\"workspaceId\", \"day\") DO UPDATE SET \"agentCount\" = \"UsageDaily\".\"agentCount\" + 1",
-                workspaceId, LocalDate.now());
+                workspaceId, today);
+        if (userId != null && !userId.isBlank()) {
+            jdbc.update(
+                    "INSERT INTO \"UserUsageDaily\" (\"userId\", \"day\", \"qaCount\", \"apiCount\", \"agentCount\") "
+                            + "VALUES (?, ?, 0, 0, 1) "
+                            + "ON CONFLICT (\"userId\", \"day\") DO UPDATE SET "
+                            + "\"agentCount\" = \"UserUsageDaily\".\"agentCount\" + 1",
+                    userId, today);
+        }
     }
 
     public long qaCountToday(String workspaceId) {
