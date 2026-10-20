@@ -152,7 +152,9 @@ async function main() {
     const code = generateTOTP(totpSecret);
     const verify2fa = await req("POST", "/api/security/2fa", { token: editorToken, body: { action: "verify", code } });
     check("audit-flow: 2fa enabled", verify2fa.status === 200);
-    const code2 = generateTOTP(totpSecret);
+    // Enrollment consumed the current TOTP step (replay protection); use a
+    // backup code when available, otherwise the next step.
+    const code2 = enroll.data?.backupCodes?.[0] ?? generateTOTP(totpSecret, Date.now() + 30_000);
     const disable2fa = await req("POST", "/api/security/2fa", { token: editorToken, body: { action: "disable", code: code2 } });
     check("audit-flow: 2fa disabled", disable2fa.status === 200);
   } else {
