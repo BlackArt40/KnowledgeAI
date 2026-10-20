@@ -17,14 +17,11 @@
 // ---------------------------------------------------------------------------
 
 import crypto from "crypto";
+import { log } from "../src/lib/obs/log";
 
-// Standalone seed runner: deliberately free of @/ imports so the bootstrap
-// `migrate` container (deps-stage image, no src/ tree) can execute it with
-// only ./prisma mounted. pino-style call sites are kept and shimmed here.
-const log = {
-  info: (...args: unknown[]) => console.log(...args),
-  error: (...args: unknown[]) => console.error(...args),
-};
+// The bootstrap `migrate` container mounts ./src as well, so this import is
+// available there. pino gives redaction + structured output; the repo-wide
+// static scan forbids console.* as a server-side log sink.
 
 function hashPwd(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
