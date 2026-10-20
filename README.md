@@ -78,15 +78,24 @@ pnpm -C frontend lint && pnpm -C frontend typecheck
 ## 🐳 Docker 部署
 
 ```bash
-# 复制环境变量
+# 复制环境变量，并把 AUTH_SECRET 替换为随机值（openssl rand -hex 32）
 cp .env.example .env.local
 
-# 构建并运行（Redis + PostgreSQL + worker）
+# 启动依赖与应用（postgres/redis/app/worker；队列由 worker 消费）
 docker compose up -d
 
-# 或单独构建镜像
+# 首次启动：应用数据库迁移 + 可选演示数据（Postgres 已映射宿主机 5432）
+DATABASE_URL='postgresql://user:knowledgeai-dev@localhost:5432/knowledgeai' npx prisma migrate deploy
+DATABASE_URL='postgresql://user:knowledgeai-dev@localhost:5432/knowledgeai' npx tsx prisma/seed.ts
+docker compose restart app worker
+
+# 访问：3000 为纯 API（Next 已无页面层）；UI 需构建前端
+pnpm -C frontend build
+pnpm -C frontend exec vite preview --port 4173   # UI :4173（/api 反代 :3000）
+
+# 单容器（应用自消费队列，仅 API；务必设置 QUEUE_CONSUMER=web）
 docker build -t knowledgeai .
-docker run -p 3000:3000 --env-file .env.local knowledgeai
+docker run -p 3000:3000 --env-file .env.local -e QUEUE_CONSUMER=web knowledgeai
 ```
 
 ## 📁 项目结构

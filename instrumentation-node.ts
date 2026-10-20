@@ -24,8 +24,10 @@ if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
 // consumer here too doubles concurrency and lets long jobs run in the web
 // process. Memory mode has no other process, so it consumes in-process.
 // QUEUE_CONSUMER=web forces web consumption for single-process Redis setups.
+// P2: blank string (copied from .env.example) counts as unset - auto-select.
 const externalQueue = !!process.env.REDIS_URL;
-const consumerRole = (process.env.QUEUE_CONSUMER ?? (externalQueue ? "worker" : "web")).toLowerCase();
+const configuredRole = (process.env.QUEUE_CONSUMER ?? "").trim();
+const consumerRole = (configuredRole || (externalQueue ? "worker" : "web")).toLowerCase();
 if (consumerRole === "web") {
   log.info("[instrumentation] Starting background queue worker (in-process)...");
   startQueue();

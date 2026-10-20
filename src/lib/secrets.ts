@@ -20,18 +20,24 @@ import { logEdge } from "@/lib/obs/log-edge";
 
 let warned = false;
 
+/** P2: `.env.example` ships this publicly-known placeholder. Copying it to a
+ *  production deployment is as fatal as leaving AUTH_SECRET unset (anyone can
+ *  mint JWTs / decrypt at rest), so it is rejected exactly the same way. */
+const PUBLIC_PLACEHOLDER = "change-me-to-a-random-32-char-string";
+
 /** Resolve AUTH_SECRET. `fallback` keeps each caller's existing dev key so
  *  previously-encrypted demo data stays decryptable. Throws at runtime in
- *  production when AUTH_SECRET is unset (skipped during `next build`). */
+ *  production when AUTH_SECRET is unset or is the public placeholder
+ *  (skipped during `next build`). */
 export function getAuthSecret(fallback: string): string {
   const s = process.env.AUTH_SECRET;
-  if (s) return s;
+  if (s && s !== PUBLIC_PLACEHOLDER) return s;
   if (
     process.env.NODE_ENV === "production" &&
     process.env.NEXT_PHASE !== "phase-production-build"
   ) {
     throw new Error(
-      "AUTH_SECRET 未配置：生产环境拒绝启动（JWT 签名 / AES 加密 / 审计 HMAC 共用该密钥，缺省回退硬编码密钥可导致任意账号伪造与敏感数据解密）"
+      "AUTH_SECRET 未配置或仍为公开占位符：生产环境拒绝启动（JWT 签名 / AES 加密 / 审计 HMAC 共用该密钥，缺省回退硬编码密钥可导致任意账号伪造与敏感数据解密）"
     );
   }
   if (!warned) {
