@@ -35,6 +35,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       # P6-4: liveness probe (dependency connectivity = /api/health/ready)
@@ -73,6 +75,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     # worker 是纯队列消费者，无 HTTP 端口——禁用镜像自带的 wget HEALTHCHECK，
     # 进程存活由 restart: unless-stopped 保障。
     healthcheck:
@@ -111,7 +115,9 @@ services:
 
   # 对象存储（阶段 2）：MinIO（S3 兼容）。9000=S3 API，9001=控制台（本机验收
   # 「控制台可见对象」用；生产可去掉端口映射）。bucket 默认私有 —— 匿名 GET 403。
+  # P2: 仅 S3 存储时需要 —— 放进 s3 profile，默认 up 不拉取（不阻塞无 S3 部署）。
   minio:
+    profiles: ["s3"]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
@@ -131,6 +137,7 @@ services:
 
   # 启动时确保 bucket 存在（默认私有，不设匿名策略）
   minio-init:
+    profiles: ["s3"]
     image: minio/mc:latest
     depends_on:
       minio:
@@ -158,6 +165,26 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  # ── Bootstrap（新电脑部署零手动步骤）────────────────────────────────────
+  # 一次性容器：prisma migrate deploy（空库建全部表）+ 演示数据 seed。
+  # 使用 deps 阶段镜像（含 prisma CLI / tsx），仅挂载 prisma/（seed 已解耦 src）。
+  # 幂等：重复 up 为 no-op；已有数据时 KB 种子自动跳过。
+  migrate:
+    build:
+      context: .
+      target: deps
+    working_dir: /app
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts"
+    env_file: ${KAI_ENV_FILE:-.env.local}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
+    volumes:
+      - ./prisma:/app/prisma:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   # pgvector image: the KbChunk embedding column needs the `vector` extension
   # (created via raw SQL - see prisma migrations / src/lib/rag).

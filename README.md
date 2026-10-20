@@ -81,15 +81,11 @@ pnpm -C frontend lint && pnpm -C frontend typecheck
 # 复制环境变量，并把 AUTH_SECRET 替换为随机值（openssl rand -hex 32）
 cp .env.example .env.local
 
-# 启动依赖与应用（postgres/redis/app/worker；队列由 worker 消费）
+# 一条命令完成：建表迁移 + 演示数据 + API(:3000) + worker
+# （migrate 一次性服务自动执行；幂等，重复 up 不会产生重复数据）
 docker compose up -d
 
-# 首次启动：应用数据库迁移 + 可选演示数据（Postgres 已映射宿主机 5432）
-DATABASE_URL='postgresql://user:knowledgeai-dev@localhost:5432/knowledgeai' npx prisma migrate deploy
-DATABASE_URL='postgresql://user:knowledgeai-dev@localhost:5432/knowledgeai' npx tsx prisma/seed.ts
-docker compose restart app worker
-
-# 访问：3000 为纯 API（Next 已无页面层）；UI 需构建前端
+# UI（3000 是纯 API，Next 已无页面层；另起前端）
 pnpm -C frontend build
 pnpm -C frontend exec vite preview --port 4173   # UI :4173（/api 反代 :3000）
 
