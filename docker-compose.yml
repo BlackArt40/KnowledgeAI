@@ -168,7 +168,7 @@ services:
 
   # ── Bootstrap（新电脑部署零手动步骤）────────────────────────────────────
   # 一次性容器：prisma migrate deploy（空库建全部表）+ 演示数据 seed。
-  # 使用 deps 阶段镜像（含 prisma CLI / tsx），仅挂载 prisma/（seed 已解耦 src）。
+  # 使用 deps 阶段镜像（含 prisma CLI / tsx / pino），挂载 prisma/ 与 src/。
   # 幂等：重复 up 为 no-op；已有数据时 KB 种子自动跳过。
   migrate:
     build:
@@ -181,6 +181,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
     volumes:
       - ./prisma:/app/prisma:ro
+      - ./src:/app/src:ro
     depends_on:
       postgres:
         condition: service_healthy
