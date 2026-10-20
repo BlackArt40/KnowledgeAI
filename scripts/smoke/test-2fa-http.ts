@@ -69,6 +69,7 @@ async function main() {
   check("http: forced enroll returns qrCodeDataUrl", !!r.data.qrCodeDataUrl && r.data.qrCodeDataUrl.startsWith("data:image/"));
   check("http: forced enroll returns 8 backup codes", Array.isArray(r.data.backupCodes) && r.data.backupCodes.length === 8);
   const secret = r.data.secret;
+  const backupCodes: string[] = r.data.backupCodes;
 
   // 5. Verify enrollment -> session token issued (login completes)
   const code = generateTOTP(secret, Date.now());
@@ -81,8 +82,9 @@ async function main() {
   r = await post("/api/auth/login", { email, password });
   check("http: login returns requires2FA", r.data.requires2FA === true, JSON.stringify(r.data));
 
-  // 7. Login with correct TOTP -> token
-  const loginCode = generateTOTP(secret, Date.now());
+  // 7. Login with the NEXT TOTP step -> token. Enrollment consumed the
+  //    current step (replay protection).
+  const loginCode = generateTOTP(secret, Date.now() + 30_000);
   r = await post("/api/auth/login", { email, password, totpCode: loginCode });
   check("http: login with TOTP -> token", r.status === 200 && !!r.data.token, JSON.stringify(r.data));
 
@@ -111,7 +113,8 @@ async function main() {
   //     script leaves the shared demo accounts exactly as it found them.
   const rp = await patch("/api/admin/config", { required2FARoles: [] }, newToken);
   check("http: cleanup - 2FA policy reset", rp.status === 200, JSON.stringify(rp.data?.config));
-  const d1 = await post("/api/security/2fa", { action: "disable", code: generateTOTP(secret, Date.now()) }, newToken);
+  // Login consumed the highest in-window TOTP step; use a one-time backup code.
+  const d1 = await post("/api/security/2fa", { action: "disable", code: backupCodes[0] }, newToken);
   check("http: cleanup - admin 2FA disabled", d1.data?.twoFactor?.enabled === false, JSON.stringify(d1.data));
   const relogin = await post("/api/auth/login", { email, password });
   check("http: cleanup - admin login without 2FA works again", relogin.status === 200 && !!relogin.data.token, JSON.stringify(relogin.data));
