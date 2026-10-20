@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { startQueue, stopQueue } from "@/lib/queue";
+import { recoverInterruptedJobs } from "@/lib/queue/recovery";
 import { log } from "./src/lib/obs/log";
 
 // P0-2 fail-fast: getAuthSecret() skips its throw during `next build`, so
@@ -19,8 +20,19 @@ if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
   );
 }
 
-log.info("[instrumentation] Starting background queue worker...");
-startQueue();
+// P1: with Redis a separate worker process owns consumption. Starting a
+// consumer here too doubles concurrency and lets long jobs run in the web
+// process. Memory mode has no other process, so it consumes in-process.
+// QUEUE_CONSUMER=web forces web consumption for single-process Redis setups.
+const externalQueue = !!process.env.REDIS_URL;
+const consumerRole = (process.env.QUEUE_CONSUMER ?? (externalQueue ? "worker" : "web")).toLowerCase();
+if (consumerRole === "web") {
+  log.info("[instrumentation] Starting background queue worker (in-process)...");
+  startQueue();
+  void recoverInterruptedJobs().catch((err) => log.error({ err }, "[instrumentation] queue recovery failed"));
+} else {
+  log.info("[instrumentation] Queue consumer delegated to worker process (QUEUE_CONSUMER=worker).");
+}
 
 const shutdown = async () => {
   log.info("[instrumentation] Shutting down queue worker...");

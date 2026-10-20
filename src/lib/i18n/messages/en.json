@@ -55,7 +55,15 @@
       "s23": "Delete",
       "s24": "What features does the product have?",
       "s26": "Calls in last 24h",
-      "s27": "No API keys yet. Create one to call /api/v1/*."
+      "s27": "No API keys yet. Create one to call /api/v1/*.",
+      "s28": "Knowledge base read",
+      "s29": "Knowledge base write",
+      "s30": "Chat",
+      "s31": "Agent research",
+      "s32": "Team info",
+      "s33": "Webhook management",
+      "s34": "Expires",
+      "s35": "Expired"
     },
     "billing": {
       "s0": "Ends at period end",
@@ -328,7 +336,8 @@
       "s85": "Run did not complete",
       "s86": "The system is busy (task queue is full). Please try again shortly.",
       "s87": "Could not queue or run the task. Please try again.",
-      "s88": "The run ended without a result. Please try again."
+      "s88": "The run ended without a result. Please try again.",
+      "s89": "Stop research"
     },
     "settings": {
       "s0": "Security",

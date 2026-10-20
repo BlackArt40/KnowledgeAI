@@ -15,6 +15,16 @@ import { getDb, isDbEnabled } from "./client";
 import { encryptToString } from "@/lib/crypto";
 import { log } from "@/lib/obs/log";
 
+/**
+ * Best-effort persistence helper. Deletes are idempotent, so a P2025 ("row not
+ * found") is expected and ignored; every other failure is logged. Previously
+ * these paths used `.catch((err) => bestEffort(err))`, which silently diverged memory from DB.
+ */
+function bestEffort(err: unknown): void {
+  if ((err as { code?: string } | null)?.code === "P2025") return;
+  log.error({ err }, "[db] best-effort persistence operation failed");
+}
+
 /** Persist a user create/update to DB. */
 export async function persistUser(user: {
   id: string;
@@ -54,6 +64,9 @@ export async function persistUser(user: {
       // hydrateUser defaulted everyone to "free" - paid features (unlimited
       // QA / Agent / API keys) silently downgraded. Persist it with the user.
       plan: user.plan ?? "free",
+      // P1: lastLoginAt was declared on the input but never written, so every
+      // restart reset it to null.
+      lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt) : null,
       locale: user.locale ?? "zh-CN",
       // OAuth links: JSONB column; null keeps rows backwards compatible.
       oauthLinks: user.oauthLinks ?? null,
@@ -74,6 +87,103 @@ export async function persistUser(user: {
     });
   } catch (err) {
     log.error({ err }, "[db] persistUser error");
+  }
+}
+
+// ── Security state (2FA / sessions / login history / privacy) ─────────────
+// The security store used to be memory-only, which silently disabled 2FA for
+// every user after a restart. One row per user; JSON columns mirror the store
+// shape and the TOTP secrets are encrypted at rest with AUTH_SECRET.
+
+export async function persistSecurityState(userId: string, state: {
+  twoFactor: {
+    enabled: boolean;
+    method: string | null;
+    secret: string | null;
+    backupCodes: string[];
+    enrolledAt: number | null;
+    pendingSecret: string | null;
+    pendingBackupCodes: string[];
+    lastUsedStep?: number | null;
+  };
+  sessions: unknown[];
+  loginHistory: unknown[];
+  privacy: unknown;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const twoFactor = {
+      ...state.twoFactor,
+      // Never store a TOTP secret in plaintext. Legacy/plaintext rows still
+      // load (decryptFromString passes non-encrypted values through).
+      secret: state.twoFactor.secret ? encryptToString(state.twoFactor.secret) : null,
+      pendingSecret: state.twoFactor.pendingSecret ? encryptToString(state.twoFactor.pendingSecret) : null,
+    };
+    const data = {
+      twoFactor: twoFactor as unknown,
+      sessions: state.sessions as unknown,
+      loginHistory: state.loginHistory as unknown,
+      privacy: state.privacy as unknown,
+      updatedAt: new Date(),
+    };
+    await db.userSecurity.upsert({
+      where: { userId },
+      update: data,
+      create: { userId, ...data },
+    });
+  } catch (err) {
+    log.error({ err }, "[db] persistSecurityState error");
+  }
+}
+
+/** Delete a user's security row (account deletion / GDPR erasure). */
+export async function deleteSecurityStateFromDb(userId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.userSecurity.deleteMany({ where: { userId } });
+  } catch (err) {
+    log.error({ err }, "[db] deleteSecurityStateFromDb error");
+  }
+}
+
+/** Delete a user row (account deletion).
+ *
+ *  Tables with a real FK to User are removed by the DB cascade; the tables
+ *  below only store a plain `userId` column, so they would otherwise become
+ *  orphaned rows (and retain PII / tokens) after the user is gone. */
+export async function deleteUserFromDb(userId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const tables = [
+      "notification",
+      "notificationPrefs",
+      "modelConfig",
+      "webhookSubscription",
+      "botIntegration",
+      "subscription",
+      "invoice",
+      "order",
+      "conversation",
+      "agentTask",
+    ];
+    const d = db as unknown as Record<string, {
+      deleteMany?: (o: unknown) => Promise<unknown>;
+    }>;
+    await Promise.all(
+      tables.map((name) => {
+        const p = d[name]?.deleteMany?.({ where: { userId } });
+        return p ? p.catch((err) => bestEffort(err)) : Promise.resolve();
+      })
+    );
+    await db.user.delete({ where: { id: userId } }).catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] deleteUserFromDb error");
   }
 }
 
@@ -120,7 +230,7 @@ export async function deleteKbFromDb(kbId: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
   try {
-    await db.knowledgeBase.delete({ where: { id: kbId } }).catch(() => {});
+    await db.knowledgeBase.delete({ where: { id: kbId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteKbFromDb error");
   }
@@ -215,7 +325,7 @@ export async function deleteDocFromDb(docId: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
   try {
-    await db.kbDocument.delete({ where: { id: docId } }).catch(() => {});
+    await db.kbDocument.delete({ where: { id: docId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteDocFromDb error");
   }
@@ -284,9 +394,22 @@ export async function deleteAgentTaskFromDb(taskId: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
   try {
-    await db.agentTask.delete({ where: { id: taskId } }).catch(() => {});
+    await db.agentTask.delete({ where: { id: taskId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteAgentTaskFromDb error");
+  }
+}
+
+/** Delete all tasks for a user (account deletion). */
+export async function deleteAgentTasksByUserFromDb(userId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { agentTask: { deleteMany: (o: unknown) => Promise<unknown> } })
+      .agentTask.deleteMany({ where: { userId } }).catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] deleteAgentTasksByUserFromDb error");
   }
 }
 
@@ -301,6 +424,7 @@ export async function persistApiKey(key: {
   status: string;
   calls: number;
   lastUsed: number | null;
+  expiresAt: number | null;
   createdAt: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
@@ -309,12 +433,15 @@ export async function persistApiKey(key: {
   try {
     const data = {
       name: key.name,
-      keyHash: key.secret,  // store the secret as keyHash in DB
+      // P2: `sha256$...` for new keys; legacy rows may still hold AES
+      // ciphertext or plaintext and keep validating via the old path.
+      keyHash: key.secret,
       prefix: key.prefix,
       scopes: key.scopes,
       status: key.status,
       calls: key.calls,
       lastUsed: key.lastUsed ? new Date(key.lastUsed) : null,
+      expiresAt: key.expiresAt ? new Date(key.expiresAt) : null,
     };
     await db.apiKey.upsert({
       where: { id: key.id },
@@ -332,7 +459,7 @@ export async function deleteApiKeyFromDb(keyId: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
   try {
-    await db.apiKey.delete({ where: { id: keyId } }).catch(() => {});
+    await db.apiKey.delete({ where: { id: keyId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteApiKeyFromDb error");
   }
@@ -359,6 +486,11 @@ export async function persistConversation(conv: {
   if (!db) return;
   try {
     // Upsert conversation (atomic - fire-and-forget writers must not race)
+    if (!conv.userId) {
+      // Rows written as "unknown" are filtered out by listConversations() on
+      // hydration, i.e. silently lost. Make the caller bug observable.
+      log.warn({ conversationId: conv.id, kbId: conv.kbId }, "[db] persistConversation without userId");
+    }
     const data = {
       kbId: conv.kbId,
       userId: conv.userId || "unknown",
@@ -466,9 +598,26 @@ export async function deleteConversationFromDb(convId: string): Promise<void> {
   if (!db) return;
   try {
     await (db as unknown as { conversation: { delete: (o: unknown) => Promise<unknown> } })
-      .conversation.delete({ where: { id: convId } }).catch(() => {});
+      .conversation.delete({ where: { id: convId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteConversationFromDb error");
+  }
+}
+
+/** Delete a user's conversations (all, or only those older than `cutoff`).
+ *  Messages are removed by the Conversation -> Message cascade. */
+export async function deleteConversationsByUserFromDb(userId: string, cutoff?: number): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const where = cutoff === undefined
+      ? { userId }
+      : { userId, updatedAt: { lt: new Date(cutoff) } };
+    await (db as unknown as { conversation: { deleteMany: (o: unknown) => Promise<unknown> } })
+      .conversation.deleteMany({ where }).catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] deleteConversationsByUserFromDb error");
   }
 }
 
@@ -479,7 +628,7 @@ export async function deleteMessageFromDb(messageId: string): Promise<void> {
   if (!db) return;
   try {
     await (db as unknown as { message: { delete: (o: unknown) => Promise<unknown> } })
-      .message.delete({ where: { id: messageId } }).catch(() => {});
+      .message.delete({ where: { id: messageId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteMessageFromDb error");
   }
@@ -545,7 +694,7 @@ export async function persistInvoice(invoice: {
           method: invoice.method,
           date: new Date(invoice.date),
         },
-      }).catch(() => {});
+      }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistInvoice error");
   }
@@ -584,6 +733,97 @@ export async function persistOrder(order: {
   }
 }
 
+// ── Usage metering (workspace, daily) ────────────────────────────────────
+
+function todayUtcDate(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/** Atomically bump a workspace's daily QA/Agent counter.
+ *  Quota and usage.alert read this table, so it must survive restarts. */
+export async function bumpWorkspaceUsage(
+  workspaceId: string,
+  kind: "qa" | "agent"
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const day = todayUtcDate();
+    const d = db as unknown as {
+      usageDaily: { upsert: (o: unknown) => Promise<unknown> };
+    };
+    await d.usageDaily.upsert({
+      where: { workspaceId_day: { workspaceId, day } },
+      // Prisma BigInt fields require bigint literals (a plain number throws).
+      update: kind === "qa"
+        ? { qaCount: { increment: BigInt(1) } }
+        : { agentCount: { increment: BigInt(1) } },
+      create: {
+        workspaceId,
+        day,
+        qaCount: kind === "qa" ? BigInt(1) : BigInt(0),
+        agentCount: kind === "agent" ? BigInt(1) : BigInt(0),
+      },
+    });
+  } catch (err) {
+    log.error({ err }, "[db] bumpWorkspaceUsage error");
+  }
+}
+
+/** Atomically bump a user's daily QA/API or Agent counter. */
+export async function bumpUserUsage(
+  userId: string,
+  kind: "qa" | "agent"
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const day = todayUtcDate();
+    const d = db as unknown as {
+      userUsageDaily: { upsert: (o: unknown) => Promise<unknown> };
+    };
+    await d.userUsageDaily.upsert({
+      where: { userId_day: { userId, day } },
+      update: kind === "qa"
+        ? { qaCount: { increment: BigInt(1) }, apiCount: { increment: BigInt(1) } }
+        : { agentCount: { increment: BigInt(1) } },
+      create: {
+        userId,
+        day,
+        qaCount: kind === "qa" ? BigInt(1) : BigInt(0),
+        apiCount: kind === "qa" ? BigInt(1) : BigInt(0),
+        agentCount: kind === "agent" ? BigInt(1) : BigInt(0),
+      },
+    });
+  } catch (err) {
+    log.error({ err }, "[db] bumpUserUsage error");
+  }
+}
+
+/** Delete all billing rows for a user (account deletion). */
+export async function deleteBillingDataFromDb(userId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const d = db as unknown as {
+      subscription: { deleteMany: (o: unknown) => Promise<unknown> };
+      invoice: { deleteMany: (o: unknown) => Promise<unknown> };
+      order: { deleteMany: (o: unknown) => Promise<unknown> };
+    };
+    await Promise.all([
+      d.subscription.deleteMany({ where: { userId } }).catch((err) => bestEffort(err)),
+      d.invoice.deleteMany({ where: { userId } }).catch((err) => bestEffort(err)),
+      d.order.deleteMany({ where: { userId } }).catch((err) => bestEffort(err)),
+    ]);
+  } catch (err) {
+    log.error({ err }, "[db] deleteBillingDataFromDb error");
+  }
+}
+
 // ── Security: Sessions + Login Events ────────────────────────────────────
 
 /** Persist a login event to DB. */
@@ -607,7 +847,7 @@ export async function persistLoginEvent(event: {
           location: event.location ?? null,
           success: event.success,
         },
-      }).catch(() => {});
+      }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistLoginEvent error");
   }
@@ -630,9 +870,18 @@ export async function persistNotification(notif: {
   const db = await getDb();
   if (!db) return;
   try {
-    await (db as unknown as { notification: { create: (o: unknown) => Promise<unknown> } })
-      .notification.create({
-        data: {
+    // upsert: marking read / retries reuse the same id (create() would throw
+    // on a duplicate and the notification would never be persisted).
+    await (db as unknown as { notification: { upsert: (o: unknown) => Promise<unknown> } })
+      .notification.upsert({
+        where: { id: notif.id },
+        update: {
+          read: notif.read,
+          title: notif.title,
+          body: notif.body,
+          link: notif.link ?? null,
+        },
+        create: {
           id: notif.id,
           userId: notif.userId,
           type: notif.type,
@@ -642,9 +891,42 @@ export async function persistNotification(notif: {
           link: notif.link ?? null,
           createdAt: new Date(notif.createdAt),
         },
-      }).catch(() => {});
+      }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistNotification error");
+  }
+}
+
+/** Delete a notification row. */
+export async function deleteNotificationFromDb(id: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { notification: { deleteMany: (o: unknown) => Promise<unknown> } })
+      .notification.deleteMany({ where: { id } }).catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] deleteNotificationFromDb error");
+  }
+}
+
+/** Persist per-user notification preferences. */
+export async function persistNotificationPrefs(
+  userId: string,
+  prefs: { emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean }
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await (db as unknown as { notificationPrefs: { upsert: (o: unknown) => Promise<unknown> } })
+      .notificationPrefs.upsert({
+        where: { userId },
+        update: prefs,
+        create: { userId, ...prefs },
+      }).catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] persistNotificationPrefs error");
   }
 }
 
@@ -705,7 +987,7 @@ export async function deleteModelConfigFromDb(id: string): Promise<void> {
   if (!db) return;
   try {
     await (db as unknown as { modelConfig: { delete: (o: unknown) => Promise<unknown> } })
-      .modelConfig.delete({ where: { id } }).catch(() => {});
+      .modelConfig.delete({ where: { id } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteModelConfigFromDb error");
   }
@@ -809,7 +1091,7 @@ export async function persistAuditEntry(
           createdAt: new Date(entry.createdAt),
         },
       })
-      .catch(() => {});
+      .catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistAuditEntry error");
   }
@@ -885,7 +1167,7 @@ export async function persistTeamMember(
           joinedAt: new Date(member.joinedAt),
         },
       })
-      .catch(() => {});
+      .catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistTeamMember error");
   }
@@ -898,7 +1180,7 @@ export async function deleteTeamMemberFromDb(memberId: string): Promise<void> {
   if (!db) return;
   try {
     const tm = db as unknown as { teamMember: { delete: (o: unknown) => Promise<unknown> } };
-    await tm.teamMember.delete({ where: { id: memberId } }).catch(() => {});
+    await tm.teamMember.delete({ where: { id: memberId } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteTeamMemberFromDb error");
   }
@@ -1003,7 +1285,7 @@ export async function deleteWebhookSubscriptionFromDb(id: string): Promise<void>
   if (!db) return;
   try {
     const wh = db as unknown as { webhookSubscription: { delete: (o: unknown) => Promise<unknown> } };
-    await wh.webhookSubscription.delete({ where: { id } }).catch(() => {});
+    await wh.webhookSubscription.delete({ where: { id } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteWebhookSubscriptionFromDb error");
   }
@@ -1062,7 +1344,7 @@ export async function deleteBotIntegrationFromDb(id: string): Promise<void> {
   if (!db) return;
   try {
     const bi = db as unknown as { botIntegration: { delete: (o: unknown) => Promise<unknown> } };
-    await bi.botIntegration.delete({ where: { id } }).catch(() => {});
+    await bi.botIntegration.delete({ where: { id } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteBotIntegrationFromDb error");
   }
@@ -1140,7 +1422,7 @@ export async function deleteEntityFromDb(id: string): Promise<void> {
   if (!db) return;
   try {
     const ke = db as unknown as { knowledgeEntity: { delete: (o: unknown) => Promise<unknown> } };
-    await ke.knowledgeEntity.delete({ where: { id } }).catch(() => {});
+    await ke.knowledgeEntity.delete({ where: { id } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteEntityFromDb error");
   }
@@ -1153,7 +1435,7 @@ export async function deleteRelationFromDb(id: string): Promise<void> {
   if (!db) return;
   try {
     const kr = db as unknown as { knowledgeRelation: { delete: (o: unknown) => Promise<unknown> } };
-    await kr.knowledgeRelation.delete({ where: { id } }).catch(() => {});
+    await kr.knowledgeRelation.delete({ where: { id } }).catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] deleteRelationFromDb error");
   }

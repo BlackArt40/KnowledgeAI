@@ -77,7 +77,10 @@ export function startQueue(): void {
 
 /** Graceful shutdown. */
 export async function stopQueue(): Promise<void> {
-  if (_instance) await _instance.stop();
+  // HMR can leave the live instance only on globalThis (module reloaded).
+  const g = globalThis as unknown as { __KAI_QUEUE_INSTANCE__?: JobQueue };
+  const q = _instance ?? g.__KAI_QUEUE_INSTANCE__;
+  if (q) await q.stop();
 }
 
 /** Whether a real (Redis-backed) queue is configured. */

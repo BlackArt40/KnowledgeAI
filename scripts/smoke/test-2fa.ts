@@ -114,8 +114,11 @@ async function main() {
   // ── 6. Login flow: password -> 2FA verify ─────────────────────────────
   // Simulate the login route's 2FA step: a user with 2FA enabled must supply
   // a code; verify2FALogin validates TOTP or backup code.
-  const loginCode = generateTOTP(enroll.secret, Date.now());
+  // Enrollment consumed the current TOTP step (replay protection), so log in
+  // with the next step (still inside the ±1 acceptance window).
+  const loginCode = generateTOTP(enroll.secret, Date.now() + 30_000);
   check("login: TOTP code accepted", verify2FALogin(userId, loginCode));
+  check("login: same TOTP code replay rejected", !verify2FALogin(userId, loginCode));
   check("login: wrong code rejected", !verify2FALogin(userId, "999999"));
   // Backup code login: use one of the plaintext codes from enrollment.
   const backupLogin = enroll.backupCodes[1];
@@ -131,8 +134,9 @@ async function main() {
   // We used 1 backup code, so remaining should be 7.
   check("security: remaining count = 7 after one use", sec.twoFactor.backupCodesRemaining === 7, `got ${sec.twoFactor.backupCodesRemaining}`);
 
-  // Disable flow
-  const disableCode = generateTOTP(enroll.secret, Date.now());
+  // Disable flow. The login above consumed the highest in-window TOTP step;
+  // use another one-time backup code (also a valid credential).
+  const disableCode = enroll.backupCodes[2];
   check("disable: code accepted", verify2FALogin(userId, disableCode));
   disable2FA(userId);
   check("disable: 2FA now off", !is2FAEnabled(userId));

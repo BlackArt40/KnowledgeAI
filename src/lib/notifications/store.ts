@@ -6,12 +6,15 @@
 // ---------------------------------------------------------------------------
 
 import type { Notification, NotificationPrefs, NotifType } from "./types";
+import { persistNotification, persistNotificationPrefs, deleteNotificationFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 
 interface Store {
   prefsByUser: Map<string, NotificationPrefs>;
   notificationsByUser: Map<string, Notification[]>;
   seededUsers: Set<string>;
+  /** True once DB hydration ran: demo seeding must never overwrite real rows. */
+  hydrated?: boolean;
 }
 
 const g = globalThis as unknown as { __KAI_NOTIF_STORE__?: Store };
@@ -23,6 +26,7 @@ function store(): Store {
       prefsByUser: new Map(),
       notificationsByUser: new Map(),
       seededUsers: new Set(),
+      hydrated: false,
     };
   }
   return g.__KAI_NOTIF_STORE__;
@@ -53,7 +57,13 @@ export function updatePrefs(
   const s = store();
   const p = { ...defaultPrefs(), ...s.prefsByUser.get(userId), ...patch };
   s.prefsByUser.set(userId, p);
+  void persistNotificationPrefs(userId, p);
   return { ...p };
+}
+
+/** Called once DB notification rows are loaded: stop demo seeding permanently. */
+export function markNotificationsHydrated(): void {
+  store().hydrated = true;
 }
 
 function isChannelEnabled(userId: string, type: NotifType): boolean {
@@ -96,6 +106,7 @@ export function notify(
   const list = inbox(userId);
   list.unshift(n);
   if (list.length > 50) ssplice(list, 0, list.length - 50);
+  void persistNotification({ ...n, userId });
   return n;
 }
 
@@ -113,12 +124,18 @@ export function listNotifications(userId: string, limit?: number): Notification[
 export function markRead(userId: string, id: string): void {
   ensureSeed(userId);
   const n = inbox(userId).find((x) => x.id === id);
-  if (n) n.read = true;
+  if (n) {
+    n.read = true;
+    void persistNotification({ ...n, userId });
+  }
 }
 
 export function markAllRead(userId: string): void {
   ensureSeed(userId);
-  inbox(userId).forEach((n) => (n.read = true));
+  inbox(userId).forEach((n) => {
+    n.read = true;
+    void persistNotification({ ...n, userId });
+  });
 }
 
 export function unreadCount(userId: string): number {
@@ -132,6 +149,7 @@ export function deleteNotification(userId: string, id: string): boolean {
   const idx = list.findIndex((x) => x.id === id);
   if (idx === -1) return false;
   list.splice(idx, 1);
+  void deleteNotificationFromDb(id);
   return true;
 }
 
@@ -142,6 +160,10 @@ function ensureSeed(userId: string) {
   if (s.seededUsers.has(userId)) return;
   s.seededUsers.add(userId);
   if (!s.prefsByUser.has(userId)) s.prefsByUser.set(userId, defaultPrefs());
+
+  // P1: in DB mode the demo inbox used to overwrite the rows hydrate had
+  // just loaded (set() replaced the whole list). Never seed after hydration.
+  if (s.hydrated) return;
 
   const now = Date.now();
   const min = 60 * 1000;

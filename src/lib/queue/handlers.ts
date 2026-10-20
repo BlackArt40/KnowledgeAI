@@ -76,6 +76,13 @@ const agentRunHandler: JobHandler = async (payload) => {
   let task = getTask(taskId);
   if (!task && (await loadTaskFromDb(taskId))) task = getTask(taskId);
   if (!task) return { ok: false, error: `Task not found: ${taskId}` };
+  // P1: a duplicate job for an already-finished task must not re-run the
+  // multi-step LLM pipeline (double billing / overwritten report).
+  // Cast keeps TS from narrowing `task.status` for the later post-run check.
+  if ((task.status as string) === "done") {
+    log.info({ taskId }, "[queue] agent task already done - skipping duplicate job");
+    return { ok: true, data: { taskId, skipped: "done" } };
+  }
 
   const { runTask } = await import("@/lib/agent/orchestrator");
   const { publishAgentEvent } = await import("./index");

@@ -49,6 +49,21 @@ model User {
   ownedKbs        KnowledgeBase[] @relation("OwnedKBs")
   conversations   Conversation[]
   agentTasks      AgentTask[]
+  security        UserSecurity?
+}
+
+// P0 security state: 2FA / sessions / login history / privacy.
+// These used to live only in the process memory store, so every restart
+// silently disabled 2FA and dropped session/login history. TOTP secrets are
+// stored AES-GCM encrypted (see src/lib/db/persist.ts).
+model UserSecurity {
+  userId       String   @id
+  twoFactor    Json     @default("{}")
+  sessions     Json     @default("[]")
+  loginHistory Json     @default("[]")
+  privacy      Json     @default("{}")
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
@@ -253,14 +268,16 @@ model ApiKey {
   id        String    @id @default(cuid())
   userId    String
   name      String
-  // P3-4: holds the AES-256-GCM ciphertext (encryptToString) of the secret -
-  // never the plaintext. Legacy plaintext rows pass through on validation.
+  // P2: `sha256$<hex>` for new keys (one-way, never plaintext). Legacy rows
+  // hold AES-256-GCM ciphertext or pre-P3-4 plaintext and still validate.
   keyHash   String    @unique
   prefix    String
   scopes    String[]
   status    String    @default("active")
   calls     Int       @default(0)
   lastUsed  DateTime?
+  // Null = never expires (legacy rows). New keys get API_KEY_TTL_DAYS.
+  expiresAt DateTime?
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
 }
@@ -353,6 +370,31 @@ model ModelConfig {
   createdAt      DateTime  @default(now())
 
   @@index([userId])
+}
+
+// ── Usage metering (workspace, daily) ────────────────────────────────────
+// Mirrors the Java Flyway V18 table so a Prisma-managed DB and a
+// Flyway-managed DB share the same metering contract. Quota checks read
+// these counters, so they must survive restarts / multi-instance rollouts.
+model UsageDaily {
+  workspaceId String
+  day         DateTime @db.Date
+  qaCount     BigInt   @default(0)
+  agentCount  BigInt   @default(0)
+
+  @@id([workspaceId, day])
+}
+
+// Per-user daily usage (billing page / admin monthly totals). The workspace
+// table above drives quotas; this one keeps per-user history across restarts.
+model UserUsageDaily {
+  userId     String
+  day        DateTime @db.Date
+  qaCount    BigInt   @default(0)
+  apiCount   BigInt   @default(0)
+  agentCount BigInt   @default(0)
+
+  @@id([userId, day])
 }
 
 // ── Billing Orders ───────────────────────────────────────────────────────

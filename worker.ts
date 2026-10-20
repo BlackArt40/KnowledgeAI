@@ -18,6 +18,7 @@
 // ---------------------------------------------------------------------------
 
 import { startQueue, stopQueue, isQueueExternal } from "@/lib/queue";
+import { recoverInterruptedJobs } from "@/lib/queue/recovery";
 import { log } from "./src/lib/obs/log";
 
 async function main() {
@@ -33,8 +34,17 @@ async function main() {
     process.exit(0);
   }
 
+  // P1: explicit single-consumer role. With QUEUE_CONSUMER=web the web
+  // process owns consumption, so this standalone worker must not double up.
+  if ((process.env.QUEUE_CONSUMER ?? "").toLowerCase() === "web") {
+    log.info("[worker] QUEUE_CONSUMER=web - consumer runs in the web process. Exiting.");
+    process.exit(0);
+  }
+
   log.info("[worker] Starting background queue worker...");
   startQueue();
+  // BullMQ persists its own jobs; recovery is a no-op in Redis mode.
+  void recoverInterruptedJobs().catch((err) => log.error({ err }, "[worker] queue recovery failed"));
   log.info("[worker] Worker ready, waiting for jobs.");
 
   const shutdown = async (sig: string) => {

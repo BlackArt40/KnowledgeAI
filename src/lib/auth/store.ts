@@ -7,7 +7,7 @@
 
 import crypto from "crypto";
 import type { Role } from "@/lib/roles";
-import { persistUser } from "@/lib/db/persist";
+import { persistUser, deleteUserFromDb } from "@/lib/db/persist";
 import { hashPassword, verifyPassword } from "@/lib/auth/session";
 import { uid } from "@/lib/ids";
 import { ROLE_LABEL, ROLE_DESC } from "@/lib/roles";
@@ -169,8 +169,10 @@ export async function verifyCredentials(email: string, password: string): Promis
     user.passwordHash = await hashPassword(password);
     void persistUser(user);
   }
-  // update last login
+  // update last login (P1: it was memory-only, so hydrateUser had to reset it
+  // to null after every restart)
   user.lastLoginAt = Date.now();
+  void persistUser(user);
   return user;
 }
 
@@ -314,6 +316,7 @@ export function deleteUser(userId: string): boolean {
   if (!u) return false;
   s.emailIndex.delete(u.email.toLowerCase());
   s.users.delete(userId);
+  void deleteUserFromDb(userId);
   return true;
 }
 

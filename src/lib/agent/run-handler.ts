@@ -72,7 +72,7 @@ export async function handleAgentRun(
     authUser.workspaceId
   );
   // P4-3: meter the agent task against the workspace usage.
-  recordAgentTask(authUser.workspaceId);
+  recordAgentTask(authUser.workspaceId, authUser.id);
 
   const enc = new TextEncoder();
 

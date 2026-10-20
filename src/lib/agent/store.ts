@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { AgentTask, ShareConfig, ReportVersion, Comment } from "./types";
-import { persistTask, deleteAgentTaskFromDb } from "@/lib/db/persist";
+import { persistTask, deleteAgentTaskFromDb, deleteAgentTasksByUserFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import {
   hashSharePassword as hashPassword,
@@ -97,6 +97,7 @@ export function deleteAllTasks(userId: string): number {
       count++;
     }
   }
+  void deleteAgentTasksByUserFromDb(userId);
   return count;
 }
 

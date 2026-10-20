@@ -1,5 +1,5 @@
 import type { Citation } from "@/lib/rag/types";
-import { persistConversation, persistMessage, persistMessageFeedback, deleteConversationFromDb } from "@/lib/db/persist";
+import { persistConversation, persistMessage, persistMessageFeedback, deleteConversationFromDb, deleteConversationsByUserFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import { publish } from "@/lib/realtime/bus";
 
@@ -232,6 +232,9 @@ export function deleteConversationsOlderThan(userId: string, cutoff: number): nu
       count++;
     }
   }
+  // P1: retention cleanup used to be memory-only, so "deleted" conversations
+  // resurrected on the next hydration. Mirror the same filter in SQL.
+  void deleteConversationsByUserFromDb(userId, cutoff);
   return count;
 }
 
@@ -245,5 +248,6 @@ export function deleteAllConversations(userId: string): number {
       count++;
     }
   }
+  void deleteConversationsByUserFromDb(userId);
   return count;
 }
