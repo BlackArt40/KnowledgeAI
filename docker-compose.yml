@@ -17,6 +17,9 @@ services:
       # 阶段 1 服务拆分：非空 = 索引/检索/生成走下方 ai 服务（Python RAG）
       AI_SERVICE_URL: ${AI_SERVICE_URL:-}
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+      # P1: 队列消费者在下面独立的 worker 服务；web 只入队，避免双消费。
+      # 单容器跑 Redis 队列时改为 QUEUE_CONSUMER=web。
+      QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
       # 限流档位可配置（性能测试等场景需调高，如 RATE_LIMIT_PER_MIN=2000）
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
       RATE_LIMIT_ANON_PER_MIN: ${RATE_LIMIT_ANON_PER_MIN:-20}
@@ -52,6 +55,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # P1: explicit role (default worker); overrides env_file so a stray
+      # QUEUE_CONSUMER=web in .env.local can't disable the only consumer.
+      QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
       # 阶段 1 服务拆分：doc-process 队列任务在 worker 里转发到 ai 服务
       AI_SERVICE_URL: ${AI_SERVICE_URL:-}
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
@@ -81,7 +87,8 @@ services:
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
       # compose 内网中的对象存储属于该部署的生产配置
-      AI_ALLOW_PRIVATE_FETCH: "true"
+      # P2: fail-closed；预签名 URL 指向 compose 内 MinIO 时由 S3_ENDPOINT 主机白名单放行
+      AI_ALLOW_PRIVATE_FETCH: "${AI_ALLOW_PRIVATE_FETCH:-false}"
       # source.type=s3 拉取对象用（与业务侧同凭据；presignedUrl 模式不需要）
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       S3_BUCKET: ${S3_BUCKET:-knowledgeai-uploads}

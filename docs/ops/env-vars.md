@@ -111,6 +111,7 @@ related:
 |------|:----:|--------|------|
 | `AI_SERVICE_URL` | 否 | 空（单体模式） | 留空 = 进程内 TS RAG；配置后文档索引与问答生成走 Python AI 服务（`services/ai/`，FastAPI），Next 仅作 BFF。AI 服务不可用时问答返回 503（可重试），不静默回退本地 RAG |
 | `AI_INTERNAL_TOKEN` | 条件 | 空 | BFF → AI 服务的内部令牌（`X-Internal-Token`，两端必须一致）；AI 服务侧未配置该令牌时拒绝所有 `/internal/*` 调用（fail-closed） |
+| `AI_ALLOW_PRIVATE_FETCH` | 否 | `false` | AI 服务拉取 http(s) 源时是否允许私网/回环地址。默认 fail-closed；内部 MinIO 由 `S3_ENDPOINT` 主机白名单单独放行，无需打开此开关 |
 
 > 阶段 2 起 AI 服务经预签名 URL（或 `S3_*` 凭据）从对象存储拉取文件，不读共享上传卷；AI 服务模式下解析二进制格式必须配置 `S3_*`（见「对象存储」，凭据与业务侧一致）。
 
@@ -147,6 +148,7 @@ related:
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
 | `REDIS_URL` | 否 | 空（内存队列） | 留空 = 进程内内存队列（单实例）；设置后 = BullMQ + Redis（多实例、持久化、重试、死信队列） |
+| `QUEUE_CONSUMER` | 否 | 自动（内存队列 `web` / Redis `worker`） | 队列消费者角色：`worker` = 独立 worker 进程消费（web 只入队，避免双消费）；`web` = 当前进程消费（单容器 + Redis 或无独立 worker 时使用） |
 | `QUEUE_CONCURRENCY` | 否 | `3` | 快速任务并发：`doc-process` / `index-cleanup` / `webhook-deliver` / `email-send`（仅 BullMQ 生效） |
 | `QUEUE_AGENT_CONCURRENCY` | 否 | `1` | Agent 调研并发：`agent-run` 单独一条队列，避免长耗时 LLM 任务占满并发后阻塞文档处理（仅 BullMQ 生效） |
 | `QUEUE_MAX_DEPTH` | 否 | `500` | 队列积压背压上限（waiting + delayed，按队列计）：达到上限后新任务入队被拒（`QueueBackpressureError`，调用方返回"队列繁忙"类可重试提示），`/api/health/ready` 的 `queueBackpressured` 同步置位（X5/X6） |
@@ -161,11 +163,18 @@ related:
 |------|:----:|--------|------|
 | `RATE_LIMIT_PER_MIN` | 否 | `200` | 登录用户（次/分） |
 | `RATE_LIMIT_ANON_PER_MIN` | 否 | `20` | 匿名 IP |
+| `TRUSTED_PROXY_HOPS` | 否 | `1` | 受信代理跳数：按 `X-Forwarded-For` 从右往左第 N 跳识别客户端（单层 nginx=1，CDN+nginx=2）；左侧条目客户端可伪造，不采信 |
 | `RATE_LIMIT_KEY_PER_MIN` | 否 | `500` | API Key |
 | `RATE_LIMIT_KB_PER_MIN` | 否 | `60` | 知识库维度（聊天/加载，须低于用户档位） |
 | `RATE_LIMIT_INTEGRATION_PER_MIN` | 否 | `120` | 集成（机器人）维度 |
 | `RATE_LIMIT_AGENT_PER_MIN` | 否 | `10` | Agent 运行维度（P1-2：`/api/agent/run` 是高成本多步 LLM 任务，独立于用户配额） |
 | `RATE_LIMIT_AUTH_EMAIL_PER_MIN` | 否 | `3` | 触发外发邮件的未认证端点（P8：忘记密码/验证邮件重发），按 邮箱+端点 键控防邮件轰炸 |
+
+## API Key
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|:----:|--------|------|
+| `API_KEY_TTL_DAYS` | 否 | `365` | 新建 API Key 的有效期（天）；`<= 0` = 永不过期。新 key 只存 `sha256$<hex>`，历史密文行保持原有过期设置 |
 
 ## 支付
 

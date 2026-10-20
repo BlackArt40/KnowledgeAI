@@ -128,6 +128,11 @@ spec:
           readinessProbe:
             httpGet: { path: /api/health/ready, port: 8080 } # 降级 503 → 摘流量（6.4）
             periodSeconds: 10
+          resources:
+            requests: { cpu: "200m", memory: "512Mi" }
+            limits: { cpu: "1000m", memory: "1Gi" }
+          securityContext:
+            runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service
@@ -164,7 +169,7 @@ spec:
             - name: REDIS_PORT
               value: "6379"
             - name: AI_ALLOW_PRIVATE_FETCH
-              value: "true"
+              value: "false"
             - name: S3_ENDPOINT
               value: http://minio:9000
           livenessProbe:
@@ -173,6 +178,11 @@ spec:
           readinessProbe:
             httpGet: { path: /health, port: 8000 }
             periodSeconds: 10
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { cpu: "2000m", memory: "2Gi" }
+          securityContext:
+            runAsNonRoot: true
 ---
 # A6.4 审计点：ai 服务仅 ClusterIP —— 无 NodePort、无 LoadBalancer、无 Ingress。
 apiVersion: v1
@@ -209,6 +219,10 @@ spec:
               value: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
             - name: REDIS_URL
               value: redis://redis:6379/0
+            # 该清单没有独立 worker Deployment，由 app 进程消费队列。
+            # 增加 worker 部署后改为 worker，避免双消费。
+            - name: QUEUE_CONSUMER
+              value: web
             - name: AI_INTERNAL_TOKEN
               valueFrom: { secretKeyRef: { name: knowledgeai-runtime, key: AI_INTERNAL_TOKEN } }
           livenessProbe:
@@ -217,6 +231,11 @@ spec:
           readinessProbe:
             httpGet: { path: /api/health/ready, port: 3000 }
             periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+          securityContext:
+            runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service
