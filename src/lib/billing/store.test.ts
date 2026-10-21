@@ -15,7 +15,7 @@ import {
   getOrder,
   payOrder,
 } from "./store";
-import { seed as seedUsers } from "@/lib/auth/store";
+import { seed as seedUsers, getUserById } from "@/lib/auth/store";
 
 beforeEach(() => {
   delete (globalThis as Record<string, unknown>).__KAI_BILLING_STORE__;
@@ -88,7 +88,7 @@ describe("orders", () => {
     expect(getOrder("missing")).toBeUndefined();
   });
 
-  it("payOrder upgrades the user's plan and subscription; rejects foreign orders", () => {
+  it("payOrder 升级订阅但不再回写 users.plan（套餐属于工作区）；拒绝他人订单", () => {
     const o = createOrder("pro", "wechat", "usr_viewer");
     const foreign = payOrder(o.id, "usr_editor");
     expect(foreign.success).toBe(false);
@@ -96,6 +96,9 @@ describe("orders", () => {
     expect(paid.success).toBe(true);
     expect(paid.order.status).toBe("paid");
     expect(getSubscription("usr_viewer").plan).toBe("pro");
+    // 单一行写入口：工作区套餐由 API 路由 setWorkspacePlan 写入，
+    // users.plan 不再回写（否则付款人 pro、队友 free 两个真相并存）
+    expect(getUserById("usr_viewer")?.plan).toBe("free");
     const missing = payOrder("nope", "usr_viewer");
     expect(missing.success).toBe(false);
   });
