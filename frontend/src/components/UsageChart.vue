@@ -38,7 +38,7 @@ const areaPath = () => {
 <template>
   <div
     v-if="!hasData"
-    class="chart-empty"
+    class="usage-chart chart-empty"
   >
     <span class="empty-dot" />
     <span class="empty-text">{{ t("page.usage-chart.s7") }}</span>
