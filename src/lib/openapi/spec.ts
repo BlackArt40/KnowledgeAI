@@ -352,6 +352,12 @@ export const OPENAPI_SPEC: Spec = {
               name: { type: "string" },
               role: { type: "string", enum: ["owner", "admin", "editor", "viewer"] },
               workspaceId: { type: "string" },
+              workspaceName: { type: "string", description: "当前工作区名称" },
+              plan: {
+                type: "string",
+                enum: ["free", "pro", "enterprise"],
+                description: "当前工作区的生效套餐（升级写在工作区上，非用户级）",
+              },
             },
           },
         },

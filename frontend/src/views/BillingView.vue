@@ -9,6 +9,7 @@ import { CreditCard, Download, RefreshRight, MagicStick, Star, Coin } from "@ele
 import { COMPARISON } from "@shared/billing/plans";
 import { METHOD_LABEL, STATUS_LABEL, type Invoice, type Plan } from "@shared/billing/types";
 import { cancelResume, fetchBilling, type BillingData } from "@/api/billing";
+import { refreshWorkspaces } from "@/lib/workspace-store";
 
 const { t } = useTranslation();
 const router = useRouter();
@@ -26,13 +27,18 @@ async function fetchAll() {
   loading.value = false;
 }
 
-onMounted(() => void fetchAll());
+onMounted(() => {
+  void fetchAll();
+  // 套餐可能在其他标签页/设备上变过：进页面对齐一次后端权威值
+  void refreshWorkspaces();
+});
 
 async function toggleCancel(action: "cancel" | "resume") {
   canceling.value = true;
   try {
     await cancelResume(action);
     await fetchAll();
+    void refreshWorkspaces();
   } catch {
     /* ignore */
   } finally {

@@ -3,12 +3,14 @@
 // Agent 任务（角色可见）+ 最近问答。5 个 API 并发拉取（契约冻结）。
 import { computed, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
-import { Check, Loading } from "@element-plus/icons-vue";
+import { ChatDotRound, Check, Collection, Document, Loading, Odometer } from "@element-plus/icons-vue";
 import UsageChart from "@/components/UsageChart.vue";
 import { api } from "@/api/client";
 import { formatRelative } from "@shared/format";
+import { currentPlan } from "@/lib/workspace-store";
+import { planLabelKey } from "@/lib/plan";
 
-interface CurrentUser { name: string; role: string; plan: string }
+interface CurrentUser { name: string; role: string }
 interface KbItem { id: string; name: string; stats?: { total: number; ready: number; processing: number; chunks: number } }
 interface Conversation { id: string; kbId: string; title: string; messages: { role: string; content: string; createdAt: number }[]; updatedAt: number }
 interface AgentTask { id: string; topic: string; status: "queued" | "running" | "done" | "failed"; steps: { role: string; status: string; progress: number }[]; updatedAt: number }
@@ -53,24 +55,34 @@ onMounted(async () => {
 const totalDocs = computed(() => kbs.value.reduce((sum, kb) => sum + (kb.stats?.total ?? 0), 0));
 const kbMap = computed(() => new Map(kbs.value.map((kb) => [kb.id, kb.name])));
 
+// 套餐读后端当前工作区套餐（升级写 workspace.plan，user.plan 不随升级变化）
+const planLabel = computed(() => {
+  const key = planLabelKey(currentPlan.value);
+  return key ? t(key) : currentPlan.value || t("page.dashboard.s13");
+});
+
 const stats = computed(() => [
   {
     label: t("page.dashboard.s8"), value: qaUsed.value.toLocaleString(), sub: t("page.dashboard.s9"),
     trend: qaLimit.value ? t("page.dashboard.s10") : t("page.dashboard.s11"), muted: false,
+    icon: ChatDotRound,
   },
   {
     label: t("page.dashboard.s12"),
     value: qaLimit.value === null ? "∞" : (qaLimit.value - qaUsed.value).toLocaleString(),
-    sub: t("page.dashboard.s9"),
-    trend: user.value?.plan ? user.value.plan : t("page.dashboard.s13"), muted: true,
+    sub: qaLimit.value === null ? "" : t("page.dashboard.s9"),
+    trend: planLabel.value, muted: true,
+    icon: Odometer,
   },
   {
     label: t("page.dashboard.s14"), value: String(kbs.value.length), sub: t("page.dashboard.s15"),
     trend: kbs.value.length > 0 ? t("page.dashboard.s16") : t("page.dashboard.s17"), muted: false,
+    icon: Collection,
   },
   {
     label: t("page.dashboard.s18"), value: totalDocs.value.toLocaleString(), sub: t("page.dashboard.s19"),
     trend: totalDocs.value > 0 ? t("page.dashboard.s20") : t("page.dashboard.s17"), muted: false,
+    icon: Document,
   },
 ]);
 
@@ -148,7 +160,9 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
         class="card stat"
       >
         <div class="stat-head">
-          <span class="stat-icon">◆</span>
+          <span class="stat-icon">
+            <el-icon :size="18"><component :is="s.icon" /></el-icon>
+          </span>
           <span
             v-if="!s.muted"
             class="stat-trend up"
@@ -426,18 +440,23 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
     grid-template-columns: repeat(4, 1fr);
   }
 }
+.stat {
+  padding: 18px 20px;
+}
 .stat-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 .stat-icon {
   display: inline-flex;
   height: 36px;
   width: 36px;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
@@ -450,11 +469,15 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: 100%;
   padding: 2px 8px;
+  overflow: hidden;
   border-radius: 9999px;
   background: hsl(var(--muted));
   font-size: 11px;
   color: hsl(var(--muted-foreground));
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .badge.success {
   background: hsl(var(--success) / 0.12);
@@ -478,7 +501,7 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   display: flex;
   align-items: baseline;
   gap: 4px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 .stat-value {
   font-size: 24px;

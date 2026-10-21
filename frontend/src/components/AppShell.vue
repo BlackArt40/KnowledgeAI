@@ -18,9 +18,15 @@ import GlobalSearch from "@/components/GlobalSearch.vue";
 import { fetchCurrentUser } from "@/api/auth";
 import { ApiError, api } from "@/api/client";
 import {
-  createWorkspace, fetchWorkspaces, switchTo,
-  type Workspace,
+  createWorkspace, switchTo,
 } from "@/api/workspaces";
+import {
+  currentWorkspaceName as currentName,
+  onFreePlan,
+  refreshWorkspaces,
+  workspaceList as workspaces,
+} from "@/lib/workspace-store";
+import { planLabelKey } from "@/lib/plan";
 import {
   fetchNotifications, markAllRead, markOneRead,
   type Notification,
@@ -82,6 +88,9 @@ const titleMap: Record<string, string> = {
   "/api-keys": "page.app-shell.s15",
   "/developer": "page.app-shell.s28",
   "/settings": "page.app-shell.s16",
+  "/admin": "page.app-shell.s17",
+  "/admin/monitoring": "page.app-shell.s27",
+  "/checkout": "page.checkout.s30",
 };
 
 const ROLE_BADGE: Record<string, string> = {
@@ -93,7 +102,6 @@ interface CurrentUser {
   name: string;
   email: string;
   role: string;
-  plan?: string;
 }
 
 const route = useRoute();
@@ -109,15 +117,19 @@ const userMenuOpen = ref(false);
 const langOpen = ref(false);
 const notifs = ref<Notification[]>([]);
 const unread = ref(0);
-const workspaces = ref<Workspace[]>([]);
-const currentName = ref("");
 const wsOpen = ref(false);
 const creating = ref(false);
 const newName = ref("");
 
 const title = computed(() => {
-  const key = titleMap[String(route.path)];
-  return key ? t(key) : t("page.app-shell.s20");
+  const path = String(route.path);
+  const key = titleMap[path];
+  if (key) return t(key);
+  // 动态路由（知识库详情 / 图谱）走前缀匹配，避免一律回退到「工作台」
+  if (path.startsWith("/knowledge-base/")) {
+    return path.endsWith("/graph") ? t("page.knowledge-graph.s1") : t("page.app-shell.s7");
+  }
+  return t("page.app-shell.s20");
 });
 const locale = computed(() => i18n.language === "en" ? "en" : "zh-CN");
 
@@ -154,7 +166,7 @@ onMounted(async () => {
         name: u.name ?? "",
         email: u.email,
         role: u.role ?? "",
-        plan: (u as { plan?: string }).plan,
+        // 套餐不挂在用户上（升级改的是 workspace.plan），见 lib/workspace-store.ts
       };
       if (!routeGuard(user.value?.role, route.path)) await router.replace("/dashboard");
     }
@@ -163,7 +175,8 @@ onMounted(async () => {
   }
   void refreshNotifs();
   notifTimer = setInterval(() => void refreshNotifs(), 30_000);
-  void loadWorkspaces();
+  // 工作区列表 + 当前套餐（侧栏徽标 / 升级引导的唯一数据源）
+  void refreshWorkspaces();
 });
 
 onBeforeUnmount(() => {
@@ -180,14 +193,9 @@ async function refreshNotifs() {
   }
 }
 
-async function loadWorkspaces() {
-  try {
-    const d = await fetchWorkspaces();
-    workspaces.value = d.workspaces ?? [];
-    currentName.value = d.currentName ?? "";
-  } catch {
-    /* ignore */
-  }
+function planText(plan: string): string {
+  const key = planLabelKey(plan);
+  return key ? t(key) : plan;
 }
 
 async function createWs() {
@@ -330,7 +338,10 @@ const visibleGroups = computed(() =>
               >
                 <Check />
               </el-icon>
-              <span class="ws-plan">{{ w.plan }}</span>
+              <span
+                class="ws-plan"
+                :class="{ pro: w.plan !== 'free' }"
+              >{{ planText(w.plan) }}</span>
             </button>
             <div class="ws-create">
               <template v-if="creating">
@@ -398,7 +409,7 @@ const visibleGroups = computed(() =>
       </nav>
 
       <div
-        v-if="!user?.plan || user.plan === 'free'"
+        v-if="onFreePlan"
         class="upgrade"
       >
         <div class="upgrade-head">
@@ -752,6 +763,9 @@ const visibleGroups = computed(() =>
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
+.ws-plan.pro {
+  color: hsl(var(--primary));
+}
 .ws-create {
   margin-top: 4px;
   padding-top: 6px;
@@ -897,8 +911,12 @@ const visibleGroups = computed(() =>
 }
 .page-title {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
   font-size: 18px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .topbar-right {
   display: flex;

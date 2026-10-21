@@ -75,7 +75,7 @@ function onDepthChange(value: number | number[]) {
     />
     <div class="opts">
       <div class="opt kb-opt">
-        <label>{{ t("page.agent.s0") }}</label>
+        <label>{{ t("page.agent.s90") }}</label>
         <el-select
           :model-value="props.kbId"
           size="small"
@@ -84,7 +84,7 @@ function onDepthChange(value: number | number[]) {
         >
           <el-option
             :value="PUBLIC_SEARCH"
-            :label="t('page.agent.s1')"
+            :label="t('page.agent.s91')"
           />
           <el-option
             v-for="kb in props.kbs"
@@ -95,7 +95,7 @@ function onDepthChange(value: number | number[]) {
         </el-select>
       </div>
       <div class="opt">
-        <label>{{ t("page.agent.s2") }}</label>
+        <label>{{ t("page.agent.s0") }}</label>
         <div class="fmt-group">
           <button
             v-for="f in formatOpts(t)"

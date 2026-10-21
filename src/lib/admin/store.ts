@@ -3,7 +3,16 @@ import { listUsers as authListUsers, getUserById, setUserStatus as authSetUserSt
 import { listAllKbs, listDocuments, totalStorageBytes } from "@/lib/kb/store";
 import { getUsage, listAllInvoices } from "@/lib/billing/store";
 import { listTasks } from "@/lib/agent/store";
+import { listAllWorkspaces, resolveWorkspace, type WorkspacePlan } from "@/lib/workspace/store";
 import { persistSystemConfig } from "@/lib/db/persist";
+
+/**
+ * 用户所处工作区的生效套餐。P4-3 起套餐是工作区级（升级 → setWorkspacePlan），
+ * users.plan 只在支付时写给付款人，直接读会把其他已付费成员显示成 free。
+ */
+function effectivePlan(u: { id: string; email: string }): WorkspacePlan {
+  return resolveWorkspace(u.id, u.email).plan;
+}
 
 // ── System config (in-memory, the only piece that was already real) ──────
 
@@ -46,7 +55,7 @@ export function listUsers(): AdminUser[] {
       id: u.id,
       name: u.name,
       email: u.email,
-      plan: u.plan,
+      plan: effectivePlan(u),
       status: (u.status ?? "active") as UserStatus,
       role: u.role,
       kbs: userKbs.length,
@@ -67,7 +76,7 @@ export function setUserStatus(id: string, status: UserStatus): AdminUser | null 
     id: updated.id,
     name: updated.name,
     email: updated.email,
-    plan: updated.plan,
+    plan: effectivePlan(updated),
     status,
     role: updated.role,
     kbs: userKbs.length,
@@ -99,10 +108,12 @@ export function getOverview(): AdminOverview {
     (u) => (u.lastLoginAt ?? u.createdAt) > now - 30 * DAY
   ).length;
 
-  // Monthly revenue: sum of plan prices for non-banned users
-  const monthlyRevenue = users
-    .filter((u) => (u.status ?? "active") !== "banned")
-    .reduce((sum, u) => sum + (PLAN_PRICE[u.plan] ?? 0), 0);
+  // Monthly revenue: 按工作区计费（套餐挂在工作区上），同一工作区只计一次；
+  // 所有者被封禁的工作区不计费（与「非封禁用户才计费」的旧口径一致）。
+  const bannedIds = new Set(users.filter((u) => (u.status ?? "active") === "banned").map((u) => u.id));
+  const monthlyRevenue = listAllWorkspaces()
+    .filter((ws) => !bannedIds.has(ws.ownerId))
+    .reduce((sum, ws) => sum + (PLAN_PRICE[ws.plan] ?? 0), 0);
 
   // Total docs across all KBs
   const totalDocs = allKbs.reduce((sum, kb) => sum + listDocuments(kb.id).length, 0);
@@ -144,7 +155,7 @@ export function getOverview(): AdminOverview {
         id: u.id,
         name: u.name,
         email: u.email,
-        plan: u.plan,
+        plan: effectivePlan(u),
         status: (u.status ?? "active") as UserStatus,
         role: u.role,
         kbs: userKbs.length,

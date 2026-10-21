@@ -15,6 +15,8 @@ import { oauthSignIn } from "@shared/auth/oauth-signin";
 import { formatRelative } from "@shared/format";
 import { getI18nInstance } from "@shared/i18n/translate";
 import { applyLocale, type Locale } from "@/lib/i18n";
+import { currentPlan } from "@/lib/workspace-store";
+import { planLabelKey } from "@/lib/plan";
 import {
   deleteAccount, fetchSecurity, patchPrivacy, revokeAllSessions, revokeSession, twofa,
   type SecurityState,
@@ -62,6 +64,8 @@ async function refreshUser() {
   const u = await fetchCurrentUser().catch(() => null);
   if (u) {
     me.value = u as typeof me.value;
+    // 姓名输入框初值跟随当前账号（此前仅在保存后回填，进页面永远是空的）
+    if (!profileName.value) profileName.value = u.name ?? "";
     oauthLinks.value = (u as { oauthLinks?: Record<string, string> }).oauthLinks ?? {};
   }
 }
@@ -313,14 +317,20 @@ async function doDeleteAccount() {
 const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
 };
+
+// 套餐读后端当前工作区套餐（与侧栏/工作台同源）
+const planLabel = computed(() => {
+  const key = planLabelKey(currentPlan.value);
+  return key ? t(key) : currentPlan.value || "—";
+});
 </script>
 
 <template>
   <div class="wrap">
     <div>
-      <h1>{{ t("page.settings.s0") }}</h1>
+      <h1>{{ t("page.settings.s97") }}</h1>
       <p class="sub">
-        {{ t("page.settings.s1") }}
+        {{ t("page.settings.s98") }}
       </p>
     </div>
 
@@ -511,7 +521,7 @@ const ROLE_BADGE: Record<string, string> = {
         <div class="space">
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s3") }}</h3>
+              <h3>{{ t("page.settings.s99") }}</h3>
             </div>
             <div class="card-body">
               <div class="grid2">
@@ -532,7 +542,7 @@ const ROLE_BADGE: Record<string, string> = {
               </div>
               <div class="pills">
                 <span class="badge outline">{{ me ? ROLE_BADGE[me.role] ?? me.role : "—" }}</span>
-                <span class="badge">{{ me?.plan ?? "—" }}</span>
+                <span class="badge">{{ planLabel }}</span>
                 <span class="hint">{{ t("page.settings.s21") }}</span>
               </div>
               <div class="lang-row">
@@ -1262,6 +1272,22 @@ const ROLE_BADGE: Record<string, string> = {
   border-radius: 12px;
   background: hsl(var(--muted));
   animation: pulse 1.5s ease-in-out infinite;
+}
+/* 窄屏：标签栏可横向滚动，避免把 grid 列撑宽导致整页横向溢出 */
+.tabs {
+  min-width: 0;
+}
+.tabs :deep(.el-tabs__nav-wrap) {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs :deep(.el-tabs__nav-wrap)::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 639px) {
+  .lang-row {
+    flex-wrap: wrap;
+  }
 }
 @keyframes pulse {
   50% {

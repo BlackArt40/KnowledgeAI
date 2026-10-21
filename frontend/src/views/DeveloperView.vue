@@ -518,6 +518,18 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
 .dev-page {
   display: grid;
   gap: 16px;
+  min-width: 0;
+}
+/* 窄屏：四个带图标的分页会把 tabs 撑到 700px+，改为横向滚动 */
+.dev-tabs {
+  min-width: 0;
+}
+.dev-tabs :deep(.el-tabs__nav-wrap) {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dev-tabs :deep(.el-tabs__nav-wrap)::-webkit-scrollbar {
+  display: none;
 }
 .tab-label {
   display: inline-flex;
@@ -525,6 +537,7 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   gap: 6px;
 }
 .card {
+  min-width: 0;
   padding: 20px;
   border: 1px solid hsl(var(--border));
   border-radius: 16px;
@@ -564,7 +577,9 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   margin-top: 14px;
 }
 .snippet {
+  min-width: 0;
   padding: 12px;
+  overflow: hidden;
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
   background: hsl(var(--muted) / 0.4);

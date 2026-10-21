@@ -1,15 +1,21 @@
 <script setup lang="ts">
 // 用量趋势图（纯 SVG 面积图，复刻 UsageChart 视觉：渐变面积 + 主线 + 空态）。
+// 空态必须显式展示：早前用固定示例序列兜底，会把「0 次问答」画成一条上升曲线。
+import { computed } from "vue";
+import { useTranslation } from "i18next-vue";
+
 const props = defineProps<{ data?: number[]; labels?: string[] }>();
+const { t } = useTranslation();
 
 const W = 560;
 const H = 200;
-const PAD = 8;
+const PAD = 14;
 
-const series = () => (props.data && props.data.length > 0 ? props.data : [2, 5, 3, 8, 6, 10, 7, 12, 9, 14, 11, 16, 13, 15]);
+// 全 0 序列（有 14 天窗口但没有任何用量）也按空态处理，避免贴底的一条直线
+const hasData = computed(() => (props.data ?? []).some((v) => v > 0));
 
 function points(): { x: number; y: number; v: number }[] {
-  const s = series();
+  const s = props.data ?? [];
   const max = Math.max(...s, 1);
   return s.map((v, i) => ({
     x: PAD + (i / Math.max(s.length - 1, 1)) * (W - PAD * 2),
@@ -30,7 +36,15 @@ const areaPath = () => {
 </script>
 
 <template>
+  <div
+    v-if="!hasData"
+    class="chart-empty"
+  >
+    <span class="empty-dot" />
+    <span class="empty-text">{{ t("page.usage-chart.s7") }}</span>
+  </div>
   <svg
+    v-else
     :viewBox="`0 0 ${W} ${H}`"
     class="usage-chart"
     preserveAspectRatio="none"
@@ -56,6 +70,15 @@ const areaPath = () => {
         />
       </linearGradient>
     </defs>
+    <line
+      :x1="0"
+      :y1="H - PAD + 1"
+      :x2="W"
+      :y2="H - PAD + 1"
+      stroke="hsl(var(--border))"
+      stroke-width="1"
+      stroke-dasharray="4 6"
+    />
     <path
       :d="areaPath()"
       fill="url(#usage-grad)"
@@ -75,5 +98,27 @@ const areaPath = () => {
   width: 100%;
   height: 220px;
   display: block;
+}
+.chart-empty {
+  display: flex;
+  height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  background:
+    linear-gradient(hsl(var(--muted) / 0.45), hsl(var(--muted) / 0.12));
+  color: hsl(var(--muted-foreground));
+}
+.empty-dot {
+  height: 10px;
+  width: 10px;
+  border-radius: 9999px;
+  background: hsl(var(--primary) / 0.35);
+  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.08);
+}
+.empty-text {
+  font-size: 13px;
 }
 </style>

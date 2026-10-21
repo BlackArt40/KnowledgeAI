@@ -198,14 +198,15 @@ async function submitAdd() {
     >
       <div class="form">
         <label class="field">
-          <span class="label">{{ t("page.model-settings.s38") }}</span>
+          <span class="label">{{ t("page.model-settings.s5") }}</span>
           <el-input
             v-model="form.name"
+            :placeholder="currentProvider?.name"
             required
           />
         </label>
         <label class="field">
-          <span class="label">{{ t("page.model-settings.s39") }}</span>
+          <span class="label">{{ t("page.model-settings.s4") }}</span>
           <el-select
             v-model="form.provider"
             @change="onProviderChange"
