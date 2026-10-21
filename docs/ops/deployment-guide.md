@@ -68,6 +68,8 @@ curl http://localhost:3000/api/health        # 存活探针：{"status":"ok",...
 curl http://localhost:3000/api/health/ready  # 就绪探针：200 ok 或 503 degraded
 
 # 4. 启用数据库持久化（可选）
+# vector 扩展由应用首次检索时自动创建（CREATE EXTENSION IF NOT EXISTS vector）；
+# 若角色无建扩展权限，DBA 手动执行一次即可：
 docker compose exec postgres psql -U user -d knowledgeai -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 # 运行镜像只含 Next standalone 产物（不含 Prisma CLI），迁移与种子在宿主机执行，

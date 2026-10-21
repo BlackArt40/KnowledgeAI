@@ -2,7 +2,10 @@
 // PgVectorStore - PostgreSQL + pgvector extension for production vector search.
 //
 // Requires:
-//   1. PostgreSQL with pgvector extension: CREATE EXTENSION vector;
+//   1. PostgreSQL with the pgvector package available (pgvector/pgvector image,
+//      or the extension installed on the server). The extension itself is
+//      created by ensureVectorExtension() on first use - no manual SQL needed
+//      as long as the app's role may CREATE EXTENSION.
 //   2. VECTOR_STORE=pgvector + DATABASE_URL in .env.local
 //   3. @prisma/client installed
 //
@@ -109,11 +112,37 @@ function toPgVector(v: Float32Array): string {
   return `[${Array.from(v).join(",")}]`;
 }
 
+/**
+ * pgvector 扩展是运行时前置条件，由应用自己补齐（idempotent）。
+ *
+ * 之前只写在注释里「需要手动 CREATE EXTENSION vector」，导致全新部署
+ * （docker compose up / 托管 PG）第一次检索才 500：type "vector" does not exist。
+ * 这里在建表前先装扩展，失败时给出可执行的提示（需要 superuser 或已授予权限），
+ * 而不是让调用方看到一条裸 SQL 报错。
+ */
+async function ensureVectorExtension(db: PrismaClient): Promise<void> {
+  try {
+    // 走 execDdl：app/worker 同时首启时 `CREATE EXTENSION IF NOT EXISTS` 仍可能在
+    // pg_extension 上撞 23505（另一个进程刚建好），这类良性竞争必须吞掉。
+    await execDdl(db, `CREATE EXTENSION IF NOT EXISTS vector`);
+  } catch (err) {
+    warnOnce(
+      "extension",
+      `[rag] CREATE EXTENSION vector 失败：当前数据库角色无权安装 pgvector，请由 DBA 执行 ` +
+        `CREATE EXTENSION vector;（或使用 pgvector/pgvector 镜像并授予权限）。原始错误：${
+          err instanceof Error ? err.message : String(err)
+        }`
+    );
+    throw err;
+  }
+}
+
 /** Ensure the kb_chunks table + indexes exist (idempotent, race-tolerant). */
 async function ensureSchema(db: PrismaClient, rawDim: number): Promise<void> {
   const dim = assertValidDim(rawDim);
   if (initialized && dim === vectorDim) return;
 
+  await ensureVectorExtension(db);
   await execDdl(
     db,
     `CREATE TABLE IF NOT EXISTS kb_chunks (

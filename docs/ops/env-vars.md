@@ -103,7 +103,7 @@ related:
 | `CHROMA_URL` | 条件 | — | 仅 `chromadb` 时使用 |
 | `PINECONE_API_KEY` / `PINECONE_INDEX_HOST` | 条件 | — | 仅 `pinecone` 时使用 |
 
-> `pgvector` 需先在 PG 执行 `CREATE EXTENSION vector;`。
+> `pgvector` 的 `vector` 扩展由应用在首次检索时自动创建（`CREATE EXTENSION IF NOT EXISTS vector`，见 `src/lib/rag/vector-store-pgvector.ts`）；数据库角色无建扩展权限时需 DBA 预先执行 `CREATE EXTENSION vector;`。
 
 ## AI 服务（阶段 1 服务拆分）
 
