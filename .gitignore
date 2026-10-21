@@ -105,3 +105,4 @@ deploy/nginx/routes.conf.bak
 .workbuddy/
 _tmp_*
 knowledgeai_ai.egg-info/
+docker-compose.override.yml
