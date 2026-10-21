@@ -5,6 +5,7 @@ import { notify } from "@/lib/notifications/store";
 import { addSession, recordLogin, is2FAEnabled, is2FAVerificationLocked, verify2FALogin, mustEnroll2FA } from "@/lib/security/store";
 import { clientInfoFromRequest } from "@/lib/security/ua";
 import { recordAudit } from "@/lib/security/audit";
+import { effectiveWorkspacePlan } from "@/lib/workspace/store";
 import { ensureHydrated } from "@/lib/db/hydrate";
 export const dynamic = "force-dynamic";
 
@@ -139,7 +140,11 @@ export async function POST(req: Request) {
     role: user.role,
   }, 7 * 86400, { jti: sessions[0]?.id });
 
-  const res = NextResponse.json({ user: sanitize(user), token });
+  // `plan` 与 /api/auth/me 同口径：返回当前工作区的生效套餐（users.plan 只更新付款人）
+  const res = NextResponse.json({
+    user: { ...sanitize(user), plan: effectiveWorkspacePlan(req, user) },
+    token,
+  });
   res.cookies.set("kai-token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -125,31 +125,37 @@ export const router = createRouter({
       path: "/login",
       name: "login",
       component: () => import("@/views/auth/LoginView.vue"),
+      meta: { auth: true },
     },
     {
       path: "/register",
       name: "register",
       component: () => import("@/views/auth/RegisterView.vue"),
+      meta: { auth: true },
     },
     {
       path: "/verify-email",
       name: "verify-email",
       component: () => import("@/views/auth/VerifyEmailView.vue"),
+      meta: { auth: true },
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
       component: () => import("@/views/auth/ForgotPasswordView.vue"),
+      meta: { auth: true },
     },
     {
       path: "/reset-password",
       name: "reset-password",
       component: () => import("@/views/auth/ResetPasswordView.vue"),
+      meta: { auth: true },
     },
     {
       path: "/2fa-enroll",
       name: "2fa-enroll",
       component: () => import("@/views/auth/TwoFactorEnrollView.vue"),
+      meta: { auth: true },
     },
 
     // ── 静态页（无壳，与 Next 顶级路由一致）────────────────────────────

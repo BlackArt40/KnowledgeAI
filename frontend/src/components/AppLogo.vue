@@ -53,4 +53,13 @@ defineProps<{ light?: boolean }>();
 .w {
   color: #fff;
 }
+/* 反白变体（品牌渐变底上）：渐变字会与底色同色而消失，改纯白 + 半透明标记 */
+.logo.light .grad {
+  background: none;
+  color: #fff;
+}
+.logo.light .mark {
+  background: rgb(255 255 255 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+}
 </style>

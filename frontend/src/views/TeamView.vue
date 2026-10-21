@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// 团队页（V3，复刻 /team）：统计卡 + 成员表（邀请/{{ Object.keys(row.memberRoles ?? {}).length }}/移除，Owner/Admin）
+// 团队页（V3，复刻 /team）：统计卡 + 成员表（邀请/改角色/移除，Owner/Admin）
 // + 共享 KB 权限面板（access + memberRoles 展示）+ 审计日志（manager 可见）。
 import { computed, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
+import { CircleCheck, Message, Star, User } from "@element-plus/icons-vue";
 import {
   fetchTeam, inviteMember, patchMemberRole, removeMember,
   type TeamData,
@@ -27,6 +28,16 @@ const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
 };
 const ROLES = ["owner", "admin", "editor", "viewer"];
+
+/** 共享访问级别 → 可读文案（后端存的是 view/edit/private） */
+function accessLabel(access: string): string {
+  const map: Record<string, string> = {
+    view: "page.team.everyoneRead",
+    edit: "page.team.memberEditable",
+    private: "page.team.onlyOwnerAdmin",
+  };
+  return map[access] ? t(map[access]) : access;
+}
 
 async function refresh() {
   try {
@@ -110,15 +121,19 @@ async function remove(id: string) {
     <template v-else-if="data">
       <div class="stats">
         <div class="card stat">
+          <span class="stat-icon"><el-icon :size="16"><User /></el-icon></span>
           <span class="v">{{ data.stats.total }}</span><span class="l">{{ t("page.team.member") }}</span>
         </div>
         <div class="card stat">
+          <span class="stat-icon"><el-icon :size="16"><CircleCheck /></el-icon></span>
           <span class="v">{{ data.stats.active }}</span><span class="l">{{ t("page.team.online") }}</span>
         </div>
         <div class="card stat">
+          <span class="stat-icon"><el-icon :size="16"><Message /></el-icon></span>
           <span class="v">{{ data.stats.invited }}</span><span class="l">{{ t("page.team.invited") }}</span>
         </div>
         <div class="card stat">
+          <span class="stat-icon"><el-icon :size="16"><Star /></el-icon></span>
           <span class="v">{{ data.stats.owners }}</span><span class="l">Owner</span>
         </div>
       </div>
@@ -202,8 +217,8 @@ async function remove(id: string) {
               <span class="m-name">{{ row.kbName }}</span>
               <span class="m-email">{{ row.ownerName }} · {{ row.docs }} {{ t("page.document-list.s1") }}</span>
             </span>
-            <span class="badge">{{ row.access }}</span>
-            <span class="m-email">{{ Object.keys(row.memberRoles ?? {}).length }} {{ Object.keys(row.memberRoles ?? {}).length }}</span>
+            <span class="badge">{{ accessLabel(row.access) }}</span>
+            <span class="m-email">{{ t("page.team.s28", { count: Object.keys(row.memberRoles ?? {}).length }) }}</span>
           </div>
         </div>
       </div>
@@ -231,7 +246,7 @@ async function remove(id: string) {
 
     <el-dialog
       v-model="inviteOpen"
-      :title="t('page.team.s2')"
+      :title="t('page.invite-dialog.s0')"
       width="400px"
       @closed="inviteError = null"
     >
@@ -289,8 +304,12 @@ async function remove(id: string) {
   display: grid;
   gap: 16px;
 }
+.wrap > * {
+  min-width: 0;
+}
 .head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -307,8 +326,13 @@ async function remove(id: string) {
 }
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+@media (min-width: 640px) {
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .card {
   border: 1px solid hsl(var(--border));
@@ -316,9 +340,20 @@ async function remove(id: string) {
   border-radius: 12px;
 }
 .stat {
-  padding: 16px;
+  padding: 16px 18px;
   display: grid;
   gap: 2px;
+}
+.stat-icon {
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  border-radius: 9px;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
 }
 .v {
   font-size: 22px;

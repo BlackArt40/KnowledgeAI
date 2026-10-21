@@ -65,6 +65,11 @@ export function listWorkspaces(email: string): Workspace[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** 全部工作区（管理端统计用：收入按月/工作区计费，不能按成员重复计）。 */
+export function listAllWorkspaces(): Workspace[] {
+  return [...store().values()];
+}
+
 export function getWorkspace(id: string): Workspace | undefined {
   return store().get(id);
 }
@@ -116,6 +121,20 @@ export function resolveWorkspace(userId: string, email: string, requestedId?: st
   if (memberOf) return memberOf;
 
   return fallback;
+}
+
+/**
+ * 请求生效套餐：先按 `kai-workspace` cookie 解析租户（与 guard 同口径），
+ * 解析不到再走默认工作区。供 `/api/auth/*` 这类不走 getRequestUser 的路由使用，
+ * 保证响应里的 `plan` 与服务端实际的租户套餐一致（升级只写 workspace.plan）。
+ */
+export function effectiveWorkspacePlan(
+  req: Request,
+  user: { id: string; email: string }
+): WorkspacePlan {
+  const cookieId =
+    /(?:^|;\s*)kai-workspace=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1] ?? null;
+  return resolveWorkspace(user.id, user.email, cookieId).plan;
 }
 
 /** Workspaces the user OWNS (their personal tenant). Used by registration to

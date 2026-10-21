@@ -66,7 +66,7 @@ worker 消费后台队列（文档处理 / Agent 调研 / 索引清理）。**�
 
 ### pgvector 检索报错 / 向量扩展缺失？
 
-`VECTOR_STORE=pgvector` 前必须先在 PostgreSQL 执行 `CREATE EXTENSION vector;`（compose 用 `pgvector/pgvector:pg16` 镜像自带扩展支持）。
+`vector` 扩展由应用在首次检索时自动创建（`CREATE EXTENSION IF NOT EXISTS vector`），无需手动执行；compose 用 `pgvector/pgvector:pg16` 镜像自带扩展文件。若数据库角色没有建扩展权限，由 DBA 执行一次 `CREATE EXTENSION vector;` 即可（报错日志会明确提示这一点）。
 
 ### 如何把内存索引迁移到向量库？
 
@@ -203,10 +203,10 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **症状**：问答引用为空或检索报错；切换 `pgvector` 后索引失败。
 
-**原因**：`pgvector` 未创建 `vector` 扩展；或索引未迁移（内存索引未导入新后端）。
+**原因**：`vector` 扩展不可用（角色无权创建）；或索引未迁移（内存索引未导入新后端）。
 
 **处理**：
-1. `CREATE EXTENSION IF NOT EXISTS vector;`；
+1. 确认服务端装有 pgvector（`select * from pg_available_extensions where name='vector';`）；应用会自动 `CREATE EXTENSION IF NOT EXISTS vector`，失败时由 DBA 手动执行一次；
 2. `npx tsx scripts/migrate-vector-store.ts` 迁移存量索引；
 3. 确认 `VECTOR_STORE` 与索引实际所在后端一致。
 

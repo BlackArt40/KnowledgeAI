@@ -48,8 +48,11 @@ describe("schema bootstrap", () => {
     await store.indexChunks("kb_1", "doc_1", "a.md", ["c1", "c2"], V(2));
 
     const sqls = sqlCalls();
-    expect(sqls[0]).toContain("CREATE TABLE IF NOT EXISTS kb_chunks");
-    expect(sqls[0]).toContain("vector(1024)");
+    // pgvector 扩展由应用自己补齐（全新部署不再需要手动 CREATE EXTENSION）
+    expect(sqls[0]).toBe("CREATE EXTENSION IF NOT EXISTS vector");
+    const createIdx = sqls.findIndex((s) => s.includes("CREATE TABLE IF NOT EXISTS kb_chunks"));
+    expect(createIdx).toBe(1);
+    expect(sqls[createIdx]).toContain("vector(1024)");
     expect(sqls.some((s) => s.includes("idx_kb_chunks_kb"))).toBe(true);
     expect(sqls.some((s) => s.includes("idx_kb_chunks_doc"))).toBe(true);
 
@@ -71,16 +74,32 @@ describe("schema bootstrap", () => {
     await store.indexChunks("kb_1", "doc_1", "a.md", ["c1"], V(1, 4096));
 
     const sqls = sqlCalls();
-    expect(sqls[0]).toContain("vector(4096)");
+    expect(sqls.find((s) => s.includes("CREATE TABLE IF NOT EXISTS kb_chunks"))).toContain("vector(4096)");
     expect(sqls.some((s) => s.includes("USING hnsw"))).toBe(false);
     // exact scan fallback still writes the row
     expect(sqls.some((s) => s.startsWith("INSERT INTO kb_chunks"))).toBe(true);
   });
 
-  it("tolerates a concurrent CREATE race (23505) from another process", async () => {
+  it("tolerates a concurrent CREATE EXTENSION race (23505) from another process", async () => {
     const store = await newStore();
+    // app + worker 同时首启时，另一个进程刚建好扩展 → pg_extension 上撞 23505
     mocks.exec.mockImplementationOnce(async () => {
-      throw Object.assign(new Error("duplicate key"), { code: "23505" });
+      throw Object.assign(new Error("Key (extname)=(vector) already exists"), { code: "23505" });
+    });
+    await expect(
+      store.indexChunks("kb_1", "doc_1", "a.md", ["c1"], V(1))
+    ).resolves.toBeUndefined();
+    expect(sqlCalls().some((s) => s.includes("CREATE TABLE IF NOT EXISTS kb_chunks"))).toBe(true);
+    expect(sqlCalls().some((s) => s.startsWith("INSERT INTO kb_chunks"))).toBe(true);
+  });
+
+  it("tolerates a concurrent CREATE TABLE race (23505) from another process", async () => {
+    const store = await newStore();
+    mocks.exec.mockImplementation(async (sql: unknown) => {
+      if (String(sql).includes("CREATE TABLE IF NOT EXISTS kb_chunks")) {
+        throw Object.assign(new Error("duplicate key"), { code: "23505" });
+      }
+      return 0;
     });
     await expect(
       store.indexChunks("kb_1", "doc_1", "a.md", ["c1"], V(1))

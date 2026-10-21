@@ -63,7 +63,10 @@
       "s32": "Team info",
       "s33": "Webhook management",
       "s34": "Expires",
-      "s35": "Expired"
+      "s35": "Expired",
+      "s36": "Create and manage keys that call the KnowledgeAI API.",
+      "s37": "Create your first key to call knowledge base Q&A and Agent research from code.",
+      "s38": "No API keys yet"
     },
     "billing": {
       "s0": "Ends at period end",
@@ -122,7 +125,8 @@
       "s26": "Due ¥{amount} · complete the payment on your phone",
       "s27": "Upgraded to",
       "s28": " — your subscription is active immediately.",
-      "s29": "View invoices"
+      "s29": "View invoices",
+      "s30": "Checkout"
     },
     "dashboard": {
       "s0": "Usage trend",
@@ -233,7 +237,8 @@
       "s73": "No rate-limit records yet — they appear once API traffic flows",
       "s74": "Refresh",
       "s75": "{count} total",
-      "s76": "No audit records"
+      "s76": "No audit records",
+      "s77": "No revenue data yet"
     },
     "knowledge-base-[id]": {
       "s0": "Add documents",
@@ -337,7 +342,9 @@
       "s86": "The system is busy (task queue is full). Please try again shortly.",
       "s87": "Could not queue or run the task. Please try again.",
       "s88": "The run ended without a result. Please try again.",
-      "s89": "Stop research"
+      "s89": "Stop research",
+      "s90": "Knowledge base",
+      "s91": "Public search"
     },
     "settings": {
       "s0": "Security",
@@ -431,7 +438,10 @@
       "s93": "Delete account & data",
       "s94": "This will permanently delete your account, knowledge bases, conversation history, and all related data, and ",
       "s95": "⚠️ After deletion you will no longer be able to sign in, and all API keys will be revoked immediately.",
-      "s96": "Confirm permanent deletion"
+      "s96": "Confirm permanent deletion",
+      "s97": "Settings",
+      "s98": "Account security, preferences and data",
+      "s99": "Profile"
     },
     "chat": {
       "s0": "Conversations",
@@ -486,7 +496,7 @@
       "s52": "Please summarize {topic}",
       "s53": "What use cases is {topic} suitable for?",
       "s54": "What does the {name} knowledge base contain?",
-      "s55": "Ask the knowledge base{extra}…  (Enter to send)",
+      "s55": "Ask the knowledge base{extra}…",
       "s56": "Select a knowledge base first",
       "s57": " · shared by {name}",
       "s58": "Remove tag {tag}",
@@ -583,7 +593,12 @@
       "s36": "Unset default",
       "s37": "Add external model",
       "s38": "Get API key",
-      "s39": "None"
+      "s39": "None",
+      "s40": "API key",
+      "s41": "sk-... or provider key",
+      "s42": "Base URL",
+      "s43": "Chat model",
+      "s44": "Embedding model"
     },
     "upload-zone": {
       "s0": "Upload failed",
@@ -610,7 +625,8 @@
       "s3": "Sun",
       "s4": "Tue",
       "s5": "Thu",
-      "s6": "Sat"
+      "s6": "Sat",
+      "s7": "No usage data yet"
     },
     "kb-settings-dialog": {
       "s0": "KB settings",
@@ -629,7 +645,8 @@
       "s14": "Adjust chunking and retrieval parameters. New documents will be processed with the updated settings.",
       "s15": "{presets} built-in presets · {user} user-configured (from Settings → AI models)",
       "s16": "Settings were changed by another member (version conflict). Close and reopen the dialog to load the latest settings.",
-      "s17": "Save settings"
+      "s17": "Save settings",
+      "s18": "Description"
     },
     "document-list": {
       "s0": "No documents yet",
@@ -646,7 +663,10 @@
       "s12": "Failed",
       "s13": "Vectorizing",
       "s14": "Upload files or add web links — AI parses and vectorizes them automatically",
-      "s15": "{count} chunks"
+      "s15": "{count} chunks",
+      "s16": "Queued",
+      "s17": "Parsing",
+      "s18": "Chunking"
     },
     "doc-share-dialog": {
       "s0": "Share link (accessible without login)",
@@ -959,7 +979,8 @@
       "banned": "Banned",
       "s25": "{total} members · {active} active · {invited} pending",
       "s26": "{owner} · {docs} documents",
-      "s27": "{name} ({role})"
+      "s27": "{name} ({role})",
+      "s28": "{count} member(s) with edit access"
     },
     "forgot-password": {
       "s0": "Reset your password",
@@ -1316,7 +1337,8 @@
       "s14": "Concept",
       "s15": "Event",
       "s16": "Other",
-      "s17": "Mentioned {mentions}× · from {docs} documents · {neighbors} direct relations"
+      "s17": "Mentioned {mentions}× · from {docs} documents · {neighbors} direct relations",
+      "s18": "Search entities…"
     },
     "kb": {
       "title": "Knowledge Bases",

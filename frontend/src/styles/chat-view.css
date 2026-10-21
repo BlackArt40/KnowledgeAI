@@ -417,7 +417,8 @@
   cursor: pointer;
 }
 .chat-page .send-btn:disabled {
-  opacity: 0.4;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   cursor: not-allowed;
 }
 .chat-page .send-btn.stop {
