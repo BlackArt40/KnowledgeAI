@@ -64,6 +64,11 @@ const year = computed(() => new Date().getFullYear());
   grid-template-columns: 1fr;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  overflow-x: clip;
+}
+/* grid 子项默认 min-width:auto，窄屏会被表单最小内容撑出 9px 横向滚动 */
+.auth-shell > * {
+  min-width: 0;
 }
 @media (min-width: 1024px) {
   .auth-shell {
@@ -168,6 +173,7 @@ figcaption {
 .form-panel {
   position: relative;
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 .panel-top {

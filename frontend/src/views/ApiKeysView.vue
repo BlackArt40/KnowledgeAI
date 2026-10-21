@@ -3,7 +3,7 @@
 // 复制提醒）+ 启停 + 撤销。scope 白名单与 /lib/apikeys/types 一致。
 import { onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
-import { CopyDocument, Check } from "@element-plus/icons-vue";
+import { Check, CopyDocument, Key } from "@element-plus/icons-vue";
 import {
   createKey, fetchKeys, revokeKey, SCOPES,
   type ApiKey,
@@ -84,7 +84,7 @@ function keyDisplay(k: ApiKey): string {
       <div>
         <h2>{{ t("page.api-keys.s1") }}</h2>
         <p class="sub">
-          {{ t("page.api-keys.s1") }}
+          {{ t("page.api-keys.s36") }}
         </p>
       </div>
       <el-button
@@ -104,10 +104,17 @@ function keyDisplay(k: ApiKey): string {
       v-else-if="keys.length === 0"
       class="empty"
     >
-      <p>{{ t("page.api-keys.s0") }}</p>
+      <span class="empty-icon">
+        <el-icon :size="22"><Key /></el-icon>
+      </span>
+      <p class="empty-title">
+        {{ t("page.api-keys.s38") }}
+      </p>
+      <p class="empty-desc">
+        {{ t("page.api-keys.s37") }}
+      </p>
       <el-button
         type="primary"
-        plain
         @click="createOpen = true"
       >
         {{ t("page.api-keys.s0") }}
@@ -315,11 +322,36 @@ function keyDisplay(k: ApiKey): string {
 }
 .empty {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   justify-items: center;
-  padding: 60px 0;
+  padding: 56px 24px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 16px;
+  background: hsl(var(--card));
   color: hsl(var(--muted-foreground));
   font-size: 14px;
+  text-align: center;
+}
+.empty-icon {
+  display: inline-flex;
+  height: 48px;
+  width: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+.empty-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.empty-desc {
+  margin: 0 0 8px;
+  max-width: 32rem;
+  line-height: 1.6;
 }
 .form {
   display: grid;

@@ -8,6 +8,7 @@ import { useTranslation } from "i18next-vue";
 import { Plus } from "@element-plus/icons-vue";
 import { createKb, deleteKb, fetchKbs, type KbListItem } from "@/api/kb";
 import { ApiError } from "@/api/client";
+import { kbAvatarBackground } from "@/lib/kb-color";
 import { formatRelative } from "@shared/format";
 
 const { t } = useTranslation();
@@ -126,7 +127,7 @@ async function remove(kb: KbListItem) {
           <div class="kb-head">
             <span
               class="kb-avatar"
-              :style="{ background: kb.color || 'hsl(var(--primary))' }"
+              :style="{ background: kbAvatarBackground(kb.color, kb.name) }"
             >
               {{ kb.initial || kb.name.charAt(0) }}
             </span>
@@ -176,7 +177,7 @@ async function remove(kb: KbListItem) {
 
     <el-dialog
       v-model="createOpen"
-      :title="t('page.knowledge-base.s2')"
+      :title="t('page.new-kb-dialog.s0')"
       width="440px"
       @closed="createError = null"
     >
@@ -185,7 +186,7 @@ async function remove(kb: KbListItem) {
           <span class="label">{{ t("page.new-kb-dialog.s1") }}</span>
           <el-input
             v-model="form.name"
-            :placeholder="t('page.knowledge-base.s11')"
+            :placeholder="t('page.new-kb-dialog.s5')"
             required
           />
         </label>
@@ -195,7 +196,7 @@ async function remove(kb: KbListItem) {
             v-model="form.desc"
             type="textarea"
             :rows="2"
-            :placeholder="t('page.knowledge-base.s13')"
+            :placeholder="t('page.new-kb-dialog.s6')"
           />
         </label>
         <div class="field">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // 根组件：(app) 组路由（meta.shell）由 AppShell 包裹（导航/通知/Cmd+K），
-// 其余（认证/静态/分享/首页）直接渲染。EP 内置文案（分页/日期/空状态）
+// (auth) 组路由（meta.auth）由 AuthLayout 包裹（左品牌右表单分屏），
+// 其余（静态/分享/首页）直接渲染。EP 内置文案（分页/日期/空状态）
 // 跟随应用语言动态切换，避免切到 en 后仍显示中文。
 import { onBeforeUnmount, ref } from "vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
@@ -8,6 +9,7 @@ import en from "element-plus/es/locale/lang/en";
 import { useRoute } from "vue-router";
 import { getI18nInstance } from "@shared/i18n/translate";
 import AppShell from "@/components/AppShell.vue";
+import AuthLayout from "@/layouts/AuthLayout.vue";
 import { useThemeStore } from "@/stores/theme";
 
 const route = useRoute();
@@ -29,6 +31,9 @@ onBeforeUnmount(() => i18n.off("languageChanged", syncEpLocale));
     <AppShell v-if="route.meta.shell">
       <router-view />
     </AppShell>
+    <AuthLayout v-else-if="route.meta.auth">
+      <router-view />
+    </AuthLayout>
     <router-view v-else />
   </el-config-provider>
 </template>

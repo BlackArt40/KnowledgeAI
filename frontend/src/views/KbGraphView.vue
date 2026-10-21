@@ -5,6 +5,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useTranslation } from "i18next-vue";
+import { Connection } from "@element-plus/icons-vue";
 import { fetchGraph, type GraphEdge, type GraphNode } from "@/api/kb";
 import { ApiError } from "@/api/client";
 import { computeGraphLayout, type LayoutNode } from "@shared/kg/layout";
@@ -99,12 +100,12 @@ function onClickNode(id: string) {
         >
           ← {{ t("page.knowledge-graph.s0") }}
         </router-link>
-        <h2>{{ kbName }} · {{ t("page.knowledge-graph.s0") }}</h2>
+        <h2>{{ kbName }} · {{ t("page.knowledge-graph.s1") }}</h2>
       </div>
       <input
         v-model="query"
         class="search"
-        :placeholder="t('page.knowledge-graph.s1')"
+        :placeholder="t('page.knowledge-graph.s18')"
       >
     </div>
 
@@ -123,7 +124,15 @@ function onClickNode(id: string) {
       v-else-if="nodes.length === 0"
       class="empty"
     >
-      <p>{{ t("page.knowledge-graph.s2") }}</p>
+      <span class="empty-icon">
+        <el-icon :size="22"><Connection /></el-icon>
+      </span>
+      <p class="empty-title">
+        {{ t("page.knowledge-graph.s6") }}
+      </p>
+      <p class="empty-desc">
+        {{ t("page.knowledge-graph.s7") }}
+      </p>
       <router-link
         :to="`/knowledge-base/${kbId}`"
         class="btn outline small"
@@ -279,11 +288,37 @@ function onClickNode(id: string) {
 }
 .empty {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   justify-items: center;
-  padding: 60px 0;
+  padding: 64px 24px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 16px;
+  background: hsl(var(--card));
   color: hsl(var(--muted-foreground));
   font-size: 14px;
+  text-align: center;
+}
+.empty-icon {
+  display: inline-flex;
+  height: 46px;
+  width: 46px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-size: 20px;
+}
+.empty-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.empty-desc {
+  margin: 0 0 6px;
+  max-width: 30rem;
+  line-height: 1.6;
 }
 .err-box {
   padding: 14px 16px;

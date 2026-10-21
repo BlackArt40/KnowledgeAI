@@ -11,6 +11,7 @@ import {
   type Kb, type KbDoc, type KbStats,
 } from "@/api/kb";
 import { ApiError } from "@/api/client";
+import { kbAvatarBackground } from "@/lib/kb-color";
 import { formatRelative } from "@shared/format";
 
 const { t } = useTranslation();
@@ -141,7 +142,12 @@ async function removeKb() {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  ready: "page.document-list.s11", queued: "queued", parsing: "parsing", chunking: "chunking", vectorizing: "vectorizing", failed: "page.document-list.s12",
+  ready: "page.document-list.s11",
+  queued: "page.document-list.s16",
+  parsing: "page.document-list.s17",
+  chunking: "page.document-list.s18",
+  vectorizing: "page.document-list.s13",
+  failed: "page.document-list.s12",
 };
 
 const hasProcessing = computed(() =>
@@ -175,7 +181,7 @@ const hasProcessing = computed(() =>
           <div class="title-row">
             <span
               class="kb-avatar"
-              :style="{ background: kb.color || 'hsl(var(--primary))' }"
+              :style="{ background: kbAvatarBackground(kb.color, kb.name) }"
             >
               {{ kb.initial || kb.name.charAt(0) }}
             </span>
@@ -207,14 +213,14 @@ const hasProcessing = computed(() =>
 
       <div class="stat-row">
         <span class="stat-chip">{{ stats?.total ?? 0 }} {{ t("page.document-list.s1") }}</span>
-        <span class="stat-chip ok">{{ stats?.ready ?? 0 }} ready</span>
+        <span class="stat-chip ok">{{ stats?.ready ?? 0 }} {{ t("page.document-list.s11") }}</span>
         <span
           v-if="(stats?.processing ?? 0) > 0"
           class="stat-chip warn"
         >
           {{ stats?.processing }} {{ t("page.knowledge-base-[id].s37", { count: stats?.processing ?? 0 }) }}
         </span>
-        <span class="stat-chip">{{ stats?.chunks ?? 0 }} chunks</span>
+        <span class="stat-chip">{{ t("page.document-list.s15", { count: stats?.chunks ?? 0 }) }}</span>
       </div>
 
       <!-- 上传区 -->
@@ -230,6 +236,7 @@ const hasProcessing = computed(() =>
         </el-icon>
         <p class="upload-title">
           {{ t("page.upload-zone.s15") }}
+          <span class="upload-link">{{ t("page.upload-zone.s16") }}</span>
         </p>
         <p class="upload-sub">
           {{ t("page.upload-zone.s17") }}
@@ -283,7 +290,7 @@ const hasProcessing = computed(() =>
             <span class="doc-main">
               <span class="doc-name">{{ d.name }}</span>
               <span class="doc-meta">
-                {{ d.type }} · {{ d.chunks }} chunks · {{ formatRelative(d.uploadedAt) }}
+                {{ d.type }} · {{ t("page.document-list.s15", { count: d.chunks }) }} · {{ formatRelative(d.uploadedAt) }}
                 <span
                   v-if="d.error"
                   class="err"
@@ -295,7 +302,7 @@ const hasProcessing = computed(() =>
                 class="badge"
                 :class="d.status === 'ready' ? 'ok' : d.status === 'failed' ? 'err' : 'warn'"
               >
-                {{ STATUS_LABEL[d.status] ?? d.status }}
+                {{ t(STATUS_LABEL[d.status] ?? d.status) }}
               </span>
               <el-button
                 size="small"
@@ -322,7 +329,7 @@ const hasProcessing = computed(() =>
             <el-input v-model="editName" />
           </label>
           <label class="field">
-            <span class="label">{{ t("page.knowledge-base.s12") }}</span>
+            <span class="label">{{ t("page.kb-settings-dialog.s18") }}</span>
             <el-input
               v-model="editDesc"
               type="textarea"
@@ -462,6 +469,10 @@ const hasProcessing = computed(() =>
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+}
+.upload-link {
+  margin-left: 4px;
+  color: hsl(var(--primary));
 }
 .upload-sub {
   margin: 0;
