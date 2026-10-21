@@ -19,6 +19,10 @@
 import crypto from "crypto";
 import { log } from "../src/lib/obs/log";
 
+// The bootstrap `migrate` container mounts ./src as well, so this import is
+// available there. pino gives redaction + structured output; the repo-wide
+// static scan forbids console.* as a server-side log sink.
+
 function hashPwd(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
@@ -102,9 +106,20 @@ async function main() {
   }
 
   // ── Knowledge Bases ────────────────────────────────────────────────────
+  // Bootstrap reruns must be a no-op: the old id carried a random suffix, so
+  // every rerun created 5 duplicate KBs + docs. Now: deterministic id, and a
+  // name/owner lookup keeps pre-existing (legacy random-id) KBs untouched.
   const owner = SEED_USERS[0];
-  for (const kbSeed of SEED_KBS) {
-    const kbId = `kb_${kbSeed.name.slice(0, 4)}_${Math.random().toString(36).slice(2, 6)}`;
+  for (const [i, kbSeed] of SEED_KBS.entries()) {
+    const existing = await prisma.knowledgeBase.findFirst({
+      where: { ownerId: owner.id, name: kbSeed.name },
+      select: { id: true },
+    });
+    if (existing) {
+      log.info(`[seed] KB (skip, exists): ${kbSeed.name}`);
+      continue;
+    }
+    const kbId = `kb_seed_${i + 1}`;
     const kb = await prisma.knowledgeBase.upsert({
       where: { id: kbId },
       update: {},
@@ -148,9 +163,9 @@ async function main() {
 
   log.info("[seed] ✅ Seeding complete!");
   log.info(`[seed] Users: ${SEED_USERS.length}, KBs: ${SEED_KBS.length}, Team: 1`);
-  // The password field is censored by the structured logger's redact table
-  // (P6-2) - demo credentials never reach stdout in plaintext.
-  log.info({ email: SEED_USERS[0].email, password: DEMO_PASSWORD }, "[seed] Demo login");
+  // Demo credential is documented in AGENTS.md (public local-QA cred) - the
+  // console shim above has no redaction, so only the email is printed here.
+  log.info(`[seed] Demo login: ${SEED_USERS[0].email}`);
 
   await prisma.$disconnect();
 }
