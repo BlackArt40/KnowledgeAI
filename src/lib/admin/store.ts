@@ -1,9 +1,22 @@
 import type { AdminUser, AdminOverview, KbMonitor, SystemConfig, UserStatus } from "./types";
-import { listUsers as authListUsers, getUserById, setUserStatus as authSetUserStatus } from "@/lib/auth/store";
-import { listAllKbs, listDocuments, totalStorageBytes } from "@/lib/kb/store";
-import { getUsage, listAllInvoices } from "@/lib/billing/store";
-import { listTasks } from "@/lib/agent/store";
-import { listAllWorkspaces, resolveWorkspace, type WorkspacePlan } from "@/lib/workspace/store";
+import {
+  listUsers as authListUsers,
+  getUserById,
+  setUserStatus as authSetUserStatus,
+  deleteUser as authDeleteUser,
+} from "@/lib/auth/store";
+import { listAllKbs, listDocuments, totalStorageBytes, listKbs as listKbsByOwner, deleteKb } from "@/lib/kb/store";
+import { getUsage, listAllInvoices, deleteBillingData } from "@/lib/billing/store";
+import { listTasks, deleteAllTasks } from "@/lib/agent/store";
+import { deleteAllConversations } from "@/lib/chat/store";
+import { deleteSecurityData } from "@/lib/security/store";
+import {
+  deleteWorkspacesOwnedBy,
+  listAllWorkspaces,
+  removeMemberEverywhere,
+  resolveWorkspace,
+  type WorkspacePlan,
+} from "@/lib/workspace/store";
 import { persistSystemConfig } from "@/lib/db/persist";
 
 /**
@@ -84,6 +97,28 @@ export function setUserStatus(id: string, status: UserStatus): AdminUser | null 
     lastActive: updated.lastLoginAt ?? updated.createdAt,
     joinedAt: updated.createdAt,
   };
+}
+
+/**
+ * 彻底删除一个账号及其数据（管理员操作）。
+ *
+ * 与自助删号（DELETE /api/auth/me）同口径：KB → 会话 → Agent 任务 → 安全数据
+ * → 计费数据 → 成员关系 → 个人工作区 → 用户行。区别是这里不限制 role，
+ * Owner 保护与「不能删自己」由路由层判断（那里知道 actor）。
+ * 返回 false 表示用户不存在。
+ */
+export async function deleteUserDeep(id: string): Promise<boolean> {
+  const user = getUserById(id);
+  if (!user) return false;
+  for (const kb of listKbsByOwner(user.id)) await deleteKb(kb.id);
+  deleteAllConversations(user.id);
+  deleteAllTasks(user.id);
+  deleteSecurityData(user.id);
+  deleteBillingData(user.id);
+  removeMemberEverywhere(user.email);
+  deleteWorkspacesOwnedBy(user.id);
+  authDeleteUser(user.id);
+  return true;
 }
 
 // ── Overview stats ───────────────────────────────────────────────────────

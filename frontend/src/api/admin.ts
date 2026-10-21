@@ -75,6 +75,11 @@ export function setUserStatus(id: string, status: "active" | "banned"): Promise<
   return request(`/api/admin/users/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } });
 }
 
+/** 彻底删除账号（owner/admin；不能删自己与 Owner，后端守卫）。 */
+export function deleteAdminUser(id: string): Promise<{ ok?: boolean }> {
+  return request(`/api/admin/users/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export async function fetchRatelimit(): Promise<RateLimitDashboard> {
   return request<RateLimitDashboard>("/api/admin/ratelimit");
 }

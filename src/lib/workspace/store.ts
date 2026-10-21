@@ -15,7 +15,7 @@
 
 import { recordAudit } from "@/lib/security/audit";
 import { DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
-import { persistWorkspace } from "@/lib/db/persist";
+import { persistWorkspace, deleteWorkspaceFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 
 export type WorkspacePlan = "free" | "pro" | "enterprise";
@@ -72,6 +72,35 @@ export function listAllWorkspaces(): Workspace[] {
 
 export function getWorkspace(id: string): Workspace | undefined {
   return store().get(id);
+}
+
+/**
+ * 删除某用户名下的工作区（管理员删号 / 测试清理）。默认租户 `ws_default`
+ * 永不删除；返回删除数量。DB 行 fire-and-forget 同步删除，否则重启会复活。
+ */
+export function deleteWorkspacesOwnedBy(userId: string): number {
+  const s = store();
+  let removed = 0;
+  for (const id of [...s.keys()]) {
+    const ws = s.get(id);
+    if (!ws || ws.ownerId !== userId || id === DEFAULT_WORKSPACE_ID) continue;
+    s.delete(id);
+    void deleteWorkspaceFromDb(id);
+    removed += 1;
+  }
+  return removed;
+}
+
+/** 把某邮箱从所有工作区成员列表移除（删号后不留幽灵成员）。 */
+export function removeMemberEverywhere(email: string): number {
+  let touched = 0;
+  for (const ws of store().values()) {
+    if (!ws.members.includes(email)) continue;
+    ws.members = ws.members.filter((m) => m !== email);
+    void persistWorkspace(ws);
+    touched += 1;
+  }
+  return touched;
 }
 
 /** The default workspace (fallback when no cookie / invalid cookie). */
