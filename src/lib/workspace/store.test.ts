@@ -7,10 +7,12 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   DEFAULT_WORKSPACE_ID,
   createWorkspace,
+  deleteWorkspacesOwnedBy,
   ensurePersonalWorkspace,
   getDefaultWorkspace,
   listOwnedWorkspaces,
   listWorkspaces,
+  removeMemberEverywhere,
   resolveWorkspace,
   workspaceOf,
 } from "./store";
@@ -117,5 +119,37 @@ describe("ensurePersonalWorkspace (F4)", () => {
 
   it("returns null without a usable email", () => {
     expect(ensurePersonalWorkspace({ ownerId: "usr_x", ownerEmail: "  " })).toBeNull();
+  });
+});
+
+describe("admin 删号的数据清理", () => {
+  it("deleteWorkspacesOwnedBy 删掉个人租户但保留默认工作区", () => {
+    createWorkspace({
+      name: "临时租户",
+      ownerId: "usr_temp",
+      ownerEmail: "temp@example.com",
+      ownerName: "临时",
+      memberEmails: [],
+    });
+    expect(deleteWorkspacesOwnedBy("usr_temp")).toBe(1);
+    expect(listOwnedWorkspaces("usr_temp")).toHaveLength(0);
+    // 默认租户归 owner，不受影响
+    expect(getDefaultWorkspace().id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(getDefaultWorkspace().ownerId).toBe("usr_owner");
+    // 幂等：再删一次不会再计数
+    expect(deleteWorkspacesOwnedBy("usr_temp")).toBe(0);
+  });
+
+  it("removeMemberEverywhere 从所有工作区移除该邮箱", () => {
+    const ws = createWorkspace({
+      name: "共享租户",
+      ownerId: "usr_owner",
+      ownerEmail: DEMO_EMAIL,
+      ownerName: "Owner",
+      memberEmails: [NEW_EMAIL],
+    });
+    expect(ws.members).toContain(NEW_EMAIL);
+    expect(removeMemberEverywhere(NEW_EMAIL)).toBeGreaterThanOrEqual(1);
+    expect(listWorkspaces(NEW_EMAIL).map((w) => w.id)).not.toContain(ws.id);
   });
 });

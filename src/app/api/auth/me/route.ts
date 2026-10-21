@@ -94,7 +94,8 @@ async function handlePATCH(req: Request) {
     role: result.role,
   });
 
-  const res = NextResponse.json({ user: sanitize(result), token });
+  // 与 GET 同口径：plan 返回工作区生效套餐，避免 PATCH 前后用户看到的套餐跳变
+  const res = NextResponse.json({ user: withEffectivePlan(req, result), token });
   res.cookies.set("kai-token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
