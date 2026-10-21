@@ -53,12 +53,20 @@ test("注册：needsVerification → /verify-email?email=，页面展示邮箱",
   await expect(page.getByText(email).first()).toBeVisible();
 });
 
-test("忘记密码：提交后展示已提交态与 demo 重置链接", async ({ page }) => {
+test("忘记密码：已提交态 + demo 模式下才出现重置链接", async ({ page }) => {
+  // demoResetUrl 只在 NODE_ENV !== production 时返回（生产形态只回 {ok:true}）。
+  // 先探接口拿到本环境的形态，再断言 UI 与之对齐，避免生产/演示双形态必挂一条。
+  const probe = await page.request.post("/api/auth/forgot-password", { data: { email: OWNER } });
+  const { demoResetUrl } = (await probe.json()) as { demoResetUrl?: string };
+
   await page.goto("/forgot-password");
   await page.fill("#email", OWNER);
   await page.getByRole("button", { name: "发送重置链接" }).click();
   await expect(page.getByText("重置链接已发送")).toBeVisible();
-  await expect(page.locator('a[href*="/reset-password?token="]').first()).toBeVisible();
+
+  const link = page.locator('a[href*="/reset-password?token="]').first();
+  if (demoResetUrl) await expect(link).toBeVisible();
+  else await expect(link).toHaveCount(0);
 });
 
 test("重置密码：无 token 死链态（不给必败表单）", async ({ page }) => {

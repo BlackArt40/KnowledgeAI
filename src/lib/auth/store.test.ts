@@ -9,7 +9,6 @@ import {
   listUsers,
   updateUser,
   setUserStatus,
-  updateUserPlan,
   deleteUser,
   sanitize,
   DEMO_PASSWORD,
@@ -85,11 +84,6 @@ describe("admin ops", () => {
     expect(setUserStatus("usr_viewer", "banned")?.status).toBe("banned");
     expect(getUserById("usr_viewer")?.status).toBe("banned");
     expect(setUserStatus("missing", "banned")).toBeNull();
-  });
-
-  it("updateUserPlan upgrades plans", () => {
-    expect(updateUserPlan("usr_viewer", "pro")?.plan).toBe("pro");
-    expect(updateUserPlan("missing", "pro")).toBeNull();
   });
 
   it("deleteUser removes and returns false for unknown", () => {

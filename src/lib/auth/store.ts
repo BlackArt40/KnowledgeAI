@@ -18,6 +18,12 @@ export interface User {
   name: string;
   passwordHash: string | null;
   role: Role;
+  /**
+   * @deprecated 历史字段（种子/展示兼容）。套餐自 P4-3 起属于工作区
+   * （Workspace.plan，升级写 setWorkspacePlan），读取一律用
+   * `workspace/store.ts: effectiveWorkspacePlan()`；本列不再更新，
+   * 仅保留给 DB schema 与旧数据。
+   */
   plan: "free" | "pro" | "enterprise";
   status: "active" | "banned";
   createdAt: number;
@@ -293,17 +299,6 @@ export function setUserStatus(userId: string, status: "active" | "banned"): User
   const u = s.users.get(userId);
   if (!u) return null;
   u.status = status;
-  void persistUser(u);
-  return u;
-}
-
-/** Billing: upgrade/downgrade a user's plan after payment. */
-export function updateUserPlan(userId: string, plan: "free" | "pro" | "enterprise"): User | null {
-  seed();
-  const s = store();
-  const u = s.users.get(userId);
-  if (!u) return null;
-  u.plan = plan;
   void persistUser(u);
   return u;
 }

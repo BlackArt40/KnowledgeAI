@@ -1,6 +1,6 @@
 import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
 import { getPlan } from "./plans";
-import { getUserById, updateUserPlan } from "@/lib/auth/store";
+import { getUserById } from "@/lib/auth/store";
 import { persistInvoice, persistOrder, persistSubscription, deleteBillingDataFromDb, bumpWorkspaceUsage, bumpUserUsage } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
@@ -355,8 +355,9 @@ export function payOrder(orderId: string, userId: string): { order: Order; succe
 
   const planDef = getPlan(order.plan);
 
-  // Update the user's actual plan in the auth store.
-  updateUserPlan(userId, order.plan);
+  // 只写订阅记录 + 工作区套餐（API 路由里的 setWorkspacePlan）。
+  // 不再回写 users.plan：多租户下套餐是工作区级，回写会让「付款人 pro、
+  // 队友 free」两个真相并存（历史上正是这条写入造成的展示矛盾）。
 
   // Update per-user subscription.
   s.subscriptionsByUser.set(userId, {

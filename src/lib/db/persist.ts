@@ -1068,6 +1068,32 @@ export async function persistWorkspace(ws: {
   }
 }
 
+/** Delete a workspace row (管理员删号 / 清理测试租户).
+ *
+ *  先清 KbChunk（向量表无 FK，会残留），再删工作区；KB/文档/会话/任务都通过
+ *  workspaceId 级联或上游路由已删除，这里只兜底 workspace 本身。
+ *  fire-and-forget：失败只记日志，内存态已经删掉。 */
+export async function deleteWorkspaceFromDb(workspaceId: string): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const raw = db as unknown as {
+      $executeRawUnsafe?: (sql: string, ...params: unknown[]) => Promise<unknown>;
+    };
+    const exec = (sql: string, ...params: unknown[]) =>
+      raw.$executeRawUnsafe?.(sql, ...params)?.catch((err: unknown) => bestEffort(err)) ?? Promise.resolve();
+    // KbChunk 没有指向 Workspace 的 FK，删租户前先按 KB 清掉向量行
+    await exec(
+      'DELETE FROM kb_chunks WHERE kb_id IN (SELECT id FROM "KnowledgeBase" WHERE "workspaceId" = $1)',
+      workspaceId
+    );
+    await exec('DELETE FROM "Workspace" WHERE id = $1', workspaceId);
+  } catch (err) {
+    log.error({ err }, "[db] deleteWorkspaceFromDb error");
+  }
+}
+
 /** Append an audit log entry. */
 export async function persistAuditEntry(
   entry: { id: string; actor: string; action: string; target: string; detail: string; createdAt: number },

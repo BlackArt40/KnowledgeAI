@@ -242,6 +242,23 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **预防**：上线前用真实 Provider 验证检索质量（`RERANK_CANDIDATES` 默认 20 候选池）。
 
+### 11. 知识库/用户列表里出现 `V3-E2E-KB-*`、`V4-SSE-*`、`kai-e2e-*@test.local`
+
+**症状**：跑完 e2e 或手工验证后，管理端用户表与知识库列表残留测试数据。
+
+**原因**：用例虽然写了 `try/finally` 清理，但超时、进程被杀、CI 取消时不会执行；删号此前也没有 API 入口。
+
+**处理**：
+
+```bash
+npx tsx scripts/cleanup-e2e-fixtures.ts          # dry-run，只列出将删对象
+npx tsx scripts/cleanup-e2e-fixtures.ts --apply  # 真正删除（知识库 + e2e 账号）
+```
+
+默认打 `http://localhost:3000`，可用 `BASE_URL` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` 覆盖；账号清理走 `DELETE /api/admin/users/[id]`（owner/admin，不能删自己与 Owner）。
+
+**预防**：CI 用一次性数据库不受影响；本地跑完 e2e 后执行一次 `--apply`。
+
 ### 新增条目模板
 
 ```markdown

@@ -8,16 +8,17 @@ import { computed, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
 import {
   User, TrendCharts, Coin, Collection, ChatLineRound, MagicStick, Box, Search,
-  Setting, Odometer, WarningFilled, CircleCheck, Document, RefreshRight, CreditCard,
+  Setting, Odometer, WarningFilled, CircleCheck, Document, RefreshRight, CreditCard, Delete,
 } from "@element-plus/icons-vue";
 import { formatMoney, formatRelative } from "@shared/format";
 import { planLabelKey } from "@/lib/plan";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/api/admin";
 import {
   fetchOverview, fetchAdminUsers, fetchAdminKbs, fetchAdminConfig, patchAdminConfig,
-  setUserStatus, fetchRatelimit, fetchAudit,
+  setUserStatus, deleteAdminUser, fetchRatelimit, fetchAudit,
   type ProviderStatus, type RateLimitDashboard, type AuditResponse,
 } from "@/api/admin";
+import { fetchCurrentUser } from "@/api/auth";
 
 const { t } = useTranslation();
 
@@ -34,6 +35,15 @@ const loading = ref(true);
 const search = ref("");
 const savingCfg = ref(false);
 const loadFailed = ref(false);
+/** 当前登录者：删号按钮只对 owner 开放，且不显示在自己/其他 Owner 行上 */
+const myId = ref("");
+const myRole = ref("");
+
+async function loadMe() {
+  const me = await fetchCurrentUser().catch(() => null);
+  myId.value = me?.id ?? "";
+  myRole.value = me?.role ?? "";
+}
 
 async function refresh() {
   // 各接口独立容错（403/429 等）：拿得到的先渲染，概览+配置齐了才算就绪
@@ -58,7 +68,10 @@ async function refresh() {
   loading.value = false;
 }
 
-onMounted(() => void refresh());
+onMounted(() => {
+  void refresh();
+  void loadMe();
+});
 
 async function toggleUserStatus(id: string, status: "active" | "banned") {
   try {
@@ -67,6 +80,16 @@ async function toggleUserStatus(id: string, status: "active" | "banned") {
     /* ignore */
   }
   void refresh();
+}
+
+async function removeUser(u: AdminUser) {
+  if (!window.confirm(t("page.admin.s79", { name: u.name }))) return;
+  try {
+    await deleteAdminUser(u.id);
+  } catch {
+    /* 403/404 等由列表刷新体现，不额外弹窗 */
+  }
+  await refresh();
 }
 
 async function patchConfig(patch: Partial<SystemConfig>) {
@@ -343,6 +366,17 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                     @click="toggleUserStatus(u.id, 'banned')"
                   >
                     {{ t("page.admin.s71") }}
+                  </el-button>
+                  <el-button
+                    v-if="myRole === 'owner' && u.role !== 'owner' && u.id !== myId"
+                    size="small"
+                    text
+                    type="danger"
+                    :icon="Delete"
+                    class="danger-btn"
+                    @click="removeUser(u)"
+                  >
+                    {{ t("page.admin.s78") }}
                   </el-button>
                 </td>
               </tr>
