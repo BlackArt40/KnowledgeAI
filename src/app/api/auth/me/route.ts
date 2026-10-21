@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getUserById, updateUser, deleteUser, sanitize } from "@/lib/auth/store";
+import { getUserById, updateUser, deleteUser, sanitize, type User } from "@/lib/auth/store";
 import { verifyToken, createToken } from "@/lib/auth/session";
 import { listKbs, deleteKb } from "@/lib/kb/store";
 import { deleteAllConversations } from "@/lib/chat/store";
 import { deleteAllTasks } from "@/lib/agent/store";
 import { deleteSecurityData } from "@/lib/security/store";
 import { deleteBillingData } from "@/lib/billing/store";
+import { effectiveWorkspacePlan } from "@/lib/workspace/store";
 import { withApiTrace } from "@/lib/obs/trace";
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,18 @@ async function handleGET(req: Request) {
   const user = getUserById(id);
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
 
-  return NextResponse.json({ user: sanitize(user) });
+  return NextResponse.json({ user: withEffectivePlan(req, user) });
+}
+
+/**
+ * `plan` in API responses is the **effective** plan of the caller's current
+ * workspace, not `users.plan`: multi-tenant upgrades are written to the
+ * workspace (P4-3 `setWorkspacePlan`), and `users.plan` is only updated for the
+ * payer (`payOrder` → `updateUserPlan`) - so the per-user column would report
+ * every other member as "free".
+ */
+function withEffectivePlan(req: Request, user: User) {
+  return { ...sanitize(user), plan: effectiveWorkspacePlan(req, user) };
 }
 
 // PATCH /api/auth/me - update profile (name) and/or password

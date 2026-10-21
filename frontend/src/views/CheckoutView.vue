@@ -9,6 +9,7 @@ import { ArrowLeft, ChatDotRound, Wallet, CreditCard, Check, MagicStick, Postcar
 import { getPlan, PLANS } from "@shared/billing/plans";
 import type { PayMethod, PlanId } from "@shared/billing/types";
 import { checkoutOrder, payOrder } from "@/api/billing";
+import { refreshWorkspaces } from "@/lib/workspace-store";
 
 const { t } = useTranslation();
 const route = useRoute();
@@ -44,6 +45,8 @@ async function confirm() {
     const res = await payOrder(r1.order.id);
     if (!res.success) throw new Error("pay failed");
     phase.value = "success";
+    // 升级已写进后端（workspace.plan）：同步侧栏/工作台的套餐展示，升级引导随即消失
+    void refreshWorkspaces();
   } catch {
     error.value = t("page.checkout.s11");
     phase.value = "form";

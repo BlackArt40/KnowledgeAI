@@ -11,6 +11,7 @@ import {
   Setting, Odometer, WarningFilled, CircleCheck, Document, RefreshRight, CreditCard,
 } from "@element-plus/icons-vue";
 import { formatMoney, formatRelative } from "@shared/format";
+import { planLabelKey } from "@/lib/plan";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/api/admin";
 import {
   fetchOverview, fetchAdminUsers, fetchAdminKbs, fetchAdminConfig, patchAdminConfig,
@@ -152,7 +153,13 @@ const statCards = computed(() => {
   ];
 });
 
+function planLabel(plan: string): string {
+  const key = planLabelKey(plan);
+  return key ? t(key) : plan;
+}
+
 const maxRev = computed(() => Math.max(...(overview.value?.revenueTrend ?? []).map((r) => r.revenue), 1));
+const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) => !r.revenue));
 </script>
 
 <template>
@@ -222,6 +229,12 @@ const maxRev = computed(() => Math.max(...(overview.value?.revenueTrend ?? []).m
           {{ t("page.admin.s0") }}
         </h3>
         <div class="rev-chart">
+          <p
+            v-if="noRevenue"
+            class="rev-empty"
+          >
+            {{ t("page.admin.s77") }}
+          </p>
           <div
             v-for="r in overview!.revenueTrend"
             :key="r.month"
@@ -296,7 +309,7 @@ const maxRev = computed(() => Math.max(...(overview.value?.revenueTrend ?? []).m
                   <span
                     class="badge"
                     :class="u.plan === 'enterprise' ? 'primary' : u.plan === 'pro' ? 'muted' : 'outline'"
-                  >{{ u.plan }}</span>
+                  >{{ planLabel(u.plan) }}</span>
                 </td>
                 <td class="num">
                   {{ u.kbs }}
@@ -890,10 +903,23 @@ const maxRev = computed(() => Math.max(...(overview.value?.revenueTrend ?? []).m
   color: hsl(var(--primary));
 }
 .rev-chart {
+  position: relative;
   display: flex;
   height: 160px;
   align-items: flex-end;
   gap: 12px;
+  padding-bottom: 22px;
+  border-bottom: 1px dashed hsl(var(--border));
+}
+.rev-empty {
+  position: absolute;
+  inset: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
 }
 .rev-col {
   display: flex;
