@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GET } from "@/app/api/auth/me/route";
+import { DELETE, GET } from "@/app/api/auth/me/route";
 import { createToken } from "@/lib/auth/session";
+import { listAudit, verifyAuditChain } from "@/lib/security/audit";
 import { createWorkspace, getWorkspace } from "@/lib/workspace/store";
 import type { Role } from "@/lib/roles";
 
@@ -53,5 +54,44 @@ describe("GET /api/auth/me", () => {
     const body = (await res.json()) as { user: { plan: string } };
 
     expect(body.user.plan).toBe("free");
+  });
+});
+
+describe("DELETE /api/auth/me（自助删号）", () => {
+  it("写审计链（account.delete）且链完整", async () => {
+    // editor 不是 owner，允许自助删号；owner 会被 403（团队不能失去所有者）
+    const target = {
+      id: "usr_editor",
+      email: "editor@knowledgeai.dev",
+      name: "王浩（Editor）",
+      role: "editor" as Role,
+    };
+    const cookie = `kai-token=${await createToken(target, 60)}`;
+
+    const res = await DELETE(new Request("http://localhost/api/auth/me", { method: "DELETE", headers: { cookie } }));
+    expect(res.status).toBe(200);
+
+    const { audit } = listAudit({ action: "account.delete" });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({
+      actorId: target.id,
+      actor: target.name,
+      action: "account.delete",
+      target: target.email,
+    });
+    // 哈希链仍然可校验（没有把链写坏）
+    expect(verifyAuditChain().valid).toBe(true);
+  });
+
+  it("Owner 自助删号 403（团队不能失去所有者），且不产生审计记录", async () => {
+    const before = listAudit({ action: "account.delete" }).total;
+    const res = await DELETE(
+      new Request("http://localhost/api/auth/me", {
+        method: "DELETE",
+        headers: { cookie: `kai-token=${await createToken(OWNER, 60)}` },
+      })
+    );
+    expect(res.status).toBe(403);
+    expect(listAudit({ action: "account.delete" }).total).toBe(before);
   });
 });

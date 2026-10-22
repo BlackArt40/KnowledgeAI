@@ -5,6 +5,7 @@ import { listKbs, deleteKb } from "@/lib/kb/store";
 import { deleteAllConversations } from "@/lib/chat/store";
 import { deleteAllTasks } from "@/lib/agent/store";
 import { deleteSecurityData } from "@/lib/security/store";
+import { recordAudit } from "@/lib/security/audit";
 import { deleteBillingData } from "@/lib/billing/store";
 import { effectiveWorkspacePlan } from "@/lib/workspace/store";
 import { withApiTrace } from "@/lib/obs/trace";
@@ -128,6 +129,16 @@ async function handleDELETE(req: Request) {
       { status: 403 }
     );
   }
+
+  // GDPR：删除动作本身进审计链（在数据删除前写入，actor 信息才完整）。
+  // 没有这条记录，哈希链里「账号凭空消失」且无任何痕迹。
+  recordAudit({
+    actorId: user.id,
+    actor: user.name,
+    action: "account.delete",
+    target: user.email,
+    detail: "用户自助删除账号",
+  });
 
   // Delete all user data across stores.
   for (const kb of listKbs(id)) await deleteKb(kb.id);
