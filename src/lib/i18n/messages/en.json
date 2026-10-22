@@ -240,7 +240,12 @@
       "s76": "No audit records",
       "s77": "No revenue data yet",
       "s78": "Delete account",
-      "s79": "Delete “{{name}}” and all of their data? This cannot be undone."
+      "s79": "Delete “{{name}}” and all of their data? This cannot be undone.",
+      "s80": "User",
+      "s81": "Plan",
+      "s82": "Knowledge bases",
+      "s83": "Name",
+      "s84": "Admin"
     },
     "knowledge-base-[id]": {
       "s0": "Add documents",
@@ -668,7 +673,10 @@
       "s15": "{count} chunks",
       "s16": "Queued",
       "s17": "Parsing",
-      "s18": "Chunking"
+      "s18": "Chunking",
+      "s19": "Rebuild index",
+      "s20": "Queued for reindexing",
+      "s21": "Reindex failed"
     },
     "doc-share-dialog": {
       "s0": "Share link (accessible without login)",

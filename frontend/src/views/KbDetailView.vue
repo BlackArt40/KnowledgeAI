@@ -5,9 +5,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
-import { UploadFilled } from "@element-plus/icons-vue";
+import { RefreshRight, UploadFilled } from "@element-plus/icons-vue";
 import {
-  deleteDoc, deleteKb, fetchKbDetail, patchKb, uploadDocs,
+  deleteDoc, deleteKb, fetchKbDetail, patchKb, reindexDoc, reindexKb, uploadDocs,
   type Kb, type KbDoc, type KbStats,
 } from "@/api/kb";
 import { ApiError } from "@/api/client";
@@ -107,6 +107,36 @@ async function removeDoc(doc: KbDoc) {
   }
 }
 
+// ── 重建索引（正文已在库里，只重跑切片 + 嵌入）─────────────────────────
+const reindexing = ref(false);
+const reindexMsg = ref<string | null>(null);
+
+async function reindexOne(doc: KbDoc) {
+  reindexMsg.value = null;
+  try {
+    await reindexDoc(kbId, doc.id);
+    reindexMsg.value = t("page.document-list.s20");
+    await refresh();
+  } catch (e) {
+    reindexMsg.value = e instanceof ApiError && e.message ? e.message : t("page.document-list.s21");
+  }
+}
+
+async function reindexAll() {
+  reindexing.value = true;
+  reindexMsg.value = null;
+  try {
+    const r = await reindexKb(kbId);
+    reindexMsg.value = t("page.document-list.s20");
+    if (r.queued === 0) reindexMsg.value = null;
+    await refresh();
+  } catch (e) {
+    reindexMsg.value = e instanceof ApiError && e.message ? e.message : t("page.document-list.s21");
+  } finally {
+    reindexing.value = false;
+  }
+}
+
 // ── KB 设置（改名/删库）──────────────────────────────────────────────────
 const settingsOpen = ref(false);
 const editName = ref("");
@@ -202,6 +232,16 @@ const hasProcessing = computed(() =>
           </p>
         </div>
         <div class="head-actions">
+          <el-button
+            size="small"
+            text
+            :icon="RefreshRight"
+            :loading="reindexing"
+            :disabled="!docs.length"
+            @click="reindexAll"
+          >
+            {{ t("page.document-list.s19") }}
+          </el-button>
           <router-link
             :to="`/knowledge-base/${kbId}/graph`"
             class="btn outline small"
@@ -273,6 +313,10 @@ const hasProcessing = computed(() =>
             v-if="hasProcessing"
             class="hint"
           >↻ {{ t("page.knowledge-base-[id].s37", { count: stats?.processing ?? 0 }) }}…</span>
+          <span
+            v-else-if="reindexMsg"
+            class="hint"
+          >{{ reindexMsg }}</span>
         </div>
         <div class="card-body">
           <div
@@ -304,6 +348,15 @@ const hasProcessing = computed(() =>
               >
                 {{ t(STATUS_LABEL[d.status] ?? d.status) }}
               </span>
+              <el-button
+                v-if="!['queued', 'parsing', 'chunking', 'vectorizing'].includes(d.status)"
+                size="small"
+                text
+                :icon="RefreshRight"
+                @click="reindexOne(d)"
+              >
+                {{ t("page.document-list.s19") }}
+              </el-button>
               <el-button
                 size="small"
                 text
@@ -375,17 +428,25 @@ const hasProcessing = computed(() =>
 }
 .head {
   display: flex;
+  flex-wrap: wrap; /* 长库名 + 操作按钮在窄屏放不下时换行，而不是撑出横向滚动 */
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
+.head-main {
+  min-width: 0;
+  flex: 1;
+}
 .title-row {
   display: flex;
+  min-width: 0; /* 长库名在窄屏可换行，不把 head-actions 挤出视口 */
   align-items: center;
   gap: 12px;
 }
 .title-row h2 {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;

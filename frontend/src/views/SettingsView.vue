@@ -555,6 +555,7 @@ const planLabel = computed(() => {
                 <el-select
                   :model-value="locale"
                   style="width: 144px"
+                  :aria-label="t('common.language')"
                   @update:model-value="setLocale"
                 >
                   <el-option
@@ -645,6 +646,7 @@ const planLabel = computed(() => {
                   <el-switch
                     :model-value="notifPrefs ? notifPrefs[n.k] : false"
                     :disabled="!notifPrefs"
+                    :aria-label="n.label"
                     @update:model-value="(v: string | number | boolean) => toggleNotif(n.k, !!v)"
                   />
                 </div>
@@ -676,6 +678,7 @@ const planLabel = computed(() => {
                 </div>
                 <el-switch
                   :model-value="data.privacy.analytics"
+                  :aria-label="t('page.settings.s66')"
                   @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ analytics: !!v })"
                 />
               </div>
@@ -690,6 +693,7 @@ const planLabel = computed(() => {
                 </div>
                 <el-switch
                   :model-value="data.privacy.crashReports"
+                  :aria-label="t('page.settings.s68')"
                   @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ crashReports: !!v })"
                 />
               </div>
@@ -704,6 +708,7 @@ const planLabel = computed(() => {
                 </div>
                 <el-switch
                   :model-value="data.privacy.trainingOptIn"
+                  :aria-label="t('page.settings.s70')"
                   @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ trainingOptIn: !!v })"
                 />
               </div>
@@ -720,6 +725,7 @@ const planLabel = computed(() => {
                 <el-select
                   :model-value="String(data.privacy.dataRetentionDays)"
                   style="width: 120px"
+                  :aria-label="t('page.settings.s26')"
                   @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ dataRetentionDays: Number(v) })"
                 >
                   <el-option
