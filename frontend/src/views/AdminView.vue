@@ -225,17 +225,21 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
           :key="s.label"
           class="stat"
         >
-          <div class="stat-top">
-            <span class="stat-label">{{ s.label }}</span>
-            <el-icon
-              :size="14"
+          <div class="stat-head">
+            <span
+              class="stat-icon"
               :class="['tint', s.tint]"
             >
-              <component :is="s.icon" />
-            </el-icon>
+              <el-icon :size="18">
+                <component :is="s.icon" />
+              </el-icon>
+            </span>
           </div>
           <p class="stat-value">
             {{ s.value }}
+          </p>
+          <p class="stat-label">
+            {{ s.label }}
           </p>
         </div>
       </div>
@@ -884,24 +888,35 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   }
 }
 .stat {
-  padding: 16px;
+  padding: 18px 20px; /* 与工作台统计卡同构：图标左上、值居中偏下、label 收尾 */
   border: 1px solid hsl(var(--border));
   border-radius: 16px;
   background: hsl(var(--card));
 }
-.stat-top {
+.stat-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
+.stat-icon {
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: hsl(var(--muted));
+}
 .stat-label {
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 14px;
   color: hsl(var(--muted-foreground));
 }
 .stat-value {
-  margin: 8px 0 0;
+  margin: 14px 0 0;
   font-size: 24px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .tint.qa { color: hsl(var(--primary)); }
