@@ -406,6 +406,11 @@ export function runRetentionCleanup(userId: string): {
 
 /** Delete all security data for a user (account deletion). */
 export function deleteSecurityData(userId: string): void {
+  // 先吊销该用户全部会话的 jti（拉黑进 P1-3 黑名单），再删状态——否则被删
+  // 账号已签发的 7 天 JWT 在 token 校验里仍然有效，会以幽灵身份继续通过鉴权
+  // （自助删号 DELETE /api/auth/me 与管理端删号共用本入口）。
+  const st = store().byUser.get(userId);
+  if (st) for (const s of st.sessions) revokeJti(s.id);
   store().byUser.delete(userId);
   clear2FAFailures(userId);
   void deleteSecurityStateFromDb(userId);
