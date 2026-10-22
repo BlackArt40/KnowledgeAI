@@ -1239,7 +1239,11 @@
       "s0": "API 文档",
       "s1": "API 文档 - KnowledgeAI",
       "s2": "KnowledgeAI 开放 API（v1）交互式文档：知识库、流式问答、Agent 调研与 Webhook。",
-      "s3": "← 返回开发者门户"
+      "s3": "← 返回开发者门户",
+      "s4": "API 参考文档",
+      "s5": "由 OpenAPI 规范自动生成，可在页面内直接调试；键盘用户可用 Tab 在接口、参数与「Try it out」之间移动，也可下载 JSON 导入本地工具。",
+      "s6": "OpenAPI 交互式文档（第三方 Swagger UI）",
+      "s7": "下载 OpenAPI JSON"
     },
     "developer": {
       "s0": "快速开始",

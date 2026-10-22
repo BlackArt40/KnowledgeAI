@@ -1239,7 +1239,11 @@
       "s0": "API Docs",
       "s1": "API Docs - KnowledgeAI",
       "s2": "Interactive docs for the KnowledgeAI public API (v1): knowledge bases, streaming chat, agent research and webhooks.",
-      "s3": "← Back to developer portal"
+      "s3": "← Back to developer portal",
+      "s4": "API reference",
+      "s5": "Generated from the OpenAPI spec with inline try-it-out. Keyboard users can Tab through endpoints, parameters and Try it out, or download the JSON for local tooling.",
+      "s6": "Interactive OpenAPI documentation (third-party Swagger UI)",
+      "s7": "Download OpenAPI JSON"
     },
     "developer": {
       "s0": "Quick Start",
