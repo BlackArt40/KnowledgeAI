@@ -44,6 +44,16 @@ describe("DELETE /api/admin/users/[id]", () => {
     });
     const forbidden = await DELETE(delRequest("usr_viewer", editorCookie), params("usr_viewer"));
     expect(forbidden.status).toBe(403);
+
+    // 删号不可逆，权限级别高于可逆的封禁：admin 也不能删（仅 Owner）
+    const adminCookie = await cookieFor({
+      id: "usr_admin",
+      email: "admin@knowledgeai.dev",
+      name: "李芳（Admin）",
+      role: "admin",
+    });
+    const adminForbidden = await DELETE(delRequest("usr_viewer", adminCookie), params("usr_viewer"));
+    expect(adminForbidden.status).toBe(403);
   });
 
   it("拒绝删除自己 / 拒绝删除 Owner / 目标不存在 404", async () => {

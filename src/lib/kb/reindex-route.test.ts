@@ -6,9 +6,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const enqueueMock = vi.hoisted(() =>
   vi.fn(async (..._args: unknown[]) => "job_1")
 );
+const enqueueBulkMock = vi.hoisted(() =>
+  vi.fn(async (_type: string, payloads: Array<Record<string, unknown>>) => ({
+    ids: (payloads ?? []).map(() => "job_bulk"),
+    failures: [] as { index: number; error: string }[],
+  }))
+);
 
 vi.mock("@/lib/queue", () => ({
   enqueue: enqueueMock,
+  enqueueBulk: enqueueBulkMock,
 }));
 
 import { POST as reindexDocPOST } from "@/app/api/knowledge-base/[id]/documents/[docId]/reindex/route";
@@ -53,6 +60,7 @@ beforeEach(() => {
   seedUsers();
   enqueueMock.mockClear();
   enqueueMock.mockImplementation(async () => "job_1");
+  enqueueBulkMock.mockClear();
 });
 
 describe("POST /api/knowledge-base/[id]/documents/[docId]/reindex", () => {
@@ -122,17 +130,17 @@ describe("POST /api/knowledge-base/[id]/reindex（整库）", () => {
     const owner = await cookieFor(OWNER);
     const a = readyDoc(kbId, "a.txt", "正文 A");
     const b = readyDoc(kbId, "b.txt", "正文 B");
-    readyDoc(kbId, "no-content.txt");
+    const empty = readyDoc(kbId, "no-content.txt");
 
     const res = await reindexKbPOST(req(owner, "/x"), kbParams(kbId));
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ queued: 2, skipped: 1, failed: 0, total: 3 });
-    // seed 的后台补投会混进 mock 调用，按本库文档 id 过滤后应恰好 2 次
-    const ids = [a.id, b.id];
-    const mine = enqueueMock.mock.calls.filter(
-      (c) => ids.includes(String((c[1] as { docId?: string } | undefined)?.docId))
-    );
-    expect(mine).toHaveLength(2);
+    // 批量入队：一次调用、载荷恰为两篇有正文的文档
+    expect(enqueueBulkMock).toHaveBeenCalledTimes(1);
+    const payloads = enqueueBulkMock.mock.calls[0][1] as Array<{ docId: string }>;
+    expect(payloads.map((p) => p.docId).sort()).toEqual([a.id, b.id].sort());
+    // 无正文文档被跳过，不进入载荷
+    expect(payloads.some((p) => p.docId === empty.id)).toBe(false);
   });
 
   it("viewer 整库重建 403", async () => {

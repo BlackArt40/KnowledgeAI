@@ -10,7 +10,14 @@
 // ---------------------------------------------------------------------------
 
 import { queueMaxDepth, QueueBackpressureError } from "./interface";
-import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
+import type {
+  BulkEnqueueOutcome,
+  JobQueue,
+  JobType,
+  JobHandler,
+  JobResult,
+  QueueStats,
+} from "./interface";
 import { log } from "@/lib/obs/log";
 
 // BullMQ types (dynamic import - lazily loaded when REDIS_URL is set)
@@ -24,6 +31,7 @@ interface BullMQJobType {
 }
 interface BullMQQueueType {
   add(name: string, data: unknown, opts?: unknown): Promise<BullMQJobType>;
+  addBulk(jobs: Array<{ name: string; data: unknown; opts?: unknown }>): Promise<BullMQJobType[]>;
   getJob(id: string): Promise<BullMQJobType | null>;
   getJobCounts(...states: string[]): Promise<Record<string, number>>;
   close(): Promise<void>;
@@ -137,6 +145,54 @@ export class BullMQQueue implements JobQueue {
       ...(jobId ? { jobId } : {}),
     });
     return job.id;
+  }
+
+  /**
+   * 批量入队：一次 counts 检查拿剩余容量，剩余部分一次 addBulk 写入
+   * （逐项 enqueue 会是 N 次 Redis 往返），超出容量的项带背压原因返回。
+   */
+  async enqueueBulk(
+    type: JobType,
+    payloads: Array<Record<string, unknown>>
+  ): Promise<BulkEnqueueOutcome> {
+    await this.ensureConnected();
+    const queue = this.queues.get(queueNameFor(type));
+    if (!queue) throw new Error("queue not connected");
+    const maxDepth = queueMaxDepth();
+    const counts = await queue.getJobCounts("waiting", "delayed");
+    const depth = (counts.waiting ?? 0) + (counts.delayed ?? 0);
+    const remaining = Math.max(0, maxDepth - depth);
+
+    const outcome: BulkEnqueueOutcome = { ids: [], failures: [] };
+    const usable = payloads.slice(0, remaining);
+    payloads.slice(remaining).forEach((_, i) => {
+      outcome.failures.push({ index: remaining + i, error: `队列积压已达上限（${depth}/${maxDepth}）` });
+    });
+    if (usable.length === 0) return outcome;
+
+    const jobs = usable.map((payload) => {
+      const payloadId =
+        typeof payload.taskId === "string"
+          ? payload.taskId
+          : typeof payload.docId === "string"
+            ? payload.docId
+            : undefined;
+      const jobId = payloadId ? `${type}-${payloadId}`.replace(/:/g, "-") : undefined;
+      return {
+        name: type,
+        data: { type, payload },
+        opts: {
+          attempts: 3,
+          backoff: { type: "exponential" as const, delay: 2000 },
+          removeOnComplete: { age: 300, count: 100 },
+          removeOnFail: { age: 300, count: 100 },
+          ...(jobId ? { jobId } : {}),
+        },
+      };
+    });
+    const added = await queue.addBulk(jobs);
+    added.forEach((job: BullMQJobType) => outcome.ids.push(String(job.id ?? "")));
+    return outcome;
   }
 
   registerHandler(type: JobType, handler: JobHandler): void {

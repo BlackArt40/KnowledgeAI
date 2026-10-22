@@ -26,14 +26,15 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 /**
- * DELETE /api/admin/users/[id] - 彻底删除账号（管理员/所有者）。
+ * DELETE /api/admin/users/[id] - 彻底删除账号（**仅 Owner**）。
  *
  * 之前只能进数据库删，导致 e2e/演示账号清理没有正规入口。守卫：
+ * 仅 Owner 可调用（删号不可逆，权限级别高于可逆的封禁）、
  * 不能删自己（避免误操作把当前会话变成幽灵）、不能删 Owner（团队会失去所有者），
  * 且操作写入审计。数据清理口径与自助删号一致（见 admin/store.deleteUserDeep）。
  */
 export async function DELETE(req: Request, { params }: Params) {
-  const guard = await requireRole(req, ["owner", "admin"]);
+  const guard = await requireRole(req, ["owner"]);
   if (guard.error) return guard.error;
   const { id } = await params;
 

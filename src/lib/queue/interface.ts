@@ -78,9 +78,22 @@ export interface QueueStatsSnapshot {
   error?: string;
 }
 
+/** enqueueBulk 的逐项结果：成功 id 按入参顺序排列，失败项带原始下标与原因。 */
+export interface BulkEnqueueOutcome {
+  ids: string[];
+  failures: { index: number; error: string }[];
+}
+
 export interface JobQueue {
   /** Enqueue a job. Returns a job ID. */
   enqueue(type: JobType, payload: Record<string, unknown>): Promise<string>;
+
+  /**
+   * 批量入队：尽力而为（best-effort）语义 —— 逐项尝试，失败的项带下标与原因
+   * 返回，不抛异常。背压时 Memory 逐项失败、Redis 一次性给出剩余容量并可
+   * 一次 addBulk 写入剩余全部（避免逐项 Redis 往返）。
+   */
+  enqueueBulk(type: JobType, payloads: Array<Record<string, unknown>>): Promise<BulkEnqueueOutcome>;
 
   /** Register a handler for a job type. */
   registerHandler(type: JobType, handler: JobHandler): void;

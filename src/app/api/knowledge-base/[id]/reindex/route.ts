@@ -7,7 +7,7 @@ import {
 } from "@/lib/kb/store";
 import { canEditKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
-import { enqueue } from "@/lib/queue";
+import { enqueueBulk } from "@/lib/queue";
 import { recordAudit } from "@/lib/security/audit";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -42,31 +42,23 @@ async function handlePOST(req: Request, { params }: Params) {
   }
 
   const docs = listDocuments(id);
-  let queued = 0;
-  let skipped = 0;
-  let failed = 0;
+  const eligible = docs.filter(
+    (d) => !PROCESSING.includes(d.status) && !!d.content?.trim()
+  );
+  const skipped = docs.length - eligible.length;
 
-  for (const doc of docs) {
-    if (PROCESSING.includes(doc.status)) {
-      skipped += 1;
-      continue;
-    }
-    if (!doc.content?.trim()) {
-      skipped += 1;
-      continue;
-    }
-    if (!resetDocForReindex(doc.id)) {
-      skipped += 1;
-      continue;
-    }
-    try {
-      await enqueue("doc-process", { docId: doc.id });
-      queued += 1;
-    } catch (err) {
-      markDocFailed(doc.id, err instanceof Error ? err.message : "入队失败");
-      failed += 1;
-    }
+  // 先复位（queued/进度/切片数清零），再一次性批量入队 —— 复位是同步内存写，
+  // 入队走 enqueueBulk（BullMQ 单次 addBulk，避免逐篇 Redis 往返）
+  const payloads = eligible.map((d) => ({ docId: d.id }));
+  for (const p of payloads) resetDocForReindex(p.docId);
+
+  const { ids, failures } = await enqueueBulk("doc-process", payloads);
+  for (const f of failures) {
+    const docId = payloads[f.index]?.docId;
+    if (docId) markDocFailed(docId, f.error);
   }
+  const queued = ids.length;
+  const failed = failures.length;
 
   if (queued > 0) {
     recordAudit({

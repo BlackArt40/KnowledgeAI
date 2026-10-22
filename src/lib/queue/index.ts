@@ -14,7 +14,13 @@
 // ---------------------------------------------------------------------------
 
 import { queueMaxDepth } from "./interface";
-import type { JobQueue, JobType, JobHandler, QueueStatsSnapshot } from "./interface";
+import type {
+  BulkEnqueueOutcome,
+  JobQueue,
+  JobType,
+  JobHandler,
+  QueueStatsSnapshot,
+} from "./interface";
 import { MemoryQueue } from "./memory-queue";
 import { BullMQQueue } from "./bullmq-queue";
 import type { AgentEvent } from "@/lib/agent/orchestrator";
@@ -57,6 +63,15 @@ export async function enqueue(
 ): Promise<string> {
   ensureHandlers();
   return getQueue().enqueue(type, payload);
+}
+
+/** 批量入队（best-effort）：逐项失败带下标与原因返回，不抛异常。 */
+export async function enqueueBulk(
+  type: JobType,
+  payloads: Array<Record<string, unknown>>
+): Promise<BulkEnqueueOutcome> {
+  ensureHandlers();
+  return getQueue().enqueueBulk(type, payloads);
 }
 
 /** Register a handler for a job type. */
