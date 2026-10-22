@@ -673,7 +673,10 @@
       "s15": "{count} chunks",
       "s16": "Queued",
       "s17": "Parsing",
-      "s18": "Chunking"
+      "s18": "Chunking",
+      "s19": "Rebuild index",
+      "s20": "Queued for reindexing",
+      "s21": "Reindex failed"
     },
     "doc-share-dialog": {
       "s0": "Share link (accessible without login)",

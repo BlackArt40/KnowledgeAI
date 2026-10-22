@@ -87,6 +87,19 @@ export function deleteDoc(kbId: string, docId: string): Promise<unknown> {
   });
 }
 
+/** 重建单篇文档索引（正文已在库里，仅重跑切片 + 嵌入）。 */
+export function reindexDoc(kbId: string, docId: string): Promise<{ doc?: KbDoc; queued?: boolean }> {
+  return request(
+    `/api/knowledge-base/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(docId)}/reindex`,
+    { method: "POST" }
+  );
+}
+
+/** 整库重建索引：逐篇复位并入队，返回 queued/skipped/failed。 */
+export function reindexKb(kbId: string): Promise<{ queued: number; skipped: number; failed: number; total: number }> {
+  return request(`/api/knowledge-base/${encodeURIComponent(kbId)}/reindex`, { method: "POST" });
+}
+
 export function patchDoc(kbId: string, docId: string, body: Record<string, unknown>): Promise<unknown> {
   return request(`/api/knowledge-base/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(docId)}`, {
     method: "PATCH",

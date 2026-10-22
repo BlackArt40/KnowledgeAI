@@ -756,3 +756,32 @@ export async function deleteDocument(docId: string): Promise<boolean> {
   }
   return ok;
 }
+
+/**
+ * 重建索引前置：把文档复位为 queued 并清空进度/切片数。
+ *
+ * 适用场景：向量库故障期间上传的文档正文已入库、但切片没写进向量表
+ * （例如 pgvector 扩展缺失导致 indexDocument 抛错），修好基础设施后
+ * 不必重新上传，跑一次 doc-process 即可重新切片 + 重嵌入。
+ * 索引器本身会先 clearDoc 再写入，所以重复执行是幂等的。
+ */
+export function resetDocForReindex(docId: string): KbDocument | null {
+  seed();
+  const store = getStore();
+  const doc = store.docs.get(docId);
+  if (!doc) return null;
+  doc.status = "queued";
+  doc.progress = 0;
+  doc.chunks = 0;
+  doc.error = undefined;
+  store.docs.set(docId, doc);
+  void persistDoc(doc);
+  publish(`kb:${doc.kbId}`, {
+    type: "doc_status",
+    kbId: doc.kbId,
+    docId,
+    status: doc.status,
+    progress: doc.progress,
+  });
+  return doc;
+}

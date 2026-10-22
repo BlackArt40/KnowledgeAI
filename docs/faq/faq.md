@@ -207,8 +207,9 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **处理**：
 1. 确认服务端装有 pgvector（`select * from pg_available_extensions where name='vector';`）；应用会自动 `CREATE EXTENSION IF NOT EXISTS vector`，失败时由 DBA 手动执行一次；
-2. `npx tsx scripts/migrate-vector-store.ts` 迁移存量索引；
-3. 确认 `VECTOR_STORE` 与索引实际所在后端一致。
+2. 故障期间入库的文档（正文在、向量缺失）：知识库详情页点「重建索引」（单篇或整库），或 `POST /api/knowledge-base/[id]/reindex`；
+3. 内存索引迁到新后端：`npx tsx scripts/migrate-vector-store.ts`；
+4. 确认 `VECTOR_STORE` 与索引实际所在后端一致。
 
 **预防**：切换后端先迁移再切环境变量；compose 用 `pgvector/pgvector` 镜像。
 
