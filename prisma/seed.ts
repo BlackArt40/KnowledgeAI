@@ -38,13 +38,8 @@ const SEED_USERS = [
   { id: "usr_viewer", email: "viewer@knowledgeai.dev", name: "赵琳（Viewer）", role: "VIEWER", status: "ACTIVE", plan: "free" },
 ];
 
-const SEED_KBS = [
-  { name: "产品文档", description: "产品需求、设计稿与迭代记录", color: "from-indigo-500/15", initial: "产" },
-  { name: "API 文档", description: "OpenAPI 规范与接口说明", color: "from-emerald-500/15", initial: "A" },
-  { name: "财务报告", description: "季度财报与预算明细", color: "from-amber-500/15", initial: "财" },
-  { name: "运维手册", description: "部署、监控与故障排查", color: "from-sky-500/15", initial: "运" },
-  { name: "更新日志", description: "版本发布与变更记录", color: "from-rose-500/15", initial: "更" },
-];
+// 演示语料（B3）：每库 1-3 篇真实内容文档，见 prisma/seed-kbs.ts
+import { SEED_KBS } from "./seed-kbs";
 
 async function main() {
   const { PrismaClient } = await import("@prisma/client");
@@ -111,15 +106,12 @@ async function main() {
   // name/owner lookup keeps pre-existing (legacy random-id) KBs untouched.
   const owner = SEED_USERS[0];
   for (const [i, kbSeed] of SEED_KBS.entries()) {
+    // 历史库用过随机 id：先按 name/owner 找已有的，找到就复用，避免重复建库
     const existing = await prisma.knowledgeBase.findFirst({
       where: { ownerId: owner.id, name: kbSeed.name },
       select: { id: true },
     });
-    if (existing) {
-      log.info(`[seed] KB (skip, exists): ${kbSeed.name}`);
-      continue;
-    }
-    const kbId = `kb_seed_${i + 1}`;
+    const kbId = existing?.id ?? `kb_seed_${i + 1}`;
     const kb = await prisma.knowledgeBase.upsert({
       where: { id: kbId },
       update: {},
@@ -137,19 +129,32 @@ async function main() {
     });
     log.info(`[seed] KB: ${kb.name}`);
 
-    // Sample document
-    await prisma.kbDocument.create({
-      data: {
-        kbId: kb.id,
-        name: `${kbSeed.name}_sample.md`,
-        size: 45000,
-        type: "markdown",
-        status: "ready",
-        progress: 100,
-        chunks: 12,
-        content: `# ${kbSeed.name}\n\n这是 ${kbSeed.name} 的示例文档内容。`,
-      },
-    }).catch(() => {});
+    // 逐篇幂等入库：id 确定性生成，重跑只补缺，不覆盖已有处理结果。
+    // 状态 queued 而非 ready：向量必须由应用侧真实切片 + 嵌入产出，
+    // 早前写死 chunks:12 但向量表为空，导致演示问答检索为空。
+    for (const [j, docSeed] of kbSeed.docs.entries()) {
+      const docId = `doc_seed_${i + 1}_${j + 1}`;
+      const content = docSeed.content;
+      await prisma.kbDocument.upsert({
+        where: { id: docId },
+        update: {},
+        create: {
+          id: docId,
+          kbId: kb.id,
+          name: docSeed.name,
+          size: Buffer.byteLength(content, "utf8"),
+          type: docSeed.type,
+          status: "queued",
+          progress: 0,
+          chunks: 0,
+          content,
+        },
+      });
+    }
+    // 清掉旧版占位文档（内容是一句假的示例文本，检索时会污染答案）
+    await prisma.kbDocument
+      .deleteMany({ where: { kbId: kb.id, name: `${kbSeed.name}_sample.md` } })
+      .catch(() => {});
   }
 
   // ── Notification Prefs (defaults) ──────────────────────────────────────
