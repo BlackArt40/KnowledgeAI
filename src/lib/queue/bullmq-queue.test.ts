@@ -16,6 +16,7 @@ interface MockQueue {
   jobs: Map<string, MockJob>;
   states: Map<string, string>;
   add: (name: string, data: unknown, opts?: unknown) => Promise<MockJob>;
+  addBulk: (jobs: Array<{ name: string; data: unknown; opts?: unknown }>) => Promise<MockJob[]>;
   getJobCounts: (states: string[]) => Promise<Record<string, number>>;
   getJob: (id: string) => Promise<MockJob | null>;
   close: () => Promise<void>;
@@ -55,6 +56,9 @@ const mocks = vi.hoisted(() => {
         queue.jobs.set(job.id, job);
         return job;
       }),
+      addBulk: vi.fn(async (jobs: Array<{ name: string; data: unknown; opts?: unknown }>) =>
+        Promise.all(jobs.map((j) => queue.add(j.name, j.data, j.opts)))
+      ),
       getJob: vi.fn(async (id: string) => queue.jobs.get(id) ?? null),
       getJobCounts: vi.fn(async () => ({ waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 })),
       close: vi.fn(async () => undefined),
@@ -259,5 +263,60 @@ describe("BullMQQueue dual-queue topology", () => {
       failed: 0,
     });
     await expect(queue.enqueue("doc-process", { docId: "ok" })).resolves.toBeTruthy();
+  });
+});
+
+describe("BullMQQueue.enqueueBulk", () => {
+  beforeEach(() => {
+    mocks.queues.length = 0;
+    mocks.workers.length = 0;
+  });
+
+  it("一次 addBulk 写入全部载荷，返回等量 job id", async () => {
+    const queue = new BullMQQueue("redis://mock");
+    const outcome = await queue.enqueueBulk("doc-process", [
+      { docId: "d1" },
+      { docId: "d2" },
+      { docId: "d3" },
+    ]);
+
+    expect(outcome.failures).toEqual([]);
+    expect(outcome.ids).toHaveLength(3);
+    // 幂等 jobId：按 docId 去重
+    expect(mocks.queues[0].addBulk).toHaveBeenCalledTimes(1);
+    const jobs = vi.mocked(mocks.queues[0].addBulk).mock.calls[0][0];
+    expect(jobs.map((j) => j.opts && (j.opts as { jobId?: string }).jobId)).toEqual([
+      "doc-process-d1",
+      "doc-process-d2",
+      "doc-process-d3",
+    ]);
+  });
+
+  it("积压超出容量的部分逐项返回背压失败，不写队列", async () => {
+    const queue = new BullMQQueue("redis://mock");
+    // 队列是懒连接的：先任意调用一次，让 mock 队列实例存在再改 counts
+    await queue.enqueueBulk("doc-process", [{ docId: "warm" }]);
+    vi.mocked(mocks.queues[0].addBulk).mockClear();
+    vi.mocked(mocks.queues[0].getJobCounts).mockResolvedValue({
+      waiting: 499,
+      delayed: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+    });
+
+    const outcome = await queue.enqueueBulk("doc-process", [
+      { docId: "in" },
+      { docId: "out1" },
+      { docId: "out2" },
+    ]);
+
+    expect(outcome.ids).toHaveLength(1); // 剩余容量 1（默认上限 500）
+    expect(outcome.failures).toHaveLength(2);
+    expect(outcome.failures.map((f) => f.index)).toEqual([1, 2]);
+    expect(outcome.failures[0].error).toContain("积压");
+    // 只提交剩余容量内的部分
+    const jobs = vi.mocked(mocks.queues[0].addBulk).mock.calls[0][0];
+    expect(jobs).toHaveLength(1);
   });
 });

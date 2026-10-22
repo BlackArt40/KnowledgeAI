@@ -152,3 +152,55 @@ describe("MemoryQueue stats", () => {
     await queue.stop();
   });
 });
+
+describe("MemoryQueue.enqueueBulk", () => {
+  it("批量入队并逐项返回 job id（失败项带下标）", async () => {
+    const queue = new MemoryQueue();
+    const done: string[] = [];
+    queue.registerHandler("doc-process", async ({ docId }: Record<string, unknown>) => {
+      done.push(String(docId));
+      return { ok: true };
+    });
+
+    const outcome = await queue.enqueueBulk("doc-process", [
+      { docId: "b1" },
+      { docId: "b2" },
+      { docId: "b3" },
+    ]);
+
+    expect(outcome.ids).toHaveLength(3);
+    expect(outcome.failures).toEqual([]);
+    expect(new Set(outcome.ids).size).toBe(3); // 互不重复
+    await tick();
+    await tick();
+    expect(done.sort()).toEqual(["b1", "b2", "b3"]);
+  });
+
+  it("背压时短路：剩余容量 0 的项全部带原因失败", async () => {
+    vi.stubEnv("QUEUE_MAX_DEPTH", "2");
+    const queue = new MemoryQueue();
+    const releases: Array<() => void> = [];
+    queue.registerHandler("doc-process", () =>
+      new Promise((resolve) => {
+        releases.push(() => resolve({ ok: true }));
+      })
+    );
+
+    // 与单条入队同口径：并发 3 个 active + 2 个 queued 即触顶
+    for (const docId of ["a", "b", "c", "d", "e"]) {
+      await queue.enqueue("doc-process", { docId });
+    }
+
+    const outcome = await queue.enqueueBulk("doc-process", [
+      { docId: "p1" },
+      { docId: "p2" },
+    ]);
+
+    expect(outcome.ids).toHaveLength(0);
+    expect(outcome.failures.map((f) => f.index)).toEqual([0, 1]);
+    expect(outcome.failures[0].error).toContain("积压");
+
+    for (const release of releases) release();
+    await tick();
+  });
+});

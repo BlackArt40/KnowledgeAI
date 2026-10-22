@@ -7,7 +7,14 @@
 // ---------------------------------------------------------------------------
 
 import { queueMaxDepth, QueueBackpressureError } from "./interface";
-import type { JobQueue, JobType, JobHandler, JobResult, QueueStats } from "./interface";
+import type {
+  BulkEnqueueOutcome,
+  JobQueue,
+  JobType,
+  JobHandler,
+  JobResult,
+  QueueStats,
+} from "./interface";
 import { log, redactText } from "@/lib/obs/log";
 
 interface Job {
@@ -83,6 +90,30 @@ export class MemoryQueue implements JobQueue {
     this.ensureRunning();
     this.processNext();
     return id;
+  }
+
+  /** 批量入队：逐项尝试，背压后短路（后续项必然同样被拒）。 */
+  async enqueueBulk(
+    type: JobType,
+    payloads: Array<Record<string, unknown>>
+  ): Promise<BulkEnqueueOutcome> {
+    const ids: string[] = [];
+    const failures: { index: number; error: string }[] = [];
+    for (let i = 0; i < payloads.length; i++) {
+      try {
+        ids.push(await this.enqueue(type, payloads[i]));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        failures.push({ index: i, error: message });
+        if (err instanceof QueueBackpressureError) {
+          for (let j = i + 1; j < payloads.length; j++) {
+            failures.push({ index: j, error: message });
+          }
+          break;
+        }
+      }
+    }
+    return { ids, failures };
   }
 
   /**
