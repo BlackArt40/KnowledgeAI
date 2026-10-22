@@ -102,6 +102,7 @@ async function selectBrand(id: string) {
         </h3>
         <el-switch
           :model-value="hc"
+          :aria-label="t('page.theme-settings.hcTitle')"
           @update:model-value="(v: string | number | boolean) => toggleHc(!!v)"
         />
       </div>

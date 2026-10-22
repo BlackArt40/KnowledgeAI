@@ -106,6 +106,7 @@ function onClickNode(id: string) {
         v-model="query"
         class="search"
         :placeholder="t('page.knowledge-graph.s18')"
+        :aria-label="t('page.knowledge-graph.s18')"
       >
     </div>
 

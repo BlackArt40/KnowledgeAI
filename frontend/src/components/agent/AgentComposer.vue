@@ -71,6 +71,7 @@ function onDepthChange(value: number | number[]) {
       rows="2"
       class="topic-input"
       :placeholder="t('page.agent.s36')"
+      :aria-label="t('page.agent.s36')"
       @input="emit('update:topic', ($event.target as HTMLTextAreaElement).value)"
     />
     <div class="opts">
@@ -80,6 +81,7 @@ function onDepthChange(value: number | number[]) {
           :model-value="props.kbId"
           size="small"
           :placeholder="t('page.agent.s37')"
+          :aria-label="t('page.agent.s90')"
           @update:model-value="onKbChange"
         >
           <el-option

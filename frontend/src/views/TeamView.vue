@@ -168,6 +168,7 @@ async function remove(id: string) {
                 :model-value="m.role"
                 size="small"
                 style="width: 110px"
+                :aria-label="`${m.name || m.email} ${t('page.team.role')}`"
                 :disabled="m.role === 'owner' && !isOwner"
                 @update:model-value="(v: string) => changeRole(m.id, v)"
               >

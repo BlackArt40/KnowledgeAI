@@ -84,6 +84,7 @@ function menuRemove(id: string) {
           v-model="search"
           class="search-input"
           :placeholder="t('page.chat.s41')"
+          :aria-label="t('page.chat.s41')"
         >
       </div>
       <!-- 近期 / 归档 视图切换 -->

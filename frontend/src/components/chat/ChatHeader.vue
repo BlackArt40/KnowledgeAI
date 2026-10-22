@@ -51,6 +51,7 @@ function onKbChange(value: string | number | boolean) {
       :model-value="props.selectedKb"
       class="kb-select"
       size="small"
+      :aria-label="t('page.agent.s37')"
       @update:model-value="onKbChange"
     >
       <el-option

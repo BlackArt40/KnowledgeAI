@@ -146,9 +146,9 @@ const kbStatusLabel = () => ({ ready: t("page.admin.s44"), processing: t("page.a
 function rlKind(kind: string): { label: string; cls: string } {
   const map: Record<string, { label: string; cls: string }> = {
     ip: { label: "IP", cls: "muted" },
-    user: { label: t("page.admin.s4"), cls: "primary" },
+    user: { label: t("page.admin.s80"), cls: "primary" },
     apikey: { label: "API Key", cls: "outline" },
-    kb: { label: t("page.admin.s6"), cls: "warn" },
+    kb: { label: t("page.admin.s82"), cls: "warn" },
     integration: { label: t("page.admin.s48"), cls: "muted" },
     agent: { label: "Agent", cls: "warn" },
     other: { label: t("page.admin.s47"), cls: "outline" },
@@ -214,8 +214,8 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 
     <template v-else>
       <div class="head">
-        <span class="admin-badge">{{ t("page.admin.s0") }}</span>
-        <h1>{{ t("page.admin.s1") }}</h1>
+        <span class="admin-badge">{{ t("page.admin.s84") }}</span>
+        <h1>{{ t("page.app-shell.s17") }}</h1>
       </div>
 
       <!-- 统计卡 -->
@@ -299,15 +299,16 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                 v-model="search"
                 class="search-input"
                 :placeholder="t('page.admin.s57')"
+                :aria-label="t('page.admin.s57')"
               >
             </div>
           </div>
           <table class="tbl">
             <thead>
               <tr>
-                <th>{{ t("page.admin.s4") }}</th>
-                <th>{{ t("page.admin.s5") }}</th>
-                <th>{{ t("page.admin.s6") }}</th>
+                <th>{{ t("page.admin.s80") }}</th>
+                <th>{{ t("page.admin.s81") }}</th>
+                <th>{{ t("page.admin.s82") }}</th>
                 <th>{{ t("page.admin.s7") }}</th>
                 <th>{{ t("page.admin.s8") }}</th>
                 <th class="right">
@@ -437,6 +438,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               </div>
               <el-switch
                 :model-value="config!.allowSignup"
+                :aria-label="t('page.admin.s16')"
                 @change="(v: string | number | boolean) => patchConfig({ allowSignup: Boolean(v) })"
               />
             </div>
@@ -451,6 +453,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               </div>
               <el-switch
                 :model-value="config!.maintenanceMode"
+                :aria-label="t('page.admin.s18')"
                 @change="(v: string | number | boolean) => patchConfig({ maintenanceMode: Boolean(v) })"
               />
             </div>
@@ -472,6 +475,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                   <el-switch
                     :model-value="config!.required2FARoles.includes(r.role)"
                     size="small"
+                    :aria-label="`${r.label} · ${t('page.admin.s20')}`"
                     @change="(v: string | number | boolean) => toggle2FARole(r.role, Boolean(v))"
                   />
                 </label>
@@ -503,7 +507,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
         <table class="tbl">
           <thead>
             <tr>
-              <th>{{ t("page.admin.s6") }}</th>
+              <th>{{ t("page.admin.s83") }}</th>
               <th>{{ t("page.admin.s23") }}</th>
               <th>{{ t("page.admin.s24") }}</th>
               <th>{{ t("page.admin.s25") }}</th>
@@ -571,7 +575,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
             >
               <div class="rl-limit">
                 <div class="rl-label">
-                  {{ t("page.admin.s4") }}
+                  {{ t("page.admin.s80") }}
                 </div>
                 <div class="rl-val">
                   {{ ratelimit.limits.base }}<span class="rl-unit">{{ t("page.admin.s29") }}</span>
@@ -595,7 +599,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               </div>
               <div class="rl-limit">
                 <div class="rl-label">
-                  {{ t("page.admin.s6") }}
+                  {{ t("page.admin.s82") }}
                 </div>
                 <div class="rl-val">
                   {{ ratelimit.limits.kb }}<span class="rl-unit">{{ t("page.admin.s29") }}</span>
@@ -971,8 +975,11 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 }
 .rev-bar {
   width: 100%;
+  /* 列宽随容器拉伸，柱子不封顶会变成一排色块；限制宽度后才是柱状图 */
+  max-width: 56px;
+  margin: 0 auto;
   border-radius: 6px 6px 0 0;
-  background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+  background: linear-gradient(180deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   transition: opacity 0.15s;
 }
 .rev-bar:hover {

@@ -146,6 +146,7 @@ defineExpose({
         class="ask-input"
         :value="displayValue"
         :placeholder="placeholder"
+        :aria-label="placeholder"
         @keydown="onKeydown"
         @input="onInput"
       />

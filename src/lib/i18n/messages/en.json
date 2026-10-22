@@ -240,7 +240,12 @@
       "s76": "No audit records",
       "s77": "No revenue data yet",
       "s78": "Delete account",
-      "s79": "Delete “{{name}}” and all of their data? This cannot be undone."
+      "s79": "Delete “{{name}}” and all of their data? This cannot be undone.",
+      "s80": "User",
+      "s81": "Plan",
+      "s82": "Knowledge bases",
+      "s83": "Name",
+      "s84": "Admin"
     },
     "knowledge-base-[id]": {
       "s0": "Add documents",
