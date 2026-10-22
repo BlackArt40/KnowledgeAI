@@ -39,11 +39,28 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <main class="docs-main">
+      <!-- 页面自有的标题与替代路径：Swagger UI 内部 DOM 由第三方渲染，
+           我们只能保证「外围」可读（文档大纲、区域可访问名、JSON 下载兜底） -->
+      <div class="docs-intro">
+        <h1 class="docs-title">
+          {{ t("page.docs.s4") }}
+        </h1>
+        <p class="docs-desc">
+          {{ t("page.docs.s5") }}
+        </p>
+        <a
+          class="docs-json"
+          href="/api/openapi.json"
+          download
+        >{{ t("page.docs.s7") }}</a>
+      </div>
       <!-- Swagger UI 渲染容器（bundle 挂载到裸 div） -->
       <div
         id="kai-swagger-ui"
         ref="swaggerEl"
         class="swagger"
+        role="region"
+        :aria-label="t('page.docs.s6')"
       />
     </main>
   </div>
@@ -97,6 +114,27 @@ onBeforeUnmount(() => {
   max-width: 72rem;
   margin: 0 auto;
   padding: 24px 16px;
+}
+.docs-intro {
+  margin-bottom: 16px;
+}
+.docs-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.docs-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+}
+.docs-json {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: hsl(var(--primary));
 }
 .swagger {
   min-height: 70vh;
