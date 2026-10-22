@@ -106,3 +106,6 @@ deploy/nginx/routes.conf.bak
 _tmp_*
 knowledgeai_ai.egg-info/
 docker-compose.override.yml
+
+# unplugin-vue-components 生成的全局组件类型（dev/build 写出的集合不同，别提交）
+frontend/src/components.d.ts

@@ -54,6 +54,11 @@ export default defineConfig({
       // 样式走 main.ts 的全量 theme-chalk import（importStyle:false 避免
       // 每组件样式注入与暗色变量顺序问题；包体优化留到退役阶段）。
       resolvers: [ElementPlusResolver({ importStyle: false })],
+      // 生成的是「本次运行解析到的组件集合」：dev（按需 HMR 解析）与 build
+      // （一次性全量扫描）写出的 El* 条目不一致，同一份代码交替执行会来回改写。
+      // 因此该文件**不纳入版本控制**（见 .gitignore），仅作本地 IDE/类型提示用；
+      // vue-tsc 在不存在的文件下也能通过（Element Plus 是全局注册的，
+      // 模板类型校验不依赖这份声明）。
       dts: fileURLToPath(new URL("./src/components.d.ts", import.meta.url)),
     }),
   ],
