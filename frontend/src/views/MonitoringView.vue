@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // 可观测看板（V5，复刻 src/app/(app)/admin/monitoring/page.tsx）：请求 SLI 四卡
 // + QPS 分钟级曲线（UsageChart 复用）+ 队列快照表 + LLM 用量/成本按模型表
-// + RAG/文档/Agent 三卡 + 追踪列表（展开拉取 span 树）+ 错误环。30s 无自动
-// 轮询——手动刷新（与 Next 版一致：refresh 由点击触发）。owner/admin。
-import { computed, onMounted, ref } from "vue";
+// + RAG/文档/Agent 三卡 + 追踪列表（展开拉取 span 树）+ 错误环。owner/admin。
+// 面板 15s 自动刷新（仅页面可见时；切到后台标签页不再打接口），手动刷新仍可用。
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
 import {
   WarningFilled, MagicStick, Odometer, RefreshRight, Collection,
@@ -26,7 +26,29 @@ async function refresh() {
   loading.value = false;
 }
 
-onMounted(() => void refresh());
+/** 自动刷新间隔：监控面板看的是「当下」，手动刷新容易看到过期数据 */
+const AUTO_REFRESH_MS = 15_000;
+let timer: ReturnType<typeof setInterval> | null = null;
+const lastRefreshedAt = ref<number>(0);
+
+async function tick() {
+  // 后台标签页不刷新：既省接口也不打扰限流
+  if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+  await refresh().catch(() => {
+    /* 单次失败不打断轮询（下次自动重试） */
+  });
+  lastRefreshedAt.value = Date.now();
+}
+
+onMounted(() => {
+  void tick();
+  timer = setInterval(() => void tick(), AUTO_REFRESH_MS);
+});
+
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer);
+  timer = null;
+});
 
 async function openTrace(traceId: string) {
   if (expandedTrace.value === traceId) {
