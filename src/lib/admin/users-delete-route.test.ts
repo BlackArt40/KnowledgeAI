@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DELETE } from "@/app/api/admin/users/[id]/route";
+import { GET as meGET } from "@/app/api/auth/me/route";
 import { createToken } from "@/lib/auth/session";
 import { createUser, getUserById, seed as seedUsers, type User } from "@/lib/auth/store";
 import { ensurePersonalWorkspace, listOwnedWorkspaces } from "@/lib/workspace/store";
@@ -71,5 +72,27 @@ describe("DELETE /api/admin/users/[id]", () => {
 
     expect(getUserById(target.id)).toBeNull();
     expect(listOwnedWorkspaces(target.id)).toHaveLength(0);
+  });
+
+  it("删除后吊销目标用户已签发的 JWT（旧 token 立即 401）", async () => {
+    const target = await createTarget("revoke-me@test.local");
+    // 目标用户自己的（已过期的 7 天）token —— 在删号前签发
+    const staleCookie = `kai-token=${await createToken(
+      { id: target.id, email: target.email, name: target.name, role: target.role },
+      60
+    )}`;
+    const before = await meGET(
+      new Request("http://localhost/api/auth/me", { headers: { cookie: staleCookie } })
+    );
+    expect(before.status).toBe(200);
+
+    const res = await DELETE(delRequest(target.id, await cookieFor(OWNER)), params(target.id));
+    expect(res.status).toBe(200);
+
+    const after = await meGET(
+      new Request("http://localhost/api/auth/me", { headers: { cookie: staleCookie } })
+    );
+    expect(after.status).toBe(401);
+    await expect(after.json()).resolves.toEqual({ user: null });
   });
 });
