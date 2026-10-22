@@ -4,11 +4,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const OWNER = "owner@knowledgeai.dev";
+const ADMIN = "admin@knowledgeai.dev";
 const PASSWORD = String.fromCharCode(112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51);
 
-async function login(page: Page): Promise<void> {
+async function login(page: Page, email: string = OWNER): Promise<void> {
   await page.goto("/login");
-  await page.fill("#email", OWNER);
+  await page.fill("#email", email);
   await page.fill("#password", PASSWORD);
   await page.getByRole("button", { name: "登录", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
@@ -23,6 +24,23 @@ test("admin 概览：统计卡 + 配置 + 审计面板渲染", async ({ page }) 
   await expect(page.locator(".stat")).toHaveCount(8, { timeout: 20_000 });
   await expect(page.locator(".tbl").first()).toBeVisible();
   await expect(page.locator(".role-grid .role-row")).toHaveCount(4);
+});
+
+test("管理端删号按钮仅 owner 可见（admin 看不到）", async ({ page, context }) => {
+  // admin 登录：用户表行内只有封禁/解封，没有「删除账号」
+  await login(page, ADMIN);
+  await page.goto("/admin");
+  await expect(page.locator(".tbl tbody tr").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "删除账号" })).toHaveCount(0);
+  // 封禁入口仍在（证明行内操作确实渲染了，不是整行缺失）
+  await expect(page.getByRole("button", { name: "封禁" }).first()).toBeVisible();
+
+  // owner 登录：至少有非自己的行显示删除入口
+  await context.clearCookies();
+  await login(page, OWNER);
+  await page.goto("/admin");
+  await expect(page.locator(".tbl tbody tr").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "删除账号" }).first()).toBeVisible();
 });
 
 test("admin/monitoring：SLI 卡 + 队列 + LLM 面板渲染", async ({ page }) => {
