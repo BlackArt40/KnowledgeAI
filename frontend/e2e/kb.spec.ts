@@ -51,6 +51,37 @@ test("KB 全流程：新建 → 详情 → 上传 txt → ready → 删库", asy
   await expect(page).toHaveURL(/\/knowledge-base$/, { timeout: 20_000 });
 });
 
+test("KB 详情：重建索引（行内按钮 → 排队 → 就绪）", async ({ page }) => {
+  await login(page);
+  // 复用已有知识库而不是新建：重建索引的典型场景就是"存量库缺向量"，
+  // 且能少一次写请求（e2e 套件对 kb 维度限流敏感）
+  await page.goto("/knowledge-base");
+  await expect(page.locator(".kb-card").first()).toBeVisible({ timeout: 20_000 });
+  const firstKb = page.locator(".kb-card a").first();
+  if ((await firstKb.count()) === 0) test.skip(true, "当前环境没有知识库可重建");
+  await firstKb.click();
+  await expect(page).toHaveURL(/\/knowledge-base\/kb_/, { timeout: 20_000 });
+  // 详情页首屏渲染完成（上传区恒在）后再判断是否文档
+  await expect(page.locator(".upload")).toBeVisible({ timeout: 20_000 });
+
+  const row = page.locator(".doc-row").first();
+  if ((await row.count()) === 0) test.skip(true, "当前知识库没有文档可重建");
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  await expect(row).toContainText("就绪", { timeout: 40_000 });
+
+  // 行内「重建索引」：断言按钮确实打通了接口（200），再等回到就绪且无失败态。
+  // 不 assert 顶部提示文案——文档进入处理态后 card-head 会切成「N 个处理中…」，
+  // 提示可能只存在几百毫秒，属易碎断言。
+  const reindexResp = page.waitForResponse(
+    (r) => r.url().includes("/reindex") && r.request().method() === "POST",
+    { timeout: 30_000 }
+  );
+  await row.getByRole("button", { name: "重建索引" }).click();
+  expect((await reindexResp).status()).toBe(200);
+  await expect(page.locator(".doc-row").first()).toContainText("就绪", { timeout: 60_000 });
+  await expect(page.locator(".doc-row").first().locator(".err")).toHaveCount(0);
+});
+
 test("team：统计卡 + 成员表渲染", async ({ page }) => {
   await login(page);
   await page.goto("/team");

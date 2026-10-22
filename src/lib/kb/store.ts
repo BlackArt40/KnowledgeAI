@@ -758,6 +758,27 @@ export async function deleteDocument(docId: string): Promise<boolean> {
 }
 
 /**
+ * 重投未完成的文档（queued / parsing / vectorizing）。
+ *
+ * 场景：进程重启、部署滚动、种子文档以 queued 落库（无向量）——这些文档
+ * 没有人继续处理就会永远停在半途。队列按 `doc-process-<docId>` 去重，
+ * 与正在跑的 worker 不会产生重复任务，因此可以安全地在每次水合后调用。
+ */
+export function resumePendingDocs(): number {
+  seed();
+  const store = getStore();
+  let n = 0;
+  for (const doc of store.docs.values()) {
+    if (doc.status === "queued" || doc.status === "parsing" || doc.status === "vectorizing") {
+      startProcessing(doc.id);
+      n += 1;
+    }
+  }
+  if (n > 0) log.info(`[kb] resume ${n} pending document(s) after hydration`);
+  return n;
+}
+
+/**
  * 重建索引前置：把文档复位为 queued 并清空进度/切片数。
  *
  * 适用场景：向量库故障期间上传的文档正文已入库、但切片没写进向量表

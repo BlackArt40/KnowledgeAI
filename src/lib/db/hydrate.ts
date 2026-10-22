@@ -110,8 +110,12 @@ export async function hydrateFromDb(): Promise<void> {
     // With DB rows loaded, block the demo seed() paths (seed only runs while
     // seeded === false) so demo rows cannot mix with DB rows.
     markSeeded();
+    // B3: 种子文档以 queued 落库（没有向量），重启后没人继续处理会永远卡住；
+    // 这里统一重投（队列按 docId 去重，与在跑的 worker 不冲突）。
+    const { resumePendingDocs } = await import("@/lib/kb/store");
+    const resumed = resumePendingDocs();
     log.info(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${security} security, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}, usage=${usage}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${security} security, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}, usage=${usage}, resumedDocs=${resumed}`
     );
   } catch (err) {
     log.error({ err }, "[db] Hydration failed");
