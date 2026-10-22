@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getKb,
   listDocuments,
-  resetDocForReindex,
+  resetDocsForReindex,
   markDocFailed,
 } from "@/lib/kb/store";
 import { canEditKb } from "@/lib/team/store";
@@ -50,7 +50,7 @@ async function handlePOST(req: Request, { params }: Params) {
   // 先复位（queued/进度/切片数清零），再一次性批量入队 —— 复位是同步内存写，
   // 入队走 enqueueBulk（BullMQ 单次 addBulk，避免逐篇 Redis 往返）
   const payloads = eligible.map((d) => ({ docId: d.id }));
-  for (const p of payloads) resetDocForReindex(p.docId);
+  resetDocsForReindex(payloads.map((p) => p.docId));
 
   const { ids, failures } = await enqueueBulk("doc-process", payloads);
   for (const f of failures) {

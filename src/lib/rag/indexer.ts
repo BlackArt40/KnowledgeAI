@@ -27,8 +27,13 @@ function clearParentMap(kbId: string, docId: string): void {
   }
 }
 
-export async function indexDocument(doc: KbDocument, settings: KbSettings) {
-  if (!doc.content || !doc.content.trim()) return;
+/**
+ * 解析切片并写入向量/BM25 索引，返回**真实切片数**。
+ * 早前返回 void，调用方只能先用 estimateChunks() 估算并写进 doc.chunks，
+ * 导致 UI 显示「1 个切片」而实际有 5 个以上（估算与真实值偏离）。
+ */
+export async function indexDocument(doc: KbDocument, settings: KbSettings): Promise<number> {
+  if (!doc.content || !doc.content.trim()) return 0;
   await clearDoc(doc.kbId, doc.id);
   clearBM25Doc(doc.kbId, doc.id);
   clearParentMap(doc.kbId, doc.id);
@@ -58,4 +63,5 @@ export async function indexDocument(doc: KbDocument, settings: KbSettings) {
     indexChunks(doc.kbId, doc.id, doc.name, chunks),
     Promise.resolve(indexBM25(doc.kbId, doc.id, doc.name, chunks)),
   ]);
+  return chunks.length;
 }

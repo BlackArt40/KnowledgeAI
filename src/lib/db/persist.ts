@@ -318,6 +318,52 @@ export async function persistDoc(doc: {
   await withFkRetry(write, "[db] persistDoc error");
 }
 
+/**
+ * 批量持久化文档行（整库重建这类一次性改动 N 篇的场景）。
+ *
+ * 逐篇 upsert 是 N 次往返；这里包成一个事务，失败整体回滚，也不会出现
+ * 「前 50 篇写进去了、后 50 篇没写」的中间态。
+ */
+export async function persistDocs(
+  docs: Array<Parameters<typeof persistDoc>[0]>
+): Promise<void> {
+  if (!isDbEnabled() || docs.length === 0) return;
+  const db = await getDb();
+  if (!db) return;
+  const row = (doc: Parameters<typeof persistDoc>[0]) => ({
+    name: doc.name,
+    type: doc.type,
+    size: doc.size,
+    status: doc.status,
+    progress: doc.progress,
+    chunks: doc.chunks,
+    url: doc.url ?? null,
+    content: doc.content ?? null,
+    updatedAt: new Date(),
+  });
+  // 本地 PrismaClient 类型是精简 shim，$transaction 未声明 —— 取到就用事务
+  // （整批回滚，不留中间态），取不到退化为并发 upsert
+  const raw = db as unknown as {
+    $transaction?: (ops: Promise<unknown>[]) => Promise<unknown>;
+  };
+  const ops = docs.map((doc) => {
+    const data = row(doc);
+    return db.kbDocument.upsert({
+      where: { id: doc.id },
+      update: data,
+      create: { id: doc.id, kbId: doc.kbId, ...data, uploadedAt: new Date(doc.uploadedAt) },
+    }) as unknown as Promise<unknown>;
+  });
+
+  try {
+    if (raw.$transaction) await raw.$transaction(ops);
+    else await Promise.all(ops);
+  } catch (err) {
+    // 与本模块其他写穿函数一致：失败只记日志，不打断请求路径
+    log.error({ err, count: docs.length }, "[db] persistDocs error");
+  }
+}
+
 
 /** Delete a document from DB. */
 export async function deleteDocFromDb(docId: string): Promise<void> {

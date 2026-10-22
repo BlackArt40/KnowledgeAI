@@ -8,7 +8,7 @@ import {
 import { indexDocument } from "@/lib/rag/indexer";
 import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
 import { indexDocGraph, clearKbGraph } from "@/lib/kg/store";
-import { persistKb, persistDoc, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
+import { persistKb, persistDoc, persistDocs, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
 import { canViewKb, canEditKb } from "@/lib/team/store";
 import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/store";
@@ -241,9 +241,16 @@ export async function processDocInQueue(docId: string): Promise<void> {
     void persistDoc(d);
 
     if (kb) {
-      await indexDocument(d, kb.settings).catch((e) =>
-        log.error({ err: e }, "[kb] index error")
-      );
+      const actualChunks = await indexDocument(d, kb.settings).catch((e) => {
+        log.error({ err: e }, "[kb] index error");
+        return undefined;
+      });
+      // 索引完成后用真实切片数覆盖估算值（estimateChunks 只用于处理中的进度展示）
+      if (typeof actualChunks === "number" && actualChunks > 0) {
+        d.chunks = actualChunks;
+        store.docs.set(docId, d);
+        void persistDoc(d);
+      }
       // P7-3: knowledge-graph extraction (entities + relations) for GraphRAG
       // and the graph visualization. Fire-and-forget - graph is auxiliary.
       void indexDocGraph(kb.id, d.id, d.content ?? "").catch((e) =>
@@ -787,22 +794,34 @@ export function resumePendingDocs(): number {
  * 索引器本身会先 clearDoc 再写入，所以重复执行是幂等的。
  */
 export function resetDocForReindex(docId: string): KbDocument | null {
+  return resetDocsForReindex([docId])[0] ?? null;
+}
+
+/**
+ * 批量复位（整库重建用）：内存改动一次完成，DB 走 `persistDocs` 单事务写，
+ * 避免 N 次往返与「写了一半」的中间态。
+ */
+export function resetDocsForReindex(docIds: string[]): KbDocument[] {
   seed();
   const store = getStore();
-  const doc = store.docs.get(docId);
-  if (!doc) return null;
-  doc.status = "queued";
-  doc.progress = 0;
-  doc.chunks = 0;
-  doc.error = undefined;
-  store.docs.set(docId, doc);
-  void persistDoc(doc);
-  publish(`kb:${doc.kbId}`, {
-    type: "doc_status",
-    kbId: doc.kbId,
-    docId,
-    status: doc.status,
-    progress: doc.progress,
-  });
-  return doc;
+  const docs: KbDocument[] = [];
+  for (const docId of docIds) {
+    const doc = store.docs.get(docId);
+    if (!doc) continue;
+    doc.status = "queued";
+    doc.progress = 0;
+    doc.chunks = 0;
+    doc.error = undefined;
+    store.docs.set(docId, doc);
+    docs.push(doc);
+    publish(`kb:${doc.kbId}`, {
+      type: "doc_status",
+      kbId: doc.kbId,
+      docId,
+      status: doc.status,
+      progress: doc.progress,
+    });
+  }
+  if (docs.length > 0) void persistDocs(docs);
+  return docs;
 }
