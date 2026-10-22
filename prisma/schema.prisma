@@ -21,6 +21,9 @@ model User {
   passwordHash     String?
   role             Role       @default(EDITOR)
   status           UserStatus @default(ACTIVE)
+  /// @deprecated 套餐已迁到 `Workspace.plan`（支付成功只写工作区，见 billing/store.payOrder）；
+  /// 此列仅作历史数据兼容，**不要在任何写入路径更新它**，读取一律走
+  /// `workspace/store.effectiveWorkspacePlan()`（按当前工作区解析）。
   plan             String     @default("free")
   twoFactorEnabled Boolean    @default(false)
   lastLoginAt      DateTime?
