@@ -428,17 +428,25 @@ const hasProcessing = computed(() =>
 }
 .head {
   display: flex;
+  flex-wrap: wrap; /* 长库名 + 操作按钮在窄屏放不下时换行，而不是撑出横向滚动 */
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
+.head-main {
+  min-width: 0;
+  flex: 1;
+}
 .title-row {
   display: flex;
+  min-width: 0; /* 长库名在窄屏可换行，不把 head-actions 挤出视口 */
   align-items: center;
   gap: 12px;
 }
 .title-row h2 {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
