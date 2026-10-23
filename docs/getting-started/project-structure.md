@@ -61,7 +61,7 @@ frontend/
 │   ├── stores/               # Pinia（主题 store 等薄封装）
 │   ├── styles/               # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
 │   └── pwa/                  # Service Worker 注册（仅生产）
-├── e2e/                      # 前端 Playwright 套件（31 用例：认证/工作台/知识库/聊天+Agent/管理端）
+├── e2e/                      # 前端 Playwright 套件（34 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态）
 ├── scripts/prerender-home.mjs # 首页 SEO 预渲染（build 末步产出 dist/home.html）
 └── dist/                     # 构建产物（网关切流挂载 /srv/vue，gitignored）
 ```
@@ -223,8 +223,8 @@ tests/
 ```
 prisma/
 ├── schema.prisma                # PostgreSQL schema（模型 / 枚举 / 关系）
-├── migrations/                  # 迁移文件（17 个，CI 检查漂移）
+├── migrations/                  # 迁移文件（21 个，CI 检查漂移）
 │   ├── 20260713022119_init/     # 初始迁移
-│   └── …                        # P2~P8 迁移（2FA/审计/反馈/locale/品牌色/webhook/机器人/图谱/OAuth/密码重置/邮箱验证/租户持久化等）
+│   └── …                        # P2~P8 迁移（2FA/审计/反馈/locale/品牌色/webhook/机器人/图谱/OAuth/密码重置/邮箱验证/租户持久化/账号安全态/API Key 过期/用量日表等）
 └── seed.ts                      # 演示数据（4 用户 + 5 KB + 1 团队）
 ```

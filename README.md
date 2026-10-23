@@ -14,7 +14,7 @@
 | 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 相机拍照上传 / 可安装 + 离线访问已加载内容 | Sheet 抽屉 + 手写 Service Worker（零新依赖） |
 | 全局搜索 | Cmd+K 命令面板 / 覆盖知识库·文档·对话·Agent 任务·设置 / 分类 Tab + 高亮 / 最近搜索 / 快捷操作 / 深链直达（会话·任务·设置区块·新建 KB） | 单端点内存检索（<100ms）+ 键盘导航 + localStorage 历史 |
 | 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | markdown-it 渲染（html:false 净化 + `[n]` 引用 chip 注入）+ 反馈持久化 + 2-gram 推荐打分（零新依赖） |
-| 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（1293 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | i18next（Context + useT + 静态扫描零残留断言） |
+| 国际化 | 中 / 英双语切换（AppShell Globe + 设置页）/ 全站 UI 文案语言包（1277 key）/ 日期·数字本地化 / 语言偏好持久化（localStorage + cookie + 用户 profile） | i18next（Context + useT + 静态扫描零残留断言） |
 | 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量令牌单源（frontend tokens.css）+ matchMedia 监听 + 客户端品牌注入 |
 | 应用监控 | 分布式追踪（API→RAG→LLM 全链路 span 树）/ QPS·错误率·延迟 P50/P95/P99 仪表盘 / LLM Token·成本·模型分布 / 前端+后端错误自动上报 Sentry | 自研 ALS 追踪 + 内存 SLI 存储 + Sentry Envelope 零依赖直投（SENTRY_DSN 门控） |
 | 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
@@ -105,7 +105,7 @@ frontend/               # Vue 3 前端（28/28 页面全量承载）
 │   ├── api/            # 类型化 API 客户端（与 /api 契约一一对应）
 │   ├── styles/         # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
 │   └── pwa/            # Service Worker 注册
-├── e2e/                # 前端 Playwright 套件（31 用例，CI e2e job）
+├── e2e/                # 前端 Playwright 套件（34 用例，CI e2e job）
 └── dist/               # 构建产物（网关切流挂载 /srv/vue，gitignored）
 src/
 ├── app/                # Next 纯 API：/api/** Route Handlers + 最小根 layout
