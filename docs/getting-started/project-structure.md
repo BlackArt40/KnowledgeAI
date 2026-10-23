@@ -35,7 +35,9 @@ KnowledgeAI/
 ├── public/               # 静态资产单源（PWA sw.js/manifest、widget、swagger-ui vendor）
 ├── services/             # 拆分形态服务（business Java / ai Python，见 service-split.md）
 ├── sdk/                  # 三语言官方 SDK（JavaScript / Python / Go）
+├── integrations/         # 集成产品（Chrome 扩展 / VS Code 扩展 / Embeddable Widget 说明）
 ├── k8s/                  # K8s 部署清单示例
+├── deliverables/         # 工程保障与评审交付物（历史归档，非运行时依赖）
 ├── .github/workflows/    # CI 流水线（九 job：quality / unit / ai-contract / integration / e2e / docs / smoke / smoke-infra / frontend）
 ├── .tessdata/            # Tesseract OCR 语言包（首次 OCR 时下载，gitignored）
 └── .uploads/             # 本地上传文件存储（demo 模式，gitignored）
@@ -54,7 +56,7 @@ frontend/
 │   ├── views/                # 页面（认证 6 / 工作台 / 知识库 / 团队 / 聊天 / Agent / 账务 / 管理端 / 开发者 / 门户）
 │   ├── layouts/              # AuthLayout（认证壳）
 │   ├── components/           # 业务组件（AppShell / chat/ 三件套 / marketing/ / ThemeSettings 等）
-│   ├── lib/                  # 前端工具（markdown 渲染 / use-speech 语音 composables / i18n 胶水）
+│   ├── lib/                  # 前端工具（markdown 渲染 / use-speech 语音 composables / i18n 胶水 / event-stream 长连接订阅 + presence + kb-events / error-reporter）
 │   ├── api/                  # 类型化 API 客户端（与 /api 契约一一对应 + client.test.ts）
 │   ├── stores/               # Pinia（主题 store 等薄封装）
 │   ├── styles/               # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
@@ -73,7 +75,7 @@ src/
 ├── app/
 │   ├── api/                      # API Route Handlers（Next 页面层已随 V6 退役，仅剩 API）
 │   │   ├── auth/                 # 登录 / 注册 / me / OAuth / 2FA / 密码重置 / 邮箱验证
-│   │   ├── knowledge-base/       # KB CRUD + 文档上传 / 删除 + 图谱
+│   │   ├── knowledge-base/       # KB CRUD + 文档上传 / 删除 + 图谱 + 实时事件流（/events）
 │   │   ├── upload/chunk/         # 分片上传（init / chunk / status / complete）
 │   │   ├── chat/                 # SSE 流式问答
 │   │   ├── agent/                # Agent 调研 SSE + 任务查询
@@ -132,6 +134,8 @@ src/
 │   ├── crypto.ts                 # AES-256-GCM + HKDF（密文落库）
 │   ├── secrets.ts                # AUTH_SECRET 解析（生产缺失拒绝启动）
 │   ├── rate-limit.ts             # 分级限流（多维度 + Redis/内存双后端）
+│   ├── format.ts                 # 本地化格式化（Vue 侧经 @shared/format 复用）
+│   ├── roles.ts / ids.ts         # 角色常量 / id 生成（跨模块纯函数）
 │   └── sse.ts                    # SSE 帧解析（前后端同构单源）
 │
 └── proxy.ts                      # 中间件（分级限流 + DB 水合触发）
@@ -142,6 +146,9 @@ src/
 ```
 deploy/
 ├── nginx.conf                    # 网关主配置（/api → 业务；location / → Next 兜底）
+├── env.split.example             # 拆分形态（网关 + business + ai）环境变量模板
+├── moto.Dockerfile               # 本地演练用 AWS 服务替身镜像（S3 兼容端点）
+├── .env.drill                    # 干净机器演练的本地 env（gitignored，不入库）
 └── nginx/
     ├── routes.conf               # 前端切流路由表（27 条，单一事实源）
     └── frontend-switch.conf      # switch-frontend.sh 生成的 switch conf（随切流提交留审计轨迹）
@@ -178,7 +185,12 @@ scripts/
 │   └── blue-green.sh            # 生产蓝绿切换（健康检查门 + 自动回滚）
 ├── check-prisma-migrations.sh   # CI 迁移漂移检查（shell）
 ├── cleanup-temp-files.ts        # 临时文件清理（可配 cron）
+├── cleanup-e2e-fixtures.ts      # 清理 e2e / 手工验证残留数据（对运行中的服务发 HTTP）
+├── audit-auth-compat.ts         # 只读发布前检查（历史 AgentTask.shareConfig 兼容项）
+├── generate-pwa-icons.ts        # 重新生成 public/icons（PWA 192/512/maskable/apple-touch）
 ├── migrate-vector-store.ts      # 内存索引批量迁移到向量库
+├── tools/                       # CI 门禁 / 生成器（docs frontmatter、env parity、openapi、swagger-ui 拷贝）
+├── local/                       # 本地测试数据准备（gitignored，不入库）
 └── smoke/                       # 验收 smoke 套件（run-all.ts 按 lib/limits/http/ui/infra 分组调度）
     ├── run-all.ts               # runner：前置探测 + 分组 + 超时 + 报告（.report/）
     ├── lib/manifest.ts          # 脚本清单（分组 / 前置条件 / 超时）

@@ -32,6 +32,7 @@ import {
   type Notification,
 } from "@/api/notifications";
 import { formatRelative } from "@shared/format";
+import { usePresence } from "@/lib/presence";
 
 type Role = "owner" | "admin" | "editor" | "viewer";
 
@@ -121,6 +122,13 @@ const wsOpen = ref(false);
 const creating = ref(false);
 const newName = ref("");
 
+// P4-1 在线状态：长连接挂在壳上（打开流即在线），事件推全量在线列表
+const { online: onlineUsers, start: presenceStart, stop: presenceStop } = usePresence();
+const onlineCount = computed(() => onlineUsers.value.length);
+const onlineNames = computed(() =>
+  onlineUsers.value.map((u) => u.name || u.email || u.id).join(", ")
+);
+
 const title = computed(() => {
   const path = String(route.path);
   const key = titleMap[path];
@@ -169,6 +177,7 @@ onMounted(async () => {
         // 套餐不挂在用户上（升级改的是 workspace.plan），见 lib/workspace-store.ts
       };
       if (!routeGuard(user.value?.role, route.path)) await router.replace("/dashboard");
+      presenceStart();
     }
   } catch {
     /* offline: keep shell */
@@ -181,6 +190,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (notifTimer) clearInterval(notifTimer);
+  presenceStop();
 });
 
 async function refreshNotifs() {
@@ -516,6 +526,20 @@ const visibleGroups = computed(() =>
               <Search />
             </el-icon>
           </button>
+
+          <el-tooltip
+            v-if="onlineCount > 0"
+            :content="onlineNames"
+            placement="bottom"
+          >
+            <span
+              class="presence-chip"
+              :aria-label="t('page.app-shell.s35', { count: onlineCount })"
+            >
+              <span class="presence-dot" />
+              {{ onlineCount }}
+            </span>
+          </el-tooltip>
 
           <el-popover
             v-model:visible="notifOpen"
@@ -977,6 +1001,31 @@ const visibleGroups = computed(() =>
 }
 .icon-btn:hover {
   color: hsl(var(--foreground));
+}
+.presence-chip {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border-radius: 9999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.presence-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--success));
+}
+/* 窄屏顶栏留给搜索/通知/主题/用户菜单，在线人数让位（不影响在线状态本身） */
+@media (max-width: 639px) {
+  .presence-chip {
+    display: none;
+  }
 }
 .unread-badge {
   position: absolute;

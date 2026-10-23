@@ -11,6 +11,8 @@ import {
   type Kb, type KbDoc, type KbStats,
 } from "@/api/kb";
 import { ApiError } from "@/api/client";
+import { subscribeEvents } from "@/lib/event-stream";
+import { applyKbEvent } from "@/lib/kb-events";
 import { kbAvatarBackground } from "@/lib/kb-color";
 import { formatRelative } from "@shared/format";
 
@@ -70,9 +72,25 @@ function schedulePoll() {
   }
 }
 
-onMounted(refresh);
+onMounted(() => {
+  void refresh();
+  // P4-1：KB 变更流——成员上传/删除文档、处理进度、设置变更、删库都实时推送。
+  // 轮询（schedulePoll）保留为兜底：SSE 断开时页面仍然能推进。
+  kbEvents = subscribeEvents(`/api/knowledge-base/${encodeURIComponent(kbId)}/events`, {
+    onEvent: onKbEvent,
+    onOpen: () => {
+      kbLive.value = true;
+    },
+    onError: () => {
+      kbLive.value = false;
+    },
+    reconnectMs: 5000,
+  });
+});
 onBeforeUnmount(() => {
   if (pollTimer) clearInterval(pollTimer);
+  kbEvents?.stop();
+  kbEvents = null;
 });
 
 function pickFiles() {
@@ -183,6 +201,28 @@ const STATUS_LABEL: Record<string, string> = {
 const hasProcessing = computed(() =>
   docs.value.some((d) => ["queued", "parsing", "chunking", "vectorizing"].includes(d.status))
 );
+
+// ── 实时变更（P4-1，/api/knowledge-base/[id]/events）─────────────────────
+let kbEvents: { stop: () => void } | null = null;
+/** 流已连上才展示「实时同步」提示（断开/重连中不再误导用户） */
+const kbLive = ref(false);
+
+function onKbEvent(event: Record<string, unknown>) {
+  const type = String(event.type ?? "");
+  if (type === "init") return;
+  // 事件语义在 lib/kb-events.ts（纯函数，单测覆盖）；这里只做副作用
+  const result = applyKbEvent(docs.value, event);
+  if (result.deleted) {
+    // 其他成员删掉了当前知识库：断开流并回列表（refresh 会拿到 404）
+    kbEvents?.stop();
+    kbEvents = null;
+    void router.replace("/knowledge-base");
+    return;
+  }
+  if (result.docs !== docs.value) docs.value = result.docs;
+  if (type === "docs") schedulePoll();
+  if (result.refresh) void refresh();
+}
 </script>
 
 <template>
@@ -317,6 +357,11 @@ const hasProcessing = computed(() =>
             v-else-if="reindexMsg"
             class="hint"
           >{{ reindexMsg }}</span>
+          <span
+            v-if="kbLive"
+            class="hint"
+            aria-live="polite"
+          >● {{ t("page.knowledge-base-[id].s38") }}</span>
         </div>
         <div class="card-body">
           <div

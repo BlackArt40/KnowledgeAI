@@ -2,7 +2,12 @@
 // VITE_API_BASE 覆盖。401 一律跳 /login（仅 401；网络失败保留界面，与
 // AppShell 离线策略对齐）——豁免清单：认证接口（登录页自管错误）、
 // 公开分享接口（分享令牌/密码本身就是凭据，401=密码错误而非未登录）。
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+
+/** 拼出绝对 URL（长连接订阅走 fetch，需要和 request() 一致的 base）。 */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
 
 const PUBLIC_401_PREFIXES = ["/api/auth/", "/api/share/", "/api/agent/public/"];
 

@@ -35,7 +35,6 @@ const SKIP_PATHS = [
   "/api/billing/webhook",
   "/api/notifications",  // polled every 30s
   "/api/auth/me",        // called on every page load
-  "/api/kb",             // P4-1: realtime KB event streams (per-KB tier enforced in the route)
   "/api/team/presence",  // P4-1: presence SSE stream + heartbeat (long-lived)
   "/api/share",          // P4-2: public doc share links (token is the credential)
   "/api/health",         // P6-4: liveness/readiness probes (probed every 5-30s by Docker/K8s)
@@ -129,8 +128,11 @@ export async function proxy(req: NextRequest) {
   const base = { "x-trace-id": traceId };
   const withCors = origin ? { ...base, ...corsHeaders(origin) } : base;
 
-  // Skip SSE streams and webhooks
-  if (SKIP_PATHS.some((p) => pathname.startsWith(p))) {
+  // Skip SSE streams and webhooks. Long-lived change streams all end in
+  // `/events` (KB changes /team presence / shared conversation) and enforce
+  // their own tier in-route - the suffix rule keeps them out of the generic
+  // limiter without exempting the parent CRUD routes.
+  if (pathname.endsWith("/events") || SKIP_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next({ request: { headers: requestHeaders }, headers: withCors });
   }
 

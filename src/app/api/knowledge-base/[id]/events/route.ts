@@ -10,11 +10,15 @@ type Params = { params: Promise<{ id: string }> };
 
 const HEARTBEAT_MS = 30_000;
 
-// GET /api/kb/[id]/events - realtime KB change stream (P4-1).
-// SSE events: { type: "settings" | "docs" | "doc_status" | "doc_deleted" | "deleted" }
+// GET /api/knowledge-base/[id]/events - realtime KB change stream (P4-1).
+// SSE events: { type: "settings" | "docs" | "doc_status" | "doc_deleted" |
+//               "doc_access" | "deleted" } (+ the initial { type: "init" }).
 // Anyone with KB view permission sees live changes made by other members.
-// The proxy skips /api/kb for rate limiting (long-lived stream), so the
+// The proxy skips long-lived `/events` streams for rate limiting, so the
 // per-KB tier is enforced here (same pattern as /api/chat).
+// 2026-10-23: renamed from /api/kb/[id]/events so the whole KB surface lives
+// under one prefix; the Vue client (frontend/src/lib/kb-events.ts) and
+// scripts/smoke/test-realtime.ts are the only consumers.
 export async function GET(req: Request, { params }: Params) {
   const u = await getRequestUser(req);
   if (!u) return Response.json({ error: "未登录" }, { status: 401 });

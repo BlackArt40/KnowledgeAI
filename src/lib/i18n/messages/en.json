@@ -264,7 +264,8 @@
       "s34": "Overlap {n}",
       "s35": "Go to Q&A",
       "s36": "Documents",
-      "s37": "{count} processing"
+      "s37": "{count} processing",
+      "s38": "Live updates"
     },
     "agent": {
       "s0": "Export",
@@ -788,7 +789,8 @@
       "s31": "Unlock Agent research and unlimited Q&A",
       "s32": "Upgrade now",
       "s33": "Mark all as read",
-      "s34": "Sign out"
+      "s34": "Sign out",
+      "s35": "{count} online"
     },
     "monitoring": {
       "s0": "Observability",

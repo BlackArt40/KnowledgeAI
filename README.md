@@ -131,13 +131,20 @@ src/
     ├── theme/           # 主题引擎（Vue 侧经 @shared 复用）
     ├── i18n/            # ⭐ 语言包单源（zh-CN / en，前后端共用）
     └── config.ts        # ⭐ Provider 状态聚合
-deploy/nginx/           # 前端切流路由表（routes.conf 单一事实源 + 生成的 switch conf）
+public/                 # 静态资产单源（PWA sw.js / manifest / icons、widget、swagger-ui vendor）
+deploy/                 # 部署资产（nginx 网关配置 + 前端切流路由表）
 prisma/                 # 数据库 schema + 迁移 + 种子
 scripts/                # 运维脚本（切流 / 演练 / 清理 / 迁移 / CI 检查）
-└── smoke/              # 验收 smoke 套件（run-all.ts 分组调度，CI 的 smoke / smoke-infra 两个 job）
+├── smoke/              # 验收 smoke 套件（run-all.ts 分组调度，CI 的 smoke / smoke-infra 两个 job）
+└── tools/              # 文档/契约门禁脚本（env parity、docs frontmatter、openapi、i18n 提取）
 tests/                  # 集成测试（需 dev server）
 e2e/                    # 根 Playwright 主流程套件（双 webServer）
 docs/                   # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
+services/               # 拆分形态服务（business Java / ai Python，见 architecture/service-split.md）
+sdk/                    # 三语言官方 SDK（JavaScript / Python / Go）
+integrations/           # 集成产品（Chrome 扩展 / VS Code 扩展 / Embeddable Widget）
+k8s/                    # K8s 部署清单示例
+deliverables/           # 工程保障与评审交付物（历史归档，非运行时依赖）
 ```
 
 > 完整目录说明见 [docs/getting-started/project-structure.md](docs/getting-started/project-structure.md)。

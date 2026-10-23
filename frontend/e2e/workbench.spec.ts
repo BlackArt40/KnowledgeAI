@@ -84,3 +84,11 @@ test("登录后用户菜单：条目可见", async ({ page }) => {
   await expect(page.locator(".usermenu-name")).toBeVisible();
   await expect(page.locator(".el-dropdown-menu__item").filter({ hasText: "退出登录" })).toBeVisible();
 });
+
+test("在线状态：presence 流连上后顶栏显示在线人数", async ({ page }) => {
+  await login(page);
+  // /api/team/presence/events 连上即推一份全量在线列表（服务端语义：连接 == 在线）
+  const chip = page.locator(".topbar .presence-chip");
+  await expect(chip).toBeVisible({ timeout: 20_000 });
+  await expect(chip).toHaveText(/\d+/);
+});
