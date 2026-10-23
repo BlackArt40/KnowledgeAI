@@ -68,3 +68,18 @@ PR #56 的 `quality` job 在 `pnpm audit --audit-level=critical` 步骤失败：
 结果：`pnpm audit --audit-level=critical` 退出码 0（剩 2 high / 2 moderate / 2 low，critical 清零，均不阻断）。
 
 验证：`tsc --noEmit` / `eslint` / `pnpm test:unit` / `next build`（16.4.2）/ `docs:build` / frontend `vue-tsc` + `vitest`（33 用例）+ `vite build` 全绿；`scripts/smoke/test-realtime.ts` 在新 Next 版本上复跑 18/18。
+
+## 追加：2026-10-23（非 critical 存量清理）
+
+`pnpm audit` 剩余 6 条（2 high / 2 moderate / 2 low）中的 4 条同为上游新公告，按同线补丁级处理：
+
+| 漏洞 | 严重度 | 依赖链 | 处置 |
+|------|:------:|--------|------|
+| `markdown-it >=14.1.0 <14.3.3`：单行多引用定义二次方渲染 DoS | high | `frontend>markdown-it`（生产依赖，渲染用户/模型输出） | **14.3.2 → 14.3.3** |
+| `@vitest/mocker <4.1.12`：手动 mock 注入 / Windows 路径穿越 | moderate ×2 | `vitest>@vitest/mocker`（dev） | `vitest` / `@vitest/coverage-v8` **4.1.11 → 4.1.12** |
+
+结果：全量告警 **6 → 2**（1 high + 1 low），`--audit-level=critical` 仍退出码 0。
+
+残留（无修复版本 / 待上游）：
+- `braces <=3.0.3`（high，dev，`eslint-config-next>@next/eslint-plugin-next>fast-glob>micromatch>braces`）——registry 最高仍为 3.0.3
+- `katex <0.18.2`（low，dev，`mermaid>katex`）——需跨 minor，待 mermaid 升级
