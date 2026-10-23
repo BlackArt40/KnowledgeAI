@@ -427,7 +427,10 @@ async function main(): Promise<void> {
 
   mkdirSync(REPORT_DIR, { recursive: true });
   const stamp = startedAt.toISOString().replace(/[:.]/g, "-");
-  const jsonPath = opts.json ?? join(REPORT_DIR, `smoke-${stamp}.json`);
+  // 分组写进文件名：CI 会并行跑 http / ui 两个 runner 进程，纯时间戳命名在
+  // 同一毫秒启动时会互相覆盖报告。
+  const groupTag = opts.groups.join("-") || "all";
+  const jsonPath = opts.json ?? join(REPORT_DIR, `smoke-${stamp}-${groupTag}.json`);
   const mdPath = jsonPath.replace(/\.json$/, ".md");
   writeFileSync(jsonPath, JSON.stringify({ startedAt: startedAt.toISOString(), base, groups: opts.groups, totals, results }, null, 2));
   writeFileSync(mdPath, markdown(results, base, startedAt));

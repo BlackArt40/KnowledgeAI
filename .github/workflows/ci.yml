@@ -5,6 +5,12 @@ on:
     branches: [main, master]
   pull_request:
 
+# 同一分支的新推送取消上一轮（PR 迭代时能省掉一整轮 ~15 分钟）；
+# 不跨 ref 取消，main 的推送与 PR 的校验互不影响。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── 质量门：类型检查 + lint + 迁移漂移检查 + 生产构建 ──────────────────
   quality:
@@ -71,6 +77,16 @@ jobs:
       # deliverables/software-company/dependency-remediation-2026-10-08.md。
       - name: Dependency audit (critical fails the job)
         run: pnpm audit --audit-level=critical
+
+      # Next 构建缓存：.next/cache 内部按文件内容寻址，命中旧条目也不会产出错误
+      # 产物；key 不跟 commit 走，才能在多次推送之间复用。
+      - name: Cache Next build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Build
         run: pnpm build
@@ -264,6 +280,11 @@ jobs:
           done
           curl -sf http://localhost:4173/ > /dev/null
 
+      # 注意：http 与 ui 两组**故意串行**。两组虽然打不同端口（:3000 / :4173），
+      # 但都是 CPU 密集（Next dev + 解析/嵌入 + Chrome/CDP）。2026-10-23 实测并行
+      # 一次：http 组从 291s 涨到 820s，并出现 test-sdk 180s 超时（断言 9/9 全过却
+      # 被 runner 掐断）、monitoring/webhooks/graph-rag/multimodal 断言失败；同机器
+      # 串行复跑 test-monitoring 32s 全绿。runner 只有 4 核，别再并行这两组。
       - name: Smoke - http group
         run: npx tsx scripts/smoke/run-all.ts --group http --elevate 5000
 
@@ -303,6 +324,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
         run: npx prisma generate
+      - name: Cache Next build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
       - name: Build (standalone test servers run `next start`)
         run: pnpm build
       # The infra scripts need a server on BASE_URL (:3000) for their own
@@ -386,6 +415,15 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
         run: npx prisma generate
+      # 浏览器二进制缓存（~130MB）；apt 系统库无法缓存，故保留 --with-deps。
+      # install 是幂等的：缓存的 revision 与 lockfile 不匹配时会补下载。
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
       - name: Install Playwright chromium
         run: pnpm exec playwright install --with-deps chromium
       # V6：页面由 vite preview 承载——webServer[1] 的 command 内含构建；
