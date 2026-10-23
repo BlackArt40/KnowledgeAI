@@ -1,7 +1,7 @@
 // P5-4: locale-aware formatting helpers. `locale` is "zh-CN" | "en"
-// (normalized via normalizeLocale). Components should use the useFormat()
-// hook (src/lib/i18n/use-format.ts) which binds the current locale; plain
-// callers (e.g. exportConversation) pass the locale explicitly.
+// (normalized via normalizeLocale). Callers pass the locale explicitly -
+// the Vue frontend imports these as `@shared/format` and feeds the value
+// from its i18n glue (frontend/src/lib/i18n.ts).
 // Relative import (not "@/lib/i18n/translate") so this module stays portable
 // for the Vue frontend's @shared alias (V0, design log 十五·二十七).
 import { normalizeLocale } from "./i18n/translate";

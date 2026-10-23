@@ -103,6 +103,10 @@ deploy/nginx/routes.conf.bak
 # agent tooling state / scratch artifacts (session-local, never source)
 .mimosa/
 .workbuddy/
+# Trae 会话规划草稿（同 .claude/.zcode：历史规划不进仓库）
+.trae/
+# 编辑器本地设置（共享配置另行显式提交）
+.vscode/
 _tmp_*
 knowledgeai_ai.egg-info/
 docker-compose.override.yml

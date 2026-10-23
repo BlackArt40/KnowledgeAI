@@ -2,6 +2,15 @@
 
 零依赖、单文件、可独立部署到任意静态站点的 AI 问答组件（P7-2）。
 
+> **构件位置（本目录只有说明，没有副本）**：组件与演示页由 `public/` 单源托管
+> ——它是静态服务根，构建期由 frontend 的 copyPwaAssets 插件拷进 `frontend/dist`：
+>
+> - 组件：`public/widget/kai-widget.js`
+> - 演示页：`public/widget/demo.html`
+>
+> 改组件请直接改 `public/widget/kai-widget.js`（验收：`scripts/smoke/test-widget-ui.mjs`
+> 用 CDP 在 Chrome 里跑一遍）。不要在本目录复制一份，否则两份会漂移。
+
 ## 独立部署
 
 `public/widget/kai-widget.js` 就是整个组件 —— 拷贝这一个文件到任意静态服务器
