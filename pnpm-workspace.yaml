@@ -22,7 +22,8 @@ allowBuilds:
 # event-loop DoS, browserslist <4.28.7 memory growth, baseline-browser-
 # mapping <2.11.0 DoS, undici <7.29.1 TLS-bypass/DoS; dev toolchain: vite
 # <6.4.3, js-yaml <4.3.2, brace-expansion <1.1.21 / <5.0.12, dompurify
-# <3.4.16, vue & @vue/server-renderer <3.5.42 - kept in lockstep: a lone
+# <3.4.17（2026-10-23 GHSA-cg2g-xh64-v4q7）, vue & @vue/server-renderer
+# <3.5.42 - kept in lockstep: a lone
 # server-renderer override desyncs the @vue/* family and breaks vitepress SSR).
 overrides:
   sharp: ^0.35.5
@@ -38,5 +39,5 @@ overrides:
   'js-yaml@>=4.0.0 <4.3.2': 4.3.2
   'brace-expansion@<1.1.21': 1.1.21
   'brace-expansion@>=4.0.0': 5.0.12
-  'dompurify@<3.4.16': 3.4.16
+  'dompurify@<3.4.17': 3.4.17
   'vue@<3.5.42': 3.5.43

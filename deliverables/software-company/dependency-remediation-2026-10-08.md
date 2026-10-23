@@ -52,3 +52,19 @@
 ---
 
 > 生成：2026-10-08 · 与 CI `quality` job 的 audit 步骤互为对照；更新残留清单时请同步本文件。
+
+---
+
+## 追加：2026-10-23（新披露的 critical 阻断 CI）
+
+PR #56 的 `quality` job 在 `pnpm audit --audit-level=critical` 步骤失败：上游新发布 3 个 critical 公告，与业务代码无关。
+
+| 漏洞 | 依赖链 | 处置 |
+|------|--------|------|
+| `next >=16.0.0 <=16.4.0`：Image Optimization API（SVG）未认证 RCE（GHSA-2464-fhr4-w9xw） | `.>next`、`.>next-auth>next` | `next` 16.4.0 → **16.4.2**，`eslint-config-next` 同步 |
+| `next >=16.0.0 <=16.4.0`：`use cache` 返回 typed array 未认证 RCE（GHSA-673q-mjm6-r5xr） | 同上 | 同上 |
+| `dompurify >=3.4.4 <=3.4.16`：SAFE_FOR_TEMPLATES 绕过（GHSA-cg2g-xh64-v4q7） | `mermaid>dompurify`、`vitepress-plugin-mermaid>mermaid>dompurify` | override `dompurify` 3.4.16 → **3.4.17** |
+
+结果：`pnpm audit --audit-level=critical` 退出码 0（剩 2 high / 2 moderate / 2 low，critical 清零，均不阻断）。
+
+验证：`tsc --noEmit` / `eslint` / `pnpm test:unit` / `next build`（16.4.2）/ `docs:build` / frontend `vue-tsc` + `vitest`（33 用例）+ `vite build` 全绿；`scripts/smoke/test-realtime.ts` 在新 Next 版本上复跑 18/18。
