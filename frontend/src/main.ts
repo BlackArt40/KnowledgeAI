@@ -9,6 +9,7 @@ import { initLocale } from "./lib/i18n";
 import { getI18nInstance } from "@shared/i18n/translate";
 import { clientLog } from "@shared/obs/log-browser";
 import { registerSw } from "./pwa/sw-register";
+import { installGlobalErrorReporter, reportClientError } from "./lib/error-reporter";
 
 // 样式顺序：EP 基础 → EP 暗色变量 → 本项目 tokens → EP 变量适配（最后加载者胜，
 // element-adapter.css 依赖该顺序覆盖 html.dark 下的 EP 变量）。
@@ -27,9 +28,13 @@ app.use(I18NextVue, { i18next: getI18nInstance() });
 
 initLocale();
 
-// 全局错误兜底：未捕获的组件异常至少进入浏览器日志，便于排查白屏。
+// 全局错误兜底：本地结构化日志（浏览器控制台）+ 上报 /api/obs/report
+// （服务端错误环 / Sentry，30s 同类去重，见 lib/error-reporter.ts）。
+installGlobalErrorReporter();
 app.config.errorHandler = (err, _instance, info) => {
   clientLog.error({ err, info }, "[vue] unhandled error");
+  const e = err instanceof Error ? err : new Error(String(err));
+  reportClientError(e.message, e.stack, `vue:${info}`);
 };
 
 // P5-1 → V6：PWA 注册（仅生产；dev 下缓存会与 HMR 抢新产物）

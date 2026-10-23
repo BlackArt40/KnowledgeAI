@@ -14,6 +14,7 @@ import { consumeSseStream } from "@shared/sse";
 import { extractLiveCitations } from "@/lib/chat-citations";
 import "@/styles/chat-view.css";
 import { streamRequest } from "@/api/client";
+import { subscribeEvents } from "@/lib/event-stream";
 import { useSpeechRecognition } from "@/lib/use-speech";
 import { fetchKbs, fetchKbDetail, type KbListItem } from "@/api/kb";
 import {
@@ -239,6 +240,62 @@ watch(messages, () => {
 onBeforeUnmount(() => {
   abortRef.value?.abort();
   abortRef.value = null;
+});
+
+// ── 共享会话实时消息（P4-1，/api/chat/conversations/[id]/events）──────────
+// 只有「已共享」的会话可订阅（服务端对未共享会话返回 403，属于确定性失败，
+// subscribeEvents 会直接停止而不会重连）。
+let convEvents: { stop: () => void } | null = null;
+
+function onSharedMessage(event: Record<string, unknown>) {
+  if (event.type !== "message") return;
+  const m = event.message as
+    | { id?: string; role?: "user" | "assistant"; content?: string; citations?: Citation[] }
+    | undefined;
+  if (!m?.id) return;
+  if (messages.value.some((x) => x.serverId === m.id || x.id === m.id)) return;
+  // 自己那股流的回声：本地已有条目，只补 serverId，不重复入列
+  if (m.role === "assistant" && sending.value) {
+    const streaming = messages.value.find((x) => x.streaming);
+    if (streaming) {
+      streaming.serverId = m.id;
+      return;
+    }
+  }
+  const echo = messages.value.find((x) => !x.serverId && x.role === m.role && x.content === m.content);
+  if (echo) {
+    echo.serverId = m.id;
+    return;
+  }
+  messages.value = [
+    ...messages.value,
+    {
+      id: m.id,
+      serverId: m.id,
+      role: m.role ?? "user",
+      content: m.content ?? "",
+      citations: m.citations,
+      streaming: false,
+    },
+  ];
+}
+
+function subscribeSharedConv() {
+  convEvents?.stop();
+  convEvents = null;
+  const id = activeConv.value;
+  if (!id || !activeIsShared.value) return;
+  convEvents = subscribeEvents(`/api/chat/conversations/${encodeURIComponent(id)}/events`, {
+    onEvent: onSharedMessage,
+    reconnectMs: 5000,
+  });
+}
+
+watch([activeConv, activeIsShared], subscribeSharedConv);
+
+onBeforeUnmount(() => {
+  convEvents?.stop();
+  convEvents = null;
 });
 
 // ── 会话操作 ────────────────────────────────────────────────────────────
