@@ -128,7 +128,7 @@ async function main() {
 
   // ── 2. KB 实时变更（多人同时查看） ────────────────────────────────────
   console.log("\n── 2. KB 实时变更（SSE） ──");
-  const kbSse = await openSse(`/api/kb/${kbId}/events`, editorToken);
+  const kbSse = await openSse(`/api/knowledge-base/${kbId}/events`, editorToken);
   await kbSse.waitFor((e) => e.type === "init").catch(() => check("kb-sse: init event", false, "no init"));
   check("kb-sse: editor connected (init)", kbSse.events.some((e) => e.type === "init"));
 
@@ -197,7 +197,7 @@ async function main() {
 
   // ── 5. 权限 ───────────────────────────────────────────────────────────
   console.log("\n── 5. 权限控制 ──");
-  const anon = await openSse(`/api/kb/${kbId}/events`, null, { timeoutMs: 3000 });
+  const anon = await openSse(`/api/knowledge-base/${kbId}/events`, null, { timeoutMs: 3000 });
   await anon.done;
   check("kb-sse: anonymous rejected", anon.events.length === 0, "anonymous got events");
   const privateConv = await req("POST", "/api/chat/conversations", { token: ownerToken, body: { kbId, title: "私有会话" } });
