@@ -536,14 +536,8 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   align-items: center;
   gap: 6px;
 }
-.card {
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-  margin-bottom: 16px;
-}
+.card { min-width: 0; padding: 20px; border-radius: 16px; margin-bottom: 16px; }
+
 .card-head {
   display: flex;
   align-items: flex-start;
@@ -643,13 +637,8 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   flex-wrap: wrap;
   gap: 4px;
 }
-.badge {
-  display: inline-flex;
-  padding: 1px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-}
+.badge { font-weight: 500; }
+
 .badge.ok { background: hsl(142 71% 45% / 0.12); color: hsl(142 71% 35%); }
 .badge.bad { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 .badge.muted { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
@@ -667,22 +656,10 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   justify-content: flex-end;
   gap: 8px;
 }
-.hint {
-  margin: 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
-.sk {
-  height: 96px;
-  border-radius: 8px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+.hint { font-size: 13px; }
+
+.sk { height: 96px; border-radius: 8px; }
+
 .usage-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -576,17 +576,10 @@ function kindCls(kind: string): string {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
-.sk {
-  height: 64px;
-  border-radius: 16px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
+.sub { font-size: 13px; }
+
+.sk { height: 64px; border-radius: 16px; }
+
 .sk.tall {
   height: 256px;
 }
@@ -597,11 +590,7 @@ function kindCls(kind: string): string {
   height: 64px;
   border-radius: 8px;
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -636,12 +625,8 @@ function kindCls(kind: string): string {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.card {
-  padding: 20px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-}
+.card { padding: 20px; border-radius: 16px; }
+
 .card-head {
   display: flex;
   align-items: center;
@@ -661,14 +646,8 @@ function kindCls(kind: string): string {
 .title-ico {
   color: hsl(var(--primary));
 }
-.badge {
-  display: inline-flex;
-  justify-content: center;
-  padding: 1px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-}
+.badge { justify-content: center; font-weight: 500; }
+
 .badge.ok { background: hsl(142 71% 45% / 0.12); color: hsl(142 71% 35%); }
 .badge.bad { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 .badge.muted { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }

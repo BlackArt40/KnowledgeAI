@@ -17,8 +17,9 @@ import "element-plus/theme-chalk/index.css";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import "./styles/tokens.css";
 import "./styles/element-adapter.css";
-// 全局细滚动条工具类（.kai-scroll）——所有 overflow 容器统一外观
+// 全局工具样式：细滚动条（.kai-scroll）+ 基础类（.card / .badge / .sk / ...）
 import "./styles/scrollbar.css";
+import "./styles/utility.css";
 
 const app = createApp(App);
 

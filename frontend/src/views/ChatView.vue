@@ -16,7 +16,7 @@ import "@/styles/chat-view.css";
 import { streamRequest } from "@/api/client";
 import { subscribeEvents } from "@/lib/event-stream";
 import { useSpeechRecognition } from "@/lib/use-speech";
-import { fetchKbs, fetchKbDetail, type KbListItem } from "@/api/kb";
+import { fetchKbs, fetchKbDetail, fetchKbRecommendations, type KbListItem } from "@/api/kb";
 import {
   fetchConversations,
   fetchSharedConversations,
@@ -396,11 +396,9 @@ async function toggleShare() {
 async function loadRecommendations(query: string) {
   if (!selectedKb.value) return;
   try {
-    const d = (await fetch(
-      `/api/knowledge-base/recommend?q=${encodeURIComponent(query)}&excludeKbId=${selectedKb.value}`
-    ).then((r) => r.json())) as { recommendations?: { id: string; name: string; desc: string; matched: string[] }[] } | null;
-    recommendations.value = d?.recommendations ?? [];
+    recommendations.value = await fetchKbRecommendations(query, selectedKb.value);
   } catch {
+    // 401 由 api client 统一跳登录；其它失败按“无推荐”处理
     recommendations.value = [];
   }
 }

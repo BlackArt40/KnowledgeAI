@@ -194,7 +194,7 @@ const { t } = useTranslation();
   inset: 0;
   border-radius: 9999px;
   background: hsl(var(--primary) / 0.55);
-  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  animation: ping-hero 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .ping-ring {
@@ -208,7 +208,7 @@ const { t } = useTranslation();
   border-radius: 9999px;
   background: hsl(var(--primary));
 }
-@keyframes ping {
+@keyframes ping-hero {
   75%, 100% {
     transform: scale(2);
     opacity: 0;

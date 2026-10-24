@@ -364,62 +364,30 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
 .welcome-actions {
   display: flex;
   gap: 8px;
 }
-.btn {
-  display: inline-flex;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-}
+.btn { height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; }
+
 .btn.small {
   height: 30px;
   padding: 0 10px;
   font-size: 12px;
 }
-.btn.outline {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-}
 .btn.primary {
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
 }
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-  overflow: hidden;
-}
+.card { overflow: hidden; }
+
 .card-head {
   padding: 16px 20px 0;
-}
-.card-head.between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 .card-head h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-}
-.card-body {
-  padding: 12px 20px 20px;
 }
 .more-link {
   font-size: 13px;
@@ -465,20 +433,8 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   font-weight: 500;
   color: hsl(var(--success));
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  padding: 2px 8px;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.badge { gap: 4px; max-width: 100%; padding: 2px 8px; overflow: hidden; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); text-overflow: ellipsis; white-space: nowrap; }
+
 .badge.success {
   background: hsl(var(--success) / 0.12);
   color: hsl(var(--success));
@@ -642,28 +598,10 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 .recent-arrow {
   color: hsl(var(--muted-foreground));
 }
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 0;
-  text-align: center;
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-  margin: 0;
-}
-.sk {
-  display: inline-block;
-  border-radius: 8px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 0; font-size: 14px; margin: 0; }
+
+.sk { display: inline-block; border-radius: 8px; }
+
 .spin {
   animation: spin 1s linear infinite;
 }

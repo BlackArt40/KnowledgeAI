@@ -314,11 +314,7 @@ function printReport() {
 .skeleton.tall {
   height: 384px;
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 .icon-badge {
   display: flex;
   height: 56px;
@@ -397,12 +393,8 @@ h1 {
   align-items: center;
   gap: 4px;
 }
-.card {
-  padding: 24px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 16px;
-}
+.card { padding: 24px; border-radius: 16px; }
+
 .card.slim {
   padding: 16px;
 }

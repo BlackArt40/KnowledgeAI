@@ -811,12 +811,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   border-radius: 9999px;
   background: hsl(142 71% 45%);
 }
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
+
 .replay {
   display: inline-flex;
   align-items: center;
@@ -1202,15 +1197,8 @@ watch([scene, runId, inView, reduced], () => playScene());
   border-radius: 9999px;
   background: hsl(142 71% 45%);
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
-  border-radius: 9999px;
-  font-size: 9px;
-  font-weight: 500;
-}
+.badge { gap: 4px; padding: 1px 6px; font-size: 9px; font-weight: 500; }
+
 .badge.ok { background: hsl(142 71% 45% / 0.1); color: hsl(142 71% 38%); }
 .badge.warn { background: #f59e0b1a; color: #b45309; }
 .badge.big {

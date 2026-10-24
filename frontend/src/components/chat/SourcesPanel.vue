@@ -127,12 +127,8 @@ function hostOf(url: string): string {
   overflow-y: auto;
   padding: 12px;
 }
-.empty {
-  padding: 40px 0;
-  text-align: center;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-}
+.empty { font-size: 12px; }
+
 .cite {
   width: 100%;
   padding: 12px;

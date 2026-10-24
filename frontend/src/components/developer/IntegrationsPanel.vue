@@ -551,12 +551,8 @@ const widgetSnippet = computed(
   display: grid;
   gap: 16px;
 }
-.card {
-  padding: 20px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-}
+.card { padding: 20px; border-radius: 16px; }
+
 .card-head {
   display: flex;
   align-items: flex-start;
@@ -625,11 +621,8 @@ const widgetSnippet = computed(
   top: 8px;
   right: 8px;
 }
-.hint {
-  margin: 0;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { font-size: 12px; }
+
 .token-box {
   padding: 12px;
   border: 1px solid hsl(var(--border));
@@ -659,17 +652,8 @@ const widgetSnippet = computed(
 .token-copy {
   margin-top: 8px;
 }
-.sk {
-  height: 64px;
-  border-radius: 8px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+.sk { height: 64px; border-radius: 8px; }
+
 .tbl {
   width: 100%;
   border-collapse: collapse;
@@ -705,13 +689,8 @@ const widgetSnippet = computed(
   justify-content: flex-end;
   gap: 8px;
 }
-.badge {
-  display: inline-flex;
-  padding: 1px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-}
+.badge { font-weight: 500; }
+
 .badge.outline {
   border: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
