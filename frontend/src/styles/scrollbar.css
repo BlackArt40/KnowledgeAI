@@ -1,0 +1,47 @@
+/* ---------------------------------------------------------------------------
+ * 统一细滚动条：给任何 `overflow-y: auto` 的容器加 class="kai-scroll"。
+ *
+ * 两个必须知道的点（都踩过）：
+ *  1) Blink 里一旦同时设置标准属性 `scrollbar-width` / `scrollbar-color`，就会
+ *     忽略 `::-webkit-scrollbar`，样式退回 11px 方角默认条（实测 8px → 11px）。
+ *     所以标准属性只放在 `@supports not selector(::-webkit-scrollbar)` 里给
+ *     Firefox 用。
+ *  2) headless Chromium 不绘制自定义滚动条（把滑块染成纯红也截不到），验证样
+ *     式要用有头浏览器截图。
+ * ------------------------------------------------------------------------- */
+.kai-scroll {
+  /* 常驻滚动槽：内容增减导致滚动条出现/消失时，文案不会横向跳动 */
+  scrollbar-gutter: stable;
+  /* 滚到底不把外层页面一起带着滚 */
+  overscroll-behavior: contain;
+}
+
+.kai-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.kai-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kai-scroll::-webkit-scrollbar-thumb {
+  /* 2px 透明边框 + padding-box → 视觉上是 4px 圆角胶囊 */
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: hsl(var(--muted-foreground) / 0.35);
+  background-clip: padding-box;
+}
+.kai-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+  background-clip: padding-box;
+}
+.kai-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox 只认标准属性 */
+@supports not selector(::-webkit-scrollbar) {
+  .kai-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+}

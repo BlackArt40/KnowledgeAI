@@ -107,7 +107,7 @@ function menuRemove(id: string) {
         </button>
       </div>
     </div>
-    <div class="items">
+    <div class="items kai-scroll">
       <p
         v-if="filtered.length === 0 && sharedConvs.length === 0"
         class="empty"

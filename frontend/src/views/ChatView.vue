@@ -709,7 +709,7 @@ function onSendKeydown(e: KeyboardEvent) {
       <!-- 消息区 -->
       <div
         ref="scrollRef"
-        class="msgs"
+        class="msgs kai-scroll"
       >
         <ChatEmptyState
           v-if="messages.length === 0"

@@ -497,7 +497,7 @@ const planLabel = computed(() => {
             <div class="card-head">
               <h3>{{ t("page.settings.s6") }}</h3>
             </div>
-            <div class="card-body history">
+            <div class="card-body history kai-scroll">
               <div
                 v-for="e in data.loginHistory"
                 :key="e.id"
