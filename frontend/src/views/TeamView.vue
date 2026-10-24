@@ -231,7 +231,7 @@ async function remove(id: string) {
         <div class="card-head">
           <h3>{{ t("page.team.tabAudit") }}</h3>
         </div>
-        <div class="card-body history">
+        <div class="card-body history kai-scroll">
           <div
             v-for="a in data.audit"
             :key="a.id"

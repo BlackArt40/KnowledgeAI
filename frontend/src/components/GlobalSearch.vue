@@ -212,7 +212,7 @@ function onRecentClick(term: string) {
         </button>
       </div>
 
-      <div class="gs-body">
+      <div class="gs-body kai-scroll">
         <!-- 空态：最近搜索 + 快捷入口 -->
         <template v-if="empty">
           <div

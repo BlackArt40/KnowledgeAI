@@ -31,7 +31,7 @@ function hostOf(url: string): string {
       <span class="title">{{ t("page.chat.s5") }}</span>
       <span class="count">{{ citations.length }}</span>
     </div>
-    <div class="list">
+    <div class="list kai-scroll">
       <p
         v-if="citations.length === 0"
         class="empty"
