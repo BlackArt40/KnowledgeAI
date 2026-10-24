@@ -1071,6 +1071,37 @@ const visibleGroups = computed(() =>
 .notif-list {
   max-height: 320px;
   overflow-y: auto;
+  /* 细滚动条 + 预留槽位：默认滚动条在 360px 面板里又粗又贴边，出现/消失还会让
+     文案横向跳动。overscroll-behavior 防止滚到底后把页面一起带着滚。 */
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+/* Chromium / Safari：8px 轨道 + 2px 透明边框，视觉上收成 4px 圆角滑块。
+   注意：这里不能同时写标准属性 scrollbar-width/scrollbar-color —— Blink 一旦
+   看到它们就会忽略 ::-webkit-scrollbar，样式会退回 11px 方角默认条。 */
+.notif-list::-webkit-scrollbar {
+  width: 8px;
+}
+.notif-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notif-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  /* --border 在白底上几乎看不见；用前景灰的半透明版本，既可见又不抢戏 */
+  background: hsl(var(--muted-foreground) / 0.35);
+  background-clip: padding-box;
+}
+.notif-list::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+  background-clip: padding-box;
+}
+/* Firefox：只认标准属性，用 @supports 隔离，避免影响 Blink */
+@supports not selector(::-webkit-scrollbar) {
+  .notif-list {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
 }
 .notif-empty {
   padding: 32px 0;
