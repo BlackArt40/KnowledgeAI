@@ -27,6 +27,11 @@ test("AppShell：通知铃铛面板可开合，语言/主题控件存在", async
   await login(page);
   await page.locator("button[aria-label='通知']").click();
   await expect(page.locator(".notif-panel")).toBeVisible();
+  // 回归守卫：曾因 el-popover 的 trigger="click" 与引用元素上的手动 @click 双翻转，
+  // 弹层「点开即关」。单次 toBeVisible 会命中那 ~600ms 的短暂打开窗口，所以这里
+  // 等过渡结束后必须仍然可见。
+  await page.waitForTimeout(800);
+  await expect(page.locator(".notif-panel")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator(".theme-toggle")).toBeVisible();
 });
