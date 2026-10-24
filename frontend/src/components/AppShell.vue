@@ -548,10 +548,11 @@ const visibleGroups = computed(() =>
             trigger="click"
           >
             <template #reference>
+              <!-- 不要在这里再写 @click 手动 toggle：el-popover 的 trigger="click"
+                   已经会翻 v-model:visible，两边同时翻转 = 点开即关（2026-10-24 修） -->
               <button
                 class="icon-btn"
                 :aria-label="t('page.app-shell.s3')"
-                @click="notifOpen = !notifOpen"
               >
                 <el-icon :size="14">
                   <BellFilled />
