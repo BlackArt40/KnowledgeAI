@@ -15,6 +15,9 @@ allowBuilds:
   tesseract.js: false
   '@scarf/scarf': false
 
+minimumReleaseAgeExclude:
+  - katex@0.19.1
+
 # P1-5 + 2026-10-08 dependency audit: force vulnerable transitive deps to
 # patched versions (postcss <8.5.18 arbitrary-file-read, sharp <0.35.5
 # libheif/librsvg CVEs, nanoid <3.3.18 ReDoS/loop, deepmerge-ts <8.0.0 stack
@@ -24,7 +27,10 @@ allowBuilds:
 # <6.4.3, js-yaml <4.3.2, brace-expansion <1.1.21 / <5.0.12, dompurify
 # <3.4.17（2026-10-23 GHSA-cg2g-xh64-v4q7）, vue & @vue/server-renderer
 # <3.5.42 - kept in lockstep: a lone
-# server-renderer override desyncs the @vue/* family and breaks vitepress SSR).
+# server-renderer override desyncs the @vue/* family and breaks vitepress SSR;
+# 2026-10-24: zod <4.6.6 / undici <7.30.1 / katex <0.18.2 (均经 @ai-sdk &
+# mermaid 传递；zod 仍在 provider-utils 的 peer 范围内，undici 满足其 ^7.28，
+# katex 仅 mermaid 数学图按需加载且本仓 docs 无公式)。
 overrides:
   sharp: ^0.35.5
   deepmerge-ts: ^8.0.0
@@ -34,7 +40,9 @@ overrides:
   source-map-js: ^1.2.2
   browserslist: ^4.29.3
   baseline-browser-mapping: ^2.11.27
-  undici: ^7.29.1
+  undici: ^7.30.1
+  zod: ^4.6.7
+  katex: ^0.19.1
   'vite@<6.4.3': 6.4.4
   'js-yaml@>=4.0.0 <4.3.2': 4.3.2
   'brace-expansion@<1.1.21': 1.1.21
