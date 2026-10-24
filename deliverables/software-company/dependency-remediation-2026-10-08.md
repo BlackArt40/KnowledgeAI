@@ -83,3 +83,19 @@ PR #56 的 `quality` job 在 `pnpm audit --audit-level=critical` 步骤失败：
 残留（无修复版本 / 待上游）：
 - `braces <=3.0.3`（high，dev，`eslint-config-next>@next/eslint-plugin-next>fast-glob>micromatch>braces`）——registry 最高仍为 3.0.3
 - `katex <0.18.2`（low，dev，`mermaid>katex`）——需跨 minor，待 mermaid 升级
+
+## 追加：2026-10-24（残留清零：zod / undici / katex）
+
+体检发现 `pnpm audit` 剩 5 条（2 high / 2 moderate / 1 low），均为传递依赖，按依赖树顶到修复版本：
+
+| 漏洞 | 严重度 | 依赖链 | 处置 |
+|------|:------:|--------|------|
+| `zod <4.6.6` | high | `@ai-sdk/openai>@ai-sdk/provider-utils>zod` | override `zod ^4.6.7`（4.4.3 → 4.6.7，仍落在 provider-utils 的 peer 范围 `^3.25.76 \|\| ^4.1.8`） |
+| `undici >=7.18.0 <7.30.1` | high + moderate ×2 | `@ai-sdk/openai>@ai-sdk/provider-utils>undici` | 既有 override `^7.29.1` → **`^7.30.1`**（7.30.0 → 7.30.1，满足 provider-utils 的 `^7.28.0`） |
+| `katex >=0.11.0 <0.18.2` | low | `mermaid>katex` | override `katex ^0.19.1`（0.16.47 → 0.19.1；本仓 docs 无数学公式，mermaid 数学图按需加载，`docs:build` 复验通过） |
+
+结果：`pnpm audit` **No known vulnerabilities found**（唯一残留 `braces <=3.0.3` 在本次树中已不存在，registry 无修复版，非本仓可解）。
+
+注：pnpm 因 minimumReleaseAge 策略自动在 `pnpm-workspace.yaml` 追加 `minimumReleaseAgeExclude: katex@0.19.1`（新发布版本安装豁免记录，随 lockfile 一并提交）。
+
+验证：`tsc --noEmit` / `pnpm lint` / `pnpm test:unit`（79 文件 522 用例，覆盖率不变）/ `next build` / frontend `vue-tsc` + `eslint` + `vitest`(33) + `vite build`（含 home 预渲染）/ `docs:build` / smoke lib 组 16/16 全绿。
