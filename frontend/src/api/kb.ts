@@ -126,3 +126,20 @@ export interface GraphEdge {
 export async function fetchGraph(kbId: string): Promise<{ kb: { id: string; name: string }; nodes: GraphNode[]; edges: GraphEdge[] }> {
   return request(`/api/knowledge-base/${encodeURIComponent(kbId)}/graph`);
 }
+
+export interface KbRecommendation {
+  id: string;
+  name: string;
+  desc: string;
+  matched: string[];
+}
+
+/** 相关知识库推荐（2-gram 重叠打分，服务端按 workspace 隔离）。 */
+export async function fetchKbRecommendations(q: string, excludeKbId?: string): Promise<KbRecommendation[]> {
+  const qs = new URLSearchParams({ q });
+  if (excludeKbId) qs.set("excludeKbId", excludeKbId);
+  const d = await request<{ recommendations?: KbRecommendation[] }>(
+    `/api/knowledge-base/recommend?${qs.toString()}`
+  );
+  return d?.recommendations ?? [];
+}

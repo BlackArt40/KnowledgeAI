@@ -254,11 +254,6 @@ async function remove(kb: KbListItem) {
   font-size: 20px;
   font-weight: 600;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -307,15 +302,8 @@ async function remove(kb: KbListItem) {
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
-.badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-  flex-shrink: 0;
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+
 .kb-desc {
   margin: 0;
   font-size: 13px;
@@ -354,14 +342,8 @@ async function remove(kb: KbListItem) {
   color: hsl(var(--primary));
   text-decoration: none;
 }
-.empty {
-  display: grid;
-  gap: 12px;
-  justify-items: center;
-  padding: 60px 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-}
+.empty { display: grid; gap: 12px; justify-items: center; padding: 60px 0; font-size: 14px; }
+
 .form {
   display: grid;
   gap: 14px;
@@ -394,14 +376,5 @@ async function remove(kb: KbListItem) {
   font-size: 13px;
   color: hsl(var(--destructive));
 }
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 </style>

@@ -224,11 +224,8 @@ function pct(m: Meter): number {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
+.sub { font-size: 13px; }
+
 .plan-badge {
   padding: 2px 10px;
   border-radius: 9999px;
@@ -314,12 +311,8 @@ function pct(m: Meter): number {
 .meter-bar {
   margin-top: 12px;
 }
-.card {
-  padding: 20px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-}
+.card { padding: 20px; border-radius: 16px; }
+
 .trend-head {
   display: flex;
   align-items: center;

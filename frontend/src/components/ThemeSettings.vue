@@ -166,18 +166,8 @@ async function selectBrand(id: string) {
   display: grid;
   gap: 16px;
 }
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-}
 .card-head {
   padding: 16px 20px 0;
-}
-.card-head.between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 .card-head h3 {
   display: flex;
@@ -192,14 +182,8 @@ async function selectBrand(id: string) {
   align-items: center;
   gap: 8px;
 }
-.card-body {
-  padding: 12px 20px 20px;
-}
-.hint {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { margin: 0 0 12px; }
+
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

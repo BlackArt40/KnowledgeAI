@@ -309,12 +309,8 @@ function menuRemove(id: string) {
   overflow-y: auto;
   padding: 4px 8px 12px;
 }
-.empty {
-  padding: 24px 0;
-  text-align: center;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-}
+.empty { padding: 24px 0; font-size: 12px; }
+
 .group {
   margin: 8px 0 2px;
   padding: 0 6px;

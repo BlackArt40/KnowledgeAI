@@ -320,11 +320,6 @@ async function remove(id: string) {
   font-size: 20px;
   font-weight: 600;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -334,11 +329,6 @@ async function remove(id: string) {
   .stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-}
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
 }
 .stat {
   padding: 16px 18px;
@@ -415,18 +405,8 @@ async function remove(id: string) {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-}
-.badge.warn {
-  background: hsl(var(--warning) / 0.12);
-  color: hsl(var(--warning));
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
 .kb-row {
   display: flex;
   align-items: center;
@@ -467,24 +447,12 @@ async function remove(id: string) {
   font-size: 13px;
   font-weight: 500;
 }
-.hint {
-  margin: 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { font-size: 13px; }
+
 .err {
   margin: 0;
   font-size: 13px;
   color: hsl(var(--destructive));
 }
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 </style>

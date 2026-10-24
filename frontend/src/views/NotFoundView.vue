@@ -94,25 +94,11 @@ h1 {
   gap: 10px;
   margin-top: 28px;
 }
-.btn {
-  display: inline-flex;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 18px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-}
+.btn { height: 38px; padding: 0 18px; border-radius: 10px; font-size: 14px; font-weight: 500; }
+
 .btn.primary {
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
-}
-.btn.outline {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
 }
 .btn.outline:hover {
   background: hsl(var(--accent));

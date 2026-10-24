@@ -507,34 +507,17 @@ function onKbEvent(event: Record<string, unknown>) {
   font-size: 16px;
   font-weight: 700;
 }
-.sub {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
+.sub { margin: 6px 0 0; }
+
 .head-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
 }
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  height: 32px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-}
+.btn { padding: 0 12px; height: 32px; font-size: 13px; font-weight: 500; }
+
 .btn.small {
   height: 30px;
-}
-.btn.outline {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
 }
 .stat-row {
   display: flex;
@@ -585,11 +568,6 @@ function onKbEvent(event: Record<string, unknown>) {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-}
 .card-head {
   display: flex;
   align-items: center;
@@ -637,26 +615,8 @@ function onKbEvent(event: Record<string, unknown>) {
   gap: 8px;
   flex-shrink: 0;
 }
-.badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-}
-.badge.ok {
-  background: hsl(var(--success) / 0.12);
-  color: hsl(var(--success));
-}
-.badge.err {
-  background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
-}
-.badge.warn {
-  background: hsl(var(--warning) / 0.12);
-  color: hsl(var(--warning));
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
 .form {
   display: grid;
   gap: 14px;
@@ -669,11 +629,8 @@ function onKbEvent(event: Record<string, unknown>) {
   font-size: 13px;
   font-weight: 500;
 }
-.hint {
-  margin: 0;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { font-size: 13px; }
+
 .err {
   color: hsl(var(--destructive));
 }
@@ -688,22 +645,6 @@ function onKbEvent(event: Record<string, unknown>) {
 .alert-box p {
   margin: 2px 0;
 }
-.empty {
-  display: grid;
-  gap: 12px;
-  justify-items: center;
-  padding: 60px 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-}
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+.empty { display: grid; gap: 12px; justify-items: center; padding: 60px 0; font-size: 14px; }
+
 </style>

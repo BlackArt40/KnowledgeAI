@@ -415,19 +415,10 @@ function fillDemo(em: string) {
 .label-link:hover {
   text-decoration: underline;
 }
-.hint {
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-}
-.form-error {
-  margin: 0;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: hsl(var(--destructive));
-  border: 1px solid hsl(var(--destructive) / 0.3);
-  background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
-}
+.hint { font-size: 12px; }
+
+.form-error { margin: 0; }
+
 .form-warn {
   margin: 0;
   padding: 8px 12px;

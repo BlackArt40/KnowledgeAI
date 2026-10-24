@@ -235,15 +235,8 @@ async function handleSubmit() {
   flex-shrink: 0;
   accent-color: hsl(var(--primary));
 }
-.form-error {
-  margin: 0;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: hsl(var(--destructive));
-  border: 1px solid hsl(var(--destructive) / 0.3);
-  background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
-}
+.form-error { margin: 0; }
+
 .foot {
   margin-top: 24px;
   text-align: center;

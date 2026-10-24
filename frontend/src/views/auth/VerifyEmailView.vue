@@ -192,17 +192,8 @@ function goDashboard() {
 .center {
   text-align: center;
 }
-.badge {
-  display: flex;
-  height: 64px;
-  width: 64px;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  border-radius: 16px;
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
-}
+.badge { display: flex; height: 64px; width: 64px; justify-content: center; margin: 0 auto; border-radius: 16px; background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
+
 .badge.success {
   background: hsl(var(--success) / 0.1);
   color: hsl(var(--success));
@@ -240,15 +231,8 @@ h1 {
   color: hsl(var(--primary));
   word-break: break-all;
 }
-.form-error {
-  margin: 16px 0 0;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: hsl(var(--destructive));
-  border: 1px solid hsl(var(--destructive) / 0.3);
-  background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
-}
+.form-error { margin: 16px 0 0; }
+
 .actions {
   display: grid;
   gap: 12px;

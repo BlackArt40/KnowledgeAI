@@ -270,20 +270,8 @@ function keyDisplay(k: ApiKey): string {
   font-size: 20px;
   font-weight: 600;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
-.card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-}
+.card { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+
 .key-main {
   min-width: 0;
   flex: 1;
@@ -306,32 +294,16 @@ function keyDisplay(k: ApiKey): string {
   flex-wrap: wrap;
   gap: 6px;
 }
-.badge {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
 .badge.scope {
   font-family: var(--font-mono);
 }
 .mono {
   font-family: var(--font-mono);
 }
-.empty {
-  display: grid;
-  gap: 10px;
-  justify-items: center;
-  padding: 56px 24px;
-  border: 1px dashed hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-  text-align: center;
-}
+.empty { display: grid; gap: 10px; justify-items: center; padding: 56px 24px; border: 1px dashed hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); font-size: 14px; }
+
 .empty-icon {
   display: inline-flex;
   height: 48px;
@@ -365,11 +337,8 @@ function keyDisplay(k: ApiKey): string {
   font-size: 13px;
   font-weight: 500;
 }
-.hint {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { margin: 0 0 10px; font-size: 13px; }
+
 .secret {
   display: block;
   padding: 10px 12px;
@@ -385,14 +354,5 @@ function keyDisplay(k: ApiKey): string {
   font-size: 13px;
   color: hsl(var(--destructive));
 }
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 </style>

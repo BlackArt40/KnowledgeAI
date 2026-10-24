@@ -281,24 +281,10 @@ function onClickNode(id: string) {
   font-size: 11px;
   fill: hsl(var(--foreground));
 }
-.hint {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  text-align: right;
-}
-.empty {
-  display: grid;
-  gap: 10px;
-  justify-items: center;
-  padding: 64px 24px;
-  border: 1px dashed hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground));
-  font-size: 14px;
-  text-align: center;
-}
+.hint { margin: 8px 0 0; font-size: 12px; text-align: right; }
+
+.empty { display: grid; gap: 10px; justify-items: center; padding: 64px 24px; border: 1px dashed hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); font-size: 14px; }
+
 .empty-icon {
   display: inline-flex;
   height: 46px;
@@ -329,29 +315,6 @@ function onClickNode(id: string) {
   color: hsl(var(--destructive));
   font-size: 14px;
 }
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  height: 30px;
-  border-radius: 8px;
-  font-size: 13px;
-  text-decoration: none;
-}
-.btn.outline {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-}
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+.btn { padding: 0 12px; height: 30px; font-size: 13px; }
+
 </style>

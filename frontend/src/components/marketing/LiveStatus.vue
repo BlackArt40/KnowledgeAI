@@ -186,12 +186,7 @@ function checkText(name: "db" | "redis" | "llm"): string {
   background: hsl(142 71% 45% / 0.6);
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
+
 .live-checks {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

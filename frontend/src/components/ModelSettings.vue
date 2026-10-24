@@ -278,33 +278,16 @@ async function submitAdd() {
   display: grid;
   gap: 16px;
 }
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-}
 .card-head {
   padding: 16px 20px 0;
-}
-.card-head.between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 .card-head h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
 }
-.card-body {
-  padding: 12px 20px 20px;
-}
-.hint {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
+.hint { margin: 0 0 12px; }
+
 .model {
   padding: 12px;
   margin-bottom: 12px;
@@ -332,15 +315,8 @@ async function submitAdd() {
   font-size: 14px;
   font-weight: 600;
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
 .badge.success {
   background: hsl(var(--success) / 0.12);
   color: hsl(var(--success));

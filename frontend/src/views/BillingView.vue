@@ -373,14 +373,8 @@ const currentPlan = (): Plan | undefined => {
   flex-wrap: wrap;
   gap: 8px;
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-}
+.badge { font-weight: 500; }
+
 .badge.ok {
   background: hsl(142 71% 45% / 0.12);
   color: hsl(142 71% 35%);
@@ -471,12 +465,8 @@ const currentPlan = (): Plan | undefined => {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.card {
-  padding: 20px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  background: hsl(var(--card));
-}
+.card { padding: 20px; border-radius: 16px; }
+
 .inv-head {
   display: flex;
   align-items: center;

@@ -1,0 +1,123 @@
+/* ---------------------------------------------------------------------------
+ * 全局基础样式（仅放「多个页面逐字重复」的那部分）
+ *
+ * 背景：.card / .badge / .hint / .sub / .sk / .empty / .btn / .form-error 这些
+ * 类以前在 6~15 个组件的 scoped style 里各抄一份（合计约 600 行声明），值大多
+ * 完全一致。这里只保留公共核心；页面自己的差异（内边距、圆角、字号、配色变体）
+ * 仍留在各自 scoped style 里 —— scoped 选择器权重更高，天然覆盖。
+ *
+ * 约定：新增页面直接复用这些类，不要再抄一遍；需要差异就写覆盖规则。
+ * ------------------------------------------------------------------------- */
+
+/* ── 卡片 ─────────────────────────────────────────────────────────────── */
+.card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+}
+/* 内容区默认内边距（各页可覆盖） */
+.card-body {
+  padding: 12px 20px 20px;
+}
+/* 标题行「左标题 + 右操作」布局（与 .card-head 的内边距叠加使用） */
+.card-head.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ── 徽章 ─────────────────────────────────────────────────────────────── */
+/* 字重不放进全局：个别页面的徽章没有 font-weight，统一会带来可见的字重变化，
+   保留各页自己的声明更安全 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+}
+/* 变体统一用 `.badge[class].xxx` 提高权重：页面里残留的 `.badge { background/color }`
+   被 scoped 编译成 `.badge[data-v-x]`，与 `.badge.warn` 同为 (0,2,0)，而组件样式
+   后注入 —— 不加权会出现「状态徽章变成中性灰」的回归（TeamView「已邀请」实测踩到）。
+   `[class]` 恒真，不影响匹配。 */
+.badge[class].ok {
+  background: hsl(var(--success) / 0.12);
+  color: hsl(var(--success));
+}
+.badge[class].warn {
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+}
+.badge[class].err {
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+}
+
+/* ── 次要文案 ─────────────────────────────────────────────────────────── */
+/* .hint：卡片/表单里的说明文字；.sub：标题下方的一行副标题 */
+.hint {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+.sub {
+  margin: 4px 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+
+/* ── 骨架屏 ───────────────────────────────────────────────────────────── */
+.sk {
+  background: hsl(var(--muted));
+  border-radius: 12px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── 空态 ─────────────────────────────────────────────────────────────── */
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── 按钮（只抽布局；高度/内边距/字号/配色仍由页面决定）──────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.btn.outline {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+/* ── 表单错误条 ───────────────────────────────────────────────────────── */
+.form-error {
+  padding: 8px 12px;
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  border-radius: 8px;
+  background: hsl(var(--destructive) / 0.05);
+  color: hsl(var(--destructive));
+  font-size: 14px;
+}
+
+/* ── 全局动画 ─────────────────────────────────────────────────────────── */
+/* pulse 原先被复制 5 份（骨架屏），ping 3 份（营销页在线状态点）。
+   注意：@keyframes 不受 scoped 影响，同名 keyframes 会互相覆盖 ——
+   MktHero 的 scale(2) 变体已改名为 ping-hero，避免与这里的 ping(2.2) 打架。 */
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}

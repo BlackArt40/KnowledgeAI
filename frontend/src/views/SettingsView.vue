@@ -993,44 +993,20 @@ const planLabel = computed(() => {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
-.sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
 .space {
   display: grid;
   gap: 16px;
 }
-.card {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  border-radius: 12px;
-}
 .card-head {
   padding: 16px 20px 0;
-}
-.card-head.between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 .card-head h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
 }
-.card-body {
-  padding: 12px 20px 20px;
-  display: grid;
-  gap: 12px;
-}
-.hint {
-  margin: 0;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
+.card-body { display: grid; gap: 12px; }
+
 .hint.ok {
   color: hsl(var(--primary));
 }
@@ -1058,22 +1034,11 @@ const planLabel = computed(() => {
   background: hsl(var(--destructive) / 0.05);
   color: hsl(var(--destructive));
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: hsl(var(--muted));
-  font-size: 11px;
-  color: hsl(var(--muted-foreground));
-}
+.badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
 .badge.success {
   background: hsl(var(--success) / 0.12);
   color: hsl(var(--success));
-}
-.badge.warn {
-  background: hsl(var(--warning) / 0.12);
-  color: hsl(var(--warning));
 }
 .badge.outline {
   border: 1px solid hsl(var(--border));
@@ -1274,11 +1239,6 @@ const planLabel = computed(() => {
     transform: rotate(360deg);
   }
 }
-.sk {
-  border-radius: 12px;
-  background: hsl(var(--muted));
-  animation: pulse 1.5s ease-in-out infinite;
-}
 /* 窄屏：标签栏可横向滚动，避免把 grid 列撑宽导致整页横向溢出 */
 .tabs {
   min-width: 0;
@@ -1295,9 +1255,5 @@ const planLabel = computed(() => {
     flex-wrap: wrap;
   }
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
-}
+
 </style>

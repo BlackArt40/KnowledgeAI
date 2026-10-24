@@ -306,18 +306,8 @@ function backToSetup() {
   border-radius: 6px;
   background: hsl(var(--muted));
 }
-.form-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 16px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: hsl(var(--destructive));
-  border: 1px solid hsl(var(--destructive) / 0.3);
-  background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
-}
+.form-error { display: flex; align-items: center; gap: 6px; margin: 0 0 16px; }
+
 .linklike {
   border: 0;
   background: none;
