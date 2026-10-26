@@ -206,7 +206,7 @@ flowchart LR
 - **安全加固**：模型自定义 `baseUrl` 统一接入 SSRF 校验（fail-closed；`LLM_ALLOW_PRIVATE_BASE_URL` 放行自托管端点，云元数据地址永久封禁）；CORS（F17）收紧——无白名单的生产实例不再反射 Origin（`CORS_ALLOWED_ORIGINS` 需显式配置，详见 env-vars）；会话/密钥比较恒定时间化；限流降级可观测（`getRateLimitHealth` 并入就绪探针）。
 - **扩容就绪（D 组）**：鉴权读路径共享化（apiKey 校验回源 DB + jti 黑名单共享 Redis，[ADR-0006](adr/adr-0006-read-path-storage-evolution.md)）；队列深度背压与告警位（[ADR-0007](adr/adr-0007-queue-backpressure.md)）；就绪探针新增 `revocationDegraded` / `queueBackpressured` 附加降级位；k8s 清单刷新扩容前置条件状态（uploads 卷需 RWX 或对象存储，且多副本必须配置 `REDIS_URL`）。
 - **前端 / 离线**：PWA 预缓存收窄为公共壳（`/`、`/login`、manifest、icons），导航失败返回 503 离线页，并新增远程 kill switch（`public/sw-config.json`）；账号删除/OAuth 失败回跳改用 `location.replace`（无历史条目、彻底清客户端状态）。
-- **CI 门禁**：七个 job（新增 `smoke` / `smoke-infra` 验收组）与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
+- **CI 门禁**：九个 job（quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs）与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
 
 ## 模块地图
 

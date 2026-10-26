@@ -35,9 +35,12 @@ related:
 
 ```bash
 git clone <your-repo-url> && cd KnowledgeAI
-pnpm install          # 依赖安装（含 postinstall 复制 Swagger UI）
-pnpm dev              # 开发服务器 :3000
+pnpm install                 # 依赖安装（含 postinstall 复制 Swagger UI）
+pnpm dev                     # 后端 API :3000（Next 已是纯 API，无页面层）
+pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :3000）
 ```
+
+> 页面全部由 `frontend/`（Vue 3 + Element Plus + Vite）承载，:3000 只剩 `/api/**`。浏览器请看 **:5173**（生产/预览形态是 :4173）。
 
 ### 2. 全链路体验（1 小时）
 
@@ -63,7 +66,7 @@ pnpm dev              # 开发服务器 :3000
 |------|------|------|
 | 单元测试 | `pnpm test:unit` | vitest + 覆盖率门槛（lines 70% / branches 60%，覆盖 `src/lib/{rag,auth,billing,team}`） |
 | 集成测试 | `node tests/<suite>/<suite>-test.mjs` | 需先启动 `pnpm dev`，用演示账号打真实 API |
-| E2E | `pnpm test:e2e` | Playwright，自动启动 dev server |
+| E2E | `pnpm test:e2e` | Playwright，自动启动 Next dev :3000 + vite preview :4173（前端套件另跑 `pnpm -C frontend test:e2e`） |
 
 > 新增 `src/lib/{rag,auth,billing,team}` 代码**必须配测试**，否则 CI 覆盖率门槛会挂。
 
@@ -79,7 +82,7 @@ pnpm dev              # 开发服务器 :3000
    ```
 
 3. **提交 PR**：按 PR 模板填写，勾选「文档影响」（改了 `src/lib/` 模块或 API → 必须同步更新对应文档，见 [文档编写规范](../standards/doc-writing-standards.md)）；
-4. **等待 CI**：5 个 job 全绿（quality / unit / integration / e2e / docs）才能合并。改动 `prisma/schema.prisma` 必须先生成迁移（`npx prisma migrate dev --name <描述>`）。
+4. **等待 CI**：九项检查全绿（quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs）才能合并。改动 `prisma/schema.prisma` 必须先生成迁移（`npx prisma migrate dev --name <描述>`）。
 
 ### 6. 第一个 PR 建议（45 分钟）
 
@@ -101,7 +104,7 @@ pnpm dev              # 开发服务器 :3000
 
 ### pnpm 与 Node 版本对齐
 
-项目要求 **Node 22**（CI 的七个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
+项目要求 **Node 22**（CI 的九个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
 
 ```bash
 nvm install 22
