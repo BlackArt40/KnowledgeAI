@@ -17,8 +17,6 @@ const HC_KEY = "kai-hc";
 const TRANSITION_CLASS = "theme-transition";
 const TRANSITION_MS = 500;
 
-export const THEME_MODES: ThemeMode[] = ["light", "dark", "system"];
-
 export function getStoredTheme(): ThemeMode {
   if (typeof window === "undefined") return "system";
   try {

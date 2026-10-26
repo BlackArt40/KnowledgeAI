@@ -516,8 +516,3 @@ export const OPENAPI_SPEC: Spec = {
     },
   },
 };
-
-/** Path count helper for tests/docs. */
-export function openapiPathCount(): number {
-  return Object.keys(OPENAPI_SPEC.paths).length;
-}

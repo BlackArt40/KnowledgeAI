@@ -114,7 +114,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 ### 本地提交前必须过哪些检查？
 
-`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 五 job：quality（tsc + lint + build + prisma drift）、unit、integration、e2e、docs（文档构建死链检查 + Frontmatter 校验 + API 参考漂移 + 环境变量一致性）。
+`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 九 job：quality（tsc + lint + build + prisma drift + audit）、unit、frontend（vue-tsc + eslint + vitest + vite build）、ai-contract（pytest）、integration（三套件）、smoke、smoke-infra、e2e（根套件 + frontend 套件）、docs（文档构建死链检查 + Frontmatter 校验 + API 参考漂移 + 环境变量一致性）。
 
 ### 改了 src/lib/ 下代码，文档要同步吗？
 

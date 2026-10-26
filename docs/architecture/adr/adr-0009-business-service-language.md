@@ -32,7 +32,7 @@ related:
 
 决策输入：
 
-- **目标轨道**：本仓库阶段 4～6 走「生产 / Java 岗」轨道（手册两条实施轨道之二），简历需对齐国内 ToB / 多实例 / Java 后端岗位——用户已在架构讨论中确认业务服务采用 Java 17+ Spring Boot、前端保持 React、AI 服务用 Python（ADR-0008）。
+- **目标轨道**：本仓库阶段 4～6 走「生产 / Java 岗」轨道（手册两条实施轨道之二），简历需对齐国内 ToB / 多实例 / Java 后端岗位——用户已在架构讨论中确认业务服务采用 Java 17+ Spring Boot、前端保持 React（**注**：该前提已于 2026-10-16 变更——前端改为 Vue 3 绞杀重写并已收官，业务服务的语言决策不受影响，见 [service-split.md](../service-split.md)「前端替换」节）、AI 服务用 Python（ADR-0008）。
 - **国内现实**：业务 CRUD 后端的事实标准是 Java + Spring Boot；Spring Boot 3.x 强制 Java 17+，新项目默认即「Java 17 + Spring Boot 3」。
 - **兼容硬约束**：业务服务必须登录**同一批用户数据**——密码哈希与 API Key 哈希格式必须与现网 TS 实现逐字节兼容（见决策 3）。
 - **单人维护预算**：三服务（TS 前端/BFF、Java 业务、Python AI）已是上限，不再引入第四种运行时。

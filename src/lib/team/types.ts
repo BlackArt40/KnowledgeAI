@@ -48,33 +48,4 @@ export interface KbAccessEntry {
   memberRoles?: Record<string, KbMemberRole>;
 }
 
-export const ACCESS_LABEL: Record<KbAccess, string> = {
-  view: "全员可读",
-  edit: "成员可编辑",
-  private: "仅 Owner/Admin",
-};
 
-export const DOC_ACCESS_LABEL: Record<DocAccess, string> = {
-  view: "仅查看",
-  edit: "可编辑",
-  private: "私有",
-};
-
-// Capability catalogue
-export interface Permission {
-  key: string;
-  label: string;
-}
-
-export const PERMISSIONS: Permission[] = [
-  { key: "kb.read", label: "查看知识库" },
-  { key: "kb.create", label: "创建知识库" },
-  { key: "kb.edit", label: "编辑知识库" },
-  { key: "kb.delete", label: "删除知识库" },
-  { key: "chat.use", label: "智能问答" },
-  { key: "agent.run", label: "Agent 调研" },
-  { key: "member.invite", label: "邀请成员" },
-  { key: "member.manage", label: "管理成员" },
-  { key: "team.settings", label: "团队设置" },
-  { key: "billing.manage", label: "计费管理" },
-];

@@ -1,4 +1,4 @@
-<!-- 提交前请确认以下勾选项；与 CI 七项检查（quality/unit/integration/smoke/smoke-infra/e2e/docs）互补 -->
+<!-- 提交前请确认以下勾选项；与 CI 九项检查（quality/unit/frontend/ai-contract/integration/smoke/smoke-infra/e2e/docs）互补 -->
 
 ## 变更说明
 

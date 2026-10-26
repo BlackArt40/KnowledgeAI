@@ -79,7 +79,7 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 - **单测**：纯函数优先；LLM 路径用 `vi.mock("@/lib/llm/provider")`；重依赖（pdfjs/mammoth/xlsx）用 `vi.mock`；
 - **集成**：`tests/<suite>/<suite>-test.mjs` 打 live dev server（用演示账号）；
 - **验收 smoke**：`scripts/smoke/test-*.ts` 打到 live server（或纯库级），由 `scripts/smoke/run-all.ts` 按 manifest 分组调度，CI 的 smoke / smoke-infra 两个 job 会跑；新增脚本要登记到 `scripts/smoke/lib/manifest.ts`，并让脚本自带 fixture 与清理（可重复、顺序无关）；
-- **E2E**：`e2e/main-flow.spec.ts` 覆盖登录 → 上传 → 问答 → Agent；受控输入需 fill-verify-retry 循环（React hydration 竞态）。
+- **E2E**：`e2e/main-flow.spec.ts` 覆盖登录 → 上传 → 问答 → Agent；`frontend/e2e/` 是 Vue 侧特性套件（34 用例）。受控输入需 fill-verify-retry 循环（Element Plus 受控输入偶发竞争）。
 
 ## 相关文档
 
