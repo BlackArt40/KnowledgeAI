@@ -71,7 +71,7 @@
 /* ── 骨架屏 ───────────────────────────────────────────────────────────── */
 .sk {
   background: hsl(var(--muted));
-  border-radius: 12px;
+  border-radius: var(--radius);
   animation: pulse 1.5s ease-in-out infinite;
 }
 

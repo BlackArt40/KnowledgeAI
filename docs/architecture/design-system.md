@@ -4,7 +4,7 @@ description: KnowledgeAI UI 设计体系：技术栈、设计令牌、主题与�
 type: explanation
 category: architecture
 level: L1
-version: 1.3.0
+version: 1.3.1
 authors:
   - product-team
 owner: 产品负责人
@@ -42,7 +42,8 @@ related:
 围绕**靛蓝（Indigo）**品牌色构建，辅以紫罗兰渐变高亮。
 - 主色 `--primary`：亮 `hsl(243 75% 59%)` / 暗 `hsl(243 80% 67%)`；品牌渐变 `--brand-from/--via/--to`
 - 语义色 `success` / `warning` / `destructive`
-- 圆角分两档：`--radius 0.75rem` 为 EP 控件基线（`element-adapter.css` 把它映射成 `--el-border-radius-base/small`，改它会让按钮/输入/下拉/弹窗一起变圆）；`--radius-card 0.875rem` 只给 `.card`
+- 圆角阶梯：`--radius 0.75rem` 为 EP 控件基线（`element-adapter.css` 把它映射成 `--el-border-radius-base/small`，改它会让按钮/输入/下拉/弹窗一起变圆）；`--radius-card 0.875rem` 给 `.card`；`--radius-lg 1rem` / `--radius-xl 1.25rem` / `--radius-2xl 1.5rem` 给内容容器（分区块 / 大卡 / 全宽面板），另有 `--radius-sm 0.5rem` 用于卡内小件
+- 反面色面 `--surface-inverse`：营销 CTA、定价主推卡、认证页品牌面板共用，两套主题下都是深底（故只在 `:root` 定义）
 - 阴影四档 `--shadow-xs/sm/md/lg`（暗色单独一套更重的不透明度）；缓动 `--ease-out`
 - 顶栏高度令牌 `--topbar-h 72px`：`.topbar` / `.side-head` 与 `chat-view.css` 的视口高度计算共用
 - 动效：aurora 极光、marquee 跑马灯、打字机流式、处理进度条、卡片 hover 上浮；主题切换 `theme-transition` 交叉淡入（尊重 prefers-reduced-motion）
@@ -61,6 +62,7 @@ related:
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.3.0 | 2026-10-27 | 设计令牌细化：圆角拆成 `--radius`（EP 控件基线）/`--radius-card`（卡片），新增 `--shadow-xs/sm/md/lg`、`--ease-out`、`--topbar-h`；全局焦点环与 `prefers-reduced-motion` 兜底 |
+| 1.3.1 | 2026-10-28 | 圆角补齐 `--radius-sm/lg/xl/2xl` 阶梯并替换营销页字面量；新增 `--surface-inverse`（暗面共用）；页脚与正文同宽、顶栏与内容左右对齐；字重中间值（550/650）确认依赖可变量字，写入令牌注释 |
 | 1.2.0 | 2026-10-19 | 前端绞杀重写收官（V0-V8）：技术栈改为 Vue 3 + Element Plus + Vite，令牌单源迁至 frontend/src/styles/tokens.css，高对比度覆盖规则随迁（WCAG AA 断言恢复） |
 | 1.1.0 | 2026-09-23 | 删除已完成的「后续开发计划」与重复的页面清单；组件数校正为 17 |
 | 1.0.0 | 2026-08-20 | 初版（原《设计说明.md》第一部分） |
