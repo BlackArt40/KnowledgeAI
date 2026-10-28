@@ -22,17 +22,58 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.18);
+  color: hsl(var(--foreground));
+}
+
+/* 全局焦点环：只给原生可交互元素。EP 的输入框内部是原生 input/textarea，
+   但焦点态由 .el-input__wrapper / .el-textarea__inner 的 inset box-shadow 表达，
+   这里排除它们（.el-input__inner / .el-select__input / .el-textarea__inner），
+   否则会出现「wrapper 环 + 输入框外描边」双焦点环。 */
+:where(
+  a,
+  button,
+  input:not(.el-input__inner):not(.el-select__input),
+  textarea:not(.el-textarea__inner),
+  select
+):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 :root {
+  /* 圆角分两档：--radius 是 EP 控件基线（element-adapter.css 直接把它映射成
+     --el-border-radius-base/small，改它会让按钮/输入/下拉/弹窗一起变圆）；
+     --radius-card 只给卡片（.card）。调卡片圆角请改 --radius-card。 */
   --radius: 0.75rem;
+  --radius-card: 0.875rem;
+
+  /* 工作台顶栏高度：AppShell 的 .topbar/.side-head 与 chat-view.css 的
+     视口高度计算共用，改动时只需改这一处 */
+  --topbar-h: 72px;
 
   /* 原生表单控件 / 滚动条跟随主题 */
   color-scheme: light;
 
-  --background: 240 20% 99%;
-  --foreground: 240 10% 8%;
+  --background: 40 25% 99%;
+  --foreground: 240 12% 9%;
 
   --card: 0 0% 100%;
   --card-foreground: 240 10% 8%;
@@ -71,6 +112,12 @@ body {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+
+  --shadow-xs: 0 1px 2px hsl(240 20% 20% / 0.035);
+  --shadow-sm: 0 1px 2px hsl(240 20% 20% / 0.04), 0 6px 18px hsl(240 20% 20% / 0.045);
+  --shadow-md: 0 2px 4px hsl(240 20% 20% / 0.04), 0 16px 40px hsl(240 20% 20% / 0.08);
+  --shadow-lg: 0 24px 70px hsl(240 20% 20% / 0.12);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
@@ -110,6 +157,11 @@ body {
   --brand-from: 243 80% 67%;
   --brand-via: 265 82% 68%;
   --brand-to: 292 80% 66%;
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.18);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px rgb(0 0 0 / 0.18);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.2), 0 18px 48px rgb(0 0 0 / 0.28);
+  --shadow-lg: 0 28px 80px rgb(0 0 0 / 0.38);
 }
 
 /* ============================================================

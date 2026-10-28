@@ -13,7 +13,8 @@
 .card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
 }
 /* 内容区默认内边距（各页可覆盖） */
 .card-body {
@@ -86,13 +87,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  gap: 7px;
+  border-radius: 10px;
   text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.btn:hover {
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
 }
 .btn.outline {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
+  box-shadow: var(--shadow-xs);
   color: hsl(var(--foreground));
+}
+.btn.outline:hover {
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--accent) / 0.55);
 }
 
 /* ── 表单错误条 ───────────────────────────────────────────────────────── */

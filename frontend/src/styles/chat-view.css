@@ -1,14 +1,26 @@
 /* Chat view: global styles for the extracted child components.
    All selectors are namespaced under .chat-page; imported only by the view chunk. */
+/* 高度 = 视口 - 顶栏 - 内容区上下内边距（值随 AppShell .content 的断点变化，
+   改顶栏高度请只改 tokens.css 的 --topbar-h）。 */
 .chat-page {
   display: flex;
-  height: calc(100dvh - 8.5rem);
+  height: calc(100dvh - var(--topbar-h) - 40px);
   min-height: 460px;
   gap: 0;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
   border-radius: 16px;
   background: hsl(var(--card));
+}
+@media (min-width: 640px) {
+  .chat-page {
+    height: calc(100dvh - var(--topbar-h) - 56px);
+  }
+}
+@media (min-width: 1024px) {
+  .chat-page {
+    height: calc(100dvh - var(--topbar-h) - 72px);
+  }
 }
 .chat-page .conv-side {
   display: none;
