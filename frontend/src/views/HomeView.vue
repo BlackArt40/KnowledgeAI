@@ -60,7 +60,7 @@ onMounted(async () => {
                 { id: 'kb', icon: Promotion, title: t('page.features.s12'), desc: t('page.features.s13') },
                 { id: 'security', icon: CircleCheck, title: t('page.features.s21'), desc: t('page.features.s22') },
               ]"
-              :key="item.title"
+              :key="item.id"
               class="feature-card"
               :class="`feature-${item.id}`"
             >
@@ -87,8 +87,8 @@ onMounted(async () => {
                 </div>
                 <div class="source-preview">
                   <span
-                    v-for="source in [t('page.hero.s5'), t('page.hero.s7')]"
-                    :key="source"
+                    v-for="(source, sourceIndex) in [t('page.hero.s5'), t('page.hero.s7')]"
+                    :key="sourceIndex"
                     class="source-chip"
                   >
                     <el-icon :size="11"><Document /></el-icon>
@@ -104,7 +104,7 @@ onMounted(async () => {
               >
                 <div
                   v-for="(step, index) in [t('page.dashboard.s4'), t('page.dashboard.s5'), t('page.dashboard.s6'), t('page.dashboard.s7')]"
-                  :key="step"
+                  :key="index"
                   class="agent-step"
                 >
                   <span class="agent-check"><el-icon :size="11"><Check /></el-icon></span>
@@ -119,8 +119,8 @@ onMounted(async () => {
                 aria-hidden="true"
               >
                 <div
-                  v-for="file in [t('page.hero.s42'), t('page.hero.s43'), t('page.hero.s44')]"
-                  :key="file"
+                  v-for="(file, fileIndex) in [t('page.hero.s42'), t('page.hero.s43'), t('page.hero.s44')]"
+                  :key="fileIndex"
                   class="file-row"
                 >
                   <span class="file-icon"><el-icon :size="13"><Document /></el-icon></span>
@@ -172,12 +172,12 @@ onMounted(async () => {
           <div class="flow-grid">
             <div
               v-for="(step, index) in [
-                { icon: Upload, title: t('page.workflow.s0'), desc: t('page.workflow.s1') },
-                { icon: Collection, title: t('page.workflow.s2'), desc: t('page.workflow.s3') },
-                { icon: ChatLineRound, title: t('page.workflow.s4'), desc: t('page.workflow.s5') },
-                { icon: DataAnalysis, title: t('page.workflow.s6'), desc: t('page.workflow.s7') },
+                { id: 'upload', icon: Upload, title: t('page.workflow.s0'), desc: t('page.workflow.s1') },
+                { id: 'index', icon: Collection, title: t('page.workflow.s2'), desc: t('page.workflow.s3') },
+                { id: 'qa', icon: ChatLineRound, title: t('page.workflow.s4'), desc: t('page.workflow.s5') },
+                { id: 'report', icon: DataAnalysis, title: t('page.workflow.s6'), desc: t('page.workflow.s7') },
               ]"
-              :key="step.title"
+              :key="step.id"
               class="flow-card"
             >
               <div class="flow-top">
@@ -216,22 +216,22 @@ onMounted(async () => {
             <div
               v-for="plan in [
                 {
-                  name: t('page.pricing.s0'), price: `¥${getPlan('free').price}`, period: t('page.pricing.s1'),
+                  id: 'free', name: t('page.pricing.s0'), price: `¥${getPlan('free').price}`, period: t('page.pricing.s1'),
                   desc: t('page.pricing.s2'), cta: t('page.pricing.s3'), featured: false,
                   features: [t('page.pricing.s4'), t('page.pricing.s5'), t('page.pricing.s6')],
                 },
                 {
-                  name: t('page.pricing.s8'), price: `¥${getPlan('pro').price}`, period: t('page.pricing.s1'),
+                  id: 'pro', name: t('page.pricing.s8'), price: `¥${getPlan('pro').price}`, period: t('page.pricing.s1'),
                   desc: t('page.pricing.s9'), cta: t('page.pricing.s10'), featured: true,
                   features: [t('page.pricing.s11'), t('page.pricing.s12'), t('page.pricing.s13')],
                 },
                 {
-                  name: t('page.pricing.s16'), price: t('page.pricing.s17'), period: '',
+                  id: 'enterprise', name: t('page.pricing.s16'), price: t('page.pricing.s17'), period: '',
                   desc: t('page.pricing.s18'), cta: t('page.pricing.s19'), featured: false,
                   features: [t('page.pricing.s20'), t('page.pricing.s21'), t('page.pricing.s22')],
                 },
               ]"
-              :key="plan.name"
+              :key="plan.id"
               class="price-card"
               :class="{ featured: plan.featured }"
             >
@@ -253,8 +253,8 @@ onMounted(async () => {
               </div>
               <ul class="price-features">
                 <li
-                  v-for="feature in plan.features"
-                  :key="feature"
+                  v-for="(feature, featureIndex) in plan.features"
+                  :key="featureIndex"
                 >
                   <el-icon
                     :size="13"
@@ -440,7 +440,7 @@ onMounted(async () => {
   padding: 26px;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   background: hsl(var(--card));
   box-shadow: var(--shadow-xs);
   transition: transform 240ms var(--ease-out), border-color 240ms ease, box-shadow 240ms ease;
@@ -458,7 +458,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--primary) / 0.1);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--primary) / 0.075);
   color: hsl(var(--primary));
   transition: transform 240ms var(--ease-out), background-color 240ms ease;
@@ -490,7 +490,7 @@ onMounted(async () => {
   gap: 12px;
   padding: 18px;
   border: 1px solid hsl(var(--border) / 0.85);
-  border-radius: 14px 14px 4px 14px;
+  border-radius: var(--radius-card) var(--radius-card) 4px var(--radius-card);
   background: hsl(var(--muted) / 0.42);
 }
 .answer-spark {
@@ -537,7 +537,7 @@ onMounted(async () => {
   padding: 7px 10px;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   font-size: 10px;
   color: hsl(var(--muted-foreground));
@@ -622,7 +622,7 @@ onMounted(async () => {
   padding: 14px;
   border: 1px solid rgb(255 255 255 / 0.08);
   border-radius: 13px;
-  background: hsl(240 16% 11%);
+  background: hsl(var(--surface-inverse));
   color: #fff;
 }
 .security-check {
@@ -695,7 +695,7 @@ onMounted(async () => {
   gap: 24px;
   padding: 24px;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
   box-shadow: var(--shadow-xs);
 }
@@ -765,7 +765,7 @@ onMounted(async () => {
   flex-direction: column;
   padding: 28px;
   border: 1px solid hsl(var(--border));
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   background: hsl(var(--card));
   box-shadow: var(--shadow-xs);
 }
@@ -773,7 +773,7 @@ onMounted(async () => {
   border-color: hsl(243 40% 28%);
   background:
     radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.2), transparent 38%),
-    hsl(240 16% 11%);
+    hsl(var(--surface-inverse));
   box-shadow: var(--shadow-md);
   color: #fff;
 }
@@ -883,7 +883,7 @@ onMounted(async () => {
 }
 .featured .price-cta.primary {
   background: #fff;
-  color: hsl(240 16% 11%);
+  color: hsl(var(--surface-inverse));
 }
 .featured .price-cta.primary:hover {
   background: hsl(243 80% 95%);
@@ -907,8 +907,8 @@ onMounted(async () => {
   overflow: hidden;
   padding: 52px 24px;
   border: 1px solid rgb(255 255 255 / 0.09);
-  border-radius: 24px;
-  background: hsl(240 16% 11%);
+  border-radius: var(--radius-2xl);
+  background: hsl(var(--surface-inverse));
   box-shadow: var(--shadow-md);
   color: #fff;
   text-align: center;
@@ -1031,20 +1031,25 @@ onMounted(async () => {
 .footer {
   border-top: 1px solid hsl(var(--border));
 }
+/* 与 .section-inner 同宽同内边距，页脚内容与正文区块左右对齐 */
 .footer-inner {
   display: flex;
-  max-width: 72rem;
+  max-width: 80rem;
   flex-direction: column;
   align-items: center;
   gap: 24px;
   margin: 0 auto;
-  padding: 40px 16px;
+  padding: 40px 20px;
+}
+@media (min-width: 640px) {
+  .footer-inner {
+    padding: 40px 32px;
+  }
 }
 @media (min-width: 768px) {
   .footer-inner {
     flex-direction: row;
     justify-content: space-between;
-    padding: 40px 24px;
   }
 }
 .footer-links {

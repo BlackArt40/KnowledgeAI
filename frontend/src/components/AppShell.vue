@@ -725,7 +725,7 @@ const visibleGroups = computed(() =>
   padding: 8px 10px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 12px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-xs);
   text-align: left;
   cursor: pointer;
@@ -949,6 +949,12 @@ const visibleGroups = computed(() =>
 @media (min-width: 640px) {
   .topbar {
     padding: 0 28px;
+  }
+}
+/* ≥1024 与 .content 的左右内边距对齐，标题与页面内容左边缘齐平 */
+@media (min-width: 1024px) {
+  .topbar {
+    padding: 0 36px;
   }
 }
 .menu-btn {
