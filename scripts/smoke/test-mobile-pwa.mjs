@@ -21,7 +21,7 @@
 // V6: 页面层已切换为 Vue 3 + Element Plus（vite preview :4173 服务 dist），
 // DOM 断言按 Vue 侧等价结构改写（frontend/src/views/ChatView.vue 等）：
 //   - .chat-height（Next tailwind 布局类）→ .chat-page（Vue 根类，
-//     calc(100dvh - 8.5rem) 等价实现）
+//     calc(100dvh - var(--topbar-h) - 内容区内边距) 等价实现）
 //   - Radix combobox → EP .el-select__wrapper[role=combobox]（fallback .el-select）
 //   - 桌面侧栏/来源面板 aside.hidden.md:flex / xl:flex → .conv-side / .sources-side
 //   - Radix Sheet [data-state=open][role=dialog] → EP .el-drawer[role=dialog]

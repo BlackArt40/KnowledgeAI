@@ -3,7 +3,7 @@
 // Agent 任务（角色可见）+ 最近问答。5 个 API 并发拉取（契约冻结）。
 import { computed, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
-import { ChatDotRound, Check, Collection, Document, Loading, Odometer } from "@element-plus/icons-vue";
+import { ArrowRight, ChatDotRound, Check, Collection, Document, Loading, Odometer, Plus } from "@element-plus/icons-vue";
 import UsageChart from "@/components/UsageChart.vue";
 import { api } from "@/api/client";
 import { formatRelative } from "@shared/format";
@@ -64,24 +64,25 @@ const planLabel = computed(() => {
 const stats = computed(() => [
   {
     label: t("page.dashboard.s8"), value: qaUsed.value.toLocaleString(), sub: t("page.dashboard.s9"),
-    trend: qaLimit.value ? t("page.dashboard.s10") : t("page.dashboard.s11"), muted: false,
+    trend: qaLimit.value ? t("page.dashboard.s10") : t("page.dashboard.s11"),
     icon: ChatDotRound,
   },
   {
     label: t("page.dashboard.s12"),
     value: qaLimit.value === null ? "∞" : (qaLimit.value - qaUsed.value).toLocaleString(),
     sub: qaLimit.value === null ? "" : t("page.dashboard.s9"),
-    trend: planLabel.value, muted: true,
+    // 套餐名已在欢迎语上方 chip 展示（planLabel），此处不再重复
+    trend: "",
     icon: Odometer,
   },
   {
     label: t("page.dashboard.s14"), value: String(kbs.value.length), sub: t("page.dashboard.s15"),
-    trend: kbs.value.length > 0 ? t("page.dashboard.s16") : t("page.dashboard.s17"), muted: false,
+    trend: kbs.value.length > 0 ? t("page.dashboard.s16") : t("page.dashboard.s17"),
     icon: Collection,
   },
   {
     label: t("page.dashboard.s18"), value: totalDocs.value.toLocaleString(), sub: t("page.dashboard.s19"),
-    trend: totalDocs.value > 0 ? t("page.dashboard.s20") : t("page.dashboard.s17"), muted: false,
+    trend: totalDocs.value > 0 ? t("page.dashboard.s20") : t("page.dashboard.s17"),
     icon: Document,
   },
 ]);
@@ -125,7 +126,11 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 <template>
   <div class="wrap">
     <div class="welcome">
-      <div>
+      <div class="welcome-copy">
+        <div class="welcome-plan">
+          <span class="welcome-plan-dot" />
+          {{ planLabel }}
+        </div>
         <h2>
           <template v-if="loading">
             <span
@@ -134,7 +139,7 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
             />
           </template>
           <template v-else>
-            {{ t("page.dashboard.s29", { name: user?.name ?? t("page.dashboard.s26") }) }} 👋
+            {{ t("page.dashboard.s29", { name: user?.name ?? t("page.dashboard.s26") }) }}
           </template>
         </h2>
         <p class="sub">
@@ -145,11 +150,17 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
         <a
           href="/knowledge-base"
           class="btn outline"
-        >+ {{ t("page.dashboard.s27") }}</a>
+        >
+          <el-icon :size="14"><Plus /></el-icon>
+          {{ t("page.dashboard.s27") }}
+        </a>
         <a
           href="/chat"
           class="btn primary"
-        >{{ t("page.dashboard.s28") }}</a>
+        >
+          {{ t("page.dashboard.s28") }}
+          <el-icon :size="14"><ArrowRight /></el-icon>
+        </a>
       </div>
     </div>
 
@@ -160,23 +171,16 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
         class="card stat"
       >
         <div class="stat-head">
+          <span class="stat-label">{{ s.label }}</span>
           <span class="stat-icon">
-            <el-icon :size="18"><component :is="s.icon" /></el-icon>
+            <el-icon :size="16"><component :is="s.icon" /></el-icon>
           </span>
-          <span
-            v-if="!s.muted"
-            class="stat-trend up"
-          >{{ s.trend }}</span>
-          <span
-            v-else
-            class="badge"
-          >{{ s.trend }}</span>
         </div>
         <div class="stat-value-row">
           <span
             v-if="loading"
             class="sk"
-            style="width: 64px; height: 28px"
+            style="width: 64px; height: 32px"
           />
           <span
             v-else
@@ -184,9 +188,12 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
           >{{ s.value }}</span>
           <span class="stat-sub">{{ s.sub }}</span>
         </div>
-        <p class="stat-label">
-          {{ s.label }}
-        </p>
+        <div class="stat-foot">
+          <span
+            v-if="s.trend"
+            class="stat-trend up"
+          >{{ s.trend }}</span>
+        </div>
       </div>
     </div>
 
@@ -341,75 +348,109 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 
 <style scoped>
 .wrap {
-  max-width: 72rem;
-  margin: 0 auto;
   display: grid;
-  gap: 24px;
+  max-width: 80rem;
+  margin: 0 auto;
+  gap: 22px;
 }
 .welcome {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
+  padding: 4px 0 6px;
 }
-@media (min-width: 640px) {
-  .welcome {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+.welcome-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: hsl(var(--primary) / 0.065);
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+/* ≥640 行内布局：左文案可缩（长用户名换行），右侧按钮不缩 */
+.welcome-copy {
+  min-width: 0;
+}
+.welcome-plan-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .welcome h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+.welcome .sub {
+  margin-top: 7px;
+  line-height: 1.65;
 }
 .welcome-actions {
   display: flex;
-  gap: 8px;
+  flex-shrink: 0;
+  gap: 9px;
 }
-.btn { height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; }
-
+.btn {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 550;
+}
 .btn.small {
   height: 30px;
   padding: 0 10px;
   font-size: 12px;
 }
 .btn.primary {
-  background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
-  color: #fff;
+  background: hsl(var(--primary));
+  box-shadow: 0 5px 14px hsl(var(--primary) / 0.16);
+  color: hsl(var(--primary-foreground));
 }
-.card { overflow: hidden; }
-
+.btn.primary:hover {
+  box-shadow: 0 8px 20px hsl(var(--primary) / 0.22);
+}
+.card {
+  overflow: hidden;
+}
 .card-head {
-  padding: 16px 20px 0;
+  padding: 20px 22px 0;
 }
 .card-head h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 .more-link {
-  font-size: 13px;
+  font-size: 12px;
   color: hsl(var(--muted-foreground));
   text-decoration: none;
   white-space: nowrap;
 }
 .more-link:hover {
-  color: hsl(var(--foreground));
+  color: hsl(var(--primary));
 }
 .stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-@media (min-width: 1024px) {
-  .stats {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 .stat {
-  padding: 18px 20px;
+  min-width: 0;
+  padding: 19px 20px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms var(--ease-out);
+}
+.stat:hover {
+  border-color: hsl(var(--primary) / 0.18);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
 }
 .stat-head {
   display: flex;
@@ -419,19 +460,26 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 }
 .stat-icon {
   display: inline-flex;
-  height: 36px;
-  width: 36px;
+  width: 31px;
+  height: 31px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary) / 0.08);
+  border-radius: 9px;
+  background: hsl(var(--primary) / 0.065);
   color: hsl(var(--primary));
 }
 .stat-trend.up {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: hsl(var(--success));
+}
+.stat-foot {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  margin-top: 9px;
 }
 .badge { gap: 4px; max-width: 100%; padding: 2px 8px; overflow: hidden; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); text-overflow: ellipsis; white-space: nowrap; }
 
@@ -456,31 +504,65 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 .stat-value-row {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
   margin-top: 14px;
 }
 .stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 30px;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
 }
 .stat-sub {
-  font-size: 14px;
+  font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
 .stat-label {
-  margin: 4px 0 0;
-  font-size: 14px;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
   color: hsl(var(--muted-foreground));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 640px) {
+  .welcome {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+@media (min-width: 1024px) {
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .welcome-actions .btn {
+    flex: 1;
+    padding-inline: 10px;
+  }
+  .stat {
+    padding: 16px;
+  }
+  .stat-value {
+    font-size: 27px;
+  }
 }
 .grid3 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: 22px;
+  align-items: stretch;
+}
+.grid3 .card-body {
+  padding-top: 18px;
 }
 @media (min-width: 1024px) {
   .grid3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .span2 {
     grid-column: span 2;
@@ -506,11 +588,11 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   background: hsl(var(--primary));
 }
 .task {
+  margin-bottom: 8px;
   padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--muted) / 0.3);
-  border-radius: 12px;
+  border: 1px solid hsl(var(--border) / 0.72);
+  background: hsl(var(--muted) / 0.28);
+  border-radius: 10px;
 }
 .task:last-child {
   margin-bottom: 0;
@@ -525,12 +607,12 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 550;
 }
 .task-bar {
-  height: 6px;
-  margin-top: 10px;
+  height: 4px;
+  margin-top: 11px;
   overflow: hidden;
   border-radius: 9999px;
   background: hsl(var(--secondary));
@@ -541,62 +623,69 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   background: hsl(var(--success));
 }
 .task-bar-fill.gradient {
-  background: linear-gradient(90deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
+  background: hsl(var(--primary));
 }
 .recent {
   display: grid;
-  gap: 0;
+  gap: 2px;
 }
 .recent-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 13px 10px;
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 9px;
   text-decoration: none;
   color: inherit;
+  transition: background-color 160ms ease;
 }
 .recent-row:last-child {
-  border-bottom: 0;
+  border-bottom-color: transparent;
 }
 .recent-row:hover {
-  background: hsl(var(--accent) / 0.4);
+  background: hsl(var(--accent) / 0.46);
 }
 .recent-avatar {
   display: flex;
-  height: 32px;
-  width: 32px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  background: hsl(var(--primary) / 0.1);
+  border-radius: 10px;
+  background: hsl(var(--primary) / 0.08);
   color: hsl(var(--primary));
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
 }
 .recent-main {
   min-width: 0;
   flex: 1;
   display: grid;
-  gap: 2px;
+  gap: 4px;
 }
 .recent-q {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 550;
 }
 .recent-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 11px;
   color: hsl(var(--muted-foreground));
 }
 .recent-arrow {
   color: hsl(var(--muted-foreground));
+  transition: color 160ms ease, transform 160ms ease;
+}
+.recent-row:hover .recent-arrow {
+  color: hsl(var(--primary));
+  transform: translateX(2px);
 }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 0; font-size: 14px; margin: 0; }
 

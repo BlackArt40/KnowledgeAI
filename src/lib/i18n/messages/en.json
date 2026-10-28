@@ -159,7 +159,7 @@
       "s27": "New Knowledge Base",
       "s28": "Start Q&A",
       "s29": "Welcome back, {name}",
-      "s30": "Here's an overview of your knowledge workspace.",
+      "s30": "Stay on top of your knowledge bases, team Q&A and agent tasks.",
       "s31": "Daily Q&A",
       "s32": "Last {days} days",
       "s33": "Agent tasks",
@@ -943,9 +943,13 @@
     },
     "workflow": {
       "s0": "Upload documents",
+      "s1": "Bring PDFs, Word files, Markdown and web pages into one shared place.",
       "s2": "AI builds the knowledge base",
+      "s3": "Automatic parsing, chunking and indexing make scattered content searchable.",
       "s4": "Team Q&A",
+      "s5": "Ask in natural language and verify every answer with cited sources.",
       "s6": "Generate research reports",
+      "s7": "Collaborative agents analyze and write structured research outputs.",
       "s8": "Workflow",
       "s9": "Four steps from materials to productivity",
       "s10": "From raw documents to actionable research reports - fully automated."
@@ -1055,9 +1059,6 @@
       "s1": "Turn every team document",
       "s2": "into a queryable intelligent asset.",
       "s3": "RAG Q&A, multi-agent research, and enterprise-grade security — all in one platform.",
-      "s4": "\"After connecting our knowledge base, new-hire onboarding time was cut in half — and answers come with citations.\"",
-      "s5": "Li",
-      "s6": "Li Mingxuan · Tech Lead, Acme",
       "s7": "GDPR compliant"
     },
     "login": {

@@ -49,17 +49,20 @@ function iconFor(mode: ThemeMode) {
 <style scoped>
 .theme-toggle {
   display: flex;
-  height: 32px;
-  width: 32px;
+  height: 34px;
+  width: 34px;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 .theme-toggle:hover {
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
   color: hsl(var(--foreground));
 }
 .active {

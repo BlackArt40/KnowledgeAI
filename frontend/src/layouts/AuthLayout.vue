@@ -3,6 +3,7 @@
 // 品牌 panel 仅 lg+ 显示；slot 为具体表单视图。
 import { computed } from "vue";
 import { useTranslation } from "i18next-vue";
+import { Check } from "@element-plus/icons-vue";
 import AppLogo from "@/components/AppLogo.vue";
 import ThemeToggle from "@/components/ThemeToggle.vue";
 
@@ -24,13 +25,18 @@ const year = computed(() => new Date().getFullYear());
             {{ t("page.auth-layout.s2") }}
           </h2>
           <p>{{ t("page.auth-layout.s3") }}</p>
-          <figure>
-            <blockquote>{{ t("page.auth-layout.s4") }}</blockquote>
-            <figcaption>
-              <span class="avatar">{{ t("page.auth-layout.s5") }}</span>
-              <span class="who">{{ t("page.auth-layout.s6") }}</span>
-            </figcaption>
-          </figure>
+          <div class="capability-list">
+            <div
+              v-for="item in ['page.features.s12', 'page.features.s4', 'page.features.s9']"
+              :key="item"
+              class="capability-item"
+            >
+              <span class="capability-icon">
+                <el-icon :size="14"><Check /></el-icon>
+              </span>
+              <span>{{ t(item) }}</span>
+            </div>
+          </div>
         </div>
         <p class="copyright">
           © {{ year }} KnowledgeAI · {{ t("page.auth-layout.s7") }}
@@ -81,7 +87,7 @@ const year = computed(() => new Date().getFullYear());
   position: relative;
   display: none;
   overflow: hidden;
-  background: hsl(var(--card));
+  background: hsl(240 18% 10%);
 }
 @media (min-width: 1024px) {
   .brand-panel {
@@ -91,17 +97,19 @@ const year = computed(() => new Date().getFullYear());
 .brand-grad {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-via)), hsl(var(--brand-to)));
+  background:
+    radial-gradient(circle at 84% 12%, hsl(var(--primary) / 0.36), transparent 34%),
+    radial-gradient(circle at 12% 88%, hsl(var(--brand-to) / 0.14), transparent 32%),
+    linear-gradient(150deg, hsl(240 18% 10%), hsl(243 22% 15%));
 }
 .brand-glow {
   position: absolute;
-  bottom: -96px;
-  left: -64px;
-  height: 288px;
-  width: 288px;
-  border-radius: 9999px;
-  background: rgb(255 255 255 / 0.1);
-  filter: blur(48px);
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom right, black, transparent 72%);
   pointer-events: none;
 }
 .brand-body {
@@ -110,63 +118,56 @@ const year = computed(() => new Date().getFullYear());
   height: 100%;
   flex-direction: column;
   justify-content: space-between;
-  padding: 40px;
+  padding: 48px clamp(40px, 5vw, 72px);
   color: #fff;
 }
 .brand-copy {
-  max-width: 28rem;
+  max-width: 36rem;
+  margin: auto 0;
+  padding: 64px 0;
 }
 .brand-copy h2 {
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.25;
+  margin: 0;
+  font-size: clamp(32px, 2.8vw, 42px);
+  font-weight: 650;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
   text-wrap: balance;
-  margin: 0;
 }
-.brand-copy p {
-  margin-top: 16px;
-  font-size: 14px;
-  color: rgb(255 255 255 / 0.8);
+.brand-copy > p {
+  max-width: 28rem;
+  margin: 22px 0 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: rgb(255 255 255 / 0.66);
 }
-figure {
-  margin: 40px 0 0;
-  padding: 20px;
-  border: 1px solid rgb(255 255 255 / 0.15);
-  background: rgb(255 255 255 / 0.1);
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
+.capability-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 40px;
 }
-blockquote {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.7;
-  color: rgb(255 255 255 / 0.9);
-}
-figcaption {
+.capability-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 12px;
+  font-size: 14px;
+  color: rgb(255 255 255 / 0.88);
 }
-.avatar {
-  display: flex;
-  height: 32px;
-  width: 32px;
+.capability-icon {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  background: rgb(255 255 255 / 0.2);
-  font-size: 12px;
-  font-weight: 600;
-}
-.who {
-  font-size: 12px;
-  color: rgb(255 255 255 / 0.8);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.07);
+  color: hsl(152 55% 65%);
 }
 .copyright {
   margin: 0;
   font-size: 12px;
-  color: rgb(255 255 255 / 0.6);
+  color: rgb(255 255 255 / 0.46);
 }
 
 /* Form panel */
@@ -175,12 +176,15 @@ figcaption {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.045), transparent 28%),
+    hsl(var(--background));
 }
 .panel-top {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 24px 32px;
 }
 .mobile-home {
   font-size: 14px;
