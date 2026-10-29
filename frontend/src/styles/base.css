@@ -1,0 +1,59 @@
+/* ============================================================
+   KnowledgeAI · Base layer
+   元素级基线：盒模型 / body 排版 / 选中色 / 全局焦点环 / 减少动效。
+   三层职责分离：令牌只有值（tokens.css）、元素基线只管元素（本文件）、
+   可复用类只有类（utility.css）。加载顺序见 main.ts：
+   tokens → base → element-adapter → scrollbar → utility
+   ============================================================ */
+
+/* 基础重置：EP 主题不含 body 归零，缺省 8px 会让整站页面四周留白，
+   且 textarea 等原生控件的 width:100% 会因 content-box 溢出容器。 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.18);
+  color: hsl(var(--foreground));
+}
+
+/* 全局焦点环：只给原生可交互元素。EP 的输入框内部是原生 input/textarea，
+   但焦点态由 .el-input__wrapper / .el-textarea__inner 的 inset box-shadow 表达，
+   这里排除它们（.el-input__inner / .el-select__input / .el-textarea__inner），
+   否则会出现「wrapper 环 + 输入框外描边」双焦点环。 */
+:where(
+  a,
+  button,
+  input:not(.el-input__inner):not(.el-select__input),
+  textarea:not(.el-textarea__inner),
+  select
+):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

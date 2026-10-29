@@ -100,7 +100,7 @@ const year = computed(() => new Date().getFullYear());
   background:
     radial-gradient(circle at 84% 12%, hsl(var(--primary) / 0.36), transparent 34%),
     radial-gradient(circle at 12% 88%, hsl(var(--brand-to) / 0.14), transparent 32%),
-    linear-gradient(150deg, hsl(var(--surface-inverse)), hsl(243 22% 15%));
+    linear-gradient(150deg, hsl(var(--surface-inverse)), hsl(var(--surface-inverse-deep)));
 }
 .brand-glow {
   position: absolute;
@@ -163,7 +163,7 @@ const year = computed(() => new Date().getFullYear());
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 9px;
   background: rgb(255 255 255 / 0.07);
-  color: hsl(152 55% 65%);
+  color: hsl(var(--success-on-inverse));
 }
 .copyright {
   margin: 0;

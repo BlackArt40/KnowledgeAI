@@ -13,7 +13,7 @@ const { t } = useTranslation();
 <template>
   <section class="hero">
     <div class="bg-grid" />
-    <div class="bg-orbit" />
+    <div class="bg-rings" />
     <div class="bg-fade" />
 
     <div class="inner">
@@ -111,7 +111,7 @@ const { t } = useTranslation();
     hsl(var(--background));
 }
 .bg-grid,
-.bg-orbit,
+.bg-rings,
 .bg-fade {
   position: absolute;
   z-index: -1;
@@ -127,7 +127,7 @@ const { t } = useTranslation();
   -webkit-mask-image: linear-gradient(to bottom, black, transparent 72%);
   opacity: 0.6;
 }
-.bg-orbit {
+.bg-rings {
   top: -280px;
   right: -240px;
   width: 760px;
