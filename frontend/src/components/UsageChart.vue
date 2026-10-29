@@ -114,7 +114,7 @@ const areaPath = () => {
 .empty-dot {
   height: 10px;
   width: 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.35);
   box-shadow: 0 0 0 6px hsl(var(--primary) / 0.08);
 }

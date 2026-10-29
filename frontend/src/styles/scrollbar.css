@@ -26,7 +26,7 @@
 .kai-scroll::-webkit-scrollbar-thumb {
   /* 2px 透明边框 + padding-box → 视觉上是 4px 圆角胶囊 */
   border: 2px solid transparent;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted-foreground) / 0.35);
   background-clip: padding-box;
 }

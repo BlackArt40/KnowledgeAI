@@ -103,7 +103,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 11px;
   color: hsl(var(--primary));
@@ -213,7 +213,7 @@
 .chat-page .sug {
   padding: 6px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--card));
   cursor: pointer;
   font: inherit;
@@ -334,7 +334,7 @@
   gap: 6px;
   padding: 0 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -378,7 +378,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--destructive));
   color: #fff;
   cursor: pointer;
@@ -469,7 +469,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 12px;
   font-weight: 500;

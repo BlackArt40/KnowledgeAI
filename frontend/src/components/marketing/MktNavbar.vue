@@ -182,7 +182,7 @@ function navLinks(): { label: string; href: string }[] {
 }
 .link {
   padding: 8px 14px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 14px;
   text-decoration: none;
   color: hsl(var(--muted-foreground));
@@ -203,7 +203,7 @@ function navLinks(): { label: string; href: string }[] {
 }
 .ghost {
   padding: 6px 16px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 14px;
   text-decoration: none;
   color: inherit;
@@ -248,7 +248,7 @@ function navLinks(): { label: string; href: string }[] {
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--card));
   cursor: pointer;
   color: inherit;

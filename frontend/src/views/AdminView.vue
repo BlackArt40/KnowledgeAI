@@ -826,7 +826,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 }
 .admin-badge {
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--destructive) / 0.12);
   font-size: 10px;
   font-weight: 500;

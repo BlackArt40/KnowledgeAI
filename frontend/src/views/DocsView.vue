@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 }
 .brand-badge {
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 12px;
   font-weight: 500;

@@ -228,7 +228,7 @@ function pct(m: Meter): number {
 
 .plan-badge {
   padding: 2px 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 12px;
   font-weight: 500;
@@ -282,7 +282,7 @@ function pct(m: Meter): number {
 }
 .warn-badge {
   padding: 1px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: #f59e0b22;
   font-size: 10px;
   color: #b45309;
@@ -345,12 +345,12 @@ function pct(m: Meter): number {
 .legend-dot {
   height: 8px;
   width: 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary));
 }
 .days-badge {
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-size: 11px;
   color: hsl(var(--muted-foreground));

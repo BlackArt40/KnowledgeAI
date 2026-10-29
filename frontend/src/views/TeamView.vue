@@ -382,7 +382,7 @@ async function remove(id: string) {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
   font-size: 13px;

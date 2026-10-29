@@ -777,7 +777,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .dot {
   height: 10px;
   width: 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 .dot.red { background: hsl(var(--destructive) / 0.5); }
 .dot.yellow { background: #f59e0b99; }
@@ -800,7 +800,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .pulse-ring {
   position: absolute;
   inset: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(142 71% 45% / 0.7);
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
@@ -808,7 +808,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   position: relative;
   height: 6px;
   width: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(142 71% 45%);
 }
 
@@ -819,7 +819,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   margin-left: auto;
   padding: 4px 10px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--background) / 0.7);
   cursor: pointer;
   font: inherit;
@@ -1008,7 +1008,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   right: -2px;
   height: 6px;
   width: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--destructive));
 }
 .user-chip {
@@ -1022,7 +1022,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   width: 24px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
   font-size: 10px;
@@ -1187,14 +1187,14 @@ watch([scene, runId, inView, reduced], () => playScene());
   flex-shrink: 0;
   margin-left: auto;
   overflow: hidden;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
 }
 .task-bar-fill {
   display: block;
   height: 100%;
   width: 100%;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(142 71% 45%);
 }
 .badge { gap: 4px; padding: 1px 6px; font-size: 9px; font-weight: 500; }
@@ -1229,7 +1229,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   width: 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
   font-size: 11px;
@@ -1418,7 +1418,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 4px;
   padding: 1px 8px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted) / 0.25);
   font-size: 10px;
   color: hsl(var(--muted-foreground));
@@ -1452,7 +1452,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
 }
@@ -1588,7 +1588,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--background));
   color: hsl(var(--muted-foreground));
   font-size: 9px;

@@ -365,7 +365,7 @@ async function remove(kb: KbListItem) {
   width: 26px;
   padding: 0;
   border: 2px solid transparent;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   cursor: pointer;
 }
 .color-dot.active {

@@ -114,7 +114,7 @@ function hostOf(url: string): string {
 .count {
   margin-left: auto;
   padding: 1px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-size: 11px;
   color: hsl(var(--muted-foreground));

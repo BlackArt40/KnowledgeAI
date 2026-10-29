@@ -365,7 +365,7 @@ h1 {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-size: 11px;
   color: hsl(var(--muted-foreground));
@@ -488,7 +488,7 @@ h1 {
   width: 20px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.15);
   font-size: 10px;
   font-weight: 600;

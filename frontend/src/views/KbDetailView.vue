@@ -527,7 +527,7 @@ function onKbEvent(event: Record<string, unknown>) {
 .stat-chip {
   display: inline-flex;
   padding: 4px 12px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-size: 12px;
   color: hsl(var(--muted-foreground));

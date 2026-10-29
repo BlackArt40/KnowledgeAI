@@ -367,7 +367,7 @@ function menuRemove(id: string) {
 }
 .tag {
   padding: 0 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 10px;
   font-weight: 500;

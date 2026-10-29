@@ -35,7 +35,7 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 11px;
 }
 /* 变体统一用 `.badge[class].xxx` 提高权重：页面里残留的 `.badge { background/color }`

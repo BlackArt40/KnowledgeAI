@@ -227,7 +227,7 @@ async function selectBrand(id: string) {
   justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: transform 0.15s;
 }
