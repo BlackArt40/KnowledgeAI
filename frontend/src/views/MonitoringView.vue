@@ -648,7 +648,7 @@ function kindCls(kind: string): string {
 }
 .badge { justify-content: center; font-weight: 500; }
 
-.badge.ok { background: hsl(142 71% 45% / 0.12); color: hsl(142 71% 35%); }
+.badge.ok { background: hsl(var(--positive) / 0.12); color: hsl(var(--positive-text)); }
 .badge.bad { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 .badge.muted { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 .tbl-wrap {
@@ -681,7 +681,7 @@ function kindCls(kind: string): string {
   font-family: var(--font-mono, monospace);
   font-size: 12px;
 }
-.ok-text { color: hsl(142 71% 40%); }
+.ok-text { color: hsl(var(--positive-text)); }
 .err-text { color: hsl(var(--destructive)); }
 .total-row {
   font-weight: 600;
@@ -806,7 +806,7 @@ function kindCls(kind: string): string {
 .k-rag { background: rgb(14 165 233 / 0.1); color: #0ea5e9; }
 .k-llm { background: rgb(139 92 246 / 0.1); color: #8b5cf6; }
 .k-doc { background: rgb(16 185 129 / 0.1); color: #10b981; }
-.k-agent { background: rgb(245 158 11 / 0.1); color: #f59e0b; }
+.k-agent { background: hsl(var(--warning-bright) / 0.1); color: hsl(var(--warning-bright)); }
 .k-other { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 .span-name {
   min-width: 0;

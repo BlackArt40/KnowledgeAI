@@ -782,8 +782,8 @@ watch([scene, runId, inView, reduced], () => playScene());
   border-radius: var(--radius-full);
 }
 .dot.red { background: hsl(var(--destructive) / 0.5); }
-.dot.yellow { background: #f59e0b99; }
-.dot.green { background: hsl(142 71% 45% / 0.6); }
+.dot.yellow { background: hsl(var(--warning-bright) / 0.6); }
+.dot.green { background: hsl(var(--positive) / 0.6); }
 .tb-label {
   display: flex;
   align-items: center;
@@ -803,7 +803,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  background: hsl(142 71% 45% / 0.7);
+  background: hsl(var(--positive) / 0.7);
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 .pulse-dot {
@@ -811,7 +811,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   height: 6px;
   width: 6px;
   border-radius: var(--radius-full);
-  background: hsl(142 71% 45%);
+  background: hsl(var(--positive));
 }
 
 .replay {
@@ -1197,12 +1197,12 @@ watch([scene, runId, inView, reduced], () => playScene());
   height: 100%;
   width: 100%;
   border-radius: var(--radius-full);
-  background: hsl(142 71% 45%);
+  background: hsl(var(--positive));
 }
 .badge { gap: 4px; padding: 1px 6px; font-size: 9px; font-weight: 500; }
 
-.badge.ok { background: hsl(142 71% 45% / 0.1); color: hsl(142 71% 38%); }
-.badge.warn { background: #f59e0b1a; color: #b45309; }
+.badge.ok { background: hsl(var(--positive) / 0.1); color: hsl(var(--positive-text)); }
+.badge.warn { background: hsl(var(--warning-bright) / 0.1); color: hsl(var(--warning-text)); }
 .badge.big {
   padding: 4px 12px;
   font-size: 11px;
@@ -1598,7 +1598,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 }
 .step-dot.done {
   border-color: transparent;
-  background: hsl(142 71% 45%);
+  background: hsl(var(--positive));
   color: hsl(var(--background));
 }
 .step-dot.running {
@@ -1617,16 +1617,16 @@ watch([scene, runId, inView, reduced], () => playScene());
 }
 .step-state.ok {
   font-weight: 500;
-  color: hsl(142 71% 40%);
+  color: hsl(var(--positive-text));
 }
 .agent-done {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid hsl(142 71% 45% / 0.3);
+  border: 1px solid hsl(var(--positive) / 0.3);
   border-radius: var(--radius);
-  background: hsl(142 71% 45% / 0.1);
+  background: hsl(var(--positive) / 0.1);
   opacity: 0;
   transform: translateY(6px);
   transition: all 0.5s;
@@ -1642,7 +1642,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   font-weight: 500;
 }
 .ok-text {
-  color: hsl(142 71% 38%);
+  color: hsl(var(--positive-text));
 }
 
 /* 宽屏给右侧演示区让位（原由 MktHero 的 :deep() 覆盖，收敛进组件：

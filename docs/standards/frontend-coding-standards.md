@@ -4,7 +4,7 @@ description: frontend/ 的共享资产单源、样式分层、令牌纪律、i18
 type: reference
 category: standards
 level: L1
-version: 1.2.0
+version: 1.3.0
 authors:
   - frontend
 owner: 前端负责人
@@ -57,7 +57,11 @@ applies_to: ">=1.4.0"
 
 ## 3. 令牌纪律
 
-- 颜色、阴影、缓动**一律不写字面量**，用 `hsl(var(--x))` / `var(--shadow-*)` / `var(--ease-out)`。评审时对 diff 里的 `hsl(<数字>)`、`#rrggbb` 直接判违规（`rgb(255 255 255 / .x)` 这类透明叠加除外）。
+- **颜色分三类**（2026-10-29 校准，此前写成「一律不得写字面量」，与 `#fff` 结构性用法冲突）：
+  1. **语义色必须走令牌**。注意分两组：随主题翻转的（`--background` / `--foreground` / `--primary` / `--success` / `--warning` / `--destructive` 等在 `.dark` 有覆盖），和不随主题翻转的固定状态色（`--positive` / `--positive-text` / `--positive-strong` / `--negative` / `--negative-strong` / `--warning-bright` / `--warning-text`，以及 `--surface-inverse*` / `*-on-inverse` 组，只在 `:root` 定义）。**不要把固定状态色映射到会翻转的令牌上**，那会在暗色主题下变色。
+  2. **结构性中性值允许字面量**：`#fff`、`#000`、`rgb(255 255 255 / α)` 这类纯白/纯黑叠加，以及 `element-adapter.css` 里 `color-mix(… , #fff)` 的混合锚点。
+  3. **数据侧色值豁免**：SVG `fill` 属性、组件 `color` prop 的数据源（`KbGraphView` 的 `TYPE_COLORS`、`KbListView` 的 `COLORS` 选色板）是**数据**而非 CSS，保留 hex。
+- 待收敛：装饰色板仍散落 Tailwind 色值（`#10b981` 翠绿 / `#8b5cf6` 紫 / `#0ea5e9` 天蓝 / `#14b8a6` 青 / `#ec4899` 粉 / `#d946ef` 洋红 / `#f97316` 橙 / `#f43f5e` 玫瑰 / `#6366f1` 靛蓝），用于图标 tint 与图表，语义未定，等设计给出正式色板后再令牌化；新代码不要扩大这批值。
 - **圆角三分法**（2026-10-29 校准：此前「圆角一律不得写字面量」的写法与仓库现状冲突——现存 299 处字面量，其中 68 处是本条要豁免的小件——故作废重写）：
   1. **阶梯值必须走令牌**：8 / 12 / 14 / 16 / 20 / 24px 对应 `--radius-sm` / `--radius` / `--radius-card` / `--radius-lg` / `--radius-xl` / `--radius-2xl`。新代码写字面量即违规。
   2. **胶囊用 `--radius-full`**（9999px 的语义名），不再写字面量。

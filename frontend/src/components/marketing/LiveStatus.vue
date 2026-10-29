@@ -199,15 +199,15 @@ function checkText(name: "db" | "redis" | "llm"): string {
   width: 8px;
   border-radius: var(--radius-full);
 }
-.pdot.online { background: hsl(142 71% 45%); }
-.pdot.degraded { background: #f59e0b; }
+.pdot.online { background: hsl(var(--positive)); }
+.pdot.degraded { background: hsl(var(--warning-bright)); }
 .pdot.offline { background: hsl(var(--destructive)); }
 .pdot.checking { background: hsl(var(--muted-foreground)); }
 .pdot-ring {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  background: hsl(142 71% 45% / 0.6);
+  background: hsl(var(--positive) / 0.6);
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 

@@ -639,7 +639,7 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
 }
 .badge { font-weight: 500; }
 
-.badge.ok { background: hsl(142 71% 45% / 0.12); color: hsl(142 71% 35%); }
+.badge.ok { background: hsl(var(--positive) / 0.12); color: hsl(var(--positive-text)); }
 .badge.bad { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 .badge.muted { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 .badge.outline { border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); }

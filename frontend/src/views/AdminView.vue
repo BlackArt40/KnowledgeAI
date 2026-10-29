@@ -913,7 +913,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 }
 .tint.qa { color: hsl(var(--primary)); }
 .tint.api { color: #10b981; }
-.tint.storage { color: #f59e0b; }
+.tint.storage { color: hsl(var(--warning-bright)); }
 .tint.sky { color: #0ea5e9; }
 .tint.agent { color: #8b5cf6; }
 .tint.pink { color: #ec4899; }
@@ -1095,13 +1095,13 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 }
 .badge { font-weight: 500; }
 
-.badge.ok { background: hsl(142 71% 45% / 0.12); color: hsl(142 71% 35%); }
-.badge.warn { background: #f59e0b22; color: #b45309; }
+.badge.ok { background: hsl(var(--positive) / 0.12); color: hsl(var(--positive-text)); }
+.badge.warn { background: hsl(var(--warning-bright) / 0.13); color: hsl(var(--warning-text)); }
 .badge.bad { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 .badge.primary { background: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); }
 .badge.muted { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 .badge.outline { border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); }
-.ok-btn { color: hsl(142 71% 40%); }
+.ok-btn { color: hsl(var(--positive-text)); }
 .danger-btn { color: hsl(var(--destructive)); }
 .cfg {
   display: grid;

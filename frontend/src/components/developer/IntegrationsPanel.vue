@@ -716,7 +716,7 @@ const widgetSnippet = computed(
   color: hsl(var(--destructive));
 }
 .ok-text {
-  color: hsl(142 71% 40%);
+  color: hsl(var(--positive-text));
 }
 .dialog-desc {
   margin: 0 0 12px;
