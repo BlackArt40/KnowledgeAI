@@ -150,7 +150,7 @@ function pct(m: Meter): number {
             :percentage="pct(m)"
             :show-text="false"
             :stroke-width="6"
-            :color="pct(m) > 80 ? '#f59e0b' : undefined"
+            :color="pct(m) > 80 ? 'hsl(var(--warning-bright))' : undefined"
             class="meter-bar"
           />
         </div>
@@ -273,8 +273,8 @@ function pct(m: Meter): number {
   background: rgb(16 185 129 / 0.1);
 }
 .meter-ava.storage {
-  color: #f59e0b;
-  background: rgb(245 158 11 / 0.1);
+  color: hsl(var(--warning-bright));
+  background: hsl(var(--warning-bright) / 0.1);
 }
 .meter-ava.agent {
   color: #8b5cf6;
@@ -283,9 +283,9 @@ function pct(m: Meter): number {
 .warn-badge {
   padding: 1px 8px;
   border-radius: var(--radius-full);
-  background: #f59e0b22;
+  background: hsl(var(--warning-bright) / 0.13);
   font-size: 10px;
-  color: #b45309;
+  color: hsl(var(--warning-text));
 }
 .meter-val {
   display: flex;

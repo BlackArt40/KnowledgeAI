@@ -266,7 +266,7 @@
   color: hsl(var(--muted-foreground));
 }
 .agent-page .dag-edge.conditional {
-  color: #f59e0b;
+  color: hsl(var(--warning-bright));
 }
 .agent-page .timeline {
   display: grid;
@@ -339,7 +339,7 @@
 }
 .agent-page .tl-done {
   font-size: 12px;
-  color: hsl(142 71% 45%);
+  color: hsl(var(--positive));
 }
 .agent-page .tl-skip {
   font-size: 12px;
@@ -521,10 +521,10 @@
   font-size: 11px;
 }
 .agent-page .diff-stat .add {
-  color: #16a34a;
+  color: hsl(var(--positive-text));
 }
 .agent-page .diff-stat .del {
-  color: #dc2626;
+  color: hsl(var(--negative));
 }
 .agent-page .diff-view {
   max-height: 320px;
@@ -543,12 +543,12 @@
   overflow-wrap: break-word;
 }
 .agent-page .diff-line.add {
-  background: rgb(34 197 94 / 0.1);
-  color: #15803d;
+  background: hsl(var(--positive) / 0.1);
+  color: hsl(var(--positive-strong));
 }
 .agent-page .diff-line.remove {
-  background: rgb(239 68 68 / 0.1);
-  color: #b91c1c;
+  background: hsl(var(--negative) / 0.1);
+  color: hsl(var(--negative-strong));
 }
 .agent-page .diff-op {
   margin-right: 4px;

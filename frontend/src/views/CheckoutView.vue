@@ -328,8 +328,8 @@ const processingLabel = () =>
   border-radius: var(--radius-full);
 }
 .state-ava.success {
-  background: hsl(142 71% 45% / 0.15);
-  color: hsl(142 71% 40%);
+  background: hsl(var(--positive) / 0.15);
+  color: hsl(var(--positive-text));
 }
 .state-ava.plain {
   height: 56px;

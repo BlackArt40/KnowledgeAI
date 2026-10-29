@@ -4,7 +4,7 @@ description: KnowledgeAI UI 设计体系：技术栈、设计令牌、主题与�
 type: explanation
 category: architecture
 level: L1
-version: 1.3.4
+version: 1.3.5
 authors:
   - product-team
 owner: 产品负责人
@@ -41,7 +41,8 @@ related:
 
 围绕**靛蓝（Indigo）**品牌色构建，辅以紫罗兰渐变高亮。
 - 主色 `--primary`：亮 `hsl(243 75% 59%)` / 暗 `hsl(243 80% 67%)`；品牌渐变 `--brand-from/--via/--to`
-- 语义色 `success` / `warning` / `destructive`
+- 语义色 `success` / `warning` / `destructive`（随主题翻转，供正文与表单态使用）
+- 固定状态色（不随主题翻转，只在 `:root` 定义）：`--positive` / `--positive-text` / `--positive-strong`（状态点、徽章、进度、diff 新增）、`--negative` / `--negative-strong`（diff 删除）、`--warning-bright` / `--warning-text`（琥珀状态点与 warn 徽章）。这组原先以 `hsl(142 …)` / `#16a34a` / `#f59e0b` / `#b45309` 等字面量散落在组件里
 - 圆角阶梯：`--radius 0.75rem` 为 EP 控件基线（`element-adapter.css` 把它映射成 `--el-border-radius-base/small`，改它会让按钮/输入/下拉/弹窗一起变圆）；`--radius-card 0.875rem` 给 `.card`；`--radius-lg 1rem` / `--radius-xl 1.25rem` / `--radius-2xl 1.5rem` 给内容容器（分区块 / 大卡 / 全宽面板），另有 `--radius-sm 0.5rem` 用于卡内小件
 - 胶囊 `--radius-full`（9999px）统一掉原字面量写法；**登记例外**（可写字面量，但不得新增集合外的值）：卡内小件 `4 / 6 / 7 / 9 / 10 / 11 / 13px`、大件装饰 `28px`（演示台外壳）/ `40px`（hero 光晕）。三分法规则见[前端编码规范](../standards/frontend-coding-standards.md)第 3 节
 - 反面色面 `--surface-inverse` / `--surface-inverse-deep`：营销 CTA、定价主推卡、认证页品牌面板共用，两套主题下都是深底（故只在 `:root` 定义）；该面上的前景色成组定义为 `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse`
@@ -63,6 +64,7 @@ related:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.3.5 | 2026-10-29 | 新增固定状态色组（`--positive*` / `--negative*` / `--warning-bright` / `--warning-text`）与 `--primary-soft`，替换 52 处状态色字面量（hsl 142 绿族 24 处、`#f59e0b`/`#b45309` 琥珀 17 处、diff 红绿 6 处、`rgb(… / α)` 4 处）；同色不同亮的正向文字统一到 `--positive-text`（38/40/35→35，差 ≤5 个明度点）；装饰色板仍待设计定色 |
 | 1.3.4 | 2026-10-29 | 阶梯圆角存量清零：152 处阶梯字面量与 63 处胶囊字面量全部令牌化（含 4 处气泡多值写法与 4 处 `el-skeleton-item` 内联样式）；登记例外补 `13px` 小件与 `28px` / `40px` 大件装饰 |
 | 1.3.3 | 2026-10-29 | 圆角规则校准为三分法（阶梯走令牌 / 胶囊 `--radius-full` / 卡内小件登记例外）：新增 `--radius-full` 并替换 60 处 `9999px`；阶梯字面量存量约 158 处待分批清理 |
 | 1.3.2 | 2026-10-29 | 样式分层改为五层（元素级基线独立为 `base.css`，令牌层只留值）；反面色面补齐 `--surface-inverse-deep` 与 `--primary/success/border-on-inverse` 三色，替换 6 处手写字面量；类名与实现对齐（`.grad-text`→`.cta-accent`、`.btn-grad`→`.btn-primary`、`.bg-orbit`→`.bg-rings`）；规范单列到前端编码规范 |

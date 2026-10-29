@@ -886,7 +886,7 @@ onMounted(async () => {
   color: hsl(var(--surface-inverse));
 }
 .featured .price-cta.primary:hover {
-  background: hsl(243 80% 95%);
+  background: hsl(var(--primary-soft));
 }
 @media (min-width: 768px) {
   .price-grid {

@@ -59,6 +59,17 @@
   --success: 152 60% 32%;
   --warning: 35 90% 33%;
 
+  /* 固定状态色（**不随主题翻转**）：这些值此前以 hsl(142 …) / #16a34a / #f59e0b
+     等字面量散落在组件里，两套主题下同值。状态点、徽章、进度条、diff 行一律走
+     这组；不要再用 Tailwind 绿/琥珀色值。--destructive 会随主题翻转，故不复用。 */
+  --positive: 142 71% 45%; /* 填充 / 圆点 / 描边（常带 alpha） */
+  --positive-text: 142 71% 35%; /* 浅底上的正向文字 */
+  --positive-strong: 142 72% 29%; /* 更重的正向文字（diff 新增行） */
+  --negative: 0 72% 51%; /* 负向填充 / 统计文字 */
+  --negative-strong: 0 74% 42%; /* 更重的负向文字（diff 删除行） */
+  --warning-bright: 38 92% 50%; /* 琥珀填充 / 状态点 / 图标 */
+  --warning-text: 26 90% 37%; /* 琥珀文字（warn 徽章） */
+
   /* 反面色面：营销 CTA / 定价主推卡 / 认证页品牌面板，两套主题下都是深底，
      故只在 :root 定义（不进 .dark）。deep 档用于该面上的渐变收尾。 */
   --surface-inverse: 240 16% 11%;
@@ -69,6 +80,9 @@
   --primary-on-inverse: 243 80% 79%;
   --success-on-inverse: 152 55% 65%;
   --border-on-inverse: 243 40% 28%;
+
+  /* 反面色面上的品牌浅底（按钮悬停） */
+  --primary-soft: 243 80% 95%;
 
   --border: 240 6% 90%;
   --input: 240 6% 90%;

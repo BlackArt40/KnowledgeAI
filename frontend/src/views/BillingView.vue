@@ -376,12 +376,12 @@ const currentPlan = (): Plan | undefined => {
 .badge { font-weight: 500; }
 
 .badge.ok {
-  background: hsl(142 71% 45% / 0.12);
-  color: hsl(142 71% 35%);
+  background: hsl(var(--positive) / 0.12);
+  color: hsl(var(--positive-text));
 }
 .badge.warn {
-  background: #f59e0b22;
-  color: #b45309;
+  background: hsl(var(--warning-bright) / 0.13);
+  color: hsl(var(--warning-text));
 }
 .badge.bad {
   background: hsl(var(--destructive) / 0.12);
@@ -459,7 +459,7 @@ const currentPlan = (): Plan | undefined => {
   color: hsl(var(--muted-foreground) / 0.4);
 }
 .bool.yes {
-  color: hsl(142 71% 45%);
+  color: hsl(var(--positive));
 }
 .cur {
   font-size: 12px;
