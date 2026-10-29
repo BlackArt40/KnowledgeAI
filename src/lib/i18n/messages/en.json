@@ -898,7 +898,10 @@
       "s44": "API docs",
       "s45": "Product KB",
       "s46": "Demo account",
-      "s47": "KnowledgeAI Team"
+      "s47": "KnowledgeAI Team",
+      "s48": "2FA",
+      "s49": "RBAC",
+      "s50": "GDPR"
     },
     "features": {
       "s0": "Done",

@@ -140,8 +140,8 @@ onMounted(async () => {
                 aria-hidden="true"
               >
                 <div
-                  v-for="label in ['2FA', 'RBAC', 'GDPR']"
-                  :key="label"
+                  v-for="(label, index) in [t('page.hero.s48'), t('page.hero.s49'), t('page.hero.s50')]"
+                  :key="index"
                   class="security-item"
                 >
                   <span class="security-check"><el-icon :size="12"><Check /></el-icon></span>
