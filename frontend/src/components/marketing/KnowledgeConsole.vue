@@ -757,12 +757,14 @@ watch([scene, runId, inView, reduced], () => playScene());
 </template>
 
 <style scoped>
+/* 外观即 hero 演示台形态（唯一消费方是 MktHero）：20px 圆角 + shadow-lg +
+   更实的描边此前由父组件 :deep() 覆盖，现收敛到这里，避免父组件依赖内部类名。 */
 .console {
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 28px;
+  border: 1px solid hsl(var(--border) / 0.9);
+  border-radius: var(--radius-xl);
   background: hsl(var(--card) / 0.9);
-  box-shadow: 0 24px 48px rgb(0 0 0 / 0.06);
+  box-shadow: var(--shadow-lg);
   backdrop-filter: blur(16px);
   text-align: left;
 }
@@ -770,7 +772,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 11px 14px;
   border-bottom: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--muted) / 0.3);
 }
@@ -1641,5 +1643,17 @@ watch([scene, runId, inView, reduced], () => playScene());
 }
 .ok-text {
   color: hsl(142 71% 38%);
+}
+
+/* 宽屏给右侧演示区让位（原由 MktHero 的 :deep() 覆盖，收敛进组件：
+   放在样式块末尾，才能压过上面 .stage / .side 的基线值） */
+@media (min-width: 1180px) {
+  .side {
+    width: 150px;
+  }
+  .stage {
+    min-height: 330px;
+    padding: 14px;
+  }
 }
 </style>

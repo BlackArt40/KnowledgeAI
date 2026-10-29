@@ -123,8 +123,32 @@ function checkText(name: "db" | "redis" | "llm"): string {
   background: hsl(var(--card) / 0.75);
   backdrop-filter: blur(16px);
 }
+/* compact 即 hero 服务状态条的最终形态（唯一消费方是 MktHero）：裸条——
+   无内边距 / 无描边 / 透明底 / 无毛玻璃，顶部渐变线隐藏，尺寸整体收紧。
+   这些覆盖此前写在父组件的 :deep() 里，现收敛进组件自身。 */
 .live.compact {
-  padding: 12px 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+.live.compact .live-line {
+  display: none;
+}
+.live.compact .live-row {
+  justify-content: center;
+}
+.live.compact .live-ava {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+.live.compact .live-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+.live.compact .live-state {
+  font-size: 12px;
 }
 .live-line {
   position: absolute;
@@ -214,5 +238,12 @@ function checkText(name: "db" | "redis" | "llm"): string {
   margin-top: 4px;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* 宽屏下 hero 里的状态条左对齐（原由 MktHero 的 :deep() 覆盖） */
+@media (min-width: 1180px) {
+  .live.compact .live-row {
+    justify-content: flex-start;
+  }
 }
 </style>
