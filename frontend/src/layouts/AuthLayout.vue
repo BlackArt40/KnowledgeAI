@@ -27,8 +27,8 @@ const year = computed(() => new Date().getFullYear());
           <p>{{ t("page.auth-layout.s3") }}</p>
           <div class="capability-list">
             <div
-              v-for="item in ['page.features.s12', 'page.features.s4', 'page.features.s9']"
-              :key="item"
+              v-for="(item, index) in ['page.features.s12', 'page.features.s4', 'page.features.s9']"
+              :key="index"
               class="capability-item"
             >
               <span class="capability-icon">
