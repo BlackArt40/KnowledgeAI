@@ -304,40 +304,10 @@ const { t } = useTranslation();
   filter: blur(54px);
   opacity: 0.5;
 }
-.demo :deep(.console) {
-  border-color: hsl(var(--border) / 0.9);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-}
-.demo :deep(.titlebar) {
-  padding: 11px 14px;
-}
+/* 演示台（KnowledgeConsole）与状态条（LiveStatus）的 hero 形态已收敛进各自组件，
+   这里不再穿透子组件内部类名；仅保留定位用的外边距。 */
 .status {
   margin: 26px auto 0;
-}
-.status :deep(.live.compact) {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-}
-.status :deep(.live-line) {
-  display: none;
-}
-.status :deep(.live-row) {
-  justify-content: center;
-}
-.status :deep(.live-ava) {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-}
-.status :deep(.live-label) {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-}
-.status :deep(.live-state) {
-  font-size: 12px;
 }
 @media (min-width: 640px) {
   .inner {
@@ -370,16 +340,8 @@ const { t } = useTranslation();
     font-size: 16px;
   }
   .ctas,
-  .trust,
-  .status :deep(.live-row) {
+  .trust {
     justify-content: flex-start;
-  }
-  .demo :deep(.side) {
-    width: 150px;
-  }
-  .demo :deep(.stage) {
-    min-height: 330px;
-    padding: 14px;
   }
 }
 @media (min-width: 1380px) {
