@@ -105,6 +105,10 @@ deploy/nginx/routes.conf.bak
 .workbuddy/
 # Trae 会话规划草稿（同 .claude/.zcode：历史规划不进仓库）
 .trae/
+# 本地 agent 上下文（AGENTS.md / docs/agents/ 是个人工作配置，仓库只放项目自身代码）
+/AGENTS.md
+/CLAUDE.md
+/docs/agents/
 # 编辑器本地设置（共享配置另行显式提交）
 .vscode/
 _tmp_*
