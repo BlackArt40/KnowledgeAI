@@ -4,7 +4,7 @@ description: frontend/ 的共享资产单源、样式分层、令牌纪律、i18
 type: reference
 category: standards
 level: L1
-version: 1.0.0
+version: 1.1.0
 authors:
   - frontend
 owner: 前端负责人
@@ -57,8 +57,13 @@ applies_to: ">=1.4.0"
 
 ## 3. 令牌纪律
 
-- 颜色、圆角、阴影、缓动**一律不写字面量**，用 `hsl(var(--x))` / `var(--radius-*)` / `var(--shadow-*)` / `var(--ease-out)`。评审时对 diff 里的 `hsl(<数字>)`、`#rrggbb`、`border-radius: <px>` 直接判违规（`rgb(255 255 255 / .x)` 这类透明叠加除外）。
-- 圆角阶梯：`--radius-sm` 0.5rem（卡内小件）、`--radius` 0.75rem（EP 控件基线，`element-adapter.css` 依赖它）、`--radius-card` 0.875rem（`.card`）、`--radius-lg` 1rem / `--radius-xl` 1.25rem / `--radius-2xl` 1.5rem（内容容器）。改 `--radius` 会让按钮 / 输入 / 下拉 / 弹窗一起变圆。
+- 颜色、阴影、缓动**一律不写字面量**，用 `hsl(var(--x))` / `var(--shadow-*)` / `var(--ease-out)`。评审时对 diff 里的 `hsl(<数字>)`、`#rrggbb` 直接判违规（`rgb(255 255 255 / .x)` 这类透明叠加除外）。
+- **圆角三分法**（2026-10-29 校准：此前「圆角一律不得写字面量」的写法与仓库现状冲突——现存 299 处字面量，其中 68 处是本条要豁免的小件——故作废重写）：
+  1. **阶梯值必须走令牌**：8 / 12 / 14 / 16 / 20 / 24px 对应 `--radius-sm` / `--radius` / `--radius-card` / `--radius-lg` / `--radius-xl` / `--radius-2xl`。新代码写字面量即违规。
+  2. **胶囊用 `--radius-full`**（9999px 的语义名），不再写字面量。
+  3. **卡内小件是登记例外**：4 / 6 / 7 / 9 / 10 / 11px 这类紧值刻意不参与阶梯（见 `tokens.css` 注释与 `design-system.md` 的登记说明）。可以写字面量，但**不得新增该集合以外的值**；确需新值先改登记表。
+- 阶梯语义：`--radius` 0.75rem 是 EP 控件基线（`element-adapter.css` 依赖它，改它会让按钮 / 输入 / 下拉 / 弹窗一起变圆）；`--radius-card` 0.875rem 只给 `.card`；`--radius-lg` / `--radius-xl` / `--radius-2xl` 给内容容器。
+- 存量：阶梯值写成字面量的地方仍有约 158 处（2026-10-29 统计），按目录分批清理，不要在一次改动里全量替换；新代码不得再增加。
 - 反面色面（营销 CTA、定价主推卡、认证页品牌面板）两套主题下都是深底，因此 `--surface-inverse` / `--surface-inverse-deep` / `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse` **只在 `:root` 定义**，不要在 `.dark` 里再覆盖一次。
 - 顶栏高度只能读 `--topbar-h`（`.topbar`、`.side-head`、`chat-view.css` 的视口计算共用）。滚动锚点、导航栏高度同理，不要手抄像素值。
 
