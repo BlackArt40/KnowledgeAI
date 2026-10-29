@@ -272,7 +272,7 @@ const processingLabel = () =>
 }
 .plan-badge {
   padding: 2px 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 12px;
   font-weight: 500;
@@ -325,7 +325,7 @@ const processingLabel = () =>
   width: 64px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 .state-ava.success {
   background: hsl(142 71% 45% / 0.15);
@@ -375,7 +375,7 @@ const processingLabel = () =>
   left: 50%;
   transform: translateX(-50%);
   padding: 1px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--card));
   font-size: 10px;
   white-space: nowrap;
@@ -453,7 +453,7 @@ const processingLabel = () =>
   align-items: center;
   justify-content: center;
   border: 2px solid hsl(var(--border));
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   color: #fff;
 }
 .m-radio.on {

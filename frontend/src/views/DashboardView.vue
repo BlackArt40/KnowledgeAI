@@ -112,8 +112,8 @@ function taskStepLabel(task: AgentTask): string {
   if (task.status === "queued") return t("page.dashboard.s24");
   const running = task.steps.find((s) => s.status === "running");
   const labels: Record<string, string> = {
-    planner: t("page.dashboard.s4"), searcher: t("page.dashboard.s5"),
-    analyzer: t("page.dashboard.s6"), writer: t("page.dashboard.s7"),
+    planner: t("common.agentStages.plan"), searcher: t("common.agentStages.search"),
+    analyzer: t("common.agentStages.analyze"), writer: t("common.agentStages.write"),
   };
   return running ? labels[running.role] ?? running.role : t("page.dashboard.s25");
 }
@@ -584,7 +584,7 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   height: 8px;
   width: 8px;
   margin-right: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary));
 }
 .task {
@@ -614,12 +614,12 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
   height: 4px;
   margin-top: 11px;
   overflow: hidden;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--secondary));
 }
 .task-bar-fill {
   height: 100%;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--success));
 }
 .task-bar-fill.gradient {

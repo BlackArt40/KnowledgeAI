@@ -1050,7 +1050,7 @@ const visibleGroups = computed(() =>
   align-items: center;
   gap: 5px;
   padding: 0 9px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
   font-size: 12px;
@@ -1060,7 +1060,7 @@ const visibleGroups = computed(() =>
 .presence-dot {
   width: 6px;
   height: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--success));
 }
 /* 窄屏顶栏留给搜索/通知/主题/用户菜单，在线人数让位（不影响在线状态本身） */
@@ -1079,7 +1079,7 @@ const visibleGroups = computed(() =>
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--destructive));
   color: #fff;
   font-size: 10px;
@@ -1178,7 +1178,7 @@ const visibleGroups = computed(() =>
   height: 6px;
   width: 6px;
   flex-shrink: 0;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary));
 }
 .notif-desc {
@@ -1214,7 +1214,7 @@ const visibleGroups = computed(() =>
   width: 26px;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
   font-size: 12px;
@@ -1250,7 +1250,7 @@ const visibleGroups = computed(() =>
   display: inline-flex;
   margin-top: 4px;
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--primary) / 0.1);
   font-size: 10px;
   font-weight: 500;

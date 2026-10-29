@@ -21,6 +21,8 @@
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
+  /* 胶囊：语义名替代各处写的 9999px 字面量 */
+  --radius-full: 9999px;
 
   /* 工作台顶栏高度：AppShell 的 .topbar/.side-head 与 chat-view.css 的
      视口高度计算共用，改动时只需改这一处 */

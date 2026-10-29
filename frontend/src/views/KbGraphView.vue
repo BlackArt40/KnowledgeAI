@@ -266,7 +266,7 @@ function onClickNode(id: string) {
 .legend-dot {
   height: 10px;
   width: 10px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 .graph-svg {
   width: 100%;

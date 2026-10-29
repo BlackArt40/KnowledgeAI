@@ -191,7 +191,7 @@ const errorDescs: Record<Exclude<ShareErrorCode, "needPassword">, string> = {
   width: 32px;
   border: 2px solid hsl(var(--primary));
   border-top-color: transparent;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
@@ -254,7 +254,7 @@ h1 {
 .views {
   margin-left: auto;
   padding: 2px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-weight: 400;
 }

@@ -103,7 +103,7 @@ onMounted(async () => {
                 aria-hidden="true"
               >
                 <div
-                  v-for="(step, index) in [t('page.dashboard.s4'), t('page.dashboard.s5'), t('page.dashboard.s6'), t('page.dashboard.s7')]"
+                  v-for="(step, index) in [t('common.agentStages.plan'), t('common.agentStages.search'), t('common.agentStages.analyze'), t('common.agentStages.write')]"
                   :key="index"
                   class="agent-step"
                 >
