@@ -208,7 +208,7 @@ function checkText(name: "db" | "redis" | "llm"): string {
   inset: 0;
   border-radius: var(--radius-full);
   background: hsl(var(--positive) / 0.6);
-  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  animation: ping 1.5s var(--ease-out-quad) infinite;
 }
 
 .live-checks {

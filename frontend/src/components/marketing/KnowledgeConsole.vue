@@ -804,7 +804,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   inset: 0;
   border-radius: var(--radius-full);
   background: hsl(var(--positive) / 0.7);
-  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  animation: ping 1.5s var(--ease-out-quad) infinite;
 }
 .pulse-dot {
   position: relative;

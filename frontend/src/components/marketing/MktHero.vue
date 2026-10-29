@@ -192,7 +192,7 @@ const { t } = useTranslation();
   inset: 0;
   border-radius: 50%;
   background: hsl(var(--primary) / 0.55);
-  animation: ping-hero 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  animation: ping-hero 1.8s var(--ease-out-quad) infinite;
 }
 .ping-dot {
   position: relative;

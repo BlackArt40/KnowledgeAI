@@ -71,6 +71,8 @@ applies_to: ">=1.4.0"
 - 阶梯语义：`--radius` 0.75rem 是 EP 控件基线（`element-adapter.css` 依赖它，改它会让按钮 / 输入 / 下拉 / 弹窗一起变圆）；`--radius-card` 0.875rem 只给 `.card`；`--radius-lg` / `--radius-xl` / `--radius-2xl` 给内容容器。
 - 存量已于 2026-10-29 清零：阶梯值 152 处、胶囊 63 处全部令牌化，`frontend/src` 内不再有阶梯/胶囊字面量。此后新代码写字面量即违规，评审可直接打回。
 - 反面色面（营销 CTA、定价主推卡、认证页品牌面板）两套主题下都是深底，因此 `--surface-inverse` / `--surface-inverse-deep` / `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse` **只在 `:root` 定义**，不要在 `.dark` 里再覆盖一次。
+- **阴影**：阶梯阴影必须走令牌（`--shadow-xs/sm/md/lg`，暗色另有更重的一套）。两类例外可写字面量：① 品牌光晕——`box-shadow: 0 8px 20px hsl(var(--primary) / 0.22)` 这类随组件尺寸调半径与透明度的发光（当前 18 处，集中在 hero / 侧栏 / 图表）；② `0 0 0 1px hsl(var(--primary) / α)` 这类焦点或描边环。新代码优先复用阶梯阴影，不要为一次性发光新增令牌。
+- **缓动**：CSS 关键字（`ease` / `ease-out` / `linear`）允许直接用；**自定义 `cubic-bezier` 必须走 `--ease-*`**——现只有 `--ease-out`（进入动画）与 `--ease-out-quad`（状态点 ping）。
 - 顶栏高度只能读 `--topbar-h`（`.topbar`、`.side-head`、`chat-view.css` 的视口计算共用）。滚动锚点、导航栏高度同理，不要手抄像素值。
 
 ## 4. 文案与 i18n

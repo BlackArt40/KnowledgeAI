@@ -4,7 +4,7 @@ description: KnowledgeAI UI 设计体系：技术栈、设计令牌、主题与�
 type: explanation
 category: architecture
 level: L1
-version: 1.3.5
+version: 1.3.6
 authors:
   - product-team
 owner: 产品负责人
@@ -46,7 +46,7 @@ related:
 - 圆角阶梯：`--radius 0.75rem` 为 EP 控件基线（`element-adapter.css` 把它映射成 `--el-border-radius-base/small`，改它会让按钮/输入/下拉/弹窗一起变圆）；`--radius-card 0.875rem` 给 `.card`；`--radius-lg 1rem` / `--radius-xl 1.25rem` / `--radius-2xl 1.5rem` 给内容容器（分区块 / 大卡 / 全宽面板），另有 `--radius-sm 0.5rem` 用于卡内小件
 - 胶囊 `--radius-full`（9999px）统一掉原字面量写法；**登记例外**（可写字面量，但不得新增集合外的值）：卡内小件 `4 / 6 / 7 / 9 / 10 / 11 / 13px`、大件装饰 `28px`（演示台外壳）/ `40px`（hero 光晕）。三分法规则见[前端编码规范](../standards/frontend-coding-standards.md)第 3 节
 - 反面色面 `--surface-inverse` / `--surface-inverse-deep`：营销 CTA、定价主推卡、认证页品牌面板共用，两套主题下都是深底（故只在 `:root` 定义）；该面上的前景色成组定义为 `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse`
-- 阴影四档 `--shadow-xs/sm/md/lg`（暗色单独一套更重的不透明度）；缓动 `--ease-out`
+- 阴影四档 `--shadow-xs/sm/md/lg`（暗色单独一套更重的不透明度）；缓动 `--ease-out`（进入动画）与 `--ease-out-quad`（状态点 ping）
 - 顶栏高度令牌 `--topbar-h 72px`：`.topbar` / `.side-head` 与 `chat-view.css` 的视口高度计算共用
 - 动效：aurora 极光、marquee 跑马灯、打字机流式、处理进度条、卡片 hover 上浮；主题切换 `theme-transition` 交叉淡入（尊重 prefers-reduced-motion）
 
@@ -64,6 +64,7 @@ related:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.3.6 | 2026-10-29 | 新增 `--ease-out-quad`（状态点 ping 曲线），替换 3 处 `cubic-bezier(0, 0, 0.2, 1)` 字面量；规范补齐阴影与缓动条款（阶梯阴影走令牌、品牌光晕与描边环允许字面量、自定义曲线必须走 `--ease-*`） |
 | 1.3.5 | 2026-10-29 | 新增固定状态色组（`--positive*` / `--negative*` / `--warning-bright` / `--warning-text`）与 `--primary-soft`，替换 52 处状态色字面量（hsl 142 绿族 24 处、`#f59e0b`/`#b45309` 琥珀 17 处、diff 红绿 6 处、`rgb(… / α)` 4 处）；同色不同亮的正向文字统一到 `--positive-text`（38/40/35→35，差 ≤5 个明度点）；装饰色板仍待设计定色 |
 | 1.3.4 | 2026-10-29 | 阶梯圆角存量清零：152 处阶梯字面量与 63 处胶囊字面量全部令牌化（含 4 处气泡多值写法与 4 处 `el-skeleton-item` 内联样式）；登记例外补 `13px` 小件与 `28px` / `40px` 大件装饰 |
 | 1.3.3 | 2026-10-29 | 圆角规则校准为三分法（阶梯走令牌 / 胶囊 `--radius-full` / 卡内小件登记例外）：新增 `--radius-full` 并替换 60 处 `9999px`；阶梯字面量存量约 158 处待分批清理 |
