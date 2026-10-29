@@ -1019,7 +1019,7 @@ const planLabel = computed(() => {
   align-items: center;
   gap: 6px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
 }
 .info-box {
@@ -1059,7 +1059,7 @@ const planLabel = computed(() => {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted));
   font-size: 13px;
   font-weight: 600;
@@ -1179,7 +1179,7 @@ const planLabel = computed(() => {
 }
 .qr {
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: #fff;
   padding: 4px;
 }
@@ -1198,7 +1198,7 @@ const planLabel = computed(() => {
   padding: 12px;
   border: 1px solid hsl(var(--warning) / 0.3);
   background: hsl(var(--warning) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .codes-head {
   display: flex;

@@ -502,7 +502,7 @@ function onKbEvent(event: Record<string, unknown>) {
   width: 40px;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--radius);
   color: #fff;
   font-size: 16px;
   font-weight: 700;
@@ -546,7 +546,7 @@ function onKbEvent(event: Record<string, unknown>) {
   justify-items: center;
   padding: 28px 16px;
   border: 1.5px dashed hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   cursor: pointer;
   background: hsl(var(--card));
 }
@@ -638,7 +638,7 @@ function onKbEvent(event: Record<string, unknown>) {
   padding: 10px 14px;
   border: 1px solid hsl(var(--destructive) / 0.3);
   background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   color: hsl(var(--destructive));
 }

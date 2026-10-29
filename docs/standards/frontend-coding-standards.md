@@ -4,7 +4,7 @@ description: frontend/ 的共享资产单源、样式分层、令牌纪律、i18
 type: reference
 category: standards
 level: L1
-version: 1.1.0
+version: 1.1.1
 authors:
   - frontend
 owner: 前端负责人
@@ -61,9 +61,11 @@ applies_to: ">=1.4.0"
 - **圆角三分法**（2026-10-29 校准：此前「圆角一律不得写字面量」的写法与仓库现状冲突——现存 299 处字面量，其中 68 处是本条要豁免的小件——故作废重写）：
   1. **阶梯值必须走令牌**：8 / 12 / 14 / 16 / 20 / 24px 对应 `--radius-sm` / `--radius` / `--radius-card` / `--radius-lg` / `--radius-xl` / `--radius-2xl`。新代码写字面量即违规。
   2. **胶囊用 `--radius-full`**（9999px 的语义名），不再写字面量。
-  3. **卡内小件是登记例外**：4 / 6 / 7 / 9 / 10 / 11px 这类紧值刻意不参与阶梯（见 `tokens.css` 注释与 `design-system.md` 的登记说明）。可以写字面量，但**不得新增该集合以外的值**；确需新值先改登记表。
+  3. **登记例外可以写字面量**，但**不得新增集合以外的值**，确需新值先改登记表。当前登记值：
+     - 卡内小件：`4` / `6` / `7` / `9` / `10` / `11` / `13px`（chip、tile、进度条、气泡尾巴等紧值，刻意不参与阶梯）
+     - 大件装饰：`28px`（演示台外壳 `.console`）、`40px`（hero 光晕 `.demo-glow`）——不属阶梯、也非胶囊，改动需同步 `design-system.md`
 - 阶梯语义：`--radius` 0.75rem 是 EP 控件基线（`element-adapter.css` 依赖它，改它会让按钮 / 输入 / 下拉 / 弹窗一起变圆）；`--radius-card` 0.875rem 只给 `.card`；`--radius-lg` / `--radius-xl` / `--radius-2xl` 给内容容器。
-- 存量：阶梯值写成字面量的地方仍有约 158 处（2026-10-29 统计），按目录分批清理，不要在一次改动里全量替换；新代码不得再增加。
+- 存量已于 2026-10-29 清零：阶梯值 152 处、胶囊 63 处全部令牌化，`frontend/src` 内不再有阶梯/胶囊字面量。此后新代码写字面量即违规，评审可直接打回。
 - 反面色面（营销 CTA、定价主推卡、认证页品牌面板）两套主题下都是深底，因此 `--surface-inverse` / `--surface-inverse-deep` / `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse` **只在 `:root` 定义**，不要在 `.dark` 里再覆盖一次。
 - 顶栏高度只能读 `--topbar-h`（`.topbar`、`.side-head`、`chat-view.css` 的视口计算共用）。滚动锚点、导航栏高度同理，不要手抄像素值。
 

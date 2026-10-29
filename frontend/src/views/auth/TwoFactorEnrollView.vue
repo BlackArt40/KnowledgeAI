@@ -251,7 +251,7 @@ function backToSetup() {
   padding: 16px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .qr-hint {
   margin: 0 0 12px;
@@ -262,7 +262,7 @@ function backToSetup() {
 }
 .qr-img {
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: #fff;
   padding: 4px;
 }
@@ -279,7 +279,7 @@ function backToSetup() {
   padding: 12px;
   border: 1px solid hsl(var(--warning) / 0.3);
   background: hsl(var(--warning) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .codes-head {
   display: flex;

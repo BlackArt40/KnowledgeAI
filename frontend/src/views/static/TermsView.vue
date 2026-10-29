@@ -133,7 +133,7 @@ const sections = computed(() => [
   margin-top: 32px;
   padding: 16px;
   font-size: 14px;
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .highlight.warn {
   border: 1px solid hsl(var(--warning) / 0.3);
@@ -178,7 +178,7 @@ section h2 {
   font-size: 14px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.5);
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .footer-title {
   margin: 0;

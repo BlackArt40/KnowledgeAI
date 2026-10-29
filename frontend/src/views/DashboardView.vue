@@ -689,7 +689,7 @@ const chartLabels = computed(() => (trend.value.length > 0 ? trend.value.map((x)
 }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 0; font-size: 14px; margin: 0; }
 
-.sk { display: inline-block; border-radius: 8px; }
+.sk { display: inline-block; border-radius: var(--radius-sm); }
 
 .spin {
   animation: spin 1s linear infinite;

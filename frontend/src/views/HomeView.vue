@@ -514,7 +514,7 @@ onMounted(async () => {
   display: block;
   width: 100%;
   height: 6px;
-  border-radius: 99px;
+  border-radius: var(--radius-full);
   background: hsl(var(--muted-foreground) / 0.2);
 }
 .answer-lines i:nth-child(2) {
@@ -645,7 +645,7 @@ onMounted(async () => {
   width: 70%;
   height: 3px;
   margin-top: 9px;
-  border-radius: 99px;
+  border-radius: var(--radius-full);
   background: rgb(255 255 255 / 0.12);
 }
 @media (min-width: 768px) {

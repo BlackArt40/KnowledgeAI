@@ -267,7 +267,7 @@ function menuRemove(id: string) {
   width: 100%;
   padding: 0 10px 0 28px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   font: inherit;
   font-size: 12px;
@@ -281,7 +281,7 @@ function menuRemove(id: string) {
   gap: 4px;
   margin-top: 8px;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.7);
 }
 .vt {
@@ -329,7 +329,7 @@ function menuRemove(id: string) {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: hsl(var(--muted-foreground));
 }
@@ -412,7 +412,7 @@ function menuRemove(id: string) {
   margin-top: 4px;
   padding: 4px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
 }

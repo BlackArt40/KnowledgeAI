@@ -327,7 +327,7 @@ function fillDemo(em: string) {
   padding: 12px;
   border: 1px solid hsl(var(--primary) / 0.2);
   background: hsl(var(--primary) / 0.05);
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .demo-title {
   display: flex;
@@ -347,7 +347,7 @@ function fillDemo(em: string) {
   padding: 6px 10px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   text-align: left;
   cursor: pointer;
   font: inherit;
@@ -426,7 +426,7 @@ function fillDemo(em: string) {
   color: hsl(var(--warning));
   border: 1px solid hsl(var(--warning) / 0.3);
   background: hsl(var(--warning) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .linklike {
   display: flex;

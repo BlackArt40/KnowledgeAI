@@ -838,11 +838,11 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   font-weight: 700;
   letter-spacing: -0.02em;
 }
-.sk { height: 64px; border-radius: 16px; }
+.sk { height: 64px; border-radius: var(--radius-lg); }
 
 .sk.small {
   height: 96px;
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .sk.tall {
   height: 384px;
@@ -882,7 +882,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 .stat {
   padding: 18px 20px; /* 与工作台统计卡同构：图标左上、值居中偏下、label 收尾 */
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .stat-head {
@@ -919,7 +919,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 .tint.pink { color: #ec4899; }
 .tint.orange { color: #f97316; }
 .tint.teal { color: #14b8a6; }
-.card { padding: 20px; border-radius: 16px; }
+.card { padding: 20px; border-radius: var(--radius-lg); }
 
 .card-title {
   display: flex;
@@ -1021,7 +1021,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   width: 100%;
   padding: 0 10px 0 28px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   font: inherit;
   font-size: 12px;
@@ -1157,7 +1157,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   justify-content: space-between;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .role-name {
   font-size: 13px;
@@ -1178,7 +1178,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 .rl-limit {
   padding: 8px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 .rl-label {
@@ -1209,7 +1209,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   justify-content: space-between;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .p-head {
   display: flex;

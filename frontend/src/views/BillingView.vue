@@ -82,11 +82,11 @@ const currentPlan = (): Plan | undefined => {
         <template #template>
           <el-skeleton-item
             variant="rect"
-            style="height: 112px; border-radius: 16px"
+            style="height: 112px; border-radius: var(--radius-lg)"
           />
           <el-skeleton-item
             variant="rect"
-            style="height: 320px; border-radius: 16px; margin-top: 16px"
+            style="height: 320px; border-radius: var(--radius-lg); margin-top: 16px"
           />
         </template>
       </el-skeleton>
@@ -308,7 +308,7 @@ const currentPlan = (): Plan | undefined => {
   position: relative;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .plan-grad {
@@ -343,7 +343,7 @@ const currentPlan = (): Plan | undefined => {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
 }
@@ -407,7 +407,7 @@ const currentPlan = (): Plan | undefined => {
 .table-wrap {
   overflow: hidden;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 .table-scroll {
   overflow-x: auto;
@@ -465,7 +465,7 @@ const currentPlan = (): Plan | undefined => {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.card { padding: 20px; border-radius: 16px; }
+.card { padding: 20px; border-radius: var(--radius-lg); }
 
 .inv-head {
   display: flex;
@@ -493,7 +493,7 @@ const currentPlan = (): Plan | undefined => {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
 }

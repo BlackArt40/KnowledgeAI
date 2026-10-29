@@ -217,7 +217,7 @@ function cancelNote() {
 .bubble-user {
   max-width: 80%;
   padding: 10px 16px;
-  border-radius: 16px 4px 16px 16px;
+  border-radius: var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-size: 14px;
@@ -229,7 +229,7 @@ function cancelNote() {
 }
 .bubble-ai {
   padding: 12px 16px;
-  border-radius: 4px 16px 16px 16px;
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
   background: hsl(var(--muted));
   font-size: 14px;
   line-height: 1.7;
@@ -267,7 +267,7 @@ function cancelNote() {
 .md :deep(pre) {
   padding: 10px;
   overflow: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   font-size: 12px;
 }
@@ -356,7 +356,7 @@ function cancelNote() {
   flex: 1;
   padding: 0 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   font: inherit;
   font-size: 12px;
@@ -369,7 +369,7 @@ function cancelNote() {
   height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
   cursor: pointer;
@@ -380,7 +380,7 @@ function cancelNote() {
   height: 32px;
   padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;

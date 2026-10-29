@@ -239,7 +239,7 @@ function onClickNode(id: string) {
   width: 220px;
   padding: 0 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   font: inherit;
   font-size: 13px;
@@ -248,7 +248,7 @@ function onClickNode(id: string) {
 .graph-card {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 12px;
 }
 .legend {
@@ -272,7 +272,7 @@ function onClickNode(id: string) {
   width: 100%;
   height: auto;
   background: hsl(var(--background));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .node {
   cursor: pointer;
@@ -283,7 +283,7 @@ function onClickNode(id: string) {
 }
 .hint { margin: 8px 0 0; font-size: 12px; text-align: right; }
 
-.empty { display: grid; gap: 10px; justify-items: center; padding: 64px 24px; border: 1px dashed hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); font-size: 14px; }
+.empty { display: grid; gap: 10px; justify-items: center; padding: 64px 24px; border: 1px dashed hsl(var(--border)); border-radius: var(--radius-lg); background: hsl(var(--card)); font-size: 14px; }
 
 .empty-icon {
   display: inline-flex;
@@ -291,7 +291,7 @@ function onClickNode(id: string) {
   width: 46px;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
   font-size: 20px;
@@ -311,7 +311,7 @@ function onClickNode(id: string) {
   padding: 14px 16px;
   border: 1px solid hsl(var(--destructive) / 0.3);
   background: hsl(var(--destructive) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: hsl(var(--destructive));
   font-size: 14px;
 }

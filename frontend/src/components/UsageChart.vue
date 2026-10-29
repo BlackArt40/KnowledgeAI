@@ -106,7 +106,7 @@ const areaPath = () => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background:
     linear-gradient(hsl(var(--muted) / 0.45), hsl(var(--muted) / 0.12));
   color: hsl(var(--muted-foreground));

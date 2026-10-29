@@ -262,7 +262,7 @@ async function remove(kb: KbListItem) {
 .kb-card {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 16px;
   display: grid;
   gap: 8px;

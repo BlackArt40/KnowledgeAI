@@ -133,7 +133,7 @@ async function handleSubmit() {
   padding: 12px;
   border: 1px solid hsl(var(--primary) / 0.2);
   background: hsl(var(--primary) / 0.05);
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .demo-title {
   margin: 0;

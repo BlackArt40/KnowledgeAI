@@ -270,7 +270,7 @@ function navLinks(): { label: string; href: string }[] {
 }
 .mlink {
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;

@@ -769,7 +769,7 @@ const visibleGroups = computed(() =>
   gap: 8px;
   padding: 6px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -810,7 +810,7 @@ const visibleGroups = computed(() =>
   gap: 8px;
   padding: 6px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -826,7 +826,7 @@ const visibleGroups = computed(() =>
   flex: 1;
   padding: 0 8px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   font-size: 12px;
 }
@@ -892,7 +892,7 @@ const visibleGroups = computed(() =>
   margin: 12px;
   padding: 15px;
   border: 1px solid hsl(var(--primary) / 0.16);
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: hsl(var(--card));
   box-shadow: var(--shadow-xs);
 }
@@ -964,7 +964,7 @@ const visibleGroups = computed(() =>
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   color: inherit;
@@ -1150,7 +1150,7 @@ const visibleGroups = computed(() =>
   align-items: center;
   justify-content: center;
   margin-top: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
@@ -1200,7 +1200,7 @@ const visibleGroups = computed(() =>
   margin-left: 4px;
   padding: 4px 8px 4px 4px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   cursor: pointer;
   font: inherit;

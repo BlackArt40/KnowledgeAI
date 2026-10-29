@@ -307,7 +307,7 @@ function printReport() {
 }
 .skeleton {
   height: 48px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted));
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -321,7 +321,7 @@ function printReport() {
   width: 56px;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 .icon-badge.plain {
   background: hsl(var(--primary) / 0.1);
@@ -393,7 +393,7 @@ h1 {
   align-items: center;
   gap: 4px;
 }
-.card { padding: 24px; border-radius: 16px; }
+.card { padding: 24px; border-radius: var(--radius-lg); }
 
 .card.slim {
   padding: 16px;
@@ -432,7 +432,7 @@ h1 {
 .report :deep(pre) {
   padding: 12px;
   overflow: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.5);
   font-size: 13px;
 }
@@ -458,7 +458,7 @@ h1 {
 .cite {
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .cite.reply {
   margin-left: 16px;
