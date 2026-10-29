@@ -27,7 +27,13 @@
     "submit": "Submit",
     "language": "Language",
     "chinese": "中文",
-    "english": "English"
+    "english": "English",
+    "agentStages": {
+      "plan": "Planning",
+      "search": "Search",
+      "analyze": "Analysis",
+      "write": "Writing"
+    }
   },
   "page": {
     "api-keys": {
@@ -133,10 +139,6 @@
       "s1": "No agent tasks",
       "s2": "Recent Q&A",
       "s3": "No Q&A yet",
-      "s4": "Planning",
-      "s5": "Search",
-      "s6": "Analysis",
-      "s7": "Writing",
       "s8": "Q&A this month",
       "s9": "times",
       "s10": "Usage normal",
@@ -1062,7 +1064,12 @@
       "s1": "Turn every team document",
       "s2": "into a queryable intelligent asset.",
       "s3": "RAG Q&A, multi-agent research, and enterprise-grade security — all in one platform.",
-      "s7": "GDPR compliant"
+      "s7": "GDPR compliant",
+      "cap": {
+        "s1": "Knowledge base management",
+        "s2": "Q&A (RAG)",
+        "s3": "Agent research"
+      }
     },
     "login": {
       "s0": "Two-factor authentication",
