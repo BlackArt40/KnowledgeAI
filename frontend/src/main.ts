@@ -16,6 +16,8 @@ import { installGlobalErrorReporter, reportClientError } from "./lib/error-repor
 import "element-plus/theme-chalk/index.css";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import "./styles/tokens.css";
+// 元素级基线：盒模型 / body 排版 / 选中色 / 焦点环 / 减少动效
+import "./styles/base.css";
 import "./styles/element-adapter.css";
 // 全局工具样式：细滚动条（.kai-scroll）+ 基础类（.card / .badge / .sk / ...）
 import "./styles/scrollbar.css";

@@ -16,7 +16,7 @@ applies_to: ">=1.2.0"
 
 # 文档规范与模板索引
 
-> 本目录沉淀 KnowledgeAI 的文档编写规范与配套模板，是文档体系的「规矩与工具」。**新文档、新评审一律以本目录文件为准。**
+> 本目录沉淀 KnowledgeAI 的**文档编写规范**与**前端编码规范**，以及配套模板，是文档与前端代码的「规矩与工具」。**新文档、前端 PR 评审一律以本目录文件为准。**
 
 ## 文件导航
 
@@ -27,6 +27,7 @@ applies_to: ">=1.2.0"
 | [ADR 模板](templates/adr.md) | 架构决策记录骨架 | 记录架构决策（放入 `docs/architecture/adr/`） |
 | [文档评审 Checklist](doc-review-checklist.md) | PR 评审逐项核对清单 | 评审任何文档 PR |
 | [术语表](glossary.md) | 统一术语定义与禁止混用对照 | 写作 / 评审时查词 |
+| [前端编码规范](frontend-coding-standards.md) | 共享资产单源 / 样式分层 / 令牌纪律 / i18n / 列表 key / 验证命令 | 改 `frontend/src` 前、评审前端 PR 时 |
 
 ## 快速上手
 

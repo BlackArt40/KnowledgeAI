@@ -48,11 +48,12 @@ export default withMermaid(defineConfig({
           ]
         },
         {
-          text: '文档规范与模板',
+          text: '规范与模板',
           link: '/standards/README',
           items: [
             { text: '文档编写规范', link: '/standards/doc-writing-standards' },
             { text: '文档评审 Checklist', link: '/standards/doc-review-checklist' },
+            { text: '前端编码规范', link: '/standards/frontend-coding-standards' },
             { text: '术语表', link: '/standards/glossary' },
             { text: '新文档模板', link: '/standards/templates/new-doc' },
             { text: 'ADR 模板', link: '/standards/templates/adr' }

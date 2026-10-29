@@ -284,7 +284,7 @@ onMounted(async () => {
             <div class="cta-grid-bg" />
             <div class="cta-aurora" />
             <h2 class="cta-title">
-              {{ t("page.cta.s2") }}<span class="grad-text">{{ t("page.cta.s0") }}</span>
+              {{ t("page.cta.s2") }}<span class="cta-accent">{{ t("page.cta.s0") }}</span>
             </h2>
             <p class="cta-desc">
               {{ t("page.cta.s3") }}
@@ -292,7 +292,7 @@ onMounted(async () => {
             <div class="cta-btns">
               <router-link
                 to="/register"
-                class="btn-grad"
+                class="btn-primary"
               >
                 {{ t("page.cta.s4") }}
                 <el-icon :size="14">
@@ -633,7 +633,7 @@ onMounted(async () => {
   justify-content: center;
   border-radius: 7px;
   background: rgb(255 255 255 / 0.09);
-  color: hsl(152 55% 65%);
+  color: hsl(var(--success-on-inverse));
 }
 .security-item strong {
   margin-top: 12px;
@@ -770,7 +770,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-xs);
 }
 .price-card.featured {
-  border-color: hsl(243 40% 28%);
+  border-color: hsl(var(--border-on-inverse));
   background:
     radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.2), transparent 38%),
     hsl(var(--surface-inverse));
@@ -852,7 +852,7 @@ onMounted(async () => {
   color: hsl(var(--success));
 }
 .featured .ok-ico {
-  color: hsl(152 55% 65%);
+  color: hsl(var(--success-on-inverse));
 }
 .price-cta {
   display: flex;
@@ -944,8 +944,8 @@ onMounted(async () => {
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
-.grad-text {
-  color: hsl(243 80% 79%);
+.cta-accent {
+  color: hsl(var(--primary-on-inverse));
 }
 .cta-desc {
   max-width: 30rem;
@@ -963,7 +963,7 @@ onMounted(async () => {
   gap: 10px;
   margin-top: 28px;
 }
-.btn-grad,
+.btn-primary,
 .btn-plain {
   display: inline-flex;
   min-height: 44px;
@@ -977,12 +977,12 @@ onMounted(async () => {
   text-decoration: none;
   transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
-.btn-grad {
+.btn-primary {
   background: hsl(var(--primary));
   box-shadow: 0 8px 24px hsl(var(--primary) / 0.22);
   color: hsl(var(--primary-foreground));
 }
-.btn-grad:hover {
+.btn-primary:hover {
   box-shadow: 0 12px 30px hsl(var(--primary) / 0.3);
   transform: translateY(-1px);
 }
