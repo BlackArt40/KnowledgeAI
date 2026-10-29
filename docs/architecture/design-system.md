@@ -8,7 +8,7 @@ version: 1.3.1
 authors:
   - product-team
 owner: 产品负责人
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-29
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
