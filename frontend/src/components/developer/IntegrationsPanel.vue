@@ -551,7 +551,7 @@ const widgetSnippet = computed(
   display: grid;
   gap: 16px;
 }
-.card { padding: 20px; border-radius: 16px; }
+.card { padding: 20px; border-radius: var(--radius-lg); }
 
 .card-head {
   display: flex;
@@ -600,7 +600,7 @@ const widgetSnippet = computed(
   position: relative;
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.4);
 }
 .snippet-label {
@@ -626,7 +626,7 @@ const widgetSnippet = computed(
 .token-box {
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.4);
   font-size: 13px;
 }
@@ -652,7 +652,7 @@ const widgetSnippet = computed(
 .token-copy {
   margin-top: 8px;
 }
-.sk { height: 64px; border-radius: 8px; }
+.sk { height: 64px; border-radius: var(--radius-sm); }
 
 .tbl {
   width: 100%;

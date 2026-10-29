@@ -257,7 +257,7 @@ const processingLabel = () =>
 .panel {
   padding: 24px;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .head-row {
@@ -284,7 +284,7 @@ const processingLabel = () =>
   justify-content: space-between;
   margin-top: 16px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted) / 0.4);
 }
 .s-name {
@@ -363,7 +363,7 @@ const processingLabel = () =>
   align-items: center;
   justify-content: center;
   border: 2px dashed hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--muted) / 0.3);
 }
 .qr-ico {
@@ -397,7 +397,7 @@ const processingLabel = () =>
   gap: 12px;
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -419,7 +419,7 @@ const processingLabel = () =>
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .m-ava.wechat {
   background: rgb(16 185 129 / 0.15);

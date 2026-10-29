@@ -205,7 +205,7 @@ const errorDescs: Record<Exclude<ShareErrorCode, "needPassword">, string> = {
   width: 64px;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   color: #fff;
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
 }
@@ -263,7 +263,7 @@ h1 {
   padding: 24px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 .doc-card h1 {
   margin: 0;
@@ -285,7 +285,7 @@ h1 {
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.8;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted) / 0.4);
 }
 .foot {

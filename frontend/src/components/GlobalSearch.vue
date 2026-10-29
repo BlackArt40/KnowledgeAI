@@ -349,7 +349,7 @@ function onRecentClick(term: string) {
   gap: 12px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;

@@ -119,7 +119,7 @@ function checkText(name: "db" | "redis" | "llm"): string {
   overflow: hidden;
   padding: 16px 20px;
   border: 1px solid hsl(var(--border) / 0.8);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card) / 0.75);
   backdrop-filter: blur(16px);
 }
@@ -147,7 +147,7 @@ function checkText(name: "db" | "redis" | "llm"): string {
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--primary) / 0.2);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
@@ -197,7 +197,7 @@ function checkText(name: "db" | "redis" | "llm"): string {
   min-width: 80px;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background) / 0.6);
 }
 .check-name {

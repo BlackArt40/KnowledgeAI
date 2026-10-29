@@ -166,7 +166,7 @@ const { t } = useTranslation();
   gap: 8px;
   padding: 6px 11px;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: hsl(var(--card) / 0.76);
   box-shadow: var(--shadow-xs);
   backdrop-filter: blur(16px);
@@ -306,7 +306,7 @@ const { t } = useTranslation();
 }
 .demo :deep(.console) {
   border-color: hsl(var(--border) / 0.9);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 }
 .demo :deep(.titlebar) {

@@ -196,7 +196,7 @@ async function selectBrand(id: string) {
   gap: 8px;
   padding: 10px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   cursor: pointer;
   font: inherit;

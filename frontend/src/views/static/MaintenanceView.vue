@@ -65,7 +65,7 @@ const { t } = useTranslation();
   margin-top: 40px;
   text-align: center;
 }
-.badge { display: flex; height: 80px; width: 80px; justify-content: center; margin: 0 auto; border-radius: 16px; background: hsl(var(--warning) / 0.1); }
+.badge { display: flex; height: 80px; width: 80px; justify-content: center; margin: 0 auto; border-radius: var(--radius-lg); background: hsl(var(--warning) / 0.1); }
 
 h1 {
   margin: 24px 0 0;

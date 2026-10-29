@@ -133,7 +133,7 @@ function hostOf(url: string): string {
   width: 100%;
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--card));
   cursor: pointer;
   font: inherit;

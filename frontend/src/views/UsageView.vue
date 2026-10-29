@@ -74,19 +74,19 @@ function pct(m: Meter): number {
         <template #template>
           <el-skeleton-item
             variant="rect"
-            style="height: 96px; border-radius: 16px"
+            style="height: 96px; border-radius: var(--radius-lg)"
           />
           <div class="sk-grid">
             <el-skeleton-item
               v-for="i in 4"
               :key="i"
               variant="rect"
-              style="height: 112px; border-radius: 12px"
+              style="height: 112px; border-radius: var(--radius)"
             />
           </div>
           <el-skeleton-item
             variant="rect"
-            style="height: 288px; border-radius: 16px"
+            style="height: 288px; border-radius: var(--radius-lg)"
           />
         </template>
       </el-skeleton>
@@ -247,7 +247,7 @@ function pct(m: Meter): number {
 .meter {
   padding: 20px;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .meter-top {
@@ -261,7 +261,7 @@ function pct(m: Meter): number {
   width: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted));
 }
 .meter-ava.qa {
@@ -311,7 +311,7 @@ function pct(m: Meter): number {
 .meter-bar {
   margin-top: 12px;
 }
-.card { padding: 20px; border-radius: 16px; }
+.card { padding: 20px; border-radius: var(--radius-lg); }
 
 .trend-head {
   display: flex;

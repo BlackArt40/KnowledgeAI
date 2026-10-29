@@ -192,7 +192,7 @@ function goDashboard() {
 .center {
   text-align: center;
 }
-.badge { display: flex; height: 64px; width: 64px; justify-content: center; margin: 0 auto; border-radius: 16px; background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
+.badge { display: flex; height: 64px; width: 64px; justify-content: center; margin: 0 auto; border-radius: var(--radius-lg); background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
 
 .badge.success {
   background: hsl(var(--success) / 0.1);
@@ -216,7 +216,7 @@ h1 {
   text-align: left;
   border: 1px solid hsl(var(--primary) / 0.2);
   background: hsl(var(--primary) / 0.05);
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .demo-title {
   margin: 0;

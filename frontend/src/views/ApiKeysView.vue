@@ -302,7 +302,7 @@ function keyDisplay(k: ApiKey): string {
 .mono {
   font-family: var(--font-mono);
 }
-.empty { display: grid; gap: 10px; justify-items: center; padding: 56px 24px; border: 1px dashed hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); font-size: 14px; }
+.empty { display: grid; gap: 10px; justify-items: center; padding: 56px 24px; border: 1px dashed hsl(var(--border)); border-radius: var(--radius-lg); background: hsl(var(--card)); font-size: 14px; }
 
 .empty-icon {
   display: inline-flex;
@@ -310,7 +310,7 @@ function keyDisplay(k: ApiKey): string {
   width: 48px;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
@@ -344,7 +344,7 @@ function keyDisplay(k: ApiKey): string {
   padding: 10px 12px;
   border: 1px dashed hsl(var(--warning) / 0.4);
   background: hsl(var(--warning) / 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 13px;
   word-break: break-all;

@@ -26,7 +26,7 @@
 .agent-page .card {
   padding: 20px;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .agent-page .card-title {
@@ -48,7 +48,7 @@
   resize: none;
   padding: 12px 16px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
   font: inherit;
   font-size: 14px;
@@ -88,7 +88,7 @@
   display: flex;
   padding: 2px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
 }
 .agent-page .fmt {
@@ -124,7 +124,7 @@
 .agent-page .tpl {
   padding: 4px 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -183,7 +183,7 @@
   gap: 10px;
   padding: 12px 16px;
   border: 1px solid hsl(var(--destructive) / 0.3);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--destructive) / 0.05);
 }
 .agent-page .err-ico {
@@ -227,7 +227,7 @@
   margin-bottom: 16px;
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted) / 0.2);
 }
 .agent-page .dag-label {
@@ -242,7 +242,7 @@
   gap: 4px;
   padding: 4px 8px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--card));
   font-size: 10px;
   font-weight: 500;
@@ -369,7 +369,7 @@
   overflow: auto;
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.4);
   font-size: 11px;
   line-height: 1.6;
@@ -415,7 +415,7 @@
 .agent-page .report :deep(pre) {
   padding: 10px;
   overflow: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.5);
   font-size: 13px;
 }
@@ -460,7 +460,7 @@
   resize: vertical;
   padding: 12px 16px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
   font-family: var(--font-mono, monospace);
   font-size: 12px;
@@ -482,7 +482,7 @@
   gap: 8px;
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .agent-page .version.active {
   border-color: hsl(var(--primary));
@@ -531,7 +531,7 @@
   overflow: auto;
   padding: 8px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.2);
   font-family: var(--font-mono, monospace);
   font-size: 11px;
@@ -562,7 +562,7 @@
 .agent-page .comment-new {
   padding: 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.2);
 }
 .agent-page .cn-head {
@@ -601,7 +601,7 @@
 .agent-page .comment {
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .agent-page .comment.reply {
   margin-left: 0;
@@ -710,7 +710,7 @@
   width: 48px;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
@@ -735,7 +735,7 @@
   gap: 8px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -768,7 +768,7 @@
 .agent-page .cite {
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: border-color 0.15s;
 }
 .agent-page .cite.active {
@@ -820,7 +820,7 @@
   gap: 8px;
   padding: 10px 12px;
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted) / 0.3);
   font-size: 12px;
   color: hsl(var(--muted-foreground));
@@ -839,7 +839,7 @@
 .agent-page .share-link {
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.2);
   margin-bottom: 12px;
 }
@@ -877,7 +877,7 @@
   justify-content: space-between;
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 12px;
 }
 .agent-page .sp-title {
@@ -893,7 +893,7 @@
   gap: 10px;
   padding: 10px;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .agent-page .sf-label {
   display: block;

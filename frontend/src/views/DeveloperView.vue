@@ -536,7 +536,7 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   align-items: center;
   gap: 6px;
 }
-.card { min-width: 0; padding: 20px; border-radius: 16px; margin-bottom: 16px; }
+.card { min-width: 0; padding: 20px; border-radius: var(--radius-lg); margin-bottom: 16px; }
 
 .card-head {
   display: flex;
@@ -575,7 +575,7 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
   padding: 12px;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.4);
 }
 .snippet-label {
@@ -658,7 +658,7 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
 }
 .hint { font-size: 13px; }
 
-.sk { height: 96px; border-radius: 8px; }
+.sk { height: 96px; border-radius: var(--radius-sm); }
 
 .usage-cards {
   display: grid;

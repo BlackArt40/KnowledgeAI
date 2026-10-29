@@ -578,7 +578,7 @@ function kindCls(kind: string): string {
 }
 .sub { font-size: 13px; }
 
-.sk { height: 64px; border-radius: 16px; }
+.sk { height: 64px; border-radius: var(--radius-lg); }
 
 .sk.tall {
   height: 256px;
@@ -588,7 +588,7 @@ function kindCls(kind: string): string {
 }
 .sk.span-sk {
   height: 64px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .cards {
@@ -604,7 +604,7 @@ function kindCls(kind: string): string {
 .stat {
   padding: 20px;
   border: 1px solid hsl(var(--border));
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
 }
 .stat-label {
@@ -625,7 +625,7 @@ function kindCls(kind: string): string {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
 }
-.card { padding: 20px; border-radius: 16px; }
+.card { padding: 20px; border-radius: var(--radius-lg); }
 
 .card-head {
   display: flex;
@@ -721,7 +721,7 @@ function kindCls(kind: string): string {
 }
 .trace {
   border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .trace-row {
   display: flex;
@@ -730,7 +730,7 @@ function kindCls(kind: string): string {
   gap: 12px;
   padding: 10px 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -831,7 +831,7 @@ function kindCls(kind: string): string {
   gap: 8px;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .err-ico {
   flex-shrink: 0;

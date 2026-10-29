@@ -860,7 +860,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   width: 24px;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
 }
@@ -875,7 +875,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   margin-top: 12px;
   padding: 6px 8px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
 }
 .ws-dot {
@@ -914,7 +914,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 8px;
   padding: 6px 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font: inherit;
@@ -945,7 +945,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   color: hsl(var(--muted-foreground) / 0.7);
 }
@@ -978,7 +978,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 6px;
   padding: 4px 8px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   font-size: 11px;
   color: hsl(var(--muted-foreground));
@@ -1079,7 +1079,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 4px;
   padding: 4px 8px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
   font-size: 11px;
   font-weight: 500;
@@ -1089,7 +1089,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   font-size: 11px;
   font-weight: 500;
@@ -1108,7 +1108,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .mini-stat {
   padding: 10px 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
 }
 .chip {
@@ -1133,7 +1133,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .task-card {
   padding: 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
 }
 .task-head {
@@ -1158,7 +1158,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.25);
   opacity: 0;
   transform: translateY(4px);
@@ -1220,7 +1220,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .kb-card {
   padding: 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: linear-gradient(135deg, hsl(var(--accent) / 0.5), hsl(var(--card)), hsl(var(--card)));
 }
 .kb-ava {
@@ -1320,7 +1320,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   width: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   color: #fff;
 }
@@ -1349,7 +1349,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   min-height: 32px;
   align-items: center;
   padding: 6px 12px;
-  border-radius: 16px 4px 16px 16px;
+  border-radius: var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-size: 12px;
@@ -1376,7 +1376,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   flex: 1;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 4px 16px 16px 16px;
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
   background: hsl(var(--background));
   font-size: 12px;
   line-height: 1.7;
@@ -1430,7 +1430,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   margin-top: 6px;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
 }
 .chat-input-text {
@@ -1463,7 +1463,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   flex-direction: column;
   padding: 10px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--muted) / 0.1);
 }
 @media (min-width: 1024px) {
@@ -1497,7 +1497,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .src-item {
   padding: 8px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--background));
 }
 .src-title {
@@ -1525,7 +1525,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 8px;
   padding: 8px 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background));
 }
 .agent-topic {
@@ -1542,7 +1542,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)));
   font-size: 11px;
   font-weight: 500;
@@ -1556,7 +1556,7 @@ watch([scene, runId, inView, reduced], () => playScene());
 .agent-steps {
   padding: 12px;
   border: 1px solid hsl(var(--border) / 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(var(--background) / 0.7);
 }
 .steps-head {
@@ -1577,7 +1577,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.25);
 }
 .step-dot {
@@ -1623,7 +1623,7 @@ watch([scene, runId, inView, reduced], () => playScene());
   gap: 8px;
   padding: 10px 12px;
   border: 1px solid hsl(142 71% 45% / 0.3);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: hsl(142 71% 45% / 0.1);
   opacity: 0;
   transform: translateY(6px);
