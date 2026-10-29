@@ -4,7 +4,7 @@ description: frontend/ 的共享资产单源、样式分层、令牌纪律、i18
 type: reference
 category: standards
 level: L1
-version: 1.1.1
+version: 1.2.0
 authors:
   - frontend
 owner: 前端负责人
@@ -83,9 +83,14 @@ applies_to: ">=1.4.0"
 
 ## 6. 组件样式穿透
 
-- 组件对外接口优先 props 与 CSS 变量契约（例如 `--kc-radius` 这类由子组件声明、父组件赋值的变量），其次才是 `:deep()`。
-- `:deep()` 只允许用于**无法修改的第三方组件**（Element Plus 等），且必须在注释里写明为什么必须穿透。
-- 自研组件之间用 `:deep()` 改内部类名，评审时判为待收敛项：记录到 PR 描述或 issue，留后续迭代处理，不要在一次改动里顺手重写子组件。
+- 组件对外接口优先 props、variant 与 CSS 变量契约，其次才是 `:deep()`。
+- `:deep()` 只允许两类场景，且必须在注释里写明原因：
+  1. **第三方组件**（Element Plus 等）内部结构无法修改；
+  2. **`v-html` 渲染出的内容**——这类 DOM 不在 Vue 组件作用域内，scoped 样式天然覆盖不到。`components/chat/MessageBubble.vue` 的 `.md :deep(h1)` 等规则属此列，是规范允许的形态。
+- **单消费方组件的专属外观直接写进组件自身**，不要由父组件穿透覆盖。先例：`MktHero` 对 `KnowledgeConsole` / `LiveStatus` 的 8 条 `:deep()` 已收敛进两个组件（2026-10-29），组件注释里注明了「唯一消费方是 MktHero」。
+- 若某处 `:deep()` 确实暂时无法收敛，评审时判为待收敛项并记录到 PR 描述；不要在一次改动里顺手重写子组件。
+
+**渲染回归安全网**：改动组件的可见形态时，`frontend/e2e/home.spec.ts` 用 `toHaveCSS` 锁定了首页 hero 演示台与状态条的计算样式（圆角 / 阴影 / 内边距 / 尺寸 / 字号 / 布局）。纯样式重构应在改动前后各跑一次该用例——CI 没有视觉回归测试，它是唯一的「外观没变」证据。
 
 ## 7. 生成文件与手改边界
 
