@@ -171,8 +171,9 @@ deploy/
 | `Dockerfile` | 多阶段构建（deps → build → minimal runner；standalone 剥离清单） |
 | `docker-compose.yml` | 单体编排：app + worker + Redis + PostgreSQL（pgvector） |
 | `docker-compose.split.yml` | 三服务拆分编排（网关 + business + ai + 基础设施） |
-| `AGENTS.md` | AI 编辑会话指南（命令 / 架构 / 约定） |
 | `.env.example` | 环境变量参考（含 demo fallback 文档；与 env-vars.md parity 门禁） |
+
+> 本地 agent 上下文（`AGENTS.md`、`docs/agents/`）由 `.gitignore` 排除，仅存于开发机，不随仓库分发。
 
 ## scripts/ — 运维脚本
 
