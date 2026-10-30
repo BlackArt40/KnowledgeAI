@@ -167,7 +167,7 @@ function hostOf(url: string): string {
 }
 .web {
   flex-shrink: 0;
-  color: #0ea5e9;
+  color: hsl(var(--tint-sky));
 }
 .doc {
   flex-shrink: 0;

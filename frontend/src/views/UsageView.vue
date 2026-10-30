@@ -269,16 +269,16 @@ function pct(m: Meter): number {
   background: hsl(var(--primary) / 0.1);
 }
 .meter-ava.api {
-  color: #10b981;
-  background: rgb(16 185 129 / 0.1);
+  color: hsl(var(--tint-emerald));
+  background: hsl(var(--tint-emerald) / 0.1);
 }
 .meter-ava.storage {
   color: hsl(var(--warning-bright));
   background: hsl(var(--warning-bright) / 0.1);
 }
 .meter-ava.agent {
-  color: #8b5cf6;
-  background: rgb(139 92 246 / 0.1);
+  color: hsl(var(--tint-violet));
+  background: hsl(var(--tint-violet) / 0.1);
 }
 .warn-badge {
   padding: 1px 8px;

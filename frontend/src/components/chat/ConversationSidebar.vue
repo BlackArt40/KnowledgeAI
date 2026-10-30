@@ -345,7 +345,7 @@ function menuRemove(id: string) {
   flex-shrink: 0;
 }
 .item-ico.shared {
-  color: #0ea5e9;
+  color: hsl(var(--tint-sky));
 }
 .item-main {
   min-width: 0;

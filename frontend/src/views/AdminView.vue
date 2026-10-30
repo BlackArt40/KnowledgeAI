@@ -912,13 +912,13 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   font-variant-numeric: tabular-nums;
 }
 .tint.qa { color: hsl(var(--primary)); }
-.tint.api { color: #10b981; }
+.tint.api { color: hsl(var(--tint-emerald)); }
 .tint.storage { color: hsl(var(--warning-bright)); }
-.tint.sky { color: #0ea5e9; }
-.tint.agent { color: #8b5cf6; }
-.tint.pink { color: #ec4899; }
-.tint.orange { color: #f97316; }
-.tint.teal { color: #14b8a6; }
+.tint.sky { color: hsl(var(--tint-sky)); }
+.tint.agent { color: hsl(var(--tint-violet)); }
+.tint.pink { color: hsl(var(--tint-pink)); }
+.tint.orange { color: hsl(var(--tint-orange)); }
+.tint.teal { color: hsl(var(--tint-teal)); }
 .card { padding: 20px; border-radius: var(--radius-lg); }
 
 .card-title {
