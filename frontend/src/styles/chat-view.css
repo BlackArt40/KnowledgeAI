@@ -156,8 +156,8 @@
   }
 }
 .chat-page .share-on {
-  border-color: rgb(14 165 233 / 0.4);
-  color: #0284c7;
+  border-color: hsl(var(--tint-sky) / 0.4);
+  color: hsl(var(--tint-sky-text));
 }
 .chat-page .msgs {
   flex: 1;

@@ -9,6 +9,7 @@ import { Connection } from "@element-plus/icons-vue";
 import { fetchGraph, type GraphEdge, type GraphNode } from "@/api/kb";
 import { ApiError } from "@/api/client";
 import { computeGraphLayout, type LayoutNode } from "@shared/kg/layout";
+import { ENTITY_COLORS, TINTS } from "@/lib/palette";
 
 const { t } = useTranslation();
 const route = useRoute();
@@ -52,15 +53,11 @@ const layout = computed(() => {
   };
 });
 
-const TYPE_COLORS: Record<string, string> = {
-  person: "#6366f1",
-  org: "#0ea5e9",
-  concept: "#10b981",
-  event: "#f59e0b",
-};
+const TYPE_COLORS: Record<string, string> = ENTITY_COLORS;
 
 function nodeColor(type: string): string {
-  return TYPE_COLORS[type] ?? "hsl(var(--primary))";
+  // fill 属性不解析 var()，兜底同样取数据侧 hex
+  return TYPE_COLORS[type] ?? TINTS.indigo;
 }
 
 // 选中节点的邻居 id 集合（1-hop），用于高亮

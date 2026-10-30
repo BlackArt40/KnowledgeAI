@@ -9,6 +9,7 @@ import { Plus } from "@element-plus/icons-vue";
 import { createKb, deleteKb, fetchKbs, type KbListItem } from "@/api/kb";
 import { ApiError } from "@/api/client";
 import { kbAvatarBackground } from "@/lib/kb-color";
+import { KB_COLORS } from "@/lib/palette";
 import { formatRelative } from "@shared/format";
 
 const { t } = useTranslation();
@@ -20,9 +21,9 @@ const loading = ref(true);
 const createOpen = ref(false);
 const creating = ref(false);
 const createError = ref<string | null>(null);
-const form = ref({ name: "", desc: "", color: "#6366f1", initial: "" });
+const form = ref({ name: "", desc: "", color: KB_COLORS[0] as string, initial: "" });
 
-const COLORS = ["#6366f1", "#10b981", "#0ea5e9", "#8b5cf6", "#d946ef", "#f43f5e"];
+const COLORS = KB_COLORS;
 
 async function refresh() {
   try {

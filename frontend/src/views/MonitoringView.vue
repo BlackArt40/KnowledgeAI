@@ -803,9 +803,9 @@ function kindCls(kind: string): string {
   text-transform: uppercase;
 }
 .k-api { background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
-.k-rag { background: rgb(14 165 233 / 0.1); color: #0ea5e9; }
-.k-llm { background: rgb(139 92 246 / 0.1); color: #8b5cf6; }
-.k-doc { background: rgb(16 185 129 / 0.1); color: #10b981; }
+.k-rag { background: hsl(var(--tint-sky) / 0.1); color: hsl(var(--tint-sky)); }
+.k-llm { background: hsl(var(--tint-violet) / 0.1); color: hsl(var(--tint-violet)); }
+.k-doc { background: hsl(var(--tint-emerald) / 0.1); color: hsl(var(--tint-emerald)); }
 .k-agent { background: hsl(var(--warning-bright) / 0.1); color: hsl(var(--warning-bright)); }
 .k-other { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 .span-name {
