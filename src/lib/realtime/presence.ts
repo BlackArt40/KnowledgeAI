@@ -1,17 +1,19 @@
 // ---------------------------------------------------------------------------
 // Presence (P4-1): team member online/offline state.
 //
-// A user is ONLINE while their SSE presence stream is open; the stream route
-// calls heartbeat() on connect and markOffline() on disconnect. Entries whose
-// heartbeat is older than PRESENCE_TTL_MS are lazily dropped (proxy drop-outs
-// without an abort signal). Every change broadcasts the full online list on
-// the `presence` channel.
+// A user is ONLINE while at least one of their SSE presence streams is open.
+// Multiple tabs share one entry (connection refcount), so closing one tab does
+// not mark the user offline. The route refreshes lastSeen on every heartbeat;
+// entries without a heartbeat for PRESENCE_TTL_MS are dropped (half-open
+// connections where the abort signal never arrives). Every actual change
+// broadcasts the full online list on the `presence` channel.
 // ---------------------------------------------------------------------------
 
 import { publish } from "./bus";
+import { createConnectionRegistry } from "./connections";
 
 export const PRESENCE_CHANNEL = "presence";
-const PRESENCE_TTL_MS = 60_000;
+export const PRESENCE_TTL_MS = 60_000;
 
 export interface PresenceUser {
   userId: string;
@@ -20,38 +22,45 @@ export interface PresenceUser {
   lastSeen: number;
 }
 
-type Store = Map<string, PresenceUser>;
-const g = globalThis as unknown as { __KAI_PRESENCE_STORE__?: Store };
-
-function store(): Store {
-  if (!g.__KAI_PRESENCE_STORE__) g.__KAI_PRESENCE_STORE__ = new Map();
-  return g.__KAI_PRESENCE_STORE__;
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
 }
 
 function publishPresence(): void {
   publish(PRESENCE_CHANNEL, { type: "presence", online: getOnlineUsers() });
 }
 
-/** Mark a user online (SSE connection established). Broadcasts the new list. */
-export function heartbeat(userId: string, name: string, email: string): void {
-  store().set(userId, { userId, name, email, lastSeen: Date.now() });
-  publishPresence();
+const registry = createConnectionRegistry<TeamMember>("presence", {
+  ttlMs: PRESENCE_TTL_MS,
+  sweepMs: 20_000,
+  onChange: publishPresence,
+});
+
+/** Mark a presence stream as open. Returns the matching disconnect handler. */
+export function connectPresence(userId: string, name: string, email: string): () => void {
+  return registry.connect("team", { id: userId, name, email });
 }
 
-/** Mark a user offline (SSE connection closed). */
-export function markOffline(userId: string): void {
-  store().delete(userId);
-  publishPresence();
+/** Explicit teardown when the route did not keep the connect handler. */
+export function disconnectPresence(userId: string): void {
+  registry.disconnect("team", userId);
 }
 
-/** Currently online users (heartbeats within the TTL, lazily pruned). */
+/** Refresh lastSeen (called from the route heartbeat while the stream is open). */
+export function touchPresence(userId: string): void {
+  registry.touch("team", userId);
+}
+
+/** Currently online users (stale entries pruned by TTL). */
 export function getOnlineUsers(): PresenceUser[] {
-  const s = store();
-  const now = Date.now();
-  for (const [id, u] of s) {
-    if (now - u.lastSeen > PRESENCE_TTL_MS) s.delete(id);
-  }
-  return [...s.values()].sort((a, b) => a.name.localeCompare(b.name, "zh"));
+  return registry.list("team").map(({ member, lastSeen }) => ({
+    userId: member.id,
+    name: member.name,
+    email: member.email,
+    lastSeen,
+  }));
 }
 
 /** Whether a given user id is currently online. */

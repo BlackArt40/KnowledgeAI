@@ -82,11 +82,28 @@ test("KB 详情：重建索引（行内按钮 → 排队 → 就绪）", async (
   await expect(page.locator(".doc-row").first().locator(".err")).toHaveCount(0);
 });
 
-test("team：统计卡 + 成员表渲染", async ({ page }) => {
+test("team：统计卡 + 成员表 + 权限矩阵渲染", async ({ page }) => {
   await login(page);
   await page.goto("/team");
   await expect(page.locator(".stat .v").first()).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".member").first()).toBeVisible();
+  // 权限矩阵由后端 matrix 驱动，管理者看到可编辑的共享权限下拉
+  await expect(page.getByText("权限矩阵")).toBeVisible();
+  await expect(page.locator(".kb-row .el-select").first()).toBeVisible();
+  // 团队活动流：合并审计渲染 + 分类筛选
+  await expect(page.getByRole("heading", { name: "团队活动" })).toBeVisible();
+  await expect(page.locator(".activity-row").first()).toBeVisible({ timeout: 15_000 });
+  const permissionChip = page.locator(".activity-chip").filter({ hasText: "权限" });
+  await permissionChip.click();
+  await expect(permissionChip).toHaveClass(/active/);
+  await expect(page.locator(".activity-row .activity-badge").first()).toHaveText("权限");
+  // KB 所有者可打开成员级授权弹窗（继承 / Editor / Viewer）
+  const roleBtn = page.getByRole("button", { name: "成员权限" }).first();
+  await expect(roleBtn).toBeVisible();
+  await roleBtn.click();
+  const dialog = page.locator(".el-dialog").filter({ hasText: "设置知识库共享访问权限" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".member").first()).toBeVisible();
 });
 
 test("api-keys：创建（一次性明文）→ 撤销", async ({ page }) => {

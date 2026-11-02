@@ -21,6 +21,53 @@ export async function fetchSharedDoc(token: string, password?: string): Promise<
   return api.get<SharedDoc>(`/api/share/doc/${encodeURIComponent(token)}`, headers ? { headers } : {});
 }
 
+/** 知识库公开分享（共享与分发）：整库只读，文档级 private 不出现。 */
+export interface SharedKbDoc {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  status: string;
+  chunks: number;
+  uploadedAt: number;
+  snippet: string;
+}
+
+export interface SharedKb {
+  kb: {
+    id: string;
+    name: string;
+    desc: string;
+    color: string;
+    initial: string;
+  };
+  docs: SharedKbDoc[];
+  /** 仅 ?doc=<id> 请求返回：单篇文档正文预览（前 3000 字符）。 */
+  doc?: {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    uploadedAt: number;
+    chunks: number;
+    content: string;
+  };
+  expiresAt: number | null;
+  views: number;
+  maxViews: number | null;
+}
+
+/** 公开读取共享知识库；previewDocId 只取单篇正文（不计访问次数）。 */
+export async function fetchSharedKb(
+  token: string,
+  password?: string,
+  previewDocId?: string
+): Promise<SharedKb> {
+  const qs = previewDocId ? `?doc=${encodeURIComponent(previewDocId)}` : "";
+  const headers = password !== undefined ? { "x-share-password": password } : undefined;
+  return api.get<SharedKb>(`/api/share/kb/${encodeURIComponent(token)}${qs}`, headers ? { headers } : {});
+}
+
 export interface SharedReport {
   topic: string;
   report: string;

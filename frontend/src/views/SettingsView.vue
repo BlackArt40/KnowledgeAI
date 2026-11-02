@@ -291,6 +291,7 @@ const NOTIF_ITEMS = computed(() => [
   { k: "kbReady" as const, label: t("page.settings.s60"), desc: t("page.settings.s61") },
   { k: "agentDone" as const, label: t("page.settings.s62"), desc: t("page.settings.s63") },
   { k: "securityAlert" as const, label: t("page.settings.s64"), desc: t("page.settings.s65") },
+  { k: "teamActivity" as const, label: t("page.settings.s15"), desc: t("page.settings.s18") },
 ]);
 
 // ── 删除账号 ─────────────────────────────────────────────────────────────

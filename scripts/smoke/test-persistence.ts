@@ -14,10 +14,11 @@ process.env.DATABASE_URL = DB_URL;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const TEST_EMAIL = "test_persist@knowledgeai.dev";
 const TEST_KB = "持久化测试KB";
+const TEST_DOC = "持久化权限文档";
 
 async function writeMode() {
   const { createUser, listUsers } = await import("../../src/lib/auth/store");
-  const { createKb, listAllKbs } = await import("../../src/lib/kb/store");
+  const { addDocument, createKb, listAllKbs, setDocumentAccess } = await import("../../src/lib/kb/store");
   const { inviteMember, updateTeam } = await import("../../src/lib/team/store");
   const { updateConfig } = await import("../../src/lib/admin/store");
 
@@ -29,6 +30,10 @@ async function writeMode() {
 
   const kb = createKb({ name: TEST_KB, desc: "e2e persistence" }, userId);
   const kbId = kb.id;
+
+  // P4-2 文档级权限必须落库：此前 access 只在内存，重启后静默回退为继承。
+  const doc = addDocument({ kbId, name: TEST_DOC, size: 12, skipEnqueue: true });
+  setDocumentAccess(doc.id, "private");
 
   const m = inviteMember({ name: "测试", email: TEST_EMAIL, role: "editor" }, "测试者");
   updateTeam({ plan: "企业版" });
@@ -49,11 +54,13 @@ async function writeMode() {
   });
   const dbTeam = await prisma.team.findUnique({ where: { id: "team_default" } });
   const dbCfg = await prisma.systemConfig.findUnique({ where: { id: 1 } });
+  const dbDoc = await prisma.kbDocument.findUnique({ where: { id: doc.id } });
   await prisma.$disconnect();
 
   const checks: [string, boolean][] = [
     ["user in DB", !!dbUser],
     ["kb in DB", !!dbKb && dbKb.name === TEST_KB],
+    ["document access in DB", dbDoc?.access === "private"],
     ["team member in DB", !!dbMember && dbMember.user.email === TEST_EMAIL],
     ["audit entry in DB", !!dbAudit && dbAudit.actor === "测试者"],
     ["team.plan persisted", !!dbTeam && dbTeam.plan === "企业版"],
@@ -88,10 +95,15 @@ async function verifyMode() {
   const members = listMembers();
   const audit = listAudit();
   const cfg = getConfig();
+  const { getDocument } = await import("../../src/lib/kb/store");
+  const prisma = new PrismaClient();
+  const dbDoc = await prisma.kbDocument.findFirst({ where: { name: TEST_DOC } });
+  await prisma.$disconnect();
 
   const checks: [string, boolean][] = [
     ["test user hydrated", users.some((u: any) => u.email === TEST_EMAIL)],
     ["test KB hydrated", kbs.some((k: any) => k.name === TEST_KB)],
+    ["document access hydrated", !!dbDoc && getDocument(dbDoc.id)?.access === "private"],
     ["test member hydrated", members.some((m: any) => m.email === TEST_EMAIL)],
     ["audit hydrated", audit.some((a: any) => a.target === "测试" && a.actor === "测试者")],
     ["team.plan hydrated", getTeam().plan === "企业版"],

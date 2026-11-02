@@ -458,7 +458,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 ### 前端替换（Vue 3 绞杀重写，2026-10-16 起）
 
-上表「可选：Vue3 重写」**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 28 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（27 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
+上表「可选：Vue3 重写」**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 28 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（28 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
 
 ---
 

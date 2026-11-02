@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
-import { inviteMember } from "@/lib/team/store";
+import { findMemberByEmail, inviteMember } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
-import { can } from "@/lib/team/rbac";
+import { can, isRole, outranks } from "@/lib/team/rbac";
+import { notifyMember, roleLabel } from "@/lib/team/notify";
 import type { Role } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // POST /api/team/invite  { name?, email, role }  (owner/admin only)
 export async function POST(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  if (!can(u.role as never, "member.invite")) {
+  if (!can(u.role, "member.invite")) {
     return NextResponse.json({ error: "权限不足：仅 Owner/Admin 可邀请成员" }, { status: 403 });
   }
 
@@ -18,17 +21,34 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
-  if (!body.email?.trim()) {
-    return NextResponse.json({ error: "邮箱不能为空" }, { status: 400 });
+  const email = body.email?.trim() ?? "";
+  if (!email) return NextResponse.json({ error: "邮箱不能为空" }, { status: 400 });
+  if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "邮箱格式不正确" }, { status: 400 });
+
+  const role: Role = body.role ?? "viewer";
+  if (!isRole(role)) return NextResponse.json({ error: "角色不正确" }, { status: 400 });
+  // A manager can only hand out roles below their own rank. Owner is
+  // deliberately excluded: the team stays single-owner until an explicit
+  // ownership-transfer flow exists, otherwise the extra owner is unremovable.
+  if (role === "owner") {
+    return NextResponse.json({ error: "团队只能有一个 Owner，暂不支持邀请新 Owner" }, { status: 403 });
   }
-  // Only owners may invite at owner level; managers cannot grant owner.
-  if (body.role === "owner" && !can(u.role as never, "team.settings")) {
-    return NextResponse.json({ error: "权限不足：仅 Owner 可邀请 Owner" }, { status: 403 });
+  if (!outranks(u.role, role)) {
+    return NextResponse.json({ error: "权限不足：不能邀请与自己相同或更高角色的成员" }, { status: 403 });
+  }
+  if (findMemberByEmail(email)) {
+    return NextResponse.json({ error: "该邮箱已在团队中" }, { status: 409 });
   }
 
-  const member = inviteMember(
-    { name: body.name ?? "", email: body.email.trim(), role: body.role ?? "viewer" },
-    u.name
+  const member = inviteMember({ name: body.name ?? "", email, role }, u.name);
+  notifyMember(
+    email,
+    {
+      title: "你已被邀请加入团队",
+      body: `${u.name} 邀请你以 ${roleLabel(role)} 角色加入团队`,
+      link: "/team",
+    },
+    { exceptUserId: u.id }
   );
   return NextResponse.json({ member }, { status: 201 });
 }

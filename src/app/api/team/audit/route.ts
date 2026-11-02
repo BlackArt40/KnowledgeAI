@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  if (!can(u.role as never, "member.manage")) {
+  if (!can(u.role, "member.manage")) {
     return NextResponse.json({ error: "权限不足" }, { status: 403 });
   }
   // P2: audit list is now bounded like /api/admin/audit (previously unbounded).

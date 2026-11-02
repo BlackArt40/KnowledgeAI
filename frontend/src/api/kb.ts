@@ -54,6 +54,8 @@ export interface KbDetail {
   kb: Kb;
   docs: KbDoc[];
   stats: KbStats;
+  /** 共享与分发：仅编辑者可见分享入口（旧服务端不返回时按可编辑处理）。 */
+  permissions?: { canEdit?: boolean };
 }
 
 export async function fetchKbDetail(id: string): Promise<KbDetail> {
@@ -105,6 +107,79 @@ export function patchDoc(kbId: string, docId: string, body: Record<string, unkno
     method: "PATCH",
     body,
   });
+}
+
+// ── 共享与分发：知识库 / 文档的公开分享链接 ────────────────────────────
+// 契约：GET/POST/DELETE /api/knowledge-base/[id]/share（库级）
+//       GET/POST/DELETE /api/knowledge-base/[id]/documents/[docId]/share（文档级）
+// 响应里不含 passwordHash（服务端已脱敏），expiresAt/maxViews 缺省 = 永久/不限。
+export interface ShareLink {
+  token: string;
+  expiresAt: number | null;
+  maxViews: number | null;
+  views: number;
+}
+
+export interface ShareInput {
+  expiresAt?: number | null;
+  password?: string | null;
+  maxViews?: number | null;
+}
+
+interface ShareLinkResponse {
+  share?: (Omit<ShareLink, "expiresAt" | "maxViews"> & {
+    expiresAt?: number | null;
+    maxViews?: number | null;
+  }) | null;
+}
+
+function normalizeShare(raw: ShareLinkResponse["share"]): ShareLink | null {
+  if (!raw?.token) return null;
+  return {
+    token: raw.token,
+    expiresAt: raw.expiresAt ?? null,
+    maxViews: raw.maxViews ?? null,
+    views: raw.views ?? 0,
+  };
+}
+
+const sharePath = (kbId: string, docId?: string) =>
+  `/api/knowledge-base/${encodeURIComponent(kbId)}${
+    docId ? `/documents/${encodeURIComponent(docId)}` : ""
+  }/share`;
+
+/** 库级分享链接（无链接返回 null）。 */
+export async function fetchKbShare(kbId: string): Promise<ShareLink | null> {
+  const d = await request<ShareLinkResponse>(sharePath(kbId));
+  return normalizeShare(d?.share);
+}
+
+export async function createKbShare(kbId: string, body: ShareInput): Promise<ShareLink | null> {
+  const d = await request<ShareLinkResponse>(sharePath(kbId), { method: "POST", body });
+  return normalizeShare(d?.share);
+}
+
+export function revokeKbShare(kbId: string): Promise<unknown> {
+  return request(sharePath(kbId), { method: "DELETE" });
+}
+
+/** 文档级分享链接（无链接返回 null）。 */
+export async function fetchDocShare(kbId: string, docId: string): Promise<ShareLink | null> {
+  const d = await request<ShareLinkResponse>(sharePath(kbId, docId));
+  return normalizeShare(d?.share);
+}
+
+export async function createDocShare(
+  kbId: string,
+  docId: string,
+  body: ShareInput
+): Promise<ShareLink | null> {
+  const d = await request<ShareLinkResponse>(sharePath(kbId, docId), { method: "POST", body });
+  return normalizeShare(d?.share);
+}
+
+export function revokeDocShare(kbId: string, docId: string): Promise<unknown> {
+  return request(sharePath(kbId, docId), { method: "DELETE" });
 }
 
 export interface GraphNode {

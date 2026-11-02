@@ -54,7 +54,12 @@ export async function GET(req: Request, { params }: Params) {
     chunks: docs.reduce((s, d) => s + d.chunks, 0),
     size: docs.reduce((s, d) => s + Math.max(0, d.size), 0),
   };
-  return NextResponse.json({ kb: r.kb, docs, stats });
+  // 共享与分发：canEdit 决定前端是否展示分享入口（编辑权限才能建链接）。
+  const canEdit = canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId, {
+    callerWorkspaceId: r.u.workspaceId,
+    kbWorkspaceId: r.kb.workspaceId,
+  });
+  return NextResponse.json({ kb: r.kb, docs, stats, permissions: { canEdit } });
 }
 
 // PATCH /api/knowledge-base/[id] - update settings (owner or edit-level share)

@@ -18,7 +18,7 @@ const user = {
   id: "usr_1",
   email: "a@b.c",
   name: "A",
-  role: "owner",
+  role: "owner" as const,
   workspaceId: "ws_default",
 };
 
@@ -53,7 +53,7 @@ describe("bot bindings", () => {
   it("list is workspace-scoped; update + delete work", async () => {
     await createBotBinding({ user, name: "A", platform: "slack", kbId: "kb_1" });
     const other = {
-      id: "usr_2", email: "x@y.z", name: "X", role: "editor", workspaceId: "ws_other",
+      id: "usr_2", email: "x@y.z", name: "X", role: "editor" as const, workspaceId: "ws_other",
     };
     const b2 = (await createBotBinding({ user: other, name: "B", platform: "test", kbId: "kb_9" }))!.binding;
     expect(listBotBindings("ws_default").length).toBe(1);

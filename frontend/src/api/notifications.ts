@@ -21,6 +21,7 @@ export interface NotifPrefs {
   kbReady: boolean;
   agentDone: boolean;
   securityAlert: boolean;
+  teamActivity: boolean;
 }
 
 export function fetchNotifications(limit = 10): Promise<NotificationList> {

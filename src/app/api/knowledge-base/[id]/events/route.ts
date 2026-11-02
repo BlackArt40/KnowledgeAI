@@ -2,6 +2,7 @@ import { getKb } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { subscribe } from "@/lib/realtime/bus";
+import { getKbViewers, joinKbViewers, touchKbViewers } from "@/lib/realtime/viewers";
 import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,11 @@ const HEARTBEAT_MS = 30_000;
 
 // GET /api/knowledge-base/[id]/events - realtime KB change stream (P4-1).
 // SSE events: { type: "settings" | "docs" | "doc_status" | "doc_deleted" |
-//               "doc_access" | "deleted" } (+ the initial { type: "init" }).
+//               "doc_access" | "deleted" | "viewers" } (+ the initial
+//               { type: "init", viewers }).
 // Anyone with KB view permission sees live changes made by other members.
+// "viewers" carries the members currently on this KB page, so the page can
+// show who else is looking at the same data.
 // The proxy skips long-lived `/events` streams for rate limiting, so the
 // per-KB tier is enforced here (same pattern as /api/chat).
 // 2026-10-23: renamed from /api/kb/[id]/events so the whole KB surface lives
@@ -31,14 +35,14 @@ export async function GET(req: Request, { params }: Params) {
   if (!rl.allowed) return rateLimitResponse(rl, "kb");
 
   const enc = new TextEncoder();
+  let closeStream = () => {};
+
   const stream = new ReadableStream({
     start(controller) {
       let closed = false;
-      const closeStream = () => {
-        if (closed) return;
-        closed = true;
-        try { controller.close(); } catch { /* already closed */ }
-      };
+      let leaveViewers = () => {};
+      let ping: ReturnType<typeof setInterval> | null = null;
+
       const send = (obj: unknown): boolean => {
         if (req.signal.aborted || closed) return false;
         try { controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`)); return true; }
@@ -49,19 +53,33 @@ export async function GET(req: Request, { params }: Params) {
       const unsubscribe = subscribe(`kb:${id}`, (event) => {
         send(event);
       });
-      send({ type: "init", kbId: id });
 
-      // Keep the connection alive (proxies drop idle streams).
-      const ping = setInterval(() => {
+      closeStream = () => {
         if (closed) return;
+        closed = true;
+        unsubscribe();
+        leaveViewers();
+        if (ping) clearInterval(ping);
+        try { controller.close(); } catch { /* already closed */ }
+      };
+
+      send({ type: "init", kbId: id, viewers: getKbViewers(id) });
+      // Register after the init frame so the new stream starts from a complete
+      // snapshot; join publishes the updated viewer list to everyone.
+      leaveViewers = joinKbViewers(id, u.id, u.name);
+
+      // Keep the connection alive (proxies drop idle streams) and refresh the
+      // viewer TTL so a long-lived tab is not treated as a dead connection.
+      ping = setInterval(() => {
+        if (closed) return;
+        touchKbViewers(id, u.id);
         try { controller.enqueue(enc.encode(": ping\n\n")); } catch { closeStream(); }
       }, HEARTBEAT_MS);
 
-      req.signal.addEventListener("abort", () => {
-        unsubscribe();
-        clearInterval(ping);
-        closeStream();
-      });
+      req.signal.addEventListener("abort", closeStream);
+    },
+    cancel() {
+      closeStream();
     },
   });
 

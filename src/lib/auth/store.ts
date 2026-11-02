@@ -292,6 +292,18 @@ export async function updateUser(
   return user;
 }
 
+/** Team role management: mirror a member's team role onto their account.
+ *  The JWT carries the role issued at login, so this only takes effect for
+ *  requests after the next token check (the guard resolves the live account,
+ *  see `getRequestUser`). Returns false when the user is unknown / unchanged. */
+export function setUserRole(email: string, role: Role): boolean {
+  const user = findUserByEmail(email);
+  if (!user || user.role === role) return false;
+  user.role = role;
+  void persistUser(user);
+  return true;
+}
+
 /** Admin: set a user's status (active/banned). */
 export function setUserStatus(userId: string, status: "active" | "banned"): User | null {
   seed();

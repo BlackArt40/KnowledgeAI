@@ -33,6 +33,7 @@ import {
 } from "@/api/notifications";
 import { formatRelative } from "@shared/format";
 import { usePresence } from "@/lib/presence";
+import { subscribeEvents, type EventStreamHandle } from "@/lib/event-stream";
 
 type Role = "owner" | "admin" | "editor" | "viewer";
 
@@ -126,7 +127,7 @@ const newName = ref("");
 const { online: onlineUsers, start: presenceStart, stop: presenceStop } = usePresence();
 const onlineCount = computed(() => onlineUsers.value.length);
 const onlineNames = computed(() =>
-  onlineUsers.value.map((u) => u.name || u.email || u.id).join(", ")
+  onlineUsers.value.map((u) => u.name || u.email || u.userId).join(", ")
 );
 
 const title = computed(() => {
@@ -160,6 +161,59 @@ function routeGuard(role: string | undefined, path: string): boolean {
 }
 
 let notifTimer: ReturnType<typeof setInterval> | null = null;
+let notifStream: EventStreamHandle | null = null;
+let notifStreamOpen = false;
+
+function startNotifPolling() {
+  if (notifTimer) return;
+  notifTimer = setInterval(() => void refreshNotifs(), 30_000);
+}
+
+function stopNotifPolling() {
+  if (!notifTimer) return;
+  clearInterval(notifTimer);
+  notifTimer = null;
+}
+
+/** SSE 帧 → 铃铛状态（init 快照 / 新通知 / 未读数变化）。 */
+function applyNotifEvent(event: Record<string, unknown>) {
+  if (event.type === "init") {
+    notifs.value = Array.isArray(event.notifications)
+      ? (event.notifications as Notification[]).slice(0, 10)
+      : [];
+    unread.value = Number(event.unread ?? 0);
+    return;
+  }
+  if (event.type === "notification") {
+    const n = event.notification as Notification | undefined;
+    if (n?.id && !notifs.value.some((x) => x.id === n.id)) {
+      notifs.value = [n, ...notifs.value].slice(0, 10);
+    }
+    unread.value = Number(event.unread ?? unread.value + 1);
+    return;
+  }
+  if (event.type === "unread") {
+    unread.value = Number(event.unread ?? unread.value);
+  }
+}
+
+function startNotifStream() {
+  if (notifStream) return;
+  // 长连接优先：连上即停轮询；断线由 subscribeEvents 自动重连，期间恢复
+  // 30s 轮询兜底（网关/代理吞流时仍有未读更新）。
+  notifStream = subscribeEvents("/api/notifications/events", {
+    onOpen: () => {
+      notifStreamOpen = true;
+      stopNotifPolling();
+      void refreshNotifs();
+    },
+    onError: () => {
+      notifStreamOpen = false;
+      startNotifPolling();
+    },
+    onEvent: applyNotifEvent,
+  });
+}
 
 onMounted(async () => {
   // 仅 401 跳登录；网络失败保留壳（离线策略）
@@ -178,18 +232,22 @@ onMounted(async () => {
       };
       if (!routeGuard(user.value?.role, route.path)) await router.replace("/dashboard");
       presenceStart();
+      startNotifStream();
     }
   } catch {
     /* offline: keep shell */
   }
   void refreshNotifs();
-  notifTimer = setInterval(() => void refreshNotifs(), 30_000);
+  if (!notifStreamOpen) startNotifPolling();
   // 工作区列表 + 当前套餐（侧栏徽标 / 升级引导的唯一数据源）
   void refreshWorkspaces();
 });
 
 onBeforeUnmount(() => {
-  if (notifTimer) clearInterval(notifTimer);
+  stopNotifPolling();
+  notifStream?.stop();
+  notifStream = null;
+  notifStreamOpen = false;
   presenceStop();
 });
 
@@ -290,7 +348,11 @@ onMounted(() => window.addEventListener("keydown", onHotkey));
 onBeforeUnmount(() => window.removeEventListener("keydown", onHotkey));
 
 const NOTIF_ICON: Record<string, object> = {
-  kbReady: Collection, agentDone: MagicStick, securityAlert: BellFilled, emailDigest: BellFilled,
+  kbReady: Collection,
+  agentDone: MagicStick,
+  securityAlert: BellFilled,
+  emailDigest: BellFilled,
+  teamActivity: User,
 };
 
 function canSee(item: NavItem): boolean {
@@ -527,19 +589,43 @@ const visibleGroups = computed(() =>
             </el-icon>
           </button>
 
-          <el-tooltip
+          <el-popover
             v-if="onlineCount > 0"
-            :content="onlineNames"
-            placement="bottom"
+            placement="bottom-end"
+            :width="248"
+            trigger="click"
           >
-            <span
-              class="presence-chip"
-              :aria-label="t('page.app-shell.s35', { count: onlineCount })"
-            >
-              <span class="presence-dot" />
-              {{ onlineCount }}
-            </span>
-          </el-tooltip>
+            <template #reference>
+              <button
+                type="button"
+                class="presence-chip"
+                :aria-label="t('page.app-shell.s35', { count: onlineCount })"
+                :title="onlineNames"
+              >
+                <span class="presence-dot" />
+                {{ onlineCount }}
+              </button>
+            </template>
+            <p class="presence-title">
+              {{ t("page.app-shell.s36") }}
+            </p>
+            <ul class="presence-list">
+              <li
+                v-for="u in onlineUsers"
+                :key="u.userId"
+                class="presence-row"
+              >
+                <span class="presence-avatar">{{ (u.name || u.email || "?").charAt(0) }}</span>
+                <span class="presence-name">
+                  {{ u.name || u.email }}
+                  <span
+                    v-if="u.name && u.email"
+                    class="presence-mail"
+                  >{{ u.email }}</span>
+                </span>
+              </li>
+            </ul>
+          </el-popover>
 
           <el-popover
             v-model:visible="notifOpen"
@@ -593,7 +679,7 @@ const visibleGroups = computed(() =>
                 >
                   <span
                     class="notif-icon"
-                    :class="{ alert: n.type === 'securityAlert' }"
+                    :class="{ alert: n.type === 'securityAlert', team: n.type === 'teamActivity' }"
                   >
                     <el-icon :size="13"><component :is="NOTIF_ICON[n.type] ?? BellFilled" /></el-icon>
                   </span>
@@ -1050,18 +1136,72 @@ const visibleGroups = computed(() =>
   align-items: center;
   gap: 5px;
   padding: 0 9px;
+  border: 0;
   border-radius: var(--radius-full);
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  cursor: default;
+  cursor: pointer;
+}
+.presence-chip:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 .presence-dot {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
   background: hsl(var(--success));
+}
+/* 在线成员面板（点击人数展开） */
+.presence-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+.presence-list {
+  display: grid;
+  gap: 2px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.presence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: var(--radius-sm);
+}
+.presence-avatar {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-size: 12px;
+  font-weight: 600;
+}
+.presence-name {
+  display: grid;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.presence-mail {
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* 窄屏顶栏留给搜索/通知/主题/用户菜单，在线人数让位（不影响在线状态本身） */
 @media (max-width: 639px) {
@@ -1157,6 +1297,10 @@ const visibleGroups = computed(() =>
 .notif-icon.alert {
   background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
+}
+.notif-icon.team {
+  background: hsl(var(--tint-teal) / 0.12);
+  color: hsl(var(--tint-teal));
 }
 .notif-body {
   min-width: 0;

@@ -10,7 +10,7 @@
 | 知识库 | 文档上传 / 解析 / 切片 / 向量化 / 管理 | 多格式提取 + 处理管线 |
 | 智能问答 | RAG 检索 + 流式生成 + 引用溯源 + 联网搜索开关 | 异步 RAG + LLM Provider + SSE + 外部 Web 源 |
 | Agent 调研 | 多 Agent 编排（规划→检索→分析→撰写） | SSE 流式 + Markdown 报告 |
-| 团队协作 | RBAC 权限 / 邀请 / 审计日志 / 共享 KB / 实时协作（在线状态 + KB 实时变更 + 共享会话）/ 文档级权限 + 临时分享链接 / 多租户 Workspace 隔离与切换 | 4 角色 × 10 能力 + SSE 实时推送 + 继承链权限 + 租户隔离 |
+| 团队协作 | RBAC 权限矩阵 / 邀请与成员管理（同级不可互管）/ 共享 KB 与成员授权可编辑 / 审计日志 / 实时协作（在线成员、KB 共览者、变更与共享会话实时推送）/ 文档级权限 + 临时分享链接 / 多租户 Workspace 隔离与切换 | 4 角色 × 10 能力（继承式声明）+ SSE 实时推送（连接引用计数 + 心跳续期）+ 继承链权限 + 角色变更即时生效 + 租户隔离 |
 | 移动端 & PWA | 响应式布局（375px 可用）/ 抽屉导航 / 相机拍照上传 / 可安装 + 离线访问已加载内容 | Sheet 抽屉 + 手写 Service Worker（零新依赖） |
 | 全局搜索 | Cmd+K 命令面板 / 覆盖知识库·文档·对话·Agent 任务·设置 / 分类 Tab + 高亮 / 最近搜索 / 快捷操作 / 深链直达（会话·任务·设置区块·新建 KB） | 单端点内存检索（<100ms）+ 键盘导航 + localStorage 历史 |
 | 对话体验 | Markdown 渲染（代码高亮 + 一键复制 / 表格 / 流程图）/ 点赞点踩 + 备注（负反馈降权检索闭环）/ 重新生成（不同温度·检索）/ 相关知识库推荐 / 会话归档与标签分组 | markdown-it 渲染（html:false 净化 + `[n]` 引用 chip 注入）+ 反馈持久化 + 2-gram 推荐打分（零新依赖） |
@@ -27,7 +27,7 @@
 | AI 模型 | 导入外部 LLM / 连接测试 / 一键切换 | OpenAI·DeepSeek·Moonshot·硅基流动·Ollama |
 | 订阅计费 | 套餐 / 订单 / 账单 / 用量计量 / 收银台 | 状态机 + 支付模拟 |
 | 系统管理 | 用户管理 / 系统统计 / KB 监控 / 配置 | Owner/Admin 后台（RBAC 守卫） |
-| 通知中心 | 4 通道通知 / 偏好持久化 / 铃铛下拉 | 登录/KB/Agent 事件触发 |
+| 通知中心 | 5 通道通知（登录 / KB / Agent / 安全 / 团队动态）/ 偏好持久化 / 铃铛下拉 / SSE 实时到达 + 轮询兜底 | 登录/KB/Agent/成员与权限事件触发 |
 | 安全隐私 | 2FA / 会话管理 / 登录历史 / GDPR 导出 / 加密存储 / 审计链 | 合规数据权利 + AES-256-GCM + 哈希链审计 |
 
 ## 🛠 技术栈
@@ -50,6 +50,9 @@ pnpm dev
 
 # 前端页面（另开终端，:5173，/api 经 vite 代理到 :3000）
 pnpm -C frontend dev        # → http://localhost:5173
+
+# 本地开发不需要 Docker：上面两条命令即完整环境（演示模式，数据不持久化）。
+# Dockerfile / docker-compose*.yml 仅用于部署，见下方「Docker 部署」。
 
 # 生产构建（后端 standalone + 前端 dist 含 SEO 预渲染首页）
 pnpm build
@@ -105,7 +108,7 @@ frontend/               # Vue 3 前端（28/28 页面全量承载）
 │   ├── api/            # 类型化 API 客户端（与 /api 契约一一对应）
 │   ├── styles/         # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
 │   └── pwa/            # Service Worker 注册
-├── e2e/                # 前端 Playwright 套件（34 用例，CI e2e job）
+├── e2e/                # 前端 Playwright 套件（38 用例，CI e2e job）
 └── dist/               # 构建产物（网关切流挂载 /srv/vue，gitignored）
 src/
 ├── app/                # Next 纯 API：/api/** Route Handlers + 最小根 layout
@@ -114,7 +117,7 @@ src/
     ├── rag/             # RAG 引擎（全异步：嵌入/检索/生成）
     ├── llm/             # ⭐ LLM Provider（OpenAI 兼容 + 本地回退）
     ├── models/          # ⭐ 外部模型管理（6 预设 + 连接测试 + 拉取列表）
-    ├── notifications/   # ⭐ 通知系统（4 通道 + 偏好 + 收件箱）
+    ├── notifications/   # ⭐ 通知系统（5 通道 + 偏好 + 收件箱 + SSE）
     ├── kb/              # 知识库 + 处理管线
     ├── chat/            # 会话存储
     ├── agent/           # 多 Agent 编排

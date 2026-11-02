@@ -7,6 +7,7 @@
 
 import type { Notification, NotificationPrefs, NotifType } from "./types";
 import { persistNotification, persistNotificationPrefs, deleteNotificationFromDb } from "@/lib/db/persist";
+import { publish } from "@/lib/realtime/bus";
 import { uid } from "@/lib/ids";
 
 interface Store {
@@ -33,7 +34,22 @@ function store(): Store {
 }
 
 function defaultPrefs(): NotificationPrefs {
-  return { emailDigest: false, kbReady: true, agentDone: true, securityAlert: true };
+  return {
+    emailDigest: false,
+    kbReady: true,
+    agentDone: true,
+    securityAlert: true,
+    teamActivity: true,
+  };
+}
+
+/** Realtime channel for one user's inbox (`/api/notifications/events`). */
+export function userChannel(userId: string): string {
+  return `user:${userId}`;
+}
+
+function publishUnread(userId: string): void {
+  publish(userChannel(userId), { type: "unread", unread: unreadCount(userId) });
 }
 
 // ── Preferences ──────────────────────────────────────────────────────────
@@ -41,11 +57,11 @@ function defaultPrefs(): NotificationPrefs {
 export function getPrefs(userId: string): NotificationPrefs {
   ensureSeed(userId);
   const s = store();
-  let p = s.prefsByUser.get(userId);
-  if (!p) {
-    p = defaultPrefs();
-    s.prefsByUser.set(userId, p);
-  }
+  const stored = s.prefsByUser.get(userId);
+  // Merge defaults on read: prefs created before a channel existed (or restored
+  // from an older row) must still answer `isChannelEnabled` explicitly.
+  const p = { ...defaultPrefs(), ...stored };
+  if (!stored) s.prefsByUser.set(userId, p);
   return { ...p };
 }
 
@@ -107,6 +123,11 @@ export function notify(
   list.unshift(n);
   if (list.length > 50) ssplice(list, 0, list.length - 50);
   void persistNotification({ ...n, userId });
+  publish(userChannel(userId), {
+    type: "notification",
+    notification: n,
+    unread: unreadCount(userId),
+  });
   return n;
 }
 
@@ -127,6 +148,7 @@ export function markRead(userId: string, id: string): void {
   if (n) {
     n.read = true;
     void persistNotification({ ...n, userId });
+    publishUnread(userId);
   }
 }
 
@@ -136,6 +158,7 @@ export function markAllRead(userId: string): void {
     n.read = true;
     void persistNotification({ ...n, userId });
   });
+  publishUnread(userId);
 }
 
 export function unreadCount(userId: string): number {
@@ -150,6 +173,7 @@ export function deleteNotification(userId: string, id: string): boolean {
   if (idx === -1) return false;
   list.splice(idx, 1);
   void deleteNotificationFromDb(id);
+  publishUnread(userId);
   return true;
 }
 
