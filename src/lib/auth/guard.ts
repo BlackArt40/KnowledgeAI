@@ -14,7 +14,7 @@ export interface RequestUser {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: Role;
   /** P4-3: the tenant (workspace) this request operates in - resolved from
    *  the `kai-workspace` cookie, validated against workspace membership. */
   workspaceId: string;
@@ -27,7 +27,7 @@ export interface RequestUser {
  * workspace resolution rules can't drift between them.
  */
 export function requestUserFromUser(
-  user: { id: string; email: string; name: string; role: string },
+  user: { id: string; email: string; name: string; role: Role },
   workspaceCookie: string | null = null
 ): RequestUser {
   return {
@@ -71,7 +71,7 @@ export async function getRequestUser(
     const apiKey = validateApiKey(bearerToken);
     if (!apiKey) return null;
     const owner = getUserById(apiKey.userId);
-    if (!owner) return null;
+    if (!owner || owner.status !== "active") return null;
     return requestUserFromUser(owner, readCookie(req, "kai-workspace"));
   }
 
@@ -79,7 +79,13 @@ export async function getRequestUser(
   if (!token) return null;
   const payload = await verifyToken(token);
   if (!payload) return null;
-  return requestUserFromUser(payload, readCookie(req, "kai-workspace"));
+  // Resolve the live account instead of trusting the token's role/status
+  // claims: a demoted or banned user must lose access immediately, not when
+  // their 7-day JWT expires. The proxy awaits hydration before routes run, so
+  // the store lookup is reliable here.
+  const current = getUserById(payload.id);
+  if (!current || current.status !== "active") return null;
+  return requestUserFromUser(current, readCookie(req, "kai-workspace"));
 }
 
 /** JWT-session-only variant for internal routes (P1-6). */
@@ -106,7 +112,7 @@ export async function requireRole(
       error: NextResponse.json({ error: "未登录" }, { status: 401 }),
     };
   }
-  if (!roles.includes(u.role as Role)) {
+  if (!roles.includes(u.role)) {
     return {
       user: null,
       error: NextResponse.json({ error: "权限不足" }, { status: 403 }),
@@ -132,7 +138,7 @@ export async function requireRoleJwt(
       error: NextResponse.json({ error: "未登录" }, { status: 401 }),
     };
   }
-  if (!roles.includes(u.role as Role)) {
+  if (!roles.includes(u.role)) {
     return {
       user: null,
       error: NextResponse.json({ error: "权限不足" }, { status: 403 }),

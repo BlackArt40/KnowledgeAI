@@ -364,6 +364,11 @@ function hydrateDoc(d: PrismaDoc): void {
     chunks: d.chunks,
     url: d.url ?? undefined,
     content: d.content ?? undefined,
+    // P4-2: only the three known levels are legal; anything else inherits.
+    access:
+      d.access === "view" || d.access === "edit" || d.access === "private"
+        ? d.access
+        : undefined,
     uploadedAt: d.uploadedAt.getTime(),
   });
 }
@@ -596,13 +601,16 @@ async function hydrateNotifications(): Promise<number> {
     }
     if (!g.__KAI_NOTIF_STORE__.prefsByUser) g.__KAI_NOTIF_STORE__.prefsByUser = new Map();
     for (const p of prefs as unknown as {
-      userId: string; emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean;
+      userId: string; emailDigest: boolean; kbReady: boolean; agentDone: boolean;
+      securityAlert: boolean; teamActivity?: boolean;
     }[]) {
       g.__KAI_NOTIF_STORE__.prefsByUser.set(p.userId, {
         emailDigest: p.emailDigest,
         kbReady: p.kbReady,
         agentDone: p.agentDone,
         securityAlert: p.securityAlert,
+        // Rows created before the team-activity channel existed default to on.
+        teamActivity: p.teamActivity ?? true,
       });
     }
     // Keep the same 50-item cap as notify() so memory doesn't grow beyond the

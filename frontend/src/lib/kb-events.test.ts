@@ -61,4 +61,24 @@ describe("applyKbEvent", () => {
       expect(r.docs).toBe(docs);
     }
   });
+
+  it("init / viewers：携带共览成员快照，非法项被过滤", () => {
+    const online = [
+      { userId: "u1", name: "张明" },
+      { userId: "u2", name: "王浩" },
+    ];
+    for (const type of ["init", "viewers"]) {
+      const r = applyKbEvent(docs, { type, viewers: online });
+      expect(r.viewers).toEqual(online);
+      expect(r.docs).toBe(docs);
+      expect(r.refresh).toBe(false);
+    }
+    // 其他事件不携带 viewers（组件侧据此保持原列表）
+    expect(applyKbEvent(docs, { type: "settings" }).viewers).toBeUndefined();
+    const bad = applyKbEvent(docs, {
+      type: "viewers",
+      viewers: [{ userId: "u3" }, null, { name: "无 id" }],
+    });
+    expect(bad.viewers).toEqual([]);
+  });
 });

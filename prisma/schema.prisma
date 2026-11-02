@@ -176,6 +176,8 @@ model KbDocument {
   content    String?
   url        String?
   chunks     Int           @default(0)
+  /// P4-2: document-level override (view/edit/private). NULL = inherit KB.
+  access     String?
   kb         KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
   uploadedAt DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
@@ -353,6 +355,8 @@ model NotificationPrefs {
   kbReady       Boolean @default(true)
   agentDone     Boolean @default(true)
   securityAlert Boolean @default(true)
+  // 2026-11: team activity channel (member / permission / share events).
+  teamActivity  Boolean @default(true)
 }
 
 // ── External Model Configs (per-user LLM provider settings) ──────────────

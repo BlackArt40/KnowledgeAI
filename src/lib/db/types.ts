@@ -49,6 +49,8 @@ export interface PrismaDoc {
   content: string | null;
   url: string | null;
   chunks: number;
+  /** P4-2: document-level access override; null = inherit the KB. */
+  access: string | null;
   uploadedAt: Date;
   updatedAt: Date;
 }
@@ -264,6 +266,7 @@ export interface PrismaNotificationPrefs {
   kbReady: boolean;
   agentDone: boolean;
   securityAlert: boolean;
+  teamActivity: boolean;
 }
 
 export interface PrismaModelConfig {

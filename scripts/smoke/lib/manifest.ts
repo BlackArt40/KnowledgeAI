@@ -69,6 +69,15 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   http("test-global-search"),
   http("test-graph-rag"),
   http("test-kb-permissions"),
+  http("test-kb-share", {
+    note: "库级公开分享：密码/过期/次数/撤销 + private 文档隐藏 + passwordHash 不泄露",
+  }),
+  http("test-team-admin", {
+    note: "相对权限/角色同步/KB 共享权限/封禁即时生效；脚本内恢复所有种子角色与状态",
+  }),
+  http("test-team-activity", {
+    note: "团队活动流（审计合并/分类/搜索/CSV）+ 角色变更通知 + 通知 SSE + 偏好静音",
+  }),
   http("test-logging", { note: "static scan for console.* in server code + /api/admin/logs" }),
   http("test-monitoring"),
   http("test-multimodal", { note: "image-text assertions self-skip when OCR packs are absent" }),

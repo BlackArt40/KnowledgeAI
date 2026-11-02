@@ -194,7 +194,9 @@ flowchart LR
 | Team 成员角色 + KB 级 `access` | `admin` / `editor` / `viewer`；KB `view/edit/private` | **单个工作区 / 单个知识库** | `canViewKb/canEditKb`、`canViewDoc/canEditDoc`（`src/lib/team/store.ts`） |
 
 - **`admin` 是平台级角色**（自托管部署的运维管理员）：`/api/admin/*` 下的用户列表、封禁、知识库监控、限流看板、审计查询都是**跨租户**的全局视图，`GET /api/admin/users` 会返回所有工作区的用户。这是设计意图，不是越权——本仓库面向「单企业自托管」，没有「某个工作区的管理员」这一层。
-- **工作区内的权限**走 Team 角色与 KB `access`：邀请成员、调整成员角色、给知识库配置 `viewer/editor` 都在租户内闭环，不经过 `User.role`。
+- **工作区内的权限**走 Team 角色与 KB `access`：邀请成员、调整成员角色、给知识库配置 `viewer/editor` 都在租户内闭环。Team 角色变更会按邮箱镜像到对应账号的 `User.role`（`setUserRole`），移除成员则降级为 `viewer`——否则管理动作只改展示行，实际接口权限不变。
+- **相对权限**：只有严格高于目标角色的成员才能改角色/移除（Admin 不能管理同级 Admin，任何人不能动 Owner）；邀请/授予的角色必须低于自己（Owner 才能任命 Admin）。KB 共享权限由 Team 管理者或该 KB 的所有者调整，成员级授权仅 KB 所有者可操作。
+- **鉴权取实时账号**：`getRequestUser` 不再信任 JWT 里的 role/status 声明，而是按 token 的 userId 读当前账号；降级/封禁对已签发 token 立即生效（封禁同时拒绝新登录）。
 - **删号仅 `owner`**（不可逆，权限级别高于可逆的封禁），且不能删自己、不能删 Owner；自助删号 `DELETE /api/auth/me` 同样拒绝 Owner。
 - 若将来要做 SaaS 多租户运营（每租户自带管理员），需要把 `admin` 拆成 `platform_admin` 与 `workspace_admin` 两级——这会同时改动管理端路由、导航角色矩阵与前端按钮可见性，属独立演进项，不在当前模型内。
 

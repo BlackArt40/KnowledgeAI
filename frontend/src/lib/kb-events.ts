@@ -3,15 +3,22 @@
 // （刷新 / 路由跳转 / 轮询调度），事件语义可以单测。
 //
 // 事件契约（服务端 src/lib/kb/store.ts 的 publish）：
+//   init        { kbId, viewers }                        ← 连接建立快照
 //   settings    { kbId, settings, version, updatedAt }
 //   docs        { kbId, doc:{id,name,type,size,status,progress,uploadedAt} }
 //   doc_status  { kbId, docId, status, progress }        ← 处理管线高频推送
 //   doc_deleted { kbId, docId }
 //   doc_access  { kbId, docId, access }
+//   viewers     { kbId, viewers:[{userId,name}] }        ← 谁在看同一份数据
 //   deleted     { kbId }                                 ← 整库被删
 export interface LiveKbDoc {
   id: string;
   status: string;
+}
+
+export interface LiveKbViewer {
+  userId: string;
+  name: string;
 }
 
 export interface KbEventResult<D extends LiveKbDoc> {
@@ -20,6 +27,18 @@ export interface KbEventResult<D extends LiveKbDoc> {
   refresh: boolean;
   /** 当前知识库已被其他成员删除 */
   deleted: boolean;
+  /** 当前共览成员（仅 init / viewers 帧携带，其余帧为 undefined = 保持不变） */
+  viewers?: LiveKbViewer[];
+}
+
+function readViewers(event: Record<string, unknown>): LiveKbViewer[] {
+  if (!Array.isArray(event.viewers)) return [];
+  return event.viewers
+    .filter((v): v is LiveKbViewer => {
+      const item = v as { userId?: unknown; name?: unknown };
+      return typeof item?.userId === "string" && typeof item?.name === "string";
+    })
+    .map((v) => ({ userId: v.userId, name: v.name }));
 }
 
 /** 终态：只有进入终态才值得整表刷新，进度帧就地更新即可。 */
@@ -31,6 +50,9 @@ export function applyKbEvent<D extends LiveKbDoc>(
 ): KbEventResult<D> {
   const type = String(event.type ?? "");
   switch (type) {
+    case "init":
+    case "viewers":
+      return { docs, refresh: false, deleted: false, viewers: readViewers(event) };
     case "docs": {
       const doc = event.doc as D | undefined;
       if (!doc?.id || docs.some((d) => d.id === doc.id)) return { docs, refresh: false, deleted: false };

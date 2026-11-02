@@ -44,7 +44,7 @@ export interface KbAccessEntry {
   docs: number;
   ownerName: string;
   isOwner: boolean;
-  /** P4-2: per-member roles on this KB (userId -> role). */
+  /** P4-2: per-member roles on this KB (member email -> role). */
   memberRoles?: Record<string, KbMemberRole>;
 }
 

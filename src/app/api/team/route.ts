@@ -4,16 +4,18 @@ import { getKbAccess, listAudit, listKbMemberRoles } from "@/lib/team/store";
 import { listAllKbs, listDocuments } from "@/lib/kb/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
-import { can } from "@/lib/team/rbac";
+import { can, ROLE_PERMS } from "@/lib/team/rbac";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/team - team info + members + stats + shared KB access.
-// Audit log is only returned to roles with member.manage (owner/admin).
+// Audit log and per-member role maps are only returned to managers (or the
+// KB's owner); everyone else sees counts, not who-has-what.
 export async function GET(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
+  const canManage = can(u.role, "member.manage");
   const team = getTeam();
   const members = listMembers();
   const stats = {
@@ -35,27 +37,42 @@ export async function GET(req: Request) {
     .slice(0, 20)
     .map((kb) => {
       const owner = getUserById(kb.ownerId);
+      const roles = listKbMemberRoles(kb.id);
+      const isOwner = kb.ownerId === u.id;
       return {
         kbId: kb.id,
         kbName: kb.name,
         access: getKbAccess(kb.id, kb.name),
         docs: listDocuments(kb.id).length,
         ownerName: owner?.name ?? "未知",
-        isOwner: kb.ownerId === u.id,
-        // P4-2: per-member role overrides (for the team permission panel).
-        memberRoles: listKbMemberRoles(kb.id),
+        isOwner,
+        // P4-2: per-member role overrides. Only managers and the KB owner may
+        // see the email -> role map; everyone else gets the count so the row
+        // can still say "N 位成员可编辑" without leaking team-wide grants.
+        memberRoles: canManage || isOwner ? roles : {},
+        memberRoleCount: Object.keys(roles).length,
       };
     });
   // Audit may contain sensitive activity; restrict to managers.
-  const audit = can(u.role as never, "member.manage") ? listAudit().slice(0, 40) : [];
-  return NextResponse.json({ team, members, stats, sharedKbs, audit });
+  const audit = canManage ? listAudit().slice(0, 40) : [];
+  return NextResponse.json({
+    team,
+    members,
+    stats,
+    sharedKbs,
+    audit,
+    // UI single source of truth: the same matrix the API enforces, so the
+    // team page never hardcodes ["owner","admin"] again.
+    permissions: ROLE_PERMS[u.role],
+    matrix: ROLE_PERMS,
+  });
 }
 
 // PATCH /api/team - update team settings (owner only: team.settings)
 export async function PATCH(req: Request) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  if (!can(u.role as never, "team.settings")) {
+  if (!can(u.role, "team.settings")) {
     return NextResponse.json({ error: "权限不足：仅 Owner 可修改团队设置" }, { status: 403 });
   }
 

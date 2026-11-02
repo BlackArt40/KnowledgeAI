@@ -125,6 +125,9 @@ async function main() {
   r = await req("GET", "/api/team/audit");
   log("审计日志", "GET", "/api/team/audit", r.status, r.status === 200 && Array.isArray(r.data?.audit), `${r.data?.audit?.length} 条日志`);
 
+  r = await req("GET", "/api/team/activity");
+  log("团队活动流", "GET", "/api/team/activity", r.status, r.status === 200 && Array.isArray(r.data?.items), `${r.data?.items?.length} 条活动`);
+
   // ── 5. Billing API ──
   console.log("\n── Billing API ──");
   r = await req("GET", "/api/billing");
