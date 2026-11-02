@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTask, editReport, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { can } from "@/lib/team/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function PUT(req: Request, { params }: Params) {
   // P4-3: owner, or any member of the task's workspace.
   if (!canAccessTask(task, u))
     return NextResponse.json({ error: "无权访问" }, { status: 403 });
+  // Read-only role must not mutate the report: viewer = kb.read + chat.use only.
+  if (!can(u.role, "agent.run"))
+    return NextResponse.json({ error: "权限不足：只读角色不能编辑报告" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   if (typeof body.report !== "string" || !body.report.trim())

@@ -28,6 +28,7 @@ import { diffLines, type DiffLine } from "@shared/agent/diff";
 import { TEMPLATES, type TemplateId } from "@shared/agent/templates";
 import type { AgentStep, AgentTask, DagEdge, DagNode, ExportFormat, OutputFormat, ReportVersion, ShareConfig } from "@shared/agent/types";
 import { fetchKbs } from "@/api/kb";
+import { fetchCurrentUser } from "@/api/auth";
 import {
   fetchAgentTasks,
   fetchAgentTask,
@@ -115,9 +116,17 @@ async function loadTask(id: string) {
   }
 }
 
+// 报告写操作（编辑/恢复版本/公开分享）仅 editor 及以上；
+// viewer 是只读角色（kb.read + chat.use），按钮不渲染，服务端也会 403。
+const myRole = ref("");
+const canEditReport = computed(() => ["owner", "admin", "editor"].includes(myRole.value));
+
 onMounted(() => {
   const taskParam = typeof route.query.task === "string" ? route.query.task : "";
   if (taskParam) pendingTask.value = taskParam;
+  void fetchCurrentUser()
+    .then((u) => { myRole.value = u?.role ?? ""; })
+    .catch(() => {});
   void fetchKbs()
     .then((list) => (kbs.value = list.map((k) => ({ id: k.id, name: k.name }))))
     .catch(() => {});
@@ -243,7 +252,7 @@ function doExport(fmt: ExportFormat) {
 }
 
 function startEdit() {
-  if (!task.value?.report) return;
+  if (!canEditReport.value || !task.value?.report) return;
   editText.value = task.value.report;
   editing.value = true;
 }
@@ -294,7 +303,7 @@ function showDiff(v: ReportVersion) {
 }
 
 async function restore(v: ReportVersion) {
-  if (!task.value || !window.confirm(t("page.agent.s55", { label: v.label }))) return;
+  if (!canEditReport.value || !task.value || !window.confirm(t("page.agent.s55", { label: v.label }))) return;
   restoreBusy.value = true;
   try {
     await restoreAgentVersion(task.value.id, v.id);
@@ -375,6 +384,7 @@ const shareMaxViews = ref("");
 const shareSaving = ref(false);
 
 async function openShare() {
+  if (!canEditReport.value) return;
   shareOpen.value = true;
   if (!task.value) return;
   try {
@@ -521,6 +531,7 @@ const durationText = computed(() => {
                   {{ t("common.copy") }}
                 </el-button>
                 <el-button
+                  v-if="canEditReport"
                   size="small"
                   :icon="EditPen"
                   @click="startEdit"
@@ -528,6 +539,7 @@ const durationText = computed(() => {
                   {{ t("common.edit") }}
                 </el-button>
                 <el-button
+                  v-if="canEditReport"
                   size="small"
                   :icon="Share"
                   @click="openShare"
@@ -614,6 +626,7 @@ const durationText = computed(() => {
                   {{ t("page.agent.s76") }}
                 </el-button>
                 <el-button
+                  v-if="canEditReport"
                   size="small"
                   text
                   :icon="RefreshRight"
