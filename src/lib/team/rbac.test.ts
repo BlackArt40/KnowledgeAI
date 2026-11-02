@@ -1,6 +1,16 @@
 // P6-3 unit tests: team/rbac (pure permission matrix).
 import { describe, it, expect } from "vitest";
-import { ROLE_PERMS, can, ROLE_ORDER } from "./rbac";
+import {
+  ROLE_PERMS,
+  can,
+  ROLE_ORDER,
+  ROLE_RANK,
+  isRole,
+  outranks,
+  canManageMember,
+  assignableRoles,
+  type Permission,
+} from "./rbac";
 
 describe("rbac matrix", () => {
   it("owner has every permission", () => {
@@ -29,10 +39,53 @@ describe("rbac matrix", () => {
   });
 
   it("unknown permissions return false", () => {
-    expect(can("editor", "nonsense.perm")).toBe(false);
+    expect(can("editor", "nonsense.perm" as Permission)).toBe(false);
   });
 
   it("role order is owner > admin > editor > viewer", () => {
     expect(ROLE_ORDER).toEqual(["owner", "admin", "editor", "viewer"]);
+  });
+
+  it("caps are inherited from the tier below (no hand-copied lists)", () => {
+    const owned = new Set<Permission>(ROLE_PERMS.owner);
+    for (const role of ROLE_ORDER) {
+      for (const p of ROLE_PERMS[role]) expect(owned.has(p)).toBe(true);
+    }
+    for (const p of ROLE_PERMS.viewer) expect(can("editor", p)).toBe(true);
+    for (const p of ROLE_PERMS.editor) expect(can("admin", p)).toBe(true);
+    for (const p of ROLE_PERMS.admin) expect(can("owner", p)).toBe(true);
+  });
+});
+
+describe("relative authority (who may manage whom)", () => {
+  it("ranks are unique and strictly ordered", () => {
+    const ranks = ROLE_ORDER.map((r) => ROLE_RANK[r]);
+    expect(ranks).toEqual([0, 1, 2, 3]);
+    expect(new Set(ranks).size).toBe(ranks.length);
+  });
+
+  it("only strictly lower roles are manageable", () => {
+    expect(canManageMember("owner", "admin")).toBe(true);
+    expect(canManageMember("owner", "viewer")).toBe(true);
+    expect(canManageMember("admin", "editor")).toBe(true);
+    expect(canManageMember("admin", "admin")).toBe(false);
+    expect(canManageMember("admin", "owner")).toBe(false);
+    expect(canManageMember("editor", "editor")).toBe(false);
+    expect(canManageMember("editor", "viewer")).toBe(true);
+    expect(outranks("viewer", "owner")).toBe(false);
+  });
+
+  it("assignable roles stop below the actor", () => {
+    expect(assignableRoles("owner")).toEqual(["admin", "editor", "viewer"]);
+    expect(assignableRoles("admin")).toEqual(["editor", "viewer"]);
+    expect(assignableRoles("editor")).toEqual(["viewer"]);
+    expect(assignableRoles("viewer")).toEqual([]);
+  });
+
+  it("isRole rejects unknown values", () => {
+    expect(isRole("admin")).toBe(true);
+    expect(isRole("owner ")).toBe(false);
+    expect(isRole(null)).toBe(false);
+    expect(isRole(undefined)).toBe(false);
   });
 });

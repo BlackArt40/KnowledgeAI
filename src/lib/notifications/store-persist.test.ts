@@ -22,7 +22,9 @@ import {
   markRead,
   notify,
   updatePrefs,
+  userChannel,
 } from "./store";
+import { subscribe } from "@/lib/realtime/bus";
 
 const persist = vi.mocked(persistNotification);
 const persistPrefs = vi.mocked(persistNotificationPrefs);
@@ -59,5 +61,23 @@ describe("notification persistence (P1)", () => {
     markNotificationsHydrated();
     // In DB mode a user with no rows must have an empty inbox, not 4 demos.
     expect(listNotifications("usr_no_rows")).toEqual([]);
+  });
+
+  it("broadcasts new notifications and unread changes", () => {
+    const events: Array<Record<string, unknown>> = [];
+    const off = subscribe(userChannel("usr_evt"), (e) => events.push(e as Record<string, unknown>));
+
+    const n = notify("usr_evt", "teamActivity", "角色更新", "body");
+    expect(events[0]).toMatchObject({
+      type: "notification",
+      notification: { id: n!.id, type: "teamActivity" },
+    });
+
+    markRead("usr_evt", n!.id);
+    expect(events.at(-1)).toMatchObject({ type: "unread" });
+
+    markAllRead("usr_evt");
+    expect(events.at(-1)).toMatchObject({ type: "unread", unread: 0 });
+    off();
   });
 });

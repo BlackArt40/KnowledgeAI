@@ -5,14 +5,16 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
-import { RefreshRight, UploadFilled } from "@element-plus/icons-vue";
+import { RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
 import {
-  deleteDoc, deleteKb, fetchKbDetail, patchKb, reindexDoc, reindexKb, uploadDocs,
-  type Kb, type KbDoc, type KbStats,
+  createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
+  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, uploadDocs,
+  type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
 } from "@/api/kb";
 import { ApiError } from "@/api/client";
+import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
-import { applyKbEvent } from "@/lib/kb-events";
+import { applyKbEvent, type LiveKbViewer } from "@/lib/kb-events";
 import { kbAvatarBackground } from "@/lib/kb-color";
 import { formatRelative } from "@shared/format";
 
@@ -24,6 +26,8 @@ const kbId = String(route.params.id ?? "");
 const kb = ref<Kb | null>(null);
 const docs = ref<KbDoc[]>([]);
 const stats = ref<KbStats | null>(null);
+/** 共享与分发：无编辑权限（只读共享/private 库成员）不展示分享入口 */
+const canEdit = ref(true);
 const loading = ref(true);
 const notFound = ref(false);
 const uploading = ref(false);
@@ -37,6 +41,7 @@ async function refresh() {
     kb.value = d.kb;
     docs.value = d.docs;
     stats.value = d.stats;
+    canEdit.value = d.permissions?.canEdit ?? true;
     notFound.value = false;
     schedulePoll();
   } catch (e) {
@@ -155,6 +160,86 @@ async function reindexAll() {
   }
 }
 
+// ── 共享与分发：库级 / 文档级公开链接 ────────────────────────────────────
+type ShareTarget = { kind: "kb" } | { kind: "doc"; doc: KbDoc };
+
+const shareTarget = ref<ShareTarget | null>(null);
+const shareOpen = ref(false);
+const shareInfo = ref<ShareLink | null>(null);
+const shareLoading = ref(false);
+const shareSaving = ref(false);
+const shareError = ref<string | null>(null);
+
+const shareTitle = computed(() =>
+  shareTarget.value?.kind === "doc" ? t("page.share-link-dialog.s18") : t("page.kb-share.s0")
+);
+const shareSubtitle = computed(() =>
+  shareTarget.value?.kind === "doc" ? shareTarget.value.doc.name : kb.value?.name
+);
+/** 公开页地址：库 → /share-kb/[token]，文档 → /share-doc/[token]（路由已冻结）。 */
+const shareLink = computed(() => {
+  const target = shareTarget.value;
+  const share = shareInfo.value;
+  if (!target || !share) return "";
+  const prefix = target.kind === "kb" ? "share-kb" : "share-doc";
+  return `${window.location.origin}/${prefix}/${share.token}`;
+});
+
+function shareErrorText(e: unknown): string {
+  return e instanceof ApiError && e.message ? e.message : t("common.requestFailed");
+}
+
+async function openShare(target: ShareTarget) {
+  shareTarget.value = target;
+  shareInfo.value = null;
+  shareError.value = null;
+  shareOpen.value = true;
+  shareLoading.value = true;
+  try {
+    shareInfo.value =
+      target.kind === "kb"
+        ? await fetchKbShare(kbId)
+        : await fetchDocShare(kbId, target.doc.id);
+  } catch (e) {
+    shareError.value = shareErrorText(e);
+  } finally {
+    shareLoading.value = false;
+  }
+}
+
+async function submitShare(payload: ShareInput) {
+  const target = shareTarget.value;
+  if (!target) return;
+  shareSaving.value = true;
+  shareError.value = null;
+  try {
+    shareInfo.value =
+      target.kind === "kb"
+        ? await createKbShare(kbId, payload)
+        : await createDocShare(kbId, target.doc.id, payload);
+  } catch (e) {
+    shareError.value = shareErrorText(e);
+  } finally {
+    shareSaving.value = false;
+  }
+}
+
+async function removeShare() {
+  const target = shareTarget.value;
+  if (!target) return;
+  shareSaving.value = true;
+  shareError.value = null;
+  try {
+    if (target.kind === "kb") await revokeKbShare(kbId);
+    else await revokeDocShare(kbId, target.doc.id);
+    shareInfo.value = null;
+  } catch (e) {
+    shareError.value = shareErrorText(e);
+  } finally {
+    shareSaving.value = false;
+  }
+}
+
 // ── KB 设置（改名/删库）──────────────────────────────────────────────────
 const settingsOpen = ref(false);
 const editName = ref("");
@@ -206,12 +291,16 @@ const hasProcessing = computed(() =>
 let kbEvents: { stop: () => void } | null = null;
 /** 流已连上才展示「实时同步」提示（断开/重连中不再误导用户） */
 const kbLive = ref(false);
+/** 正在查看该库的其他成员（init 快照 + viewers 变更帧） */
+const viewers = ref<LiveKbViewer[]>([]);
+const viewerAvatars = computed(() => viewers.value.slice(0, 3));
+const viewerNames = computed(() => viewers.value.map((v) => v.name).join(", "));
 
 function onKbEvent(event: Record<string, unknown>) {
   const type = String(event.type ?? "");
-  if (type === "init") return;
   // 事件语义在 lib/kb-events.ts（纯函数，单测覆盖）；这里只做副作用
   const result = applyKbEvent(docs.value, event);
+  if (result.viewers) viewers.value = result.viewers;
   if (result.deleted) {
     // 其他成员删掉了当前知识库：断开流并回列表（refresh 会拿到 404）
     kbEvents?.stop();
@@ -256,6 +345,26 @@ function onKbEvent(event: Record<string, unknown>) {
               {{ kb.initial || kb.name.charAt(0) }}
             </span>
             <h2>{{ kb.name }}</h2>
+            <el-tooltip
+              v-if="viewers.length"
+              :content="viewerNames"
+              placement="bottom"
+            >
+              <span
+                class="viewer-stack"
+                :aria-label="t('page.knowledge-base-[id].s39', { count: viewers.length })"
+              >
+                <span
+                  v-for="v in viewerAvatars"
+                  :key="v.userId"
+                  class="viewer-avatar"
+                >{{ v.name.charAt(0) }}</span>
+                <span
+                  v-if="viewers.length > 3"
+                  class="viewer-more"
+                >+{{ viewers.length - 3 }}</span>
+              </span>
+            </el-tooltip>
             <el-button
               size="small"
               text
@@ -272,6 +381,15 @@ function onKbEvent(event: Record<string, unknown>) {
           </p>
         </div>
         <div class="head-actions">
+          <el-button
+            v-if="canEdit"
+            size="small"
+            text
+            :icon="Share"
+            @click="openShare({ kind: 'kb' })"
+          >
+            {{ t("page.kb-share.s1") }}
+          </el-button>
           <el-button
             size="small"
             text
@@ -393,6 +511,19 @@ function onKbEvent(event: Record<string, unknown>) {
               >
                 {{ t(STATUS_LABEL[d.status] ?? d.status) }}
               </span>
+              <el-tooltip
+                v-if="canEdit"
+                :content="t('page.share-link-dialog.s18')"
+                placement="top"
+              >
+                <el-button
+                  size="small"
+                  text
+                  :icon="Share"
+                  :aria-label="t('page.share-link-dialog.s18')"
+                  @click="openShare({ kind: 'doc', doc: d })"
+                />
+              </el-tooltip>
               <el-button
                 v-if="!['queued', 'parsing', 'chunking', 'vectorizing'].includes(d.status)"
                 size="small"
@@ -460,6 +591,20 @@ function onKbEvent(event: Record<string, unknown>) {
           </el-button>
         </template>
       </el-dialog>
+
+      <!-- 共享与分发：库级 / 文档级公开链接 -->
+      <ShareLinkDialog
+        v-model:open="shareOpen"
+        :title="shareTitle"
+        :subtitle="shareSubtitle"
+        :share="shareInfo"
+        :link="shareLink"
+        :loading="shareLoading"
+        :saving="shareSaving"
+        :error="shareError"
+        @create="submitShare"
+        @revoke="removeShare"
+      />
     </template>
   </div>
 </template>
@@ -506,6 +651,31 @@ function onKbEvent(event: Record<string, unknown>) {
   color: #fff;
   font-size: 16px;
   font-weight: 700;
+}
+/* 共览者头像堆叠：谁在看同一份数据 */
+.viewer-stack {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.viewer-avatar {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid hsl(var(--background));
+  border-radius: var(--radius-full);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-size: 11px;
+  font-weight: 600;
+}
+.viewer-avatar + .viewer-avatar { margin-left: -6px; }
+.viewer-more {
+  margin-left: 5px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
 }
 .sub { margin: 6px 0 0; }
 

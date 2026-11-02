@@ -60,9 +60,31 @@ describe("requireRole", () => {
     expect(guard.error?.status).toBe(401);
   });
 
-  it("rejects mismatched roles with 403", async () => {
-    const token = await createToken({ ...user, role: "editor" });
+  it("rejects mismatched roles with 403 (live account wins over token claim)", async () => {
+    // The JWT claims owner, but usr_editor is an editor in the account store:
+    // authorization must follow the live role, not a stale/forged claim.
+    const token = await createToken({
+      ...user,
+      id: "usr_editor",
+      email: "editor@knowledgeai.dev",
+      role: "owner",
+    });
     const guard = await requireRole(reqWith({ cookie: `kai-token=${token}` }), ["owner", "admin"]);
     expect(guard.error?.status).toBe(403);
+  });
+});
+
+describe("banned accounts", () => {
+  it("a live token stops working immediately after a ban", async () => {
+    const { setUserStatus } = await import("./store");
+    const editor = { ...user, id: "usr_editor", email: "editor@knowledgeai.dev", role: "editor" as const };
+    const token = await createToken(editor);
+    try {
+      setUserStatus("usr_editor", "banned");
+      expect(await getRequestUser(reqWith({ cookie: `kai-token=${token}` }))).toBeNull();
+    } finally {
+      setUserStatus("usr_editor", "active");
+    }
+    expect((await getRequestUser(reqWith({ cookie: `kai-token=${token}` })))?.id).toBe("usr_editor");
   });
 });

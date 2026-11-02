@@ -81,11 +81,11 @@ async function main() {
     return {
       events,
       stop() { clearTimeout(timer); controller.abort(); },
-      waitFor(pred: (e: any) => boolean, ms = 10000): Promise<any> {
+      waitFor(pred: (e: any) => boolean, ms = 10000, from = 0): Promise<any> {
         return new Promise((resolve, reject) => {
           const deadline = Date.now() + ms;
           const tick = () => {
-            const hit = events.find(pred);
+            const hit = events.slice(from).find(pred);
             if (hit) return resolve(hit);
             if (Date.now() > deadline) return reject(new Error("timeout waiting for SSE event"));
             setTimeout(tick, 100);
@@ -146,6 +146,31 @@ async function main() {
   check("kb: web doc added", (upload.status === 200 || upload.status === 201) && !!upload.data?.docs?.[0]?.id, `${upload.status}`);
   const docsEvt = await kbSse.waitFor((e) => e.type === "docs" && e.doc?.name === "realtime-doc").catch(() => null);
   check("kb-sse: new doc broadcast to other member", !!docsEvt, "no docs event");
+
+  // 2b. 共览者：同一份数据上「谁在看」也要实时（P4-1 follow-up）
+  const ownerKbSse = await openSse(`/api/knowledge-base/${kbId}/events`, ownerToken);
+  const editorSeesOwner = await kbSse
+    .waitFor((e) => e.type === "viewers" && e.viewers?.some((v: any) => v.userId === "usr_owner"))
+    .catch(() => null);
+  check("kb-sse: owner appears as co-viewer to editor", !!editorSeesOwner, "no viewers event with owner");
+
+  const ownerSeesEditor = await ownerKbSse
+    .waitFor((e) => e.type === "viewers" && e.viewers?.some((v: any) => v.userId === "usr_editor"))
+    .catch(() => null);
+  check("kb-sse: both members listed while watching the same KB", !!ownerSeesEditor, "owner does not see editor");
+
+  const ownerSeenIdx = kbSse.events.findIndex(
+    (e) => e.type === "viewers" && e.viewers?.some((v: any) => v.userId === "usr_owner")
+  );
+  ownerKbSse.stop();
+  const viewerLeft = await kbSse
+    .waitFor(
+      (e) => e.type === "viewers" && !e.viewers?.some((v: any) => v.userId === "usr_owner"),
+      10000,
+      ownerSeenIdx + 1
+    )
+    .catch(() => null);
+  check("kb-sse: co-viewer removed after disconnect", !!viewerLeft, "owner still listed");
   kbSse.stop();
 
   // ── 3. 在线状态（presence） ───────────────────────────────────────────

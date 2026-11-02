@@ -4,7 +4,7 @@ description: KnowledgeAI 部署手册：三服务拆分部署（网关/业务/�
 type: how-to
 category: ops
 level: L2
-version: 1.2.0
+version: 1.3.1
 authors:
   - technical-writer
 owner: devops-owner
@@ -38,7 +38,7 @@ flowchart LR
   BIZ --> S3[("S3 / MinIO")]
 ```
 
-**单体形态（<=1.2.x，本地开发 / 演示模式默认，方式一~四）**——生产部署由 **4 个服务**组成：
+**单体形态（<=1.2.x，单机部署 / 演示模式，方式一~四）**——生产部署由 **4 个服务**组成：
 
 | 服务 | 镜像/来源 | 职责 | 说明 |
 |------|-----------|------|------|
@@ -53,7 +53,9 @@ flowchart LR
 - 未配置 `DATABASE_URL` / `REDIS_URL` 时应用自动回退演示模式（数据不持久化）；
 - **适用版本**：方式一~四描述单体形态；拆分生产形态（网关 + 业务 + 前端 + AI）见「方式五」。
 
-## 方式一：Docker Compose（本地 / 单机）
+## 方式一：Docker Compose（单机部署）
+
+> **本地开发不使用 Docker。** 开发机直接跑 `pnpm install` → `pnpm dev`（Next 纯 API `:3000`，演示模式无需任何环境变量）+ `pnpm -C frontend dev`（Vue 页面 `:5173`，`/api` 经 vite 代理到 `:3000`）；需要验证构建产物时用 `pnpm -C frontend build && pnpm -C frontend exec vite preview --port 4173`。本方式用于单机部署或验证镜像/编排产物，日常开发迭代不需要启动 compose。
 
 ```bash
 # 1. 准备环境变量
@@ -221,7 +223,7 @@ docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gat
 
 ## 前端切流与回退（V1 起，Vue 3 绞杀重写；V6 已全量接管）
 
-`frontend/`（Vue 3 + Element Plus + Vite，pnpm workspace 包 `kai-frontend`）已**全量接管 28 个页面**（V6 起 Next 页面层已删除，Next 仅服务 `/api/**` 与 `public/` 静态资产）。已迁移路由清单维护在 `deploy/nginx/routes.conf`（单一事实源，现 27 条），切换唯一入口是 `scripts/deploy/switch-frontend.sh`；switch conf 为空时全部页面流量走 Next 兜底（`location /`，仅 API 与静态资产有意义——页面兜底只在回滚到 V5 之前代码时才成立），`/api/*` 反代业务服务的配置不受前端切流影响。首页 `location = /` 优先返回构建期预渲染的 `dist/home.html`（SEO 静态首帧，产物缺失自动回退 SPA index.html）。
+`frontend/`（Vue 3 + Element Plus + Vite，pnpm workspace 包 `kai-frontend`）已**全量接管 28 个页面**（V6 起 Next 页面层已删除，Next 仅服务 `/api/**` 与 `public/` 静态资产）。已迁移路由清单维护在 `deploy/nginx/routes.conf`（单一事实源，现 28 条），切换唯一入口是 `scripts/deploy/switch-frontend.sh`；switch conf 为空时全部页面流量走 Next 兜底（`location /`，仅 API 与静态资产有意义——页面兜底只在回滚到 V5 之前代码时才成立），`/api/*` 反代业务服务的配置不受前端切流影响。首页 `location = /` 优先返回构建期预渲染的 `dist/home.html`（SEO 静态首帧，产物缺失自动回退 SPA index.html）。
 
 ### 前置
 
@@ -301,3 +303,4 @@ scripts/deploy/switch-frontend.sh revert-all  # 清空路由：页面流量回 N
 | 1.1.0 | 2026-10-13 | 服务拆分阶段 6：新增「方式五：三服务拆分部署」（compose 一键起 / 滚动发布 / k8s 拆分清单 / SSE 网关约束），部署架构区分单体（<=1.2.x）与三服务形态并标注适用版本 |
 | 1.2.0 | 2026-10-13 | 新增「生产切换窗口（4.10）」部署时操作：前置预检清单、切流/观察/代码下线步骤、验证清单与回滚预案（承接阶段 1-6 验收与 G1-G10 总检结论） |
 | 1.3.0 | 2026-10-16 | 前端绞杀重写 V1（Vue 3 + Element Plus + Vite）：新增「前端切流与回退」节——deploy/nginx/routes.conf 单一事实源 + scripts/deploy/switch-frontend.sh 唯一入口（apply/rollback/revert-all，nginx -t 失败自动回写占位）；compose 网关挂载 switch conf 与 frontend/dist |
+| 1.3.1 | 2026-10-30 | 明确本地开发不使用 Docker（`pnpm dev` + `pnpm -C frontend dev`，无需环境变量），「方式一」由「本地 / 单机」改为「单机部署」；同步删除本地已作废的 compose override（3000→nginx / 3001→app） |

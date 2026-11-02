@@ -5,6 +5,7 @@ import {
   updateTeam,
   listMembers,
   getMember,
+  findMemberByEmail,
   inviteMember,
   updateMemberRole,
   removeMember,
@@ -60,6 +61,24 @@ describe("team + members", () => {
     expect(removeMember(m.id)).toBe(true);
     expect(getMember(m.id)).toBeUndefined();
     expect(removeMember("missing")).toBe(false);
+  });
+
+  it("findMemberByEmail is case-insensitive", () => {
+    expect(findMemberByEmail("VIEWER@knowledgeai.dev")?.email).toBe("viewer@knowledgeai.dev");
+    expect(findMemberByEmail("nobody@knowledgeai.dev")).toBeUndefined();
+  });
+
+  it("updateMemberRole mirrors the role onto the account (live authority)", () => {
+    const m = listMembers().find((x) => x.email === "viewer@knowledgeai.dev")!;
+    updateMemberRole(m.id, "editor");
+    expect(findUserByEmail("viewer@knowledgeai.dev")?.role).toBe("editor");
+  });
+
+  it("removeMember demotes the account so a removed admin loses authority", () => {
+    const m = listMembers().find((x) => x.email === "admin@knowledgeai.dev")!;
+    expect(findUserByEmail("admin@knowledgeai.dev")?.role).toBe("admin");
+    expect(removeMember(m.id)).toBe(true);
+    expect(findUserByEmail("admin@knowledgeai.dev")?.role).toBe("viewer");
   });
 });
 

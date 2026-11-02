@@ -1,6 +1,6 @@
 import type { Team, Member, AuditEntry, Role, KbAccess, KbMemberRole } from "./types";
 import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFromDb } from "@/lib/db/persist";
-import { getUserById } from "@/lib/auth/store";
+import { getUserById, setUserRole } from "@/lib/auth/store";
 import { uid } from "@/lib/ids";
 
 type Store = {
@@ -99,6 +99,13 @@ export function getMember(id: string): Member | undefined {
   return store().members.get(id);
 }
 
+/** Duplicate-invite guard / email-keyed lookups (case-insensitive). */
+export function findMemberByEmail(email: string): Member | undefined {
+  seed();
+  const needle = email.trim().toLowerCase();
+  return Array.from(store().members.values()).find((m) => m.email.toLowerCase() === needle);
+}
+
 export function inviteMember(input: { name: string; email: string; role: Role }, actor = "系统"): Member {
   seed();
   const s = store();
@@ -133,6 +140,9 @@ export function updateMemberRole(id: string, role: Role, actor = "系统"): Memb
   if (!m) return undefined;
   const prev = m.role;
   m.role = role;
+  // Keep the account role in sync: API authorization resolves the live user,
+  // so without this a role change only edited a display row.
+  setUserRole(m.email, role);
   const entry: AuditEntry = {
     id: uid("m"),
     actor,
@@ -163,6 +173,9 @@ export function removeMember(id: string, actor = "系统"): boolean {
   s.audit.unshift(entry);
   void persistAuditEntry(entry);
   void deleteTeamMemberFromDb(id);
+  // Revoke authority as well: a removed admin must not keep a live token with
+  // admin capabilities (least privilege downgrade, not account deletion).
+  setUserRole(m.email, "viewer");
   return s.members.delete(id);
 }
 

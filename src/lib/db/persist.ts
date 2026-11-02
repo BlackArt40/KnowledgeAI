@@ -290,6 +290,8 @@ export async function persistDoc(doc: {
   chunks: number;
   url?: string;
   content?: string;
+  /** P4-2: view/edit/private override; undefined = inherit the KB. */
+  access?: string;
   uploadedAt: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
@@ -304,6 +306,7 @@ export async function persistDoc(doc: {
     chunks: doc.chunks,
     url: doc.url ?? null,
     content: doc.content ?? null,
+    access: doc.access ?? null,
     updatedAt: new Date(),
   };
   const write = () =>
@@ -959,7 +962,13 @@ export async function deleteNotificationFromDb(id: string): Promise<void> {
 /** Persist per-user notification preferences. */
 export async function persistNotificationPrefs(
   userId: string,
-  prefs: { emailDigest: boolean; kbReady: boolean; agentDone: boolean; securityAlert: boolean }
+  prefs: {
+    emailDigest: boolean;
+    kbReady: boolean;
+    agentDone: boolean;
+    securityAlert: boolean;
+    teamActivity: boolean;
+  }
 ): Promise<void> {
   if (!isDbEnabled()) return;
   const db = await getDb();

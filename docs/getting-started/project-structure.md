@@ -4,11 +4,11 @@ description: KnowledgeAI 目录组织与代码导览，帮助新成员快速定�
 type: explanation
 category: getting-started
 level: L1
-version: 1.1.1
+version: 1.1.2
 authors:
   - product-team
 owner: 技术负责人
-reviewed_at: 2026-10-29
+reviewed_at: 2026-11-02
 review_interval: 180
 status: published
 applies_to: ">=1.3.0"
@@ -61,7 +61,7 @@ frontend/
 │   ├── stores/               # Pinia（主题 store 等薄封装）
 │   ├── styles/               # tokens.css（令牌单源）+ element-adapter.css（EP 变量）+ scrollbar.css（.kai-scroll）+ utility.css（.card/.badge/.sk 等基础类与全局动画）
 │   └── pwa/                  # Service Worker 注册（仅生产）
-├── e2e/                      # 前端 Playwright 套件（34 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态）
+├── e2e/                      # 前端 Playwright 套件（38 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态/双人协作）
 ├── scripts/prerender-home.mjs # 首页 SEO 预渲染（build 末步产出 dist/home.html）
 └── dist/                     # 构建产物（网关切流挂载 /srv/vue，gitignored）
 ```
@@ -110,7 +110,7 @@ src/
 │   ├── billing/                  # 订阅 / 订单 / 发票 / 用量计量
 │   ├── models/                   # 外部 LLM Provider 配置（per-user 上下文）
 │   ├── llm/                      # LLM Provider 抽象（OpenAI/DeepSeek/... + 本地演示回退）
-│   ├── notifications/            # 通知中心（4 通道 + 偏好）
+│   ├── notifications/            # 通知中心（5 通道 + 偏好 + SSE）
 │   ├── security/                 # 2FA(TOTP) / 审计链 / 隐私
 │   ├── apikeys/                  # API Key 管理 + scope 强制
 │   ├── admin/                    # 管理后台数据（用户 / KB 监控 / 系统配置）
@@ -150,7 +150,7 @@ deploy/
 ├── moto.Dockerfile               # 本地演练用 AWS 服务替身镜像（S3 兼容端点）
 ├── .env.drill                    # 干净机器演练的本地 env（gitignored，不入库）
 └── nginx/
-    ├── routes.conf               # 前端切流路由表（27 条，单一事实源）
+    ├── routes.conf               # 前端切流路由表（28 条，单一事实源）
     └── frontend-switch.conf      # switch-frontend.sh 生成的 switch conf（随切流提交留审计轨迹）
 ```
 

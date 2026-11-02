@@ -6,9 +6,10 @@ import { ref } from "vue";
 import { subscribeEvents } from "./event-stream";
 
 export interface PresenceUser {
-  id: string;
+  userId: string;
   name?: string;
   email?: string;
+  lastSeen?: number;
 }
 
 const online = ref<PresenceUser[]>([]);

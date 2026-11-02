@@ -174,11 +174,12 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 通知系统 `src/lib/notifications/`
 
-4 个通知通道，偏好持久化 + 事件触发 + 铃铛下拉面板。
+5 个通知通道，偏好持久化 + 事件触发 + 铃铛下拉面板（2026-11 起团队动态通道 + SSE 实时推送）。
 
 ### 数据层
-- `types.ts`：4 种通知类型（`emailDigest` / `kbReady` / `agentDone` / `securityAlert`）+ 元数据
-- `store.ts`：偏好 CRUD + 通知收件箱（`notify` / `listNotifications` / `markRead` / `markAllRead` / `unreadCount`）+ **通道过滤**（禁用的通道不产生通知）+ 4 条种子通知
+- `types.ts`：5 种通知类型（`emailDigest` / `kbReady` / `agentDone` / `securityAlert` / `teamActivity`）+ 元数据
+- `store.ts`：偏好 CRUD + 通知收件箱（`notify` / `listNotifications` / `markRead` / `markAllRead` / `unreadCount`）+ **通道过滤**（禁用的通道不产生通知）+ 4 条种子通知；读写偏好时合并默认值，旧行自动获得新通道（默认开启）
+- 事件总线：`notify` / `markRead` / `markAllRead` / `deleteNotification` 向 `user:<id>` 频道广播 `notification` / `unread` 帧
 
 ### API 路由
 | 方法 | 路径 | 功能 |
@@ -187,20 +188,22 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 | GET | `/api/notifications` | 通知列表 + 未读数 |
 | POST | `/api/notifications` | 全部已读 |
 | PATCH | `/api/notifications/[id]/read` | 单条已读 |
+| GET | `/api/notifications/events` | 当前用户通知 SSE（`init` 快照 / `notification` / `unread`，30s ping） |
 
 ### 事件触发（实际产生通知）
 | 通知类型 | 触发事件 | 触发位置 |
 | --- | --- | --- |
-| `securityAlert` | 用户登录 | `auth/login` 路由 |
+| `securityAlert` | 用户登录 / 依赖告警 | `auth/login`、`health/readiness` |
 | `kbReady` | 文档上传处理完成 | `kb/[id]/upload` 路由 |
 | `agentDone` | Agent 任务执行完成 | `agent/orchestrator` |
 | `emailDigest` | 每周用量摘要（种子数据，生产用 cron） | store seed |
+| `teamActivity` | 团队角色/成员、KB 授权、公开分享链接、文档权限变更 | `team/notify.ts`（邀请 / 成员 / kb-access / share 路由） |
 
 ### 设置页集成
-4 个通知开关从静态 `defaultChecked` 改为从 `/api/notifications/preferences` 拉取 + PATCH 持久化（含 loading 态）。
+5 个通知开关从静态 `defaultChecked` 改为从 `/api/notifications/preferences` 拉取 + PATCH 持久化（含 loading 态）。
 
 ### AppShell 铃铛
-- 未读数徽章（>9 显示 9+），30s 轮询刷新
+- 未读数徽章（>9 显示 9+）；登录后订阅 `/api/notifications/events`，连上即停 30s 轮询，断线自动重连期间恢复轮询兜底
 - 点击展开通知下拉面板（图标按类型着色 / 标题 / 正文 / 相对时间 / 未读高亮）
 - 单条点击已读 + 跳转链接、「全部已读」按钮
 
@@ -439,14 +442,16 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 事件总线 `src/lib/realtime/`
 - `bus.ts`：channel 化发布/订阅（`Map<channel, Set<listener>>`，挂 globalThis 防 HMR；`subscribe` / `publish`，listener 异常隔离）；单实例内存实现，可扩展 Redis Pub/Sub（仿 `queue/agent-bus-redis.ts`）
-- `presence.ts`：在线状态——`heartbeat(userId, name, email)`（SSE 连接建立时）/ `markOffline`（断开时）/ `getOnlineUsers`（60s TTL 惰性清理）；每次变更广播全量在线列表到 `presence` channel
+- `connections.ts`（2026-10-30）：在线连接注册表——按「分组 + 成员」引用计数（多标签页只算一人）、`touch` 心跳续期、TTL 惰性清理 + 20s/30s 周期清扫（代理吞掉 abort 时兜底）；presence 与共览者共用
+- `presence.ts`：在线状态——`connectPresence`（SSE 建立，返回幂等断开句柄）/ `disconnectPresence` / `touchPresence`（路由心跳续期）/ `getOnlineUsers`（60s TTL）；每次变更广播全量在线列表到 `presence` channel
+- `viewers.ts`（2026-10-30）：知识库共览者——`joinKbViewers`（引用计数）/ `touchKbViewers` / `getKbViewers`（90s TTL）；变更以 `{ type: "viewers", kbId, viewers }` 广播到该库的 `kb:<id>` channel（与数据变更共用一条 SSE）
 - `use-sse.ts`（前端 hook）：fetch + `\n\n` 切帧 + 忽略注释帧 + 自动重连 + AbortController 清理
 
 ### API（全部 SSE 带 30s `: ping` 心跳帧）
 | 方法 | 路径 | 功能 |
 | --- | --- | --- |
-| GET | `/api/kb/[id]/events` | KB 实时变更流（settings/docs/doc_status/doc_deleted/deleted；canViewKb 鉴权 + kbRateLimit） |
-| GET | `/api/team/presence/events` | 团队在线状态流（连接即在线、断开即离线，初始快照 + 变更推送） |
+| GET | `/api/knowledge-base/[id]/events` | KB 实时变更流（init/viewers/settings/docs/doc_status/doc_deleted/doc_access/deleted；canViewKb 鉴权 + kbRateLimit） |
+| GET | `/api/team/presence/events` | 团队在线状态流（连接计数 > 0 即在线、最后一条断开才离线，初始快照 + 变更推送） |
 | GET | `/api/chat/conversations/[id]/events` | 共享会话消息实时流（仅 shared 会话 + 团队可看其 KB） |
 | GET | `/api/chat/conversations/shared` | 团队共享会话列表（含 owner 名，过滤不可见 KB） |
 | PATCH | `/api/chat/conversations/[id]` | `{ shared }` 共享开关（owner） |
@@ -454,13 +459,15 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 关键设计
 - **乐观并发控制（OCC）**：`KnowledgeBase.version` 每次设置更新 +1；PATCH 携带 `baseVersion`（客户端上次所见版本），不匹配返回 `409 { error, currentVersion }`——并发编辑不覆盖他人修改（验收「并发编辑无数据冲突」）。以 OCC 替代 CRDT/OT（当前编辑场景足够且简单）
-- **在线判定**：SSE 连接即在线（AppShell 全局 presence 流），断开/abort 即离线；代理丢连接由 60s TTL 兜底
+- **在线判定**：SSE 连接即在线（AppShell 全局 presence 流），连接引用计数归零才离线；路由 30s 心跳 `touch` 续期，代理丢连接由 60s TTL + 20s 清扫兜底（2026-10-30 修复：此前只在建连时记一次 lastSeen，长连接 60s 后会被误判离线；多标签页关一个也会误下线）
+- **共览者**：KB 事件流同时承担「谁在看这个库」——进入页面即登记、离开即移除、30s 心跳续期，前端在标题旁渲染头像堆叠（含「+N」），与文档/设置变更共用同一条 SSE
 - **共享会话权限**：仅 owner 可共享/取消；团队成员可查看（需能访问其 KB）并可实时收新消息
 - **proxy 限流**：`/api/kb`、`/api/team/presence` 加入 SKIP_PATHS（长连接）；KB events 路由内 `kbRateLimit` 兜底
 
-### 端到端验证（`scripts/smoke/test-realtime.ts` 19 项断言全部通过 ✅）
+### 端到端验证（`scripts/smoke/test-realtime.ts` 22 项断言全部通过 ✅）
 - OCC：正确版本 200 / 过期版本 409 / 重试最新版本成功
 - KB 实时变更：成员 A 修改设置、新增文档 → 成员 B 的 SSE 流实时收到 `settings` / `docs` 事件
+- 共览者：成员 A 打开同一 KB → 成员 B 实时收到含 A 的 `viewers` 列表；A 断开后列表移除（2026-10-30 新增）
 - 在线状态：成员上线/断开 → 另一成员的 presence 流实时收到在线/离线更新
 - 共享会话：owner 共享 → 成员可见（含 owner 名）→ 成员订阅会话流 → owner 提问 → 成员实时收到 `message` 事件
 - 权限：匿名订阅 KB 流被拒、未共享会话不可订阅
@@ -498,6 +505,31 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 成员角色：private KB 上授予 viewer editor 角色 → 可访问可编辑；清除 → 恢复 403；非 owner 不可授予
 - 审计：`doc.access_change` / 成员角色 `kb.access_change` / `sharelink.*` 可检索
 - 分享：匿名 200 → 过期 410；密码错误 401 / 正确 200；次数用尽 403；撤销 404
+
+### 权限管理收口（2026-10-30）
+- **角色层级**：`rbac.ts` 改成「低阶能力 + 追加」的继承式声明，并导出 `ROLE_RANK` / `outranks` / `canManageMember` / `assignableRoles` / `Permission` 联合类型；`can()` 调用点去掉 `as never`。
+- **相对权限**：`PATCH/DELETE /api/team/members/[id]` 要求调用者严格高于目标（Admin 不能降级/移除同级 Admin），且只能授予低于自己的角色；邀请同规则（Admin 不能邀请 Admin），团队保持单 Owner。
+- **角色即时生效**：`updateMemberRole` 通过 `setUserRole` 同步账号角色，`removeMember` 将账号降级为 `viewer`；`getRequestUser` 改为按 token 的 userId 读实时账号（并拒绝非 active），降级/封禁对已签发 token 立即生效；登录接口拒绝封禁账号。
+- **KB 共享权限**：`PATCH /api/team/kb-access` 允许 Team 管理者**或 KB 所有者**调整 `access`，成员级 `editor/viewer` 仍仅 KB 所有者；校验 `access` 枚举、成员邮箱必须属于团队；`GET /api/team` 的 `memberRoles` 映射仅管理者/KB 所有者可见，其他人只拿 `memberRoleCount`；响应新增 `permissions` + `matrix`，前端不再硬编码角色。
+- **文档级权限落库**：`KbDocument.access`（migration `20261030120000_document_access`）+ `persistDoc` / `hydrateDoc`，`private`/`edit` 覆盖重启后不再回退为继承。
+- **团队页**：共享库 access 下拉可编辑；KB 所有者可打开成员授权弹窗（继承/Editor/Viewer）；新增权限矩阵卡；成员/邀请下拉按调用者层级过滤。
+- **端到端验证**：`scripts/smoke/test-team-admin.ts` 44 项断言全部通过 ✅（相对权限、角色同步、KB 授权、映射可见性、封禁即时生效、清理还原）；`test-kb-permissions.ts` 35 项回归通过。
+
+### 共享与分发（2026-10-30）
+- **库级公开链接**：`src/lib/kb/kb-share.ts`——单库单链接（token `ks_`，重建即替换旧 token），支持 expiresAt / PBKDF2 密码 / maxViews / views，口径与 `doc-share.ts` 一致；`GET|POST|DELETE /api/knowledge-base/[id]/share` 用 `canEditKb` 鉴权（含 workspace 边界），创建/撤销进 `sharelink.create|revoke` 审计链。
+- **公开读取**：`GET /api/share/kb/[token]`（无鉴权，token 即凭证）返回库元信息 + 可见文档列表（文档级 `private` 一律剔除，列表只带 160 字摘要）；`?doc=<id>` 返回单篇前 3000 字正文预览，且**不计访问次数**（只有整页加载计数），翻文档不会烧掉次数额度。错误码沿用 410 过期 / 401 密码 / 403 次数用尽 / 404 撤销或未知。
+- **前端入口**：V6 迁移时丢失的文档分享对话框在 Vue 侧恢复（`frontend/src/components/kb/ShareLinkDialog.vue`，库级/文档级共用同一套有效期/密码/上限表单）；KB 详情页新增标题行「分享」与每行「分享文档」按钮，链接可复制、展示有效期与访问次数、可一键撤销。
+- **公开页**：`/share-kb/:token`（`frontend/src/views/share/ShareKbView.vue`）——加载/密码门/过期/用尽/无效五态 + 库信息 + 文档列表 + 按需正文预览；网关 `deploy/nginx/routes.conf` 增加 `/share-kb/*`。
+- **安全**：文档分享 `POST` 响应此前会把 `passwordHash` 原样返回，现与 `GET` 一致脱敏；库级链接同样只返回 token、设置与计数。
+- **验证**：`scripts/smoke/test-kb-share.ts` 30/30（含 private 文档隐藏、密码/过期/次数/撤销、审计链）；`src/lib/kb/kb-share.test.ts` 9/9；`frontend/e2e/share.spec.ts` 1/1（库链接匿名只读 + 文档链接入口）。
+
+### 可观测与通知（2026-11-02）
+- **团队活动流**：`src/lib/team/activity.ts` 把两份审计合并成统一条目——团队 store 的成员/角色/共享权限记录（`AuditLog`）与安全审计的 `sharelink.create|revoke`、`kb.access_change`、`doc.access_change`（hash 链）。纯函数负责分类（member / permission / share / content / team / security）、`q` 全文匹配、`before` 分页与 CSV；安全审计是全局的，路由只保留 actor 属于当前团队成员的事件（旧行无 `actorId` 时按 actor 名匹配）。
+- **活动 API**：`GET /api/team/activity`（owner/admin）支持 `category` / `q` / `before` / `limit`（JSON 上限 200，CSV 上限 1000），`format=csv` 返回带 UTF-8 BOM 的附件；未知分类 400。
+- **通知联动**：新增 `teamActivity` 通道（`NotificationPrefs.teamActivity`，migration `20261102120000_notification_team_activity`，默认开启）。`src/lib/team/notify.ts` 按事件选择受众：邀请/角色变更/移除 → 当事人；成员级 KB 授权 → 被授权人；共享访问级别变更 → 全体成员；库级公开分享创建/撤销 → 其他管理者；文档分享与文档权限 → 库主。`exceptUserId` 保证操作者不通知自己。
+- **通知实时化**：`notify` / 已读 / 删除向总线 `user:<id>` 频道广播；`GET /api/notifications/events`（SSE，30s ping）先推 `init` 快照再推增量。AppShell 登录后订阅，连上即停 30s 轮询，断线重连期间恢复轮询（`subscribeEvents` 自带重连）。
+- **前端**：团队页用「团队活动」卡替换原审计列表（分类 chips + 搜索 + 加载更多 + CSV 导出）；设置页通知偏好新增「团队动态」开关；铃铛新增团队色图标。
+- **验证**：`scripts/smoke/test-team-activity.ts` 23/23（活动流权限/合并/筛选/搜索/CSV、分享事件入流、SSE 实时到达、偏好静音）；`src/lib/team/activity.test.ts` 7/7、`src/lib/team/notify.test.ts` 6/6、通知广播单测 3/3；`frontend/e2e/kb.spec.ts` 团队用例新增活动流断言。
 
 ## 十五·七、多租户隔离（P4-3，2026-08-10）
 
@@ -1138,7 +1170,7 @@ KnowledgeAI/
 │   │   │   └── indexer.ts      # 双索引（向量 + BM25）
 │   │   ├── llm/                # ⭐ LLM Provider 适配层（用户模型 > env > 演示）
 │   │   ├── models/              # ⭐ 外部模型管理（6 预设 + 连接测试 + 拉取列表）
-│   │   ├── notifications/       # ⭐ 通知系统（4 通道 + 偏好 + 收件箱）
+│   │   ├── notifications/       # ⭐ 通知系统（5 通道 + 偏好 + 收件箱 + SSE）
 │   │   │   ├── types.ts        # ChatMessage / ChatOptions
 │   │   │   └── provider.ts     # OpenAI embed/chat/stream + 本地回退
 │   │   ├── kb/                 # 知识库 + 处理管线

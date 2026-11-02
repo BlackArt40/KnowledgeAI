@@ -267,7 +267,8 @@
       "s35": "Go to Q&A",
       "s36": "Documents",
       "s37": "{count} processing",
-      "s38": "Live updates"
+      "s38": "Live updates",
+      "s39": "{count} viewing"
     },
     "agent": {
       "s0": "Export",
@@ -417,6 +418,8 @@
       "s63": "Notify when a research report is generated",
       "s64": "Security alerts",
       "s65": "Notify immediately on unusual logins or permission changes",
+      "s15": "Team activity",
+      "s18": "Notify me about membership, permission and sharing changes",
       "s66": "Usage analytics",
       "s67": "Allow anonymous usage data to improve the product",
       "s68": "Crash reports",
@@ -681,7 +684,11 @@
       "s20": "Queued for reindexing",
       "s21": "Reindex failed"
     },
-    "doc-share-dialog": {
+    "kb-share": {
+      "s0": "Share knowledge base",
+      "s1": "Share"
+    },
+    "share-link-dialog": {
       "s0": "Share link (accessible without login)",
       "s1": "Expiry (days)",
       "s2": "0 = permanent",
@@ -697,7 +704,9 @@
       "s18": "Share document",
       "s19": "Views: {views} / {max}",
       "s20": "Revoke share",
-      "s21": "Generate share link"
+      "s21": "Generate share link",
+      "s22": "{views} views so far",
+      "s23": "Anyone with the link gets read-only access. You can set an expiry, a password and a view limit."
     },
     "new-kb-dialog": {
       "s0": "New Knowledge Base",
@@ -792,7 +801,8 @@
       "s32": "Upgrade now",
       "s33": "Mark all as read",
       "s34": "Sign out",
-      "s35": "{count} online"
+      "s35": "{count} online",
+      "s36": "Online members"
     },
     "monitoring": {
       "s0": "Observability",
@@ -979,6 +989,24 @@
       "tabShared": "Shared",
       "tabMatrix": "Permissions",
       "tabAudit": "Audit log",
+      "activityTitle": "Team activity",
+      "activityHint": "One log for membership, permission, sharing and content changes — filterable and exportable.",
+      "activitySearch": "Search actor, target or detail…",
+      "activityLoadFailed": "Could not load activity, please retry",
+      "exportCsv": "Export CSV",
+      "loadMore": "Load more",
+      "catAll": "All",
+      "catMember": "Members",
+      "catPermission": "Permissions",
+      "catShare": "Sharing",
+      "catContent": "Content",
+      "catTeam": "Team",
+      "catSecurity": "Security",
+      "actKbAccess": "KB permission changed",
+      "actDocAccess": "Document permission changed",
+      "actShareCreate": "Share link created",
+      "actShareRevoke": "Share link revoked",
+      "actDocDelete": "Document deleted",
       "member": "Member",
       "role": "Role",
       "status": "Status",
@@ -1001,7 +1029,20 @@
       "s25": "{total} members · {active} active · {invited} pending",
       "s26": "{owner} · {docs} documents",
       "s27": "{name} ({role})",
-      "s28": "{count} member(s) with edit access"
+      "s28": "{count} member(s) with edit access",
+      "inherit": "Inherit (follow shared access)",
+      "matrixHint": "This matrix is served by the backend RBAC layer, so the UI and API checks share one source.",
+      "memberRoleHint": "Grant this member a knowledge-base role; \"Inherit\" follows the shared access level above. Only the KB owner can change this.",
+      "capKbRead": "View knowledge bases",
+      "capKbCreate": "Create knowledge bases",
+      "capKbEdit": "Edit knowledge bases",
+      "capKbDelete": "Delete knowledge bases",
+      "capChatUse": "Use Q&A",
+      "capAgentRun": "Run agent research",
+      "capMemberInvite": "Invite members",
+      "capMemberManage": "Manage members",
+      "capTeamSettings": "Team settings",
+      "capBillingManage": "Billing"
     },
     "forgot-password": {
       "s0": "Reset your password",
@@ -1225,6 +1266,33 @@
       "s18": "{count} views",
       "s19": "Uploaded {time}",
       "s20": "Shared by the KnowledgeAI team"
+    },
+    "share-kb": {
+      "s1": "Password required",
+      "s10": "Incorrect password, please retry",
+      "s11": "View content",
+      "s12": "Back to home",
+      "s13": "Access password",
+      "s14": "Web link",
+      "s15": "(no text preview available for this document)",
+      "s16": "Learn about KnowledgeAI",
+      "s17": "Shared by the KnowledgeAI team",
+      "s18": "valid until {date}",
+      "s0": "This shared knowledge base is password protected. Enter the password to view its documents.",
+      "s2": "{count} documents",
+      "s3": "{count} views",
+      "s4": "{views} / {max} views",
+      "s5": "No documents in this knowledge base are publicly available",
+      "s6": "Loading preview…",
+      "s7": "View",
+      "s8": "Hide",
+      "s9": "Shared knowledge base",
+      "s20": "Link expired",
+      "s21": "This share link has expired - ask the knowledge base owner for a new link",
+      "s22": "View limit reached",
+      "s23": "This share link has reached its view limit",
+      "s24": "Invalid link",
+      "s25": "This share link does not exist or has been revoked"
     },
     "report-share": {
       "s0": "This report is encrypted",

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-// V1：认证 6 页 + 静态 3 页 + 分享 2 页已由 Vue 接管（网关 routes.conf 对齐）。
+// V1：认证 6 页 + 静态 3 页 + 分享 3 页已由 Vue 接管（网关 routes.conf 对齐）。
 // 布局约定：认证页用 AuthLayout 包裹（复刻 Next (auth) 组布局）；静态/分享页
 // 独立无壳（与 Next 顶级路由一致）。V2+ 逐阶段补齐其余页面。
 export const router = createRouter({
@@ -180,6 +180,11 @@ export const router = createRouter({
       path: "/share-doc/:token",
       name: "share-doc",
       component: () => import("@/views/share/ShareDocView.vue"),
+    },
+    {
+      path: "/share-kb/:token",
+      name: "share-kb",
+      component: () => import("@/views/share/ShareKbView.vue"),
     },
     {
       path: "/r/:id",

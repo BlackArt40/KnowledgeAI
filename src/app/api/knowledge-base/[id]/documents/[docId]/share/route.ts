@@ -7,6 +7,7 @@ import {
 } from "@/lib/kb/doc-share";
 import { getRequestUser } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
+import { notifyKbOwner } from "@/lib/team/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,18 @@ export async function POST(req: Request, { params }: Params) {
     target: doc.name,
     detail: `创建文档分享链接（${share.expiresAt ? "限时" : "永久"}${share.passwordHash ? " + 密码" : ""}${share.maxViews !== undefined ? `，最多 ${share.maxViews} 次` : ""}）`,
   });
-  return NextResponse.json({ share }, { status: 201 });
+  notifyKbOwner(
+    kb.ownerId,
+    {
+      title: "文档公开分享链接已创建",
+      body: `${u.name} 为「${doc.name}」创建了公开分享链接`,
+      link: `/knowledge-base/${kb.id}`,
+    },
+    { exceptUserId: u.id }
+  );
+  // Never return the stored password hash (only the owner-facing config).
+  const { passwordHash: _hash, ...safe } = share;
+  return NextResponse.json({ share: safe }, { status: 201 });
 }
 
 // DELETE /api/knowledge-base/[id]/documents/[docId]/share - revoke the link
@@ -77,5 +89,14 @@ export async function DELETE(req: Request, { params }: Params) {
     target: doc.name,
     detail: "撤销文档分享链接",
   });
+  notifyKbOwner(
+    kb.ownerId,
+    {
+      title: "文档公开分享链接已撤销",
+      body: `${u.name} 撤销了「${doc.name}」的公开分享链接`,
+      link: `/knowledge-base/${kb.id}`,
+    },
+    { exceptUserId: u.id }
+  );
   return NextResponse.json({ ok });
 }

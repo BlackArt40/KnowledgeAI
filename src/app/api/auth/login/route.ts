@@ -55,6 +55,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "邮箱或密码不正确" }, { status: 401 });
   }
 
+  // Ban must block new sessions too, otherwise the admin action is cosmetic
+  // (the guard also rejects banned accounts on every later request).
+  if (user.status !== "active") {
+    recordAudit({
+      actorId: user.id,
+      actor: user.name,
+      action: "auth.login_blocked",
+      target: "登录",
+      detail: `账号状态为 ${user.status}，拒绝登录`,
+      ip: info.ip,
+    });
+    return NextResponse.json({ error: "账号已被封禁，请联系管理员" }, { status: 403 });
+  }
+
   // ── 2FA check ──────────────────────────────────────────────────────────
   if (is2FAEnabled(user.id)) {
     if (!body.totpCode) {

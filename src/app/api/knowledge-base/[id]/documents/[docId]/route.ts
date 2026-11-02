@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getKb, getDocument, deleteDocument, canViewDoc, canEditDoc, setDocumentAccess } from "@/lib/kb/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
+import { notifyKbOwner } from "@/lib/team/notify";
 import type { DocAccess } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,15 @@ export async function PATCH(req: Request, { params }: Params) {
     target: r.doc.name,
     detail: `文档权限由 ${prev ?? "继承"} 调整为 ${body.access ?? "继承"}`,
   });
+  notifyKbOwner(
+    r.kb.ownerId,
+    {
+      title: "文档权限已更新",
+      body: `${r.u.name} 将「${r.doc.name}」的权限调整为 ${body.access ?? "继承"}`,
+      link: `/knowledge-base/${r.kb.id}`,
+    },
+    { exceptUserId: r.u.id }
+  );
   return NextResponse.json({ doc: updated });
 }
 
