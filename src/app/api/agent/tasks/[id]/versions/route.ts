@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTask, saveVersion, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { can } from "@/lib/team/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export async function POST(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadOwned(req, id);
   if ("error" in r) return r.error;
+  if (!can(r.u.role, "agent.run"))
+    return NextResponse.json({ error: "权限不足：只读角色不能保存版本" }, { status: 403 });
   const body = await req.json().catch(() => ({}));
   const v = saveVersion(id, body.label, r.u.name || r.u.email);
   return NextResponse.json({ version: v, versions: getTask(id)?.versions ?? [] });
