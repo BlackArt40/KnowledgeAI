@@ -115,7 +115,7 @@ function onEnabled(value: string | number | boolean) {
           @update:model-value="onPasswordInput"
         />
         <span
-          v-if="props.shareCfg?.passwordHash && !props.sharePassword"
+          v-if="props.shareCfg?.hasPassword && !props.sharePassword"
           class="sf-hint"
         >{{ t("page.agent.s26") }}</span>
       </div>

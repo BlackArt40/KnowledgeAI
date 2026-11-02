@@ -119,13 +119,22 @@ async function loadTask(id: string) {
 // 报告写操作（编辑/恢复版本/公开分享）仅 editor 及以上；
 // viewer 是只读角色（kb.read + chat.use），按钮不渲染，服务端也会 403。
 const myRole = ref("");
+const myUserId = ref("");
 const canEditReport = computed(() => ["owner", "admin", "editor"].includes(myRole.value));
+const canManageTeam = computed(() => ["owner", "admin"].includes(myRole.value));
+/** 删除评论：评论作者、任务所有者或管理者；服务端同样校验。 */
+function canDeleteComment(c: AgentComment): boolean {
+  return canManageTeam.value || c.userId === myUserId.value || task.value?.userId === myUserId.value;
+}
 
 onMounted(() => {
   const taskParam = typeof route.query.task === "string" ? route.query.task : "";
   if (taskParam) pendingTask.value = taskParam;
   void fetchCurrentUser()
-    .then((u) => { myRole.value = u?.role ?? ""; })
+    .then((u) => {
+      myRole.value = u?.role ?? "";
+      myUserId.value = u?.id ?? "";
+    })
     .catch(() => {});
   void fetchKbs()
     .then((list) => (kbs.value = list.map((k) => ({ id: k.id, name: k.name }))))
@@ -334,7 +343,7 @@ async function loadComments() {
 }
 
 async function submitComment() {
-  if (!task.value || !commentText.value.trim()) return;
+  if (!canEditReport.value || !task.value || !commentText.value.trim()) return;
   const body: { text: string; citeN?: number } = { text: commentText.value.trim() };
   if (commentCite.value !== "general") body.citeN = Number(commentCite.value);
   await postAgentComment(task.value.id, body).catch(() => {});
@@ -343,7 +352,7 @@ async function submitComment() {
 }
 
 async function submitReply(parentId: string) {
-  if (!task.value || !replyText.value.trim()) return;
+  if (!canEditReport.value || !task.value || !replyText.value.trim()) return;
   await postAgentComment(task.value.id, { text: replyText.value.trim(), parentId }).catch(() => {});
   replyText.value = "";
   replyTo.value = null;
@@ -352,6 +361,8 @@ async function submitReply(parentId: string) {
 
 async function removeComment(id: string) {
   if (!task.value) return;
+  const target = comments.value.find((c) => c.id === id);
+  if (!target || !canDeleteComment(target)) return;
   await deleteAgentComment(task.value.id, id).catch(() => {});
   void loadComments();
 }
@@ -683,7 +694,10 @@ const durationText = computed(() => {
             v-else-if="activeTab === 'comments'"
             class="comments"
           >
-            <div class="comment-new">
+            <div
+              v-if="canEditReport"
+              class="comment-new"
+            >
               <div class="cn-head">
                 <el-icon
                   :size="13"
@@ -743,6 +757,7 @@ const durationText = computed(() => {
                     <span class="c-name">{{ c.userName }}</span>
                     <span class="c-time">{{ formatDateTime(c.createdAt, i18next.language) }}</span>
                     <el-button
+                      v-if="canDeleteComment(c)"
                       size="small"
                       text
                       :icon="Delete"
@@ -755,6 +770,7 @@ const durationText = computed(() => {
                     {{ c.text }}
                   </p>
                   <button
+                    v-if="canEditReport"
                     type="button"
                     class="c-reply"
                     @click="replyTo = replyTo === c.id ? null : c.id"
@@ -791,6 +807,7 @@ const durationText = computed(() => {
                         <span class="c-name">{{ ch.userName }}</span>
                         <span class="c-time">{{ formatDateTime(ch.createdAt, i18next.language) }}</span>
                         <el-button
+                          v-if="canDeleteComment(ch)"
                           size="small"
                           text
                           :icon="Delete"
@@ -824,6 +841,7 @@ const durationText = computed(() => {
                     <span class="c-name">{{ c.userName }}</span>
                     <span class="c-time">{{ formatDateTime(c.createdAt, i18next.language) }}</span>
                     <el-button
+                      v-if="canDeleteComment(c)"
                       size="small"
                       text
                       :icon="Delete"

@@ -8,6 +8,8 @@ import { POST as versionsPOST } from "@/app/api/agent/tasks/[id]/versions/route"
 import { POST as restorePOST } from "@/app/api/agent/tasks/[id]/versions/[vid]/route";
 import { GET as shareGET, PUT as sharePUT } from "@/app/api/agent/tasks/[id]/share/route";
 import { POST as commentsPOST } from "@/app/api/agent/tasks/[id]/comments/route";
+import { DELETE as taskDELETE } from "@/app/api/agent/tasks/[id]/route";
+import { DELETE as commentDELETE } from "@/app/api/agent/tasks/[id]/comments/[cid]/route";
 import { createTask, saveTask, saveVersion } from "@/lib/agent/store";
 import { createToken } from "@/lib/auth/session";
 import { seed as seedUsers } from "@/lib/auth/store";
@@ -37,6 +39,7 @@ function getRequest(cookie: string): Request {
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const versionParams = (id: string, vid: string) => ({ params: Promise.resolve({ id, vid }) });
+const commentParams = (id: string, cid: string) => ({ params: Promise.resolve({ id, cid }) });
 
 /** Task owned by OWNER in the default workspace, already finished with a body. */
 function finishedTask(report = "# 初始报告\n\n正文内容") {
@@ -141,6 +144,70 @@ describe("Agent 报告写操作的角色边界", () => {
       params(task.id)
     );
     expect(adminWrite!.status).toBe(200);
+
+    // 密码只以 hasPassword 投影返回，哈希不出服务端
+    const withPw = await sharePUT(
+      jsonRequest(owner, "PUT", { enabled: true, password: "pw-123" }),
+      params(task.id)
+    );
+    const pwBody = (await withPw!.json()) as { shareConfig: { hasPassword?: boolean; passwordHash?: string } };
+    expect(pwBody.shareConfig.hasPassword).toBe(true);
+    expect(pwBody.shareConfig.passwordHash).toBeUndefined();
+
+    const readBody = (await (await shareGET(getRequest(editor), params(task.id)))!.json()) as {
+      shareConfig: { hasPassword?: boolean; passwordHash?: string };
+    };
+    expect(readBody.shareConfig.hasPassword).toBe(true);
+    expect(readBody.shareConfig.passwordHash).toBeUndefined();
+  });
+});
+
+describe("删除任务与评论的角色边界", () => {
+  it("viewer/editor 不能删除他人任务，所有者与管理者可以", async () => {
+    const task = finishedTask();
+    const owner = await cookieFor(OWNER);
+    const admin = await cookieFor(ADMIN);
+    const editor = await cookieFor(EDITOR);
+    const viewer = await cookieFor(VIEWER);
+
+    expect((await taskDELETE(getRequest(viewer), params(task.id)))!.status).toBe(403);
+    expect((await taskDELETE(getRequest(editor), params(task.id)))!.status).toBe(403);
+    expect((await taskDELETE(getRequest(admin), params(task.id)))!.status).toBe(200);
+
+    const second = finishedTask();
+    expect((await taskDELETE(getRequest(owner), params(second.id)))!.status).toBe(200);
+  });
+
+  it("viewer 不能评论；评论仅作者/任务所有者/管理者可删", async () => {
+    const task = finishedTask();
+    const owner = await cookieFor(OWNER);
+    const editor = await cookieFor(EDITOR);
+    const viewer = await cookieFor(VIEWER);
+
+    const viewerPost = await commentsPOST(
+      jsonRequest(viewer, "POST", { text: "viewer 也想评论" }),
+      params(task.id)
+    );
+    expect(viewerPost!.status).toBe(403);
+
+    const editorPost = await commentsPOST(
+      jsonRequest(editor, "POST", { text: "editor 的评论" }),
+      params(task.id)
+    );
+    const editorComment = (await editorPost!.json()).comment as { id: string };
+    expect((await commentDELETE(getRequest(viewer), commentParams(task.id, editorComment.id)))!.status).toBe(403);
+
+    const ownerPost = await commentsPOST(
+      jsonRequest(owner, "POST", { text: "owner 的评论" }),
+      params(task.id)
+    );
+    const ownerComment = (await ownerPost!.json()).comment as { id: string };
+    // 非作者、非任务所有者的普通成员不能删
+    expect((await commentDELETE(getRequest(editor), commentParams(task.id, ownerComment.id)))!.status).toBe(403);
+
+    // 作者可删自己的；任务所有者可删他人的
+    expect((await commentDELETE(getRequest(editor), commentParams(task.id, editorComment.id)))!.status).toBe(200);
+    expect((await commentDELETE(getRequest(owner), commentParams(task.id, ownerComment.id)))!.status).toBe(200);
   });
 });
 

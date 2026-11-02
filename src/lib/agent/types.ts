@@ -99,8 +99,11 @@ export interface ShareConfig {
   enabled: boolean;
   /** Unix ms timestamp after which the link is expired (undefined = never). */
   expiresAt?: number;
-  /** SHA-256 hash of the access password (undefined = no password). */
+  /** SHA-256 hash of the access password (undefined = no password).
+   *  Server-internal: the API exposes `hasPassword` instead, never the hash. */
   passwordHash?: string;
+  /** Read-only projection returned by the API: whether a password is set. */
+  hasPassword?: boolean;
   /** Max allowed views (undefined = unlimited). */
   maxViews?: number;
   /** Current view count. */
