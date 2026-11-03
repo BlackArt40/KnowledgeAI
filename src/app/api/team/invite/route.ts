@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   }
 
   const member = inviteMember({ name: body.name ?? "", email, role }, u.name);
-  reserveInviteSeat(u.workspaceId, email, Date.now() + INVITE_TTL_MS);
+  reserveInviteSeat(u.workspaceId, email, role, Date.now() + INVITE_TTL_MS);
   const token = signInviteToken({ email, role, workspaceId: u.workspaceId });
   const inviteUrl = `${new URL(req.url).origin}/invite?token=${encodeURIComponent(token)}`;
   const mail = await sendInviteEmail(email, inviteUrl, u.name);

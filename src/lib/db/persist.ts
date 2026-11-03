@@ -11,6 +11,7 @@
 // future iterations (when stores are migrated to read directly from DB).
 // ---------------------------------------------------------------------------
 
+import { randomUUID } from "crypto";
 import { getDb, isDbEnabled } from "./client";
 import { encryptToString } from "@/lib/crypto";
 import { log } from "@/lib/obs/log";
@@ -1251,6 +1252,66 @@ export async function persistTeamMember(
       .catch((err) => bestEffort(err));
   } catch (err) {
     log.error({ err }, "[db] persistTeamMember error");
+  }
+}
+
+/** Upsert a pending-invite seat reservation (survives restarts). */
+export async function persistInviteReservation(reservation: {
+  workspaceId: string;
+  email: string;
+  role: string;
+  expiresAt: number;
+}): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const table = db as unknown as {
+      teamInviteReservation: { upsert: (o: unknown) => Promise<unknown> };
+    };
+    await table.teamInviteReservation
+      .upsert({
+        where: {
+          workspaceId_email: {
+            workspaceId: reservation.workspaceId,
+            email: reservation.email,
+          },
+        },
+        update: {
+          role: reservation.role.toUpperCase() as never,
+          expiresAt: new Date(reservation.expiresAt),
+        },
+        create: {
+          id: randomUUID(),
+          workspaceId: reservation.workspaceId,
+          email: reservation.email,
+          role: reservation.role.toUpperCase() as never,
+          expiresAt: new Date(reservation.expiresAt),
+        },
+      })
+      .catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] persistInviteReservation error");
+  }
+}
+
+/** Delete a pending-invite reservation (accept/reject/expiry). */
+export async function deleteInviteReservation(
+  workspaceId: string,
+  email: string
+): Promise<void> {
+  if (!isDbEnabled()) return;
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const table = db as unknown as {
+      teamInviteReservation: { deleteMany: (o: unknown) => Promise<unknown> };
+    };
+    await table.teamInviteReservation
+      .deleteMany({ where: { workspaceId, email } })
+      .catch((err) => bestEffort(err));
+  } catch (err) {
+    log.error({ err }, "[db] deleteInviteReservation error");
   }
 }
 

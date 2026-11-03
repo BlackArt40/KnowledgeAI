@@ -112,6 +112,22 @@ model TeamMember {
   @@unique([teamId, userId])
 }
 
+/// Pending team-invite seat reservations: stateless invite tokens cannot be
+/// listed, so the seat budget needs a durable row per (workspace, email) until
+/// the invite is accepted/rejected (or expires). Strong consistency across
+/// restarts for multi-instance/DB deployments.
+model TeamInviteReservation {
+  id          String   @id
+  workspaceId String
+  email       String
+  role        Role     @default(VIEWER)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, email])
+  @@index([expiresAt])
+}
+
 // ── Workspaces (P4-3 tenants / P5-5 theme) ─────────────────
 // P5-5: persistence row for the in-memory workspace store (src/lib/workspace/
 // store.ts). `brandColor` drives the workspace-level theme (see

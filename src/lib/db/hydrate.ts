@@ -18,6 +18,7 @@ import type { UsagePoint } from "@/lib/billing/types";
 import type { SecurityState } from "@/lib/security/types";
 import type { PrismaUser, PrismaUserSecurity, PrismaKb, PrismaDoc, PrismaAgentTask } from "./types";
 import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";
+import { hydrateInviteReservation } from "@/lib/team/invite-seats";
 import { log } from "@/lib/obs/log";
 
 let _hydrated = false;
@@ -105,6 +106,8 @@ export async function hydrateFromDb(): Promise<void> {
     const bots = await hydrateBotIntegrations();
     // P7-3: knowledge-graph rows (entities/relations survive restarts).
     const graph = await hydrateKnowledgeGraph();
+    // 2026-11: pending invite seat reservations (seat budget survives restarts).
+    const invites = await hydrateInviteReservations();
 
     _hydrated = true;
     // With DB rows loaded, block the demo seed() paths (seed only runs while
@@ -115,7 +118,7 @@ export async function hydrateFromDb(): Promise<void> {
     const { resumePendingDocs } = await import("@/lib/kb/store");
     const resumed = resumePendingDocs();
     log.info(
-      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${security} security, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, keys=${keys}, billing=${billing}, usage=${usage}, resumedDocs=${resumed}`
+      `[db] Hydration complete: ${counts.users} users, ${counts.kbs} KBs, ${counts.docs} docs, ${counts.tasks} tasks, ${security} security, ${convs} convs, ${models} models, ${notifs} notifs, team={${team.team}t/${team.members}m/${team.audit}a}, admin=${admin}, audit=${audit}, workspaces=${workspaces}, webhooks=${webhooks}, bots=${bots}, graph=${graph}, invites=${invites}, keys=${keys}, billing=${billing}, usage=${usage}, resumedDocs=${resumed}`
     );
   } catch (err) {
     log.error({ err }, "[db] Hydration failed");
@@ -161,6 +164,8 @@ function ensureStores(): void {
     };
   if (!g.__KAI_WORKSPACE_STORE__)
     g.__KAI_WORKSPACE_STORE__ = new Map();
+  if (!g.__KAI_INVITE_SEATS__)
+    g.__KAI_INVITE_SEATS__ = new Map();
   if (!g.__KAI_WEBHOOK_STORE__)
     g.__KAI_WEBHOOK_STORE__ = { subs: new Map(), deliveries: [] };
   if (!g.__KAI_BOT_STORE__)
@@ -1230,5 +1235,37 @@ export async function loadWebhookFromDb(subscriptionId: string): Promise<boolean
   } catch (err) {
     log.warn({ err }, "[db] loadWebhookFromDb failed");
     return false;
+  }
+}
+
+// ── Pending invite seat reservations (2026-11) ────────────────────────────
+// Invitations are stateless tokens; the seat budget is durable so a restart
+// cannot resurrect capacity that is already spoken for.
+async function hydrateInviteReservations(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  try {
+    const table = db as unknown as {
+      teamInviteReservation: {
+        findMany: (o: unknown) => Promise<
+          Array<{ workspaceId: string; email: string; role: string; expiresAt: Date }>
+        >;
+      };
+    };
+    const rows = await table.teamInviteReservation.findMany({
+      where: { expiresAt: { gt: new Date() } },
+    });
+    for (const row of rows) {
+      hydrateInviteReservation({
+        workspaceId: row.workspaceId,
+        email: row.email,
+        role: row.role.toLowerCase(),
+        expiresAt: row.expiresAt.getTime(),
+      });
+    }
+    return rows.length;
+  } catch (err) {
+    log.error({ err }, "[db] hydrateInviteReservations error");
+    return 0;
   }
 }
