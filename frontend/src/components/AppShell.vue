@@ -147,7 +147,7 @@ function routeGuard(role: string | undefined, path: string): boolean {
   const RESTRICTED: Record<string, Role[]> = {
     "/admin": ["owner", "admin"],
     "/billing": ["owner", "admin"],
-    "/agent": ["owner", "admin", "editor"],
+    "/agent": ["owner", "admin", "editor", "viewer"],
     "/usage": ["owner", "admin", "editor"],
     "/api-keys": ["owner", "admin", "editor"],
     "/developer": ["owner", "admin", "editor"],

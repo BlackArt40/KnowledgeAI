@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getTask, deleteTask, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
+import { recordAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -34,5 +35,12 @@ export async function DELETE(req: Request, { params }: Params) {
     return NextResponse.json({ error: "权限不足：仅任务所有者或 Owner/Admin 可删除任务" }, { status: 403 });
   const ok = deleteTask(id);
   if (!ok) return NextResponse.json({ error: "任务不存在" }, { status: 404 });
+  recordAudit({
+    actorId: r.u.id,
+    actor: r.u.name,
+    action: "agent.task_delete",
+    target: r.task.topic,
+    detail: `删除调研任务（${r.task.status}）`,
+  });
   return NextResponse.json({ ok: true });
 }
