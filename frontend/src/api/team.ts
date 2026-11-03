@@ -41,8 +41,21 @@ export async function fetchTeam(): Promise<TeamData> {
   return request<TeamData>("/api/team");
 }
 
-export async function inviteMember(email: string, role: string): Promise<unknown> {
+export async function inviteMember(
+  email: string,
+  role: string
+): Promise<{ member?: TeamMember; emailSent?: boolean; inviteUrl?: string }> {
   return request("/api/team/invite", { method: "POST", body: { email, role } });
+}
+
+/** 接受邀请（签名 token，需登录且邮箱匹配）。 */
+export async function acceptTeamInvite(token: string): Promise<unknown> {
+  return request("/api/team/invite/accept", { method: "POST", body: { token } });
+}
+
+/** 拒绝邀请：移除 pending 成员行。 */
+export async function rejectTeamInvite(token: string): Promise<unknown> {
+  return request("/api/team/invite/reject", { method: "POST", body: { token } });
 }
 
 export function patchMemberRole(id: string, role: string): Promise<unknown> {

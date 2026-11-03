@@ -175,6 +175,13 @@ export const router = createRouter({
       component: () => import("@/views/static/MaintenanceView.vue"),
     },
 
+    // ── 团队邀请（签名 token；需登录被邀请账号）──────────────────────
+    {
+      path: "/invite",
+      name: "invite-accept",
+      component: () => import("@/views/InviteAcceptView.vue"),
+    },
+
     // ── 公开分享（令牌即凭据）──────────────────────────────────────────
     {
       path: "/share-doc/:token",

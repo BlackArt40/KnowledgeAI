@@ -91,6 +91,25 @@ export function sendResetEmail(to: string, resetUrl: string, locale?: string): P
   );
 }
 
+/** Send the team invitation email (owner/admin invite flow). */
+export function sendInviteEmail(
+  to: string,
+  inviteUrl: string,
+  inviter: string,
+  locale?: string
+): Promise<SendEmailResult> {
+  const t = getI18nInstance().getFixedT(normalizeLocale(locale));
+  return sendEmail(
+    to,
+    t("email.invite.subject"),
+    emailFrame(
+      t("email.invite.title"),
+      [buttonLink(inviteUrl, t("email.invite.action"))],
+      t("email.invite.note", { inviter })
+    )
+  );
+}
+
 /** Send the email-verification email (register flow). */
 export function sendVerificationEmail(to: string, verifyUrl: string, locale?: string): Promise<SendEmailResult> {
   const t = getI18nInstance().getFixedT(normalizeLocale(locale));

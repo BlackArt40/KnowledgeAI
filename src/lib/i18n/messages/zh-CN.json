@@ -11,6 +11,12 @@
       "title": "验证你的邮箱",
       "action": "验证邮箱",
       "note": "如果没有注册过 KnowledgeAI，请忽略这封邮件。"
+    },
+    "invite": {
+      "subject": "邀请你加入 KnowledgeAI 团队",
+      "title": "加入 KnowledgeAI 团队",
+      "action": "接受邀请",
+      "note": "{{inviter}} 邀请你加入团队。若非本人操作请忽略；邀请链接 7 天内有效。"
     }
   },
   "common": {
@@ -983,9 +989,22 @@
       "s0": "系统维护中",
       "s1": "系统正在进行维护升级，请稍后再试。如有紧急问题，请联系管理员。"
     },
+    "inviteAccept": {
+      "title": "团队邀请",
+      "hint": "接受后你将加入团队并获得对应角色权限。",
+      "accept": "接受邀请",
+      "reject": "拒绝",
+      "success": "已加入团队，正在跳转…",
+      "rejected": "已拒绝该邀请",
+      "missingToken": "邀请链接缺少 token",
+      "loginFirst": "请先登录被邀请的账号，再打开此链接。",
+      "goTeam": "前往团队页",
+      "error": "处理失败，请重试"
+    },
     "team": {
       "s24": "重置权限",
       "tabMembers": "成员",
+      "inviteLinkHint": "邀请链接（演示模式未发送邮件，可手动转发）",
       "tabShared": "共享",
       "tabMatrix": "权限矩阵",
       "tabAudit": "审计日志",
