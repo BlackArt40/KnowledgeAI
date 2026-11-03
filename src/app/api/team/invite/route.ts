@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { findMemberByEmail, inviteMember, listMembers } from "@/lib/team/store";
+import { findMemberByEmail, inviteMember } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can, isRole, outranks } from "@/lib/team/rbac";
 import { notifyMember, roleLabel } from "@/lib/team/notify";
-import { signInviteToken } from "@/lib/team/invite-token";
+import { INVITE_TTL_MS, signInviteToken } from "@/lib/team/invite-token";
+import { listPendingInviteEmails, reserveInviteSeat } from "@/lib/team/invite-seats";
 import { getWorkspace } from "@/lib/workspace/store";
 import { getPlan } from "@/lib/billing/plans";
 import { isEmailEnabled, sendInviteEmail } from "@/lib/email";
@@ -50,10 +51,11 @@ export async function POST(req: Request) {
   const ws = getWorkspace(u.workspaceId);
   const seats = getPlan(ws?.plan ?? "free").seats;
   if (seats !== null && ws) {
-    const wsEmails = new Set(ws.members.map((m) => m.toLowerCase()));
-    const used = listMembers().filter(
-      (m) => m.status !== "suspended" && wsEmails.has(m.email.toLowerCase())
-    ).length;
+    const usedEmails = new Set(ws.members.map((m) => m.toLowerCase()));
+    // Pending invitations reserve a seat until accepted/rejected: stateless
+    // tokens cannot be listed, so the reservation is tracked separately.
+    for (const pending of listPendingInviteEmails(ws.id)) usedEmails.add(pending);
+    const used = usedEmails.size;
     if (used >= seats) {
       return NextResponse.json(
         { error: `当前套餐席位已满（${used}/${seats}），请升级套餐后再邀请`, code: "seats_full" },
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
   }
 
   const member = inviteMember({ name: body.name ?? "", email, role }, u.name);
+  reserveInviteSeat(u.workspaceId, email, Date.now() + INVITE_TTL_MS);
   const token = signInviteToken({ email, role, workspaceId: u.workspaceId });
   const inviteUrl = `${new URL(req.url).origin}/invite?token=${encodeURIComponent(token)}`;
   const mail = await sendInviteEmail(email, inviteUrl, u.name);

@@ -4,9 +4,11 @@ import { signInviteToken, verifyInviteToken } from "@/lib/team/invite-token";
 import { POST as invitePOST } from "@/app/api/team/invite/route";
 import { POST as acceptPOST } from "@/app/api/team/invite/accept/route";
 import { POST as rejectPOST } from "@/app/api/team/invite/reject/route";
+import { PATCH as memberPATCH } from "@/app/api/team/members/[id]/route";
 import { createToken } from "@/lib/auth/session";
 import { createUser, seed as seedUsers } from "@/lib/auth/store";
 import { findMemberByEmail, listMembers } from "@/lib/team/store";
+import { pendingInviteCount } from "@/lib/team/invite-seats";
 import { getDefaultWorkspace, setWorkspacePlan, workspaceOf } from "@/lib/workspace/store";
 import type { Role } from "@/lib/roles";
 
@@ -22,9 +24,22 @@ function jsonRequest(cookie: string, path: string, body: unknown): Request {
     body: JSON.stringify(body),
   });
 }
+function patchRequest(cookie: string, id: string, role: string): Request {
+  return new Request(`http://localhost/api/team/members/${id}`, {
+    method: "PATCH",
+    headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+}
+
 async function invite(ownerCookie: string, email: string, role = "viewer") {
   const res = await invitePOST(jsonRequest(ownerCookie, "/api/team/invite", { email, role }));
-  const body = (await res!.json()) as { inviteUrl?: string; error?: string; code?: string };
+  const body = (await res!.json()) as {
+    inviteUrl?: string;
+    error?: string;
+    code?: string;
+    member?: { id: string };
+  };
   return { status: res!.status, body };
 }
 function tokenFrom(url?: string): string {
@@ -32,7 +47,7 @@ function tokenFrom(url?: string): string {
 }
 
 beforeEach(() => {
-  for (const key of ["__KAI_TEAM_STORE__", "__KAI_USER_STORE__", "__KAI_WORKSPACE_STORE__"]) {
+  for (const key of ["__KAI_TEAM_STORE__", "__KAI_USER_STORE__", "__KAI_WORKSPACE_STORE__", "__KAI_INVITE_SEATS__"]) {
     delete (globalThis as Record<string, unknown>)[key];
   }
   seedUsers();
@@ -59,6 +74,19 @@ describe("邀请接口与接受/拒绝", () => {
     expect(res.body.code).toBe("seats_full");
   });
 
+  it("pending 邀请占用席位（pro=10，工作区 4 人时最多 6 个待接受）", async () => {
+    const owner = await cookieFor(OWNER);
+    const ws = getDefaultWorkspace();
+    for (let i = 0; i < 6; i++) {
+      const res = await invite(owner, `pending-${i}@test.local`);
+      expect(res.status).toBe(201);
+    }
+    expect(pendingInviteCount(ws.id)).toBe(6);
+    const blocked = await invite(owner, "pending-6@test.local");
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.code).toBe("seats_full");
+  });
+
   it("邀请返回链接；被邀请账号可接受并加入工作区", async () => {
     const owner = await cookieFor(OWNER);
     const invitee = await createUser("受邀者", "invitee@test.local", "password123", "viewer");
@@ -69,6 +97,13 @@ describe("邀请接口与接受/拒绝", () => {
     const token = tokenFrom(res.body.inviteUrl);
     expect(token).not.toBe("");
 
+    // 邀请后管理员改角色：接受时应保留管理员的最新调整，而不是 token 里的旧角色
+    const memberId = res.body.member!.id;
+    const patched = await memberPATCH(patchRequest(owner, memberId, "editor"), {
+      params: Promise.resolve({ id: memberId }),
+    });
+    expect(patched!.status).toBe(200);
+
     // 邮箱不匹配不能接受
     const wrongUser = await cookieFor({ ...OWNER, id: "usr_editor", email: "editor@knowledgeai.dev", name: "王浩", role: "editor" });
     const wrong = await acceptPOST(jsonRequest(wrongUser, "/api/team/invite/accept", { token }));
@@ -78,6 +113,7 @@ describe("邀请接口与接受/拒绝", () => {
     const accepted = await acceptPOST(jsonRequest(inviteeCookie, "/api/team/invite/accept", { token }));
     expect(accepted!.status).toBe(200);
     expect(findMemberByEmail(invitee.email)?.status).toBe("active");
+    expect(findMemberByEmail(invitee.email)?.role).toBe("editor");
     expect(workspaceOf(getDefaultWorkspace().id, invitee.email)).toBe(true);
   });
 
@@ -89,9 +125,11 @@ describe("邀请接口与接受/拒绝", () => {
     const res = await invite(owner, invitee.email);
     const token = tokenFrom(res.body.inviteUrl);
     const inviteeCookie = await cookieFor({ ...invitee, role: "viewer" });
+    expect(pendingInviteCount(getDefaultWorkspace().id)).toBe(1);
 
     const rejected = await rejectPOST(jsonRequest(inviteeCookie, "/api/team/invite/reject", { token }));
     expect(rejected!.status).toBe(200);
+    expect(pendingInviteCount(getDefaultWorkspace().id)).toBe(0);
     expect(findMemberByEmail(invitee.email)).toBeUndefined();
     expect(listMembers().some((m) => m.email === invitee.email)).toBe(false);
     // 再次拒绝：没有 pending 行

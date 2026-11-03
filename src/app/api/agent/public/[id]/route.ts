@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTask, recordShareView, verifyPassword } from "@/lib/agent/store";
 import { publicShareRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { clientInfoFromRequest } from "@/lib/security/ua";
+import { clientIpFromHeaders } from "@/lib/security/client-ip";
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(req: Request, { params }: Params) {
   // Public + password-protected: rate-limit before any lookup so tokens cannot
   // be enumerated and passwords cannot be brute-forced.
-  const rl = await publicShareRateLimit(clientInfoFromRequest(req).ip);
+  const rl = await publicShareRateLimit(clientIpFromHeaders(req.headers));
   if (!rl.allowed) return rateLimitResponse(rl, "share");
   const { id } = await params;
   const task = getTask(id);

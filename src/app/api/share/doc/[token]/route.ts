@@ -1,6 +1,6 @@
 import { checkDocShare } from "@/lib/kb/doc-share";
 import { publicShareRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { clientInfoFromRequest } from "@/lib/security/ua";
+import { clientIpFromHeaders } from "@/lib/security/client-ip";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ token: string }> };
 // Only a text preview (first 3000 chars) is exposed - full content stays in
 // the knowledge base.
 export async function GET(req: Request, { params }: Params) {
-  const rl = await publicShareRateLimit(clientInfoFromRequest(req).ip);
+  const rl = await publicShareRateLimit(clientIpFromHeaders(req.headers));
   if (!rl.allowed) return rateLimitResponse(rl, "share");
   const { token } = await params;
   // P2: prefer the header (query strings leak into access logs / Referer).

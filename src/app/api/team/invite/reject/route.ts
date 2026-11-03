@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readInviteRequest } from "@/lib/team/invite-guard";
 import { removeInvitedMemberByEmail } from "@/lib/team/store";
+import { releaseInviteSeat } from "@/lib/team/invite-seats";
 
 export const dynamic = "force-dynamic";
 
@@ -16,5 +17,6 @@ export async function POST(req: Request) {
   if (!removed) {
     return NextResponse.json({ error: "没有待处理的邀请（可能已接受）" }, { status: 409 });
   }
+  releaseInviteSeat(invite.workspaceId, invite.email);
   return NextResponse.json({ ok: true });
 }
