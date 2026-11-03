@@ -8,12 +8,14 @@ import { POST as versionsPOST } from "@/app/api/agent/tasks/[id]/versions/route"
 import { POST as restorePOST } from "@/app/api/agent/tasks/[id]/versions/[vid]/route";
 import { GET as shareGET, PUT as sharePUT } from "@/app/api/agent/tasks/[id]/share/route";
 import { POST as commentsPOST } from "@/app/api/agent/tasks/[id]/comments/route";
+import { POST as agentRunPOST } from "@/app/api/agent/run/route";
 import { DELETE as taskDELETE } from "@/app/api/agent/tasks/[id]/route";
 import { DELETE as commentDELETE } from "@/app/api/agent/tasks/[id]/comments/[cid]/route";
 import { createTask, saveTask, saveVersion } from "@/lib/agent/store";
 import { createToken } from "@/lib/auth/session";
 import { seed as seedUsers } from "@/lib/auth/store";
 import { listNotifications } from "@/lib/notifications/store";
+import { listAudit } from "@/lib/security/audit";
 import type { Role } from "@/lib/roles";
 
 const OWNER = { id: "usr_owner", email: "owner@knowledgeai.dev", name: "张明（Owner）", role: "owner" as Role };
@@ -173,9 +175,19 @@ describe("删除任务与评论的角色边界", () => {
     expect((await taskDELETE(getRequest(viewer), params(task.id)))!.status).toBe(403);
     expect((await taskDELETE(getRequest(editor), params(task.id)))!.status).toBe(403);
     expect((await taskDELETE(getRequest(admin), params(task.id)))!.status).toBe(200);
+    expect(listAudit({ action: "agent.task_delete" }).audit.some((a) => a.target === task.topic)).toBe(true);
 
     const second = finishedTask();
     expect((await taskDELETE(getRequest(owner), params(second.id)))!.status).toBe(200);
+    expect(listAudit({ action: "agent.task_delete" }).audit.some((a) => a.target === second.topic)).toBe(true);
+  });
+
+  it("viewer 不能发起调研（agent.run 为 editor+）", async () => {
+    const viewer = await cookieFor(VIEWER);
+    const res = await agentRunPOST(
+      jsonRequest(viewer, "POST", { topic: "viewer 想跑调研" })
+    );
+    expect(res!.status).toBe(403);
   });
 
   it("viewer 可参与讨论，但评论仅作者/任务所有者/管理者可删", async () => {
@@ -213,6 +225,11 @@ describe("删除任务与评论的角色边界", () => {
 
     // 作者可删自己的；任务所有者可删他人的
     expect((await commentDELETE(getRequest(editor), commentParams(task.id, editorComment.id)))!.status).toBe(200);
+    expect(
+      listAudit({ action: "agent.comment_delete" }).audit.some(
+        (a) => a.target === task.topic && a.detail.includes("editor 的评论")
+      )
+    ).toBe(true);
     const editorPost2 = await commentsPOST(
       jsonRequest(editor, "POST", { text: "editor 的第二条评论" }),
       params(task.id)

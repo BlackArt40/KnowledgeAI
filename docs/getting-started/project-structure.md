@@ -61,7 +61,7 @@ frontend/
 │   ├── stores/               # Pinia（主题 store 等薄封装）
 │   ├── styles/               # tokens.css（令牌单源）+ element-adapter.css（EP 变量）+ scrollbar.css（.kai-scroll）+ utility.css（.card/.badge/.sk 等基础类与全局动画）
 │   └── pwa/                  # Service Worker 注册（仅生产）
-├── e2e/                      # 前端 Playwright 套件（38 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态/双人协作）
+├── e2e/                      # 前端 Playwright 套件（41 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态/双人协作/只读回归）
 ├── scripts/prerender-home.mjs # 首页 SEO 预渲染（build 末步产出 dist/home.html）
 └── dist/                     # 构建产物（网关切流挂载 /srv/vue，gitignored）
 ```

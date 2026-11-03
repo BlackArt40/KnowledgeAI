@@ -13,6 +13,7 @@ import { getKb } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
+import { can } from "@/lib/team/rbac";
 import { runWithUser } from "@/lib/models/context";
 import { enqueue, subscribeAgentEvents, QueueBackpressureError } from "@/lib/queue";
 import { agentRateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -26,6 +27,11 @@ export async function handleAgentRun(
 ): Promise<Response> {
   const authUser = await getRequestUser(req, { allowApiKey: opts?.allowApiKey === true });
   if (!authUser) return Response.json({ error: "未登录" }, { status: 401 });
+  // RBAC: agent.run is editor+ (viewer is read-only and must not trigger
+  // expensive multi-step LLM pipelines).
+  if (!can(authUser.role, "agent.run")) {
+    return Response.json({ error: "权限不足：只读角色不能发起调研" }, { status: 403 });
+  }
 
   // P1-2: agent runs enqueue expensive multi-step LLM tasks. The proxy skips
   // /api/agent/run (SSE), so enforce a dedicated per-user quota here before

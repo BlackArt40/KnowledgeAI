@@ -88,11 +88,12 @@ const reportHtml = computed(() => (task.value?.report ? renderChatMarkdown(task.
 async function refreshHistory() {
   try {
     history.value = await fetchAgentTasks();
-    // 深链接 ?task=：历史就绪后打开目标任务
+    // 深链接 ?task=：历史就绪后打开目标任务。共享任务不在「我的历史」里
+    //（列表只返回本人任务），但同工作区成员凭 id 可读——服务端会做权限校验。
     if (pendingTask.value) {
       const id = pendingTask.value;
       pendingTask.value = null;
-      if (history.value.some((x) => x.id === id)) void loadTask(id);
+      void loadTask(id);
     }
   } catch {
     /* keep previous list */
@@ -110,6 +111,10 @@ async function loadTask(id: string) {
       highlightN.value = null;
       activeTab.value = "report";
       editing.value = false;
+      // 深链接打开的共享任务不在本人历史里：补进侧栏，便于返回
+      if (!history.value.some((x) => x.id === taskData.id)) {
+        history.value = [taskData, ...history.value];
+      }
     }
   } catch {
     /* 404/无权：静默保持当前视图 */
@@ -458,8 +463,9 @@ const durationText = computed(() => {
       </p>
     </div>
 
-    <!-- composer -->
+    <!-- composer（viewer 只读：不能发起调研，只看/评论已有报告） -->
     <AgentComposer
+      v-if="canEditReport"
       :topic="topic"
       :kb-id="kbId"
       :kbs="kbs"

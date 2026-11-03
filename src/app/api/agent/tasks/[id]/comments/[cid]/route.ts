@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getTask, deleteComment, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
+import { recordAudit } from "@/lib/security/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,12 @@ export async function DELETE(req: Request, { params }: Params) {
     return NextResponse.json({ error: "权限不足：仅评论作者、任务所有者或 Owner/Admin 可删除评论" }, { status: 403 });
   const ok = deleteComment(id, cid);
   if (!ok) return NextResponse.json({ error: "评论不存在" }, { status: 404 });
+  recordAudit({
+    actorId: u.id,
+    actor: u.name,
+    action: "agent.comment_delete",
+    target: task.topic,
+    detail: `删除 ${comment.userName} 的评论：${comment.text.slice(0, 60)}`,
+  });
   return NextResponse.json({ ok: true });
 }

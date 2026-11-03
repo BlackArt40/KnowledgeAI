@@ -108,7 +108,7 @@ frontend/               # Vue 3 前端（28/28 页面全量承载）
 │   ├── api/            # 类型化 API 客户端（与 /api 契约一一对应）
 │   ├── styles/         # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
 │   └── pwa/            # Service Worker 注册
-├── e2e/                # 前端 Playwright 套件（38 用例，CI e2e job）
+├── e2e/                # 前端 Playwright 套件（41 用例，CI e2e job）
 └── dist/               # 构建产物（网关切流挂载 /srv/vue，gitignored）
 src/
 ├── app/                # Next 纯 API：/api/** Route Handlers + 最小根 layout
