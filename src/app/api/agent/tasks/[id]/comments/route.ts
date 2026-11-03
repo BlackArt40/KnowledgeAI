@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getTask, addComment, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { notifyUserId } from "@/lib/team/notify";
-import { can } from "@/lib/team/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +31,9 @@ export async function POST(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadOwned(req, id);
   if ("error" in r) return r.error;
-  // viewer is read-only (kb.read + chat.use): comments stay readable, not writable.
-  if (!can(r.u.role, "agent.run"))
-    return NextResponse.json({ error: "权限不足：只读角色不能评论" }, { status: 403 });
+  // Discussion is open to every member who can read the report (viewer included):
+  // "read-only" restricts edits/sharing, not conversation. Deleting still requires
+  // being the comment author, the task owner, or a manager.
   const body = await req.json().catch(() => ({}));
   if (typeof body.text !== "string" || !body.text.trim())
     return NextResponse.json({ error: "评论内容无效" }, { status: 400 });
