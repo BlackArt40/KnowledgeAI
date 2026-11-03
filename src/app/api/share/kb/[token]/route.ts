@@ -4,7 +4,7 @@ import {
   KB_SHARE_SNIPPET_CHARS,
 } from "@/lib/kb/kb-share";
 import { publicShareRateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { clientInfoFromRequest } from "@/lib/security/ua";
+import { clientIpFromHeaders } from "@/lib/security/client-ip";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,9 @@ type Params = { params: Promise<{ token: string }> };
 // list request counts as a view; opening previews does not, so a view budget
 // is not burned by browsing.
 export async function GET(req: Request, { params }: Params) {
-  const rl = await publicShareRateLimit(clientInfoFromRequest(req).ip);
+  // Trust the hop appended by the nearest proxy, not the leftmost XFF value
+  // (client-controlled, would let an attacker rotate fake IPs).
+  const rl = await publicShareRateLimit(clientIpFromHeaders(req.headers));
   if (!rl.allowed) return rateLimitResponse(rl, "share");
   const { token } = await params;
   const url = new URL(req.url);

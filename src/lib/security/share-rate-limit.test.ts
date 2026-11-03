@@ -15,7 +15,10 @@ import { GET as kbShareGET } from "@/app/api/share/kb/[token]/route";
 import { GET as docShareGET } from "@/app/api/share/doc/[token]/route";
 import { GET as agentPublicGET } from "@/app/api/agent/public/[id]/route";
 
-const req = new Request("http://localhost/x", { headers: { "x-forwarded-for": "203.0.113.7" } });
+// 左侧是客户端可伪造的，只应采信右侧最近一跳（TRUSTED_PROXY_HOPS=1）
+const req = new Request("http://localhost/x", {
+  headers: { "x-forwarded-for": "1.2.3.4, 203.0.113.7" },
+});
 const kbParams = { params: Promise.resolve({ token: "nope" }) };
 const docParams = { params: Promise.resolve({ token: "nope" }) };
 const agentParams = { params: Promise.resolve({ id: "task_nope" }) };
