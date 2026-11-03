@@ -180,6 +180,40 @@ function pct(m: Meter): number {
           :labels="trendLabels"
         />
       </div>
+
+      <!-- 成员维度（仅管理者返回） -->
+      <div
+        v-if="data.members?.length"
+        class="card"
+      >
+        <div class="trend-head">
+          <h3 class="trend-title">
+            {{ t("page.usage.membersTitle") }}
+          </h3>
+          <span class="days-badge">{{ t("page.usage.membersHint") }}</span>
+        </div>
+        <div class="member-row head">
+          <span>{{ t("page.usage.colMember") }}</span>
+          <span>{{ t("page.usage.colRole") }}</span>
+          <span>{{ t("page.usage.colQa") }}</span>
+          <span>{{ t("page.usage.colApi") }}</span>
+          <span>{{ t("page.usage.colAgent") }}</span>
+        </div>
+        <div
+          v-for="m in data.members"
+          :key="m.email"
+          class="member-row"
+        >
+          <span class="m-name">
+            {{ m.name }}
+            <span class="m-email">{{ m.email }}</span>
+          </span>
+          <span class="m-role">{{ m.role }}</span>
+          <span>{{ m.qaUsed }}</span>
+          <span>{{ m.apiCalls }}</span>
+          <span>{{ m.agentTasks }}</span>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -312,6 +346,23 @@ function pct(m: Meter): number {
   margin-top: 12px;
 }
 .card { padding: 20px; border-radius: var(--radius-lg); }
+.member-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 13px;
+}
+.member-row:last-child { border-bottom: none; }
+.member-row.head {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+.m-name { display: grid; gap: 1px; min-width: 0; }
+.m-email { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.m-role { text-transform: capitalize; }
 
 .trend-head {
   display: flex;

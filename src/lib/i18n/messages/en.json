@@ -277,6 +277,7 @@
       "s39": "{count} viewing"
     },
     "agent": {
+      "mentionHint": "Mention teammates with @name or @email",
       "s0": "Export",
       "s1": "Report",
       "s2": "Share settings",
@@ -1477,6 +1478,13 @@
       "s8": "Delete \"{name}\"? All documents and vector indexes in this knowledge base will be permanently deleted and cannot be recovered."
     },
     "usage": {
+      "membersTitle": "Member usage",
+      "membersHint": "Visible to managers only",
+      "colMember": "Member",
+      "colRole": "Role",
+      "colQa": "Q&A",
+      "colApi": "API calls",
+      "colAgent": "Agent runs",
       "title": "Usage",
       "subtitle": "Workspace usage overview",
       "planPro": "Pro",

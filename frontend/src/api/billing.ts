@@ -26,6 +26,16 @@ export interface WorkspaceUsage {
   plan: string;
   /** 每用户计量（含 QA/API 趋势序列） */
   userUsage?: Usage;
+  /** 成员维度明细：仅 owner/admin（member.manage）返回 */
+  members?: {
+    email: string;
+    name: string;
+    role: string;
+    linked: boolean;
+    qaUsed: number;
+    apiCalls: number;
+    agentTasks: number;
+  }[];
 }
 
 export async function fetchBilling(): Promise<BillingData> {
