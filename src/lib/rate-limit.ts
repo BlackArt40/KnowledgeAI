@@ -413,6 +413,18 @@ export function agentRateLimit(
   return rateLimit(`agent:user:${userId}`, limit);
 }
 
+/** Public share links (`/api/share/**`, `/api/agent/public/**`) are
+ *  unauthenticated and password-guessable: cap them per client IP so a token
+ *  or password cannot be brute-forced. Keyed by IP because the token itself is
+ *  the secret (never include it in the key). */
+const SHARE_LIMIT = parseInt(process.env.RATE_LIMIT_SHARE_PER_MIN || "60", 10);
+export function publicShareRateLimit(
+  ip: string,
+  limit: number = SHARE_LIMIT
+): Promise<RateLimitResult> {
+  return rateLimit(`share:${ip}`, limit);
+}
+
 /** Per-email tier for unauthenticated mail-triggering auth endpoints (P8):
  *  forgot-password and verify-email/resend both send an email to an
  *  address supplied in the request body, so the proxy's IP dimension alone

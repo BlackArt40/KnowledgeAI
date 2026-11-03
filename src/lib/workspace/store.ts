@@ -222,6 +222,20 @@ export function addWorkspaceMember(id: string, email: string): Workspace | undef
   return ws;
 }
 
+/** Remove a member (by email) from a workspace. Idempotent; the route guards
+ *  ownership (the owner email must stay). Write-through persisted. */
+export function removeWorkspaceMember(id: string, email: string): Workspace | undefined {
+  const ws = store().get(id);
+  if (!ws) return undefined;
+  const target = email.trim().toLowerCase();
+  const next = ws.members.filter((m) => m !== target);
+  if (next.length !== ws.members.length) {
+    ws.members = next;
+    void persistWorkspace(ws);
+  }
+  return ws;
+}
+
 /** Create a workspace (owner = creator). Audited as `workspace.create`. */
 export function createWorkspace(input: {
   name: string;

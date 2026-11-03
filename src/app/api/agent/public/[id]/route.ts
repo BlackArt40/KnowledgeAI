@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTask, recordShareView, verifyPassword } from "@/lib/agent/store";
+import { publicShareRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { clientInfoFromRequest } from "@/lib/security/ua";
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,6 +11,10 @@ type Params = { params: Promise<{ id: string }> };
 //   - shareConfig.enabled === false -> 403 (sharing disabled)
 //   - shareConfig.enabled === true  -> check expiry (410) / password (401) / views (403)
 export async function GET(req: Request, { params }: Params) {
+  // Public + password-protected: rate-limit before any lookup so tokens cannot
+  // be enumerated and passwords cannot be brute-forced.
+  const rl = await publicShareRateLimit(clientInfoFromRequest(req).ip);
+  if (!rl.allowed) return rateLimitResponse(rl, "share");
   const { id } = await params;
   const task = getTask(id);
   if (!task) return NextResponse.json({ error: "报告不存在" }, { status: 404 });

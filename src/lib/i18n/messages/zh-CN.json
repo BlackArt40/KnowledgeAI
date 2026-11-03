@@ -986,6 +986,12 @@
     "team": {
       "s24": "重置权限",
       "tabMembers": "成员",
+      "workspaceMembers": "工作区成员",
+      "workspaceMembersHint": "工作区是多租户隔离单元；这里只影响当前工作区的成员，团队角色仍在下方管理。",
+      "workspaceMemberEmail": "团队成员邮箱",
+      "addWorkspaceMember": "添加成员",
+      "removeWorkspaceMember": "移除",
+      "workspaceMemberError": "操作失败，请重试",
       "tabShared": "共享",
       "tabMatrix": "权限矩阵",
       "tabAudit": "审计日志",

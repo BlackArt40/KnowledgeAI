@@ -986,6 +986,12 @@
     "team": {
       "s24": "Reset permission",
       "tabMembers": "Members",
+      "workspaceMembers": "Workspace members",
+      "workspaceMembersHint": "A workspace is the tenant boundary; this list only affects the current workspace. Team roles are managed below.",
+      "workspaceMemberEmail": "Team member email",
+      "addWorkspaceMember": "Add member",
+      "removeWorkspaceMember": "Remove",
+      "workspaceMemberError": "Action failed, please retry",
       "tabShared": "Shared",
       "tabMatrix": "Permissions",
       "tabAudit": "Audit log",

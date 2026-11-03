@@ -37,3 +37,31 @@ export async function createWorkspace(name: string): Promise<{ workspace?: { id:
 export async function saveBrandColor(brandColor: string): Promise<void> {
   await api.patch("/api/workspaces", { brandColor });
 }
+
+export interface WorkspaceMember {
+  email: string;
+  name: string;
+  role: string | null;
+  status: string | null;
+}
+
+export interface WorkspaceMembersData {
+  workspace: { id: string; name: string; plan: string };
+  members: WorkspaceMember[];
+  canManage: boolean;
+}
+
+export function fetchWorkspaceMembers(workspaceId?: string): Promise<WorkspaceMembersData> {
+  const qs = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+  return api.get<WorkspaceMembersData>(`/api/workspaces/members${qs}`);
+}
+
+export function addWorkspaceMember(email: string, workspaceId?: string): Promise<unknown> {
+  return api.post("/api/workspaces/members", { email, workspaceId });
+}
+
+export function removeWorkspaceMember(email: string, workspaceId?: string): Promise<unknown> {
+  const qs = new URLSearchParams({ email });
+  if (workspaceId) qs.set("workspaceId", workspaceId);
+  return api.del(`/api/workspaces/members?${qs.toString()}`);
+}
