@@ -3,6 +3,8 @@ import {
   KB_SHARE_PREVIEW_CHARS,
   KB_SHARE_SNIPPET_CHARS,
 } from "@/lib/kb/kb-share";
+import { publicShareRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { clientInfoFromRequest } from "@/lib/security/ua";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,8 @@ type Params = { params: Promise<{ token: string }> };
 // list request counts as a view; opening previews does not, so a view budget
 // is not burned by browsing.
 export async function GET(req: Request, { params }: Params) {
+  const rl = await publicShareRateLimit(clientInfoFromRequest(req).ip);
+  if (!rl.allowed) return rateLimitResponse(rl, "share");
   const { token } = await params;
   const url = new URL(req.url);
   const password =
