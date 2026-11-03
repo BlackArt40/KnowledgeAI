@@ -142,9 +142,7 @@ export function activateMemberByEmail(
 ): Member | undefined {
   seed();
   const s = store();
-  const target = Array.from(s.members.values()).find(
-    (m) => m.email.toLowerCase() === email.trim().toLowerCase()
-  );
+  const target = findMemberByEmail(email);
   if (!target) return undefined;
   target.status = "active";
   target.role = role;
@@ -169,9 +167,7 @@ export function activateMemberByEmail(
 export function removeInvitedMemberByEmail(email: string, actor = "系统"): boolean {
   seed();
   const s = store();
-  const target = Array.from(s.members.values()).find(
-    (m) => m.email.toLowerCase() === email.trim().toLowerCase()
-  );
+  const target = findMemberByEmail(email);
   if (!target || target.status !== "invited") return false;
   s.members.delete(target.id);
   const entry: AuditEntry = {

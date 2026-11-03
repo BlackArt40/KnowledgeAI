@@ -1,36 +1,30 @@
 import { NextResponse } from "next/server";
-import { getRequestUser } from "@/lib/auth/guard";
-import { verifyInviteToken } from "@/lib/team/invite-token";
+import { readInviteRequest } from "@/lib/team/invite-guard";
 import { activateMemberByEmail } from "@/lib/team/store";
-import { addWorkspaceMember } from "@/lib/workspace/store";
+import { addWorkspaceMember, getWorkspace } from "@/lib/workspace/store";
+import { getPlan } from "@/lib/billing/plans";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/team/invite/accept { token }
-// The token is a signed, 7-day payload (email + role + workspace). Accepting is
-// idempotent: the invited member row becomes active and the workspace gains the
-// email. Only the invited account may accept (email must match the session).
+// Signed, 7-day payload (email + role + workspace). Accepting is idempotent:
+// the invited member row becomes active and the workspace gains the email.
 export async function POST(req: Request) {
-  const u = await getRequestUser(req);
-  if (!u) return NextResponse.json({ error: "请先登录后再接受邀请" }, { status: 401 });
+  const guard = await readInviteRequest(req);
+  if ("error" in guard) return guard.error;
+  const { u, invite } = guard;
 
-  let body: { token?: string };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
-  }
-  const token = body.token?.trim();
-  if (!token) return NextResponse.json({ error: "邀请链接无效" }, { status: 400 });
-
-  const result = verifyInviteToken(token);
-  if (!result.ok) {
-    return NextResponse.json(
-      { error: result.reason === "expired" ? "邀请链接已过期，请让管理员重新邀请" : "邀请链接无效" },
-      { status: result.reason === "expired" ? 410 : 400 }
-    );
-  }
-  const invite = result.payload;
-  if (invite.email !== u.email.toLowerCase()) {
-    return NextResponse.json({ error: "该邀请不属于当前登录账号" }, { status: 403 });
+  // Re-check the workspace seat budget at accept time: invitations do not
+  // reserve a seat, so a plan downgrade or concurrent invites must not oversell.
+  const ws = getWorkspace(invite.workspaceId);
+  if (ws && !ws.members.includes(invite.email)) {
+    const seats = getPlan(ws.plan).seats;
+    if (seats !== null && ws.members.length >= seats) {
+      return NextResponse.json(
+        { error: `当前套餐席位已满（${ws.members.length}/${seats}），请联系管理员升级`, code: "seats_full" },
+        { status: 409 }
+      );
+    }
   }
 
   const member = activateMemberByEmail(invite.email, invite.role, u.name);

@@ -7,7 +7,6 @@ import {
   ROLE_RANK,
   isRole,
   outranks,
-  canManageMember,
   assignableRoles,
   type Permission,
 } from "./rbac";
@@ -65,13 +64,13 @@ describe("relative authority (who may manage whom)", () => {
   });
 
   it("only strictly lower roles are manageable", () => {
-    expect(canManageMember("owner", "admin")).toBe(true);
-    expect(canManageMember("owner", "viewer")).toBe(true);
-    expect(canManageMember("admin", "editor")).toBe(true);
-    expect(canManageMember("admin", "admin")).toBe(false);
-    expect(canManageMember("admin", "owner")).toBe(false);
-    expect(canManageMember("editor", "editor")).toBe(false);
-    expect(canManageMember("editor", "viewer")).toBe(true);
+    expect(outranks("owner", "admin")).toBe(true);
+    expect(outranks("owner", "viewer")).toBe(true);
+    expect(outranks("admin", "editor")).toBe(true);
+    expect(outranks("admin", "admin")).toBe(false);
+    expect(outranks("admin", "owner")).toBe(false);
+    expect(outranks("editor", "editor")).toBe(false);
+    expect(outranks("editor", "viewer")).toBe(true);
     expect(outranks("viewer", "owner")).toBe(false);
   });
 

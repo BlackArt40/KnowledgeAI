@@ -21,14 +21,9 @@ import {
   type TeamMember,
 } from "@/api/team";
 import { fetchCurrentUser } from "@/api/auth";
-import {
-  addWorkspaceMember,
-  fetchWorkspaceMembers,
-  removeWorkspaceMember,
-  type WorkspaceMembersData,
-} from "@/api/workspaces";
-import { ApiError } from "@/api/client";
+import { errorMessage } from "@/api/client";
 import { formatRelative } from "@shared/format";
+import WorkspaceMembersCard from "@/components/team/WorkspaceMembersCard.vue";
 
 const { t } = useTranslation();
 
@@ -44,12 +39,6 @@ const inviteLink = ref("");
 const actionError = ref<string | null>(null);
 const roleDialogRow = ref<SharedKbRow | null>(null);
 const roleError = ref<string | null>(null);
-// 当前工作区成员（多租户）：与团队全局成员分开管理
-const wsMembers = ref<WorkspaceMembersData | null>(null);
-const wsEmail = ref("");
-const wsBusy = ref(false);
-const wsError = ref<string | null>(null);
-
 const ROLE_BADGE: Record<string, string> = {
   owner: "Owner", admin: "Admin", editor: "Editor", viewer: "Viewer",
 };
@@ -210,48 +199,10 @@ async function exportActivity() {
   }
 }
 
-async function loadWorkspaceMembers() {
-  try {
-    wsMembers.value = await fetchWorkspaceMembers();
-  } catch {
-    wsMembers.value = null;
-  }
-}
-
-async function addWsMember() {
-  const email = wsEmail.value.trim();
-  if (!email || wsBusy.value) return;
-  wsBusy.value = true;
-  wsError.value = null;
-  try {
-    await addWorkspaceMember(email);
-    wsEmail.value = "";
-    await loadWorkspaceMembers();
-  } catch (e) {
-    wsError.value = e instanceof ApiError && e.message ? e.message : t("page.team.workspaceMemberError");
-  } finally {
-    wsBusy.value = false;
-  }
-}
-
-async function removeWsMember(email: string) {
-  if (wsBusy.value) return;
-  wsBusy.value = true;
-  wsError.value = null;
-  try {
-    await removeWorkspaceMember(email);
-    await loadWorkspaceMembers();
-  } catch (e) {
-    wsError.value = e instanceof ApiError && e.message ? e.message : t("page.team.workspaceMemberError");
-  } finally {
-    wsBusy.value = false;
-  }
-}
-
 onMounted(async () => {
   const u = await fetchCurrentUser().catch(() => null);
   if (u) me.value = { id: u.id, role: u.role ?? "", email: u.email };
-  await Promise.all([refresh(), loadWorkspaceMembers()]);
+  await refresh();
 });
 
 function openInvite() {
@@ -279,7 +230,7 @@ async function submitInvite() {
       inviteEmail.value = "";
     }
   } catch (e) {
-    inviteError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s42");
+    inviteError.value = errorMessage(e, t("page.settings.s42"));
   } finally {
     inviteBusy.value = false;
   }
@@ -291,7 +242,7 @@ async function changeRole(id: string, role: string) {
     await patchMemberRole(id, role);
     await refresh();
   } catch (e) {
-    actionError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s40");
+    actionError.value = errorMessage(e, t("page.settings.s40"));
     await refresh();
   }
 }
@@ -303,7 +254,7 @@ async function remove(id: string) {
     await removeMember(id);
     await refresh();
   } catch (e) {
-    actionError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s40");
+    actionError.value = errorMessage(e, t("page.settings.s40"));
   }
 }
 
@@ -314,7 +265,7 @@ async function changeKbAccess(row: SharedKbRow, access: string) {
     await patchKbAccess(row.kbId, access);
     await refresh();
   } catch (e) {
-    actionError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s40");
+    actionError.value = errorMessage(e, t("page.settings.s40"));
     await refresh();
   }
 }
@@ -332,7 +283,7 @@ async function changeMemberRole(email: string, value: string) {
     await setKbMemberRole(row.kbId, email, value === "" ? null : value);
     await refresh();
   } catch (e) {
-    roleError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s40");
+    roleError.value = errorMessage(e, t("page.settings.s40"));
     await refresh();
   }
 }
@@ -388,66 +339,7 @@ async function changeMemberRole(email: string, value: string) {
         {{ actionError }}
       </p>
 
-      <div
-        v-if="wsMembers"
-        class="card"
-      >
-        <div class="card-head between">
-          <h3>{{ t("page.team.workspaceMembers") }}</h3>
-          <span class="hint">{{ wsMembers.workspace.name }} · {{ wsMembers.workspace.plan }}</span>
-        </div>
-        <div class="card-body">
-          <p class="sub">
-            {{ t("page.team.workspaceMembersHint") }}
-          </p>
-          <div
-            v-for="m in wsMembers.members"
-            :key="m.email"
-            class="member"
-          >
-            <span class="avatar">{{ (m.name || m.email).charAt(0).toUpperCase() }}</span>
-            <span class="m-main">
-              <span class="m-name">{{ m.name }}</span>
-              <span class="m-email">{{ m.email }}</span>
-            </span>
-            <el-button
-              v-if="wsMembers.canManage && m.email !== me?.email"
-              size="small"
-              text
-              type="danger"
-              :disabled="wsBusy"
-              @click="removeWsMember(m.email)"
-            >
-              {{ t("page.team.removeWorkspaceMember") }}
-            </el-button>
-          </div>
-          <div
-            v-if="wsMembers.canManage"
-            style="display: flex; gap: 8px; margin-top: 12px"
-          >
-            <el-input
-              v-model="wsEmail"
-              size="small"
-              :placeholder="t('page.team.workspaceMemberEmail')"
-            />
-            <el-button
-              size="small"
-              type="primary"
-              :loading="wsBusy"
-              :disabled="!wsEmail.trim()"
-              @click="addWsMember"
-            >
-              {{ t("page.team.addWorkspaceMember") }}
-            </el-button>
-          </div>
-          <p
-            v-if="wsError"
-            class="err"
-          >
-            {{ wsError }}
-          </p>
-        </div>
-      </div>
+      <WorkspaceMembersCard :me-email="me?.email" />
 
       <div class="card">
         <div class="card-head">

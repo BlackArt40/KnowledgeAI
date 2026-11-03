@@ -58,11 +58,6 @@ export function outranks(actor: Role, target: Role): boolean {
   return ROLE_RANK[actor] < ROLE_RANK[target];
 }
 
-/** Alias with route-facing wording - reads better at call sites than outranks. */
-export function canManageMember(actor: Role, target: Role): boolean {
-  return outranks(actor, target);
-}
-
 /** Roles the actor may hand out / invite at: strictly below their own rank.
  *  An admin cannot mint peers (or owners); an owner can appoint admins. */
 export function assignableRoles(actor: Role): Role[] {

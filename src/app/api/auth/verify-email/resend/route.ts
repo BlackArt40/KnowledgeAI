@@ -5,9 +5,9 @@ import { authLink, demoLinksAllowed, enqueueEmailSend } from "@/lib/email/delive
 import { emailRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { recordAudit } from "@/lib/security/audit";
 import { clientInfoFromRequest } from "@/lib/security/ua";
-export const dynamic = "force-dynamic";
+import { EMAIL_RE } from "@/lib/validation/email";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const dynamic = "force-dynamic";
 
 // POST /api/auth/verify-email/resend { email }
 // Issues a fresh verification token and re-delivers the email. Anti-

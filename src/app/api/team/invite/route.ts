@@ -7,11 +7,10 @@ import { signInviteToken } from "@/lib/team/invite-token";
 import { getWorkspace } from "@/lib/workspace/store";
 import { getPlan } from "@/lib/billing/plans";
 import { isEmailEnabled, sendInviteEmail } from "@/lib/email";
+import { EMAIL_RE } from "@/lib/validation/email";
 import type { Role } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // POST /api/team/invite  { name?, email, role }  (owner/admin only)
 export async function POST(req: Request) {
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "无效的请求体" }, { status: 400 });
   }
-  const email = body.email?.trim() ?? "";
+  const email = (body.email?.trim() ?? "").toLowerCase();
   if (!email) return NextResponse.json({ error: "邮箱不能为空" }, { status: 400 });
   if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "邮箱格式不正确" }, { status: 400 });
 
@@ -44,12 +43,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "该邮箱已在团队中" }, { status: 409 });
   }
 
-  // Seats are a plan limit (free=1 / pro=10 / enterprise=unlimited). Pending
-  // invitations count too, otherwise an owner can overbook the workspace.
-  const plan = getWorkspace(u.workspaceId)?.plan ?? "free";
-  const seats = getPlan(plan).seats;
-  if (seats !== null) {
-    const used = listMembers().filter((m) => m.status !== "suspended").length;
+  // Seats are a plan limit (free=1 / pro=10 / enterprise=unlimited) on the
+  // CURRENT workspace: count only its members, not the global team roster
+  // (a free personal tenant would otherwise look full because of seed members).
+  // Pending invites are not attached to a workspace until accepted.
+  const ws = getWorkspace(u.workspaceId);
+  const seats = getPlan(ws?.plan ?? "free").seats;
+  if (seats !== null && ws) {
+    const wsEmails = new Set(ws.members.map((m) => m.toLowerCase()));
+    const used = listMembers().filter(
+      (m) => m.status !== "suspended" && wsEmails.has(m.email.toLowerCase())
+    ).length;
     if (used >= seats) {
       return NextResponse.json(
         { error: `当前套餐席位已满（${used}/${seats}），请升级套餐后再邀请`, code: "seats_full" },

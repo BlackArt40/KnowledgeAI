@@ -180,6 +180,8 @@ export const router = createRouter({
       path: "/invite",
       name: "invite-accept",
       component: () => import("@/views/InviteAcceptView.vue"),
+      // 复用认证页分屏布局，不在视图里自建整屏外壳
+      meta: { auth: true },
     },
 
     // ── 公开分享（令牌即凭据）──────────────────────────────────────────
