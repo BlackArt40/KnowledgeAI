@@ -133,6 +133,61 @@ export function inviteMember(input: { name: string; email: string; role: Role },
   return member;
 }
 
+/** Accept an invitation: the invited email's member row becomes active and the
+ *  account role follows (authorization reads the live user, not the display row). */
+export function activateMemberByEmail(
+  email: string,
+  role: Role,
+  actor = "系统"
+): Member | undefined {
+  seed();
+  const s = store();
+  const target = Array.from(s.members.values()).find(
+    (m) => m.email.toLowerCase() === email.trim().toLowerCase()
+  );
+  if (!target) return undefined;
+  target.status = "active";
+  target.role = role;
+  target.joinedAt = Date.now();
+  setUserRole(target.email, role);
+  const entry: AuditEntry = {
+    id: uid("m"),
+    actor,
+    action: "接受邀请",
+    target: target.name,
+    detail: `以 ${role} 角色加入团队`,
+    createdAt: Date.now(),
+  };
+  s.audit.unshift(entry);
+  void persistTeamMember(target);
+  void persistAuditEntry(entry);
+  return target;
+}
+
+/** Reject an invitation: drop the pending member row (active members are never
+ *  touched). Returns false when there is nothing pending for that email. */
+export function removeInvitedMemberByEmail(email: string, actor = "系统"): boolean {
+  seed();
+  const s = store();
+  const target = Array.from(s.members.values()).find(
+    (m) => m.email.toLowerCase() === email.trim().toLowerCase()
+  );
+  if (!target || target.status !== "invited") return false;
+  s.members.delete(target.id);
+  const entry: AuditEntry = {
+    id: uid("m"),
+    actor,
+    action: "拒绝邀请",
+    target: target.name,
+    detail: "拒绝加入团队",
+    createdAt: Date.now(),
+  };
+  s.audit.unshift(entry);
+  void deleteTeamMemberFromDb(target.id);
+  void persistAuditEntry(entry);
+  return true;
+}
+
 export function updateMemberRole(id: string, role: Role, actor = "系统"): Member | undefined {
   seed();
   const s = store();

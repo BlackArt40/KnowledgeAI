@@ -40,6 +40,7 @@ const inviteEmail = ref("");
 const inviteRole = ref("editor");
 const inviteBusy = ref(false);
 const inviteError = ref<string | null>(null);
+const inviteLink = ref("");
 const actionError = ref<string | null>(null);
 const roleDialogRow = ref<SharedKbRow | null>(null);
 const roleError = ref<string | null>(null);
@@ -255,6 +256,7 @@ onMounted(async () => {
 
 function openInvite() {
   inviteError.value = null;
+  inviteLink.value = "";
   inviteRole.value = assignableRoles.value.includes("editor")
     ? "editor"
     : assignableRoles.value[0] ?? "viewer";
@@ -266,10 +268,16 @@ async function submitInvite() {
   inviteBusy.value = true;
   inviteError.value = null;
   try {
-    await inviteMember(inviteEmail.value.trim(), inviteRole.value);
-    inviteOpen.value = false;
-    inviteEmail.value = "";
+    const res = await inviteMember(inviteEmail.value.trim(), inviteRole.value);
     await refresh();
+    if (res?.inviteUrl) {
+      // 演示模式未配置邮件发送：把邀请链接直接给邀请人。
+      inviteLink.value = res.inviteUrl;
+      inviteEmail.value = "";
+    } else {
+      inviteOpen.value = false;
+      inviteEmail.value = "";
+    }
   } catch (e) {
     inviteError.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s42");
   } finally {
@@ -790,6 +798,17 @@ async function changeMemberRole(email: string, value: string) {
         >
           {{ inviteError }}
         </p>
+        <label
+          v-if="inviteLink"
+          class="field"
+        >
+          <span class="label">{{ t("page.team.inviteLinkHint") }}</span>
+          <el-input
+            :model-value="inviteLink"
+            readonly
+            size="small"
+          />
+        </label>
       </div>
       <template #footer>
         <el-button @click="inviteOpen = false">

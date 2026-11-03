@@ -11,6 +11,12 @@
       "title": "Verify your email",
       "action": "Verify email",
       "note": "If you never signed up for KnowledgeAI, ignore this email."
+    },
+    "invite": {
+      "subject": "You're invited to a KnowledgeAI team",
+      "title": "Join the KnowledgeAI team",
+      "action": "Accept invitation",
+      "note": "{{inviter}} invited you to join the team. Ignore this email if it wasn't expected; the link is valid for 7 days."
     }
   },
   "common": {
@@ -983,6 +989,18 @@
       "s0": "System maintenance",
       "s1": "The system is undergoing maintenance. Please try again later. For urgent issues, contact the administrator."
     },
+    "inviteAccept": {
+      "title": "Team invitation",
+      "hint": "Accept to join the team with the assigned role.",
+      "accept": "Accept invitation",
+      "reject": "Decline",
+      "success": "You're in — redirecting…",
+      "rejected": "Invitation declined",
+      "missingToken": "The invite link has no token",
+      "loginFirst": "Please sign in with the invited account, then reopen this link.",
+      "goTeam": "Go to team page",
+      "error": "Something went wrong, please retry"
+    },
     "team": {
       "s24": "Reset permission",
       "tabMembers": "Members",
@@ -992,6 +1010,7 @@
       "addWorkspaceMember": "Add member",
       "removeWorkspaceMember": "Remove",
       "workspaceMemberError": "Action failed, please retry",
+      "inviteLinkHint": "Invite link (email not configured in demo; forward it manually)",
       "tabShared": "Shared",
       "tabMatrix": "Permissions",
       "tabAudit": "Audit log",

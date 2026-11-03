@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { findMemberByEmail, inviteMember } from "@/lib/team/store";
+import { findMemberByEmail, inviteMember, listMembers } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can, isRole, outranks } from "@/lib/team/rbac";
 import { notifyMember, roleLabel } from "@/lib/team/notify";
+import { signInviteToken } from "@/lib/team/invite-token";
+import { getWorkspace } from "@/lib/workspace/store";
+import { getPlan } from "@/lib/billing/plans";
+import { isEmailEnabled, sendInviteEmail } from "@/lib/email";
 import type { Role } from "@/lib/team/types";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +44,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "该邮箱已在团队中" }, { status: 409 });
   }
 
+  // Seats are a plan limit (free=1 / pro=10 / enterprise=unlimited). Pending
+  // invitations count too, otherwise an owner can overbook the workspace.
+  const plan = getWorkspace(u.workspaceId)?.plan ?? "free";
+  const seats = getPlan(plan).seats;
+  if (seats !== null) {
+    const used = listMembers().filter((m) => m.status !== "suspended").length;
+    if (used >= seats) {
+      return NextResponse.json(
+        { error: `当前套餐席位已满（${used}/${seats}），请升级套餐后再邀请`, code: "seats_full" },
+        { status: 409 }
+      );
+    }
+  }
+
   const member = inviteMember({ name: body.name ?? "", email, role }, u.name);
+  const token = signInviteToken({ email, role, workspaceId: u.workspaceId });
+  const inviteUrl = `${new URL(req.url).origin}/invite?token=${encodeURIComponent(token)}`;
+  const mail = await sendInviteEmail(email, inviteUrl, u.name);
   notifyMember(
     email,
     {
@@ -50,5 +71,14 @@ export async function POST(req: Request) {
     },
     { exceptUserId: u.id }
   );
-  return NextResponse.json({ member }, { status: 201 });
+  // Demo fallback (no RESEND configured): return the link so the flow can be
+  // completed without a mail account, mirroring forgot-password.
+  return NextResponse.json(
+    {
+      member,
+      emailSent: mail.ok,
+      inviteUrl: isEmailEnabled() ? undefined : inviteUrl,
+    },
+    { status: 201 }
+  );
 }
