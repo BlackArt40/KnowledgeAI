@@ -249,4 +249,41 @@ describe("报告评论的协作通知", () => {
     expect(listNotifications(OWNER.id).filter((n) => n.title === "报告有新评论")).toHaveLength(1);
     expect(listNotifications(OWNER.id).some((n) => n.title === "报告评论有新回复")).toBe(false);
   });
+
+  it("@提及通知被提及成员，自身与已通知对象去重", async () => {
+    const task = finishedTask();
+    const owner = await cookieFor(OWNER);
+    const editor = await cookieFor(EDITOR);
+
+    // owner 评论 @editor：editor 收到提及通知
+    const mention = await commentsPOST(
+      jsonRequest(owner, "POST", { text: "@王浩（Editor） 请补充对比数据" }),
+      params(task.id)
+    );
+    expect(mention!.status).toBe(200);
+    expect(listNotifications(EDITOR.id).some((n) => n.title === "有人在评论中提到了你")).toBe(true);
+
+    // 自提及不通知自己（owner 收件箱没有提及类通知）
+    await commentsPOST(
+      jsonRequest(owner, "POST", { text: "@张明（Owner） 自己备注" }),
+      params(task.id)
+    );
+    expect(listNotifications(OWNER.id).some((n) => n.title === "有人在评论中提到了你")).toBe(false);
+
+    // 回复 editor 并再次 @editor：只触发回复通知，不再重复提及通知
+    const editorCommentRes = await commentsPOST(
+      jsonRequest(editor, "POST", { text: "editor 的评论" }),
+      params(task.id)
+    );
+    const editorComment = (await editorCommentRes!.json()).comment as { id: string };
+    const before = listNotifications(EDITOR.id).filter((n) => n.title === "有人在评论中提到了你").length;
+    const reply = await commentsPOST(
+      jsonRequest(owner, "POST", { text: "@王浩（Editor） 已按你的意见修改", parentId: editorComment.id }),
+      params(task.id)
+    );
+    expect(reply!.status).toBe(200);
+    const after = listNotifications(EDITOR.id).filter((n) => n.title === "有人在评论中提到了你").length;
+    expect(after).toBe(before);
+    expect(listNotifications(EDITOR.id).some((n) => n.title === "报告评论有新回复")).toBe(true);
+  });
 });

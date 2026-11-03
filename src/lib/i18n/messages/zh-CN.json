@@ -277,6 +277,7 @@
       "s39": "{count} 人正在查看"
     },
     "agent": {
+      "mentionHint": "支持 @姓名 或 @邮箱 提及团队成员",
       "s0": "导出",
       "s1": "报告",
       "s2": "分享设置",
@@ -1477,6 +1478,13 @@
       "s8": "确定删除「{name}」？该知识库的所有文档与向量索引将被永久删除，且无法恢复。"
     },
     "usage": {
+      "membersTitle": "成员用量",
+      "membersHint": "仅管理者可见",
+      "colMember": "成员",
+      "colRole": "角色",
+      "colQa": "问答",
+      "colApi": "API",
+      "colAgent": "Agent",
       "title": "用量统计",
       "subtitle": "工作区用量概览",
       "planPro": "专业版",

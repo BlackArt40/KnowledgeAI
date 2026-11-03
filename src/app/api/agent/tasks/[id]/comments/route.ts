@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getTask, addComment, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
+import { findUserByEmail } from "@/lib/auth/store";
 import { notifyUserId } from "@/lib/team/notify";
+import { listMembers } from "@/lib/team/store";
+import { extractMentionedMembers } from "@/lib/team/mentions";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +72,19 @@ export async function POST(req: Request, { params }: Params) {
       { title: "报告评论有新回复", body: `${actor} 回复了你在「${r.task.topic}」下的评论：${preview}`, link },
       { exceptUserId: r.u.id }
     );
+    notified.add(parent.userId);
+  }
+  // @mention notifications: matched by email or display name, deduped against
+  // the task-owner/reply notifications above and against self.
+  for (const mentioned of extractMentionedMembers(text, listMembers())) {
+    const account = findUserByEmail(mentioned.email);
+    if (!account || notified.has(account.id)) continue;
+    notifyUserId(
+      account.id,
+      { title: "有人在评论中提到了你", body: `${actor} 在「${r.task.topic}」的评论中提到你：${preview}`, link },
+      { exceptUserId: r.u.id }
+    );
+    notified.add(account.id);
   }
   return NextResponse.json({ comment: c });
 }

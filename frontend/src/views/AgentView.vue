@@ -726,6 +726,9 @@ const durationText = computed(() => {
                 class="cn-input"
                 :placeholder="t('page.agent.s47')"
               />
+              <p class="hint">
+                {{ t("page.agent.mentionHint") }}
+              </p>
               <div class="cn-foot">
                 <el-button
                   size="small"
