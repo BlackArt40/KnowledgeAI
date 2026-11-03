@@ -178,24 +178,30 @@ describe("删除任务与评论的角色边界", () => {
     expect((await taskDELETE(getRequest(owner), params(second.id)))!.status).toBe(200);
   });
 
-  it("viewer 不能评论；评论仅作者/任务所有者/管理者可删", async () => {
+  it("viewer 可参与讨论，但评论仅作者/任务所有者/管理者可删", async () => {
     const task = finishedTask();
     const owner = await cookieFor(OWNER);
     const editor = await cookieFor(EDITOR);
     const viewer = await cookieFor(VIEWER);
-
-    const viewerPost = await commentsPOST(
-      jsonRequest(viewer, "POST", { text: "viewer 也想评论" }),
-      params(task.id)
-    );
-    expect(viewerPost!.status).toBe(403);
 
     const editorPost = await commentsPOST(
       jsonRequest(editor, "POST", { text: "editor 的评论" }),
       params(task.id)
     );
     const editorComment = (await editorPost!.json()).comment as { id: string };
+
+    // 只读角色可以评论（讨论不写报告），通知也照常发给任务所有者
+    const viewerPost = await commentsPOST(
+      jsonRequest(viewer, "POST", { text: "viewer 也想评论" }),
+      params(task.id)
+    );
+    expect(viewerPost!.status).toBe(200);
+    const viewerComment = (await viewerPost!.json()).comment as { id: string };
+    expect(listNotifications(OWNER.id).some((n) => n.body.includes("viewer 也想评论"))).toBe(true);
+
+    // 但不能删别人的评论，只能删自己的
     expect((await commentDELETE(getRequest(viewer), commentParams(task.id, editorComment.id)))!.status).toBe(403);
+    expect((await commentDELETE(getRequest(viewer), commentParams(task.id, viewerComment.id)))!.status).toBe(200);
 
     const ownerPost = await commentsPOST(
       jsonRequest(owner, "POST", { text: "owner 的评论" }),
@@ -207,7 +213,12 @@ describe("删除任务与评论的角色边界", () => {
 
     // 作者可删自己的；任务所有者可删他人的
     expect((await commentDELETE(getRequest(editor), commentParams(task.id, editorComment.id)))!.status).toBe(200);
-    expect((await commentDELETE(getRequest(owner), commentParams(task.id, ownerComment.id)))!.status).toBe(200);
+    const editorPost2 = await commentsPOST(
+      jsonRequest(editor, "POST", { text: "editor 的第二条评论" }),
+      params(task.id)
+    );
+    const editorComment2 = (await editorPost2!.json()).comment as { id: string };
+    expect((await commentDELETE(getRequest(owner), commentParams(task.id, editorComment2.id)))!.status).toBe(200);
   });
 });
 

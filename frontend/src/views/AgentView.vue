@@ -343,7 +343,7 @@ async function loadComments() {
 }
 
 async function submitComment() {
-  if (!canEditReport.value || !task.value || !commentText.value.trim()) return;
+  if (!task.value || !commentText.value.trim()) return;
   const body: { text: string; citeN?: number } = { text: commentText.value.trim() };
   if (commentCite.value !== "general") body.citeN = Number(commentCite.value);
   await postAgentComment(task.value.id, body).catch(() => {});
@@ -352,7 +352,7 @@ async function submitComment() {
 }
 
 async function submitReply(parentId: string) {
-  if (!canEditReport.value || !task.value || !replyText.value.trim()) return;
+  if (!task.value || !replyText.value.trim()) return;
   await postAgentComment(task.value.id, { text: replyText.value.trim(), parentId }).catch(() => {});
   replyText.value = "";
   replyTo.value = null;
@@ -694,10 +694,7 @@ const durationText = computed(() => {
             v-else-if="activeTab === 'comments'"
             class="comments"
           >
-            <div
-              v-if="canEditReport"
-              class="comment-new"
-            >
+            <div class="comment-new">
               <div class="cn-head">
                 <el-icon
                   :size="13"
@@ -770,7 +767,6 @@ const durationText = computed(() => {
                     {{ c.text }}
                   </p>
                   <button
-                    v-if="canEditReport"
                     type="button"
                     class="c-reply"
                     @click="replyTo = replyTo === c.id ? null : c.id"
