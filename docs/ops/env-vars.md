@@ -169,6 +169,7 @@ related:
 | `RATE_LIMIT_INTEGRATION_PER_MIN` | 否 | `120` | 集成（机器人）维度 |
 | `RATE_LIMIT_AGENT_PER_MIN` | 否 | `10` | Agent 运行维度（P1-2：`/api/agent/run` 是高成本多步 LLM 任务，独立于用户配额） |
 | `RATE_LIMIT_AUTH_EMAIL_PER_MIN` | 否 | `3` | 触发外发邮件的未认证端点（P8：忘记密码/验证邮件重发），按 邮箱+端点 键控防邮件轰炸 |
+| `RATE_LIMIT_SHARE_PER_MIN` | 否 | `60` | 公开分享链接按客户端 IP 限流（`/api/share/**`、`/api/agent/public/**` 未认证且可猜密码/枚举 token） |
 
 ## API Key
 
