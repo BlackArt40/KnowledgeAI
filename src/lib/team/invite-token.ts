@@ -6,14 +6,19 @@
 // Revocation is bounded by the 7-day TTL.
 import crypto from "crypto";
 import { getAuthSecret } from "@/lib/secrets";
+import { isRole } from "./rbac";
 import type { Role } from "./types";
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export interface InvitePayload {
+/** The identity an invite grants: who, which role, which tenant. */
+export interface InviteTarget {
   email: string;
   role: Role;
   workspaceId: string;
+}
+
+export interface InvitePayload extends InviteTarget {
   /** Unix ms expiry. */
   exp: number;
 }
@@ -31,7 +36,7 @@ function sign(body: string): string {
 }
 
 export function signInviteToken(
-  input: { email: string; role: Role; workspaceId: string },
+  input: InviteTarget,
   ttlMs: number = INVITE_TTL_MS,
   now: number = Date.now()
 ): string {
@@ -65,7 +70,7 @@ export function verifyInviteToken(token: string, now: number = Date.now()): Invi
     typeof payload.email !== "string" ||
     typeof payload.workspaceId !== "string" ||
     typeof payload.exp !== "number" ||
-    !["owner", "admin", "editor", "viewer"].includes(payload.role)
+    !isRole(payload.role)
   ) {
     return { ok: false, reason: "invalid" };
   }

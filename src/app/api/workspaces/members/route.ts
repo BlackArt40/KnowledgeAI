@@ -9,10 +9,9 @@ import { findUserByEmail } from "@/lib/auth/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
 import { withApiTrace } from "@/lib/obs/trace";
+import { EMAIL_RE } from "@/lib/validation/email";
 
 export const dynamic = "force-dynamic";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Resolve the workspace named in the request (defaults to the active one) and
  *  require the caller to be a member of it. */

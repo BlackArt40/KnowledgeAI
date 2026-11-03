@@ -23,6 +23,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Normalize an unknown thrown value into a user-facing message. */
+export function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof ApiError && e.message ? e.message : fallback;
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;

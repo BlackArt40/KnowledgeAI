@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMember, updateMemberRole, removeMember } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
-import { can, isRole, canManageMember, outranks } from "@/lib/team/rbac";
+import { can, isRole, outranks } from "@/lib/team/rbac";
 import { notifyMember, roleLabel } from "@/lib/team/notify";
 import type { Role } from "@/lib/team/types";
 
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: Params) {
   }
   // Relative authority: peers and superiors are out of reach. Without this an
   // admin could demote every other admin (and then remove them).
-  if (!canManageMember(u.role, target.role)) {
+  if (!outranks(u.role, target.role)) {
     return NextResponse.json({ error: "权限不足：不能管理同级或更高权限的成员" }, { status: 403 });
   }
   // A manager cannot mint peers: admin may only assign editor/viewer.
@@ -83,7 +83,7 @@ export async function DELETE(req: Request, { params }: Params) {
     return NextResponse.json({ error: "不能移除自己" }, { status: 403 });
   }
   // Same hierarchy rule as role changes: no removing peers/superiors.
-  if (!canManageMember(u.role, target.role)) {
+  if (!outranks(u.role, target.role)) {
     return NextResponse.json({ error: "权限不足：不能移除同级或更高权限的成员" }, { status: 403 });
   }
 

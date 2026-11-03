@@ -437,8 +437,19 @@ export function emailRateLimit(
   return rateLimit(`auth-email:${endpoint}:${email}`, limit);
 }
 
+/** Which quota a 429 belongs to - one literal set shared by every call site. */
+export type RateLimitDimension =
+  | "user"
+  | "anon"
+  | "key"
+  | "kb"
+  | "integration"
+  | "agent"
+  | "auth-email"
+  | "share";
+
 /** Standard 429 response for route-level limits (same shape as the proxy's). */
-export function rateLimitResponse(result: RateLimitResult, dimension: string): Response {
+export function rateLimitResponse(result: RateLimitResult, dimension: RateLimitDimension): Response {
   const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
   return Response.json(
     { error: "请求过于频繁，请稍后再试", retryAfter, dimension },
