@@ -13,6 +13,10 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
     "@element-plus/icons-vue": "^2.3.1",
     "d3-force": "^3.0.0",
     "element-plus": "^2.14.7",
@@ -21,7 +25,9 @@
     "markdown-it": "^14.3.3",
     "pinia": "^3.0.0",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "y-codemirror.next": "^0.3.6",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
