@@ -374,6 +374,10 @@ function hydrateDoc(d: PrismaDoc): void {
       d.access === "view" || d.access === "edit" || d.access === "private"
         ? d.access
         : undefined,
+    // P3: optimistic-concurrency counter + last editor (older rows default to 1).
+    version: (d as unknown as { version?: number }).version ?? 1,
+    editedBy: (d as unknown as { editedBy?: string | null }).editedBy ?? undefined,
+    updatedAt: (d as unknown as { updatedAt?: Date }).updatedAt?.getTime(),
     uploadedAt: d.uploadedAt.getTime(),
   });
 }

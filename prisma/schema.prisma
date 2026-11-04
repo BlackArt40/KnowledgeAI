@@ -194,6 +194,10 @@ model KbDocument {
   chunks     Int           @default(0)
   /// P4-2: document-level override (view/edit/private). NULL = inherit KB.
   access     String?
+  /// P3: in-app body edits use optimistic concurrency on this counter.
+  version    Int           @default(1)
+  /// P3: display name of the last editor of the body.
+  editedBy   String?
   kb         KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
   uploadedAt DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

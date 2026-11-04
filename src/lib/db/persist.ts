@@ -293,6 +293,9 @@ export async function persistDoc(doc: {
   content?: string;
   /** P4-2: view/edit/private override; undefined = inherit the KB. */
   access?: string;
+  /** P3: body-edit counter + last editor. */
+  version?: number;
+  editedBy?: string;
   uploadedAt: number;
 }): Promise<void> {
   if (!isDbEnabled()) return;
@@ -308,6 +311,8 @@ export async function persistDoc(doc: {
     url: doc.url ?? null,
     content: doc.content ?? null,
     access: doc.access ?? null,
+    version: doc.version ?? 1,
+    editedBy: doc.editedBy ?? null,
     updatedAt: new Date(),
   };
   const write = () =>
@@ -343,6 +348,8 @@ export async function persistDocs(
     chunks: doc.chunks,
     url: doc.url ?? null,
     content: doc.content ?? null,
+    version: doc.version ?? 1,
+    editedBy: doc.editedBy ?? null,
     updatedAt: new Date(),
   });
   // 本地 PrismaClient 类型是精简 shim，$transaction 未声明 —— 取到就用事务
