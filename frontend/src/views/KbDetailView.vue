@@ -916,6 +916,7 @@ function onKbEvent(event: Record<string, unknown>) {
 }
 .doc-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
@@ -971,9 +972,21 @@ function onKbEvent(event: Record<string, unknown>) {
 }
 .doc-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   flex-shrink: 0;
+}
+/* 窄屏：操作行换到文档名下方，避免 4 个按钮撑出横向滚动（mobile smoke 回归） */
+@media (max-width: 640px) {
+  .doc-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .doc-meta {
+    overflow-wrap: anywhere;
+  }
 }
 .badge { padding: 2px 8px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
 
