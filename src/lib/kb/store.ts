@@ -84,6 +84,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // M-3: max text indexed per file (mirrors the upload route cap).
 const MAX_TEXT = 2 * 1024 * 1024;
+/** In-app body edits share the upload text cap (2 MiB of UTF-16 code units). */
+export const MAX_DOC_CONTENT = MAX_TEXT;
 
 /** Locate the uploaded file for a doc (.uploads/<kbId>/<docId>-*) and return
  *  its absolute path, or null. Shared by local parsing (readUploadedFile) and
@@ -676,6 +678,50 @@ export function canEditDoc(
     callerWorkspaceId,
     kbWorkspaceId: kb.workspaceId,
   });
+}
+
+export type DocSaveResult =
+  | { ok: true; doc: KbDocument }
+  | { ok: false; code: "not_found" | "conflict"; currentVersion?: number };
+
+/**
+ * P3: save an edited body with optimistic concurrency.
+ *
+ * `baseVersion` is the version the client last saw; a mismatch means another
+ * member saved in between, so we return a conflict instead of overwriting.
+ * The new content is broadcast as `doc_updated`; re-chunking/re-embedding is
+ * queued by the API route (same pipeline as reindex).
+ */
+export function saveDocumentContent(
+  docId: string,
+  content: string,
+  actor: string,
+  baseVersion?: number
+): DocSaveResult {
+  seed();
+  const store = getStore();
+  const doc = store.docs.get(docId);
+  if (!doc) return { ok: false, code: "not_found" };
+  const current = doc.version ?? 1;
+  if (baseVersion !== undefined && baseVersion !== current) {
+    return { ok: false, code: "conflict", currentVersion: current };
+  }
+  doc.content = content.slice(0, MAX_DOC_CONTENT);
+  doc.version = current + 1;
+  doc.editedBy = actor;
+  doc.updatedAt = Date.now();
+  store.docs.set(docId, doc);
+  void persistDoc(doc);
+  publish(`kb:${doc.kbId}`, {
+    type: "doc_updated",
+    kbId: doc.kbId,
+    docId,
+    name: doc.name,
+    version: doc.version,
+    editedBy: actor,
+    updatedAt: doc.updatedAt,
+  });
+  return { ok: true, doc };
 }
 
 /** Set a document's access override (P4-2). `undefined` clears it (inherit). */

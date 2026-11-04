@@ -689,7 +689,16 @@
       "s18": "Chunking",
       "s19": "Rebuild index",
       "s20": "Queued for reindexing",
-      "s21": "Reindex failed"
+      "s21": "Reindex failed",
+      "s22": "Edit body",
+      "s23": "Edit",
+      "s24": "Preview",
+      "s25": "Another member saved this document — reload before saving",
+      "s26": "View",
+      "s27": "Version {version} · last edited by {name}",
+      "s28": "Body cannot be empty",
+      "s29": "Reload",
+      "s30": "Unsaved changes"
     },
     "kb-share": {
       "s0": "Share knowledge base",

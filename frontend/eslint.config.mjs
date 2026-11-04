@@ -35,6 +35,7 @@ export default [
       "src/views/share/SharedReportView.vue",
       "src/components/chat/MessageBubble.vue",
       "src/views/AgentView.vue",
+      "src/views/KbDetailView.vue",
     ],
     rules: { "vue/no-v-html": "off" },
   },

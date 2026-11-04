@@ -29,6 +29,8 @@ export interface KbEventResult<D extends LiveKbDoc> {
   deleted: boolean;
   /** 当前共览成员（仅 init / viewers 帧携带，其余帧为 undefined = 保持不变） */
   viewers?: LiveKbViewer[];
+  /** 其他成员保存了正文（doc_updated 帧）；编辑器据此提示重新加载 */
+  docUpdated?: { docId: string; version?: number; editedBy?: string; updatedAt?: number };
 }
 
 function readViewers(event: Record<string, unknown>): LiveKbViewer[] {
@@ -53,6 +55,31 @@ export function applyKbEvent<D extends LiveKbDoc>(
     case "init":
     case "viewers":
       return { docs, refresh: false, deleted: false, viewers: readViewers(event) };
+    case "doc_updated": {
+      const docId = String(event.docId ?? "");
+      if (!docId) return { docs, refresh: false, deleted: false };
+      const next = docs.map((d) =>
+        d.id === docId
+          ? ({
+              ...d,
+              version: typeof event.version === "number" ? event.version : (d as { version?: number }).version,
+              editedBy: typeof event.editedBy === "string" ? event.editedBy : (d as { editedBy?: string }).editedBy,
+              updatedAt: typeof event.updatedAt === "number" ? event.updatedAt : (d as { updatedAt?: number }).updatedAt,
+            } as D)
+          : d
+      );
+      return {
+        docs: next,
+        refresh: false,
+        deleted: false,
+        docUpdated: {
+          docId,
+          version: typeof event.version === "number" ? event.version : undefined,
+          editedBy: typeof event.editedBy === "string" ? event.editedBy : undefined,
+          updatedAt: typeof event.updatedAt === "number" ? event.updatedAt : undefined,
+        },
+      };
+    }
     case "docs": {
       const doc = event.doc as D | undefined;
       if (!doc?.id || docs.some((d) => d.id === doc.id)) return { docs, refresh: false, deleted: false };

@@ -5,12 +5,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
-import { RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
+import { EditPen, RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
 import {
   createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
-  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, uploadDocs,
+  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, saveDocContent, uploadDocs,
   type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
 } from "@/api/kb";
+import { renderMarkdown } from "@/lib/markdown";
 import { ApiError } from "@/api/client";
 import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
@@ -296,6 +297,73 @@ const viewers = ref<LiveKbViewer[]>([]);
 const viewerAvatars = computed(() => viewers.value.slice(0, 3));
 const viewerNames = computed(() => viewers.value.map((v) => v.name).join(", "));
 
+// ── 正文编辑（P3）：乐观并发 + 只读角色禁止保存 ──────────────────────────
+const editorOpen = ref(false);
+const editorDoc = ref<KbDoc | null>(null);
+const editorText = ref("");
+const editorLoadedText = ref("");
+const editorBase = ref(1);
+const editorMode = ref<"edit" | "preview">("edit");
+const editorSaving = ref(false);
+const editorError = ref<string | null>(null);
+const editorRemote = ref<{ editedBy?: string; version?: number } | null>(null);
+const editorDirty = computed(() => editorText.value !== editorLoadedText.value);
+const editorPreview = computed(() => renderMarkdown(editorText.value));
+
+function openDoc(d: KbDoc) {
+  editorDoc.value = d;
+  editorText.value = String(d.content ?? "");
+  editorLoadedText.value = editorText.value;
+  editorBase.value = d.version ?? 1;
+  editorMode.value = "edit";
+  editorError.value = null;
+  editorRemote.value = null;
+  editorOpen.value = true;
+}
+
+/** 其他成员保存后：用最新内容覆盖编辑器（仅在用户确认后，避免吞掉未保存输入）。 */
+async function reloadEditor() {
+  if (!editorDoc.value) return;
+  const id = editorDoc.value.id;
+  await refresh();
+  const latest = docs.value.find((d) => d.id === id);
+  if (!latest) return;
+  editorDoc.value = latest;
+  editorText.value = String(latest.content ?? "");
+  editorLoadedText.value = editorText.value;
+  editorBase.value = latest.version ?? 1;
+  editorRemote.value = null;
+  editorError.value = null;
+}
+
+async function saveEditor() {
+  if (!editorDoc.value || !canEdit.value || editorSaving.value) return;
+  if (!editorText.value.trim()) {
+    editorError.value = t("page.document-list.s28");
+    return;
+  }
+  editorSaving.value = true;
+  editorError.value = null;
+  try {
+    const r = await saveDocContent(kbId, editorDoc.value.id, editorText.value, editorBase.value);
+    editorDoc.value = r.doc;
+    editorText.value = String(r.doc.content ?? editorText.value);
+    editorLoadedText.value = editorText.value;
+    editorBase.value = r.doc.version ?? editorBase.value + 1;
+    editorRemote.value = null;
+    await refresh();
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      editorError.value = t("page.document-list.s25");
+      editorRemote.value = { version: Number((e.body as { currentVersion?: number })?.currentVersion) || undefined };
+    } else {
+      editorError.value = e instanceof ApiError && e.message ? e.message : t("common.requestFailed");
+    }
+  } finally {
+    editorSaving.value = false;
+  }
+}
+
 function onKbEvent(event: Record<string, unknown>) {
   const type = String(event.type ?? "");
   // 事件语义在 lib/kb-events.ts（纯函数，单测覆盖）；这里只做副作用
@@ -311,6 +379,13 @@ function onKbEvent(event: Record<string, unknown>) {
   if (result.docs !== docs.value) docs.value = result.docs;
   if (type === "docs") schedulePoll();
   if (result.refresh) void refresh();
+  // 其他成员保存了正文：不自动覆盖，提示用户重新加载
+  if (result.docUpdated && editorOpen.value && editorDoc.value?.id === result.docUpdated.docId) {
+    editorRemote.value = {
+      editedBy: result.docUpdated.editedBy,
+      version: result.docUpdated.version,
+    };
+  }
 }
 </script>
 
@@ -497,7 +572,7 @@ function onKbEvent(event: Record<string, unknown>) {
             <span class="doc-main">
               <span class="doc-name">{{ d.name }}</span>
               <span class="doc-meta">
-                {{ d.type }} · {{ t("page.document-list.s15", { count: d.chunks }) }} · {{ formatRelative(d.uploadedAt) }}
+                {{ d.type }} · {{ t("page.document-list.s15", { count: d.chunks }) }} · v{{ d.version ?? 1 }} · {{ formatRelative(d.uploadedAt) }}
                 <span
                   v-if="d.error"
                   class="err"
@@ -511,6 +586,14 @@ function onKbEvent(event: Record<string, unknown>) {
               >
                 {{ t(STATUS_LABEL[d.status] ?? d.status) }}
               </span>
+              <el-button
+                size="small"
+                text
+                :icon="EditPen"
+                @click="openDoc(d)"
+              >
+                {{ canEdit ? t("page.document-list.s22") : t("page.document-list.s26") }}
+              </el-button>
               <el-tooltip
                 v-if="canEdit"
                 :content="t('page.share-link-dialog.s18')"
@@ -605,6 +688,85 @@ function onKbEvent(event: Record<string, unknown>) {
         @create="submitShare"
         @revoke="removeShare"
       />
+
+      <!-- 正文编辑（P3）：Markdown 编辑 + 预览，乐观并发 -->
+      <el-drawer
+        v-model="editorOpen"
+        size="60%"
+        :title="editorDoc?.name ?? ''"
+      >
+        <div class="doc-editor">
+          <div class="de-head">
+            <span class="de-meta">
+              {{ t("page.document-list.s27", { version: editorBase, name: editorDoc?.editedBy || "—" }) }}
+            </span>
+            <el-radio-group
+              v-model="editorMode"
+              size="small"
+            >
+              <el-radio-button value="edit">
+                {{ t("page.document-list.s23") }}
+              </el-radio-button>
+              <el-radio-button value="preview">
+                {{ t("page.document-list.s24") }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <el-alert
+            v-if="editorRemote"
+            type="warning"
+            :closable="false"
+            show-icon
+          >
+            <template #title>
+              {{ t("page.document-list.s25") }}
+            </template>
+            <el-button
+              size="small"
+              @click="reloadEditor"
+            >
+              {{ t("page.document-list.s29") }}
+            </el-button>
+          </el-alert>
+
+          <el-input
+            v-if="editorMode === 'edit'"
+            v-model="editorText"
+            type="textarea"
+            :rows="20"
+            :readonly="!canEdit"
+          />
+          <!-- markdown-it html:false 渲染，无脚本注入面 -->
+          <div
+            v-else
+            class="de-preview"
+            v-html="editorPreview"
+          />
+
+          <p
+            v-if="editorError"
+            class="err"
+          >
+            {{ editorError }}
+          </p>
+          <div class="de-foot">
+            <span
+              v-if="editorDirty"
+              class="hint"
+            >{{ t("page.document-list.s30") }}</span>
+            <el-button
+              v-if="canEdit"
+              type="primary"
+              :loading="editorSaving"
+              :disabled="!editorDirty"
+              @click="saveEditor"
+            >
+              {{ t("common.save") }}
+            </el-button>
+          </div>
+        </div>
+      </el-drawer>
     </template>
   </div>
 </template>
@@ -758,6 +920,34 @@ function onKbEvent(event: Record<string, unknown>) {
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid hsl(var(--border));
+}
+.doc-editor {
+  display: grid;
+  gap: 12px;
+}
+.de-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.de-meta {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+.de-preview {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  min-height: 420px;
+  overflow: auto;
+}
+.de-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 .doc-row:last-child {
   border-bottom: 0;

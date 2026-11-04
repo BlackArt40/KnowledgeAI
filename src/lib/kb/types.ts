@@ -26,6 +26,12 @@ export interface KbDocument {
   /** P4-2: document-level access override. Undefined = inherit KB access.
    *  Chain: doc.access (view/edit/private) -> KB access -> default by name. */
   access?: DocAccess;
+  /** P3: optimistic-concurrency counter for in-app body edits (default 1). */
+  version?: number;
+  /** P3: display name of the last body editor. */
+  editedBy?: string;
+  /** P3: last body-edit timestamp (ms); uploadedAt stays the upload time. */
+  updatedAt?: number;
 }
 
 export interface KbSettings {

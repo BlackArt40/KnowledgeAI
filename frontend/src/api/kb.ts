@@ -37,7 +37,25 @@ export interface KbDoc {
   uploadedAt: number;
   error?: string;
   access?: string | null;
+  /** P3: body content (present in the KB detail payload) + OCC counter. */
+  content?: string;
+  version?: number;
+  editedBy?: string;
+  updatedAt?: number;
   [key: string]: unknown;
+}
+
+/** P3: save an edited body. A stale baseVersion → ApiError 409 version_conflict. */
+export function saveDocContent(
+  kbId: string,
+  docId: string,
+  content: string,
+  baseVersion: number
+): Promise<{ doc: KbDoc; queued: boolean; warning?: string }> {
+  return request(`/api/knowledge-base/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(docId)}/content`, {
+    method: "PUT",
+    body: { content, baseVersion },
+  });
 }
 
 export async function fetchKbs(): Promise<KbListItem[]> {

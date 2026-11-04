@@ -40,6 +40,25 @@ describe("applyKbEvent", () => {
     expect(r.deleted).toBe(false);
   });
 
+  it("doc_updated：带回最新版本并标记 docUpdated，便于编辑器提示重载", () => {
+    const docs = [{ id: "doc_1", status: "ready", version: 1 }];
+    const result = applyKbEvent(docs, {
+      type: "doc_updated",
+      docId: "doc_1",
+      version: 2,
+      editedBy: "王浩（Editor）",
+      updatedAt: 123,
+    });
+    expect(result.docs[0]).toMatchObject({ id: "doc_1", version: 2, editedBy: "王浩（Editor）" });
+    expect(result.docUpdated).toEqual({
+      docId: "doc_1",
+      version: 2,
+      editedBy: "王浩（Editor）",
+      updatedAt: 123,
+    });
+    expect(result.refresh).toBe(false);
+  });
+
   it("settings / doc_access：不改文档，但要求刷新", () => {
     for (const type of ["settings", "doc_access"]) {
       const r = applyKbEvent(docs, { type, docId: "d1" });
