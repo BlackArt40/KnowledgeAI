@@ -180,7 +180,7 @@ export function flushCollabSnapshot(
   const text = entry.text.toString();
   if (text === (doc.content ?? "")) return null;
 
-  const saved = saveDocumentContent(docId, text, actor, doc.version ?? 1);
+  const saved = saveDocumentContent(docId, text, actor, doc.version ?? 1, { silent: true });
   if (!saved.ok) return null;
   entry.version = saved.doc.version ?? entry.version + 1;
 

@@ -696,7 +696,8 @@ export function saveDocumentContent(
   docId: string,
   content: string,
   actor: string,
-  baseVersion?: number
+  baseVersion?: number,
+  opts?: { silent?: boolean }
 ): DocSaveResult {
   seed();
   const store = getStore();
@@ -712,15 +713,20 @@ export function saveDocumentContent(
   doc.updatedAt = Date.now();
   store.docs.set(docId, doc);
   void persistDoc(doc);
-  publish(`kb:${doc.kbId}`, {
-    type: "doc_updated",
-    kbId: doc.kbId,
-    docId,
-    name: doc.name,
-    version: doc.version,
-    editedBy: actor,
-    updatedAt: doc.updatedAt,
-  });
+  // Collab snapshots pass silent: the Yjs `doc_yjs` events already told clients
+  // about the edit, and a `doc_updated` frame would pop the "reload" banner on
+  // the editor that made the change.
+  if (!opts?.silent) {
+    publish(`kb:${doc.kbId}`, {
+      type: "doc_updated",
+      kbId: doc.kbId,
+      docId,
+      name: doc.name,
+      version: doc.version,
+      editedBy: actor,
+      updatedAt: doc.updatedAt,
+    });
+  }
   return { ok: true, doc };
 }
 

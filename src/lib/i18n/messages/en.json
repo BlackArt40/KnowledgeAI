@@ -698,7 +698,10 @@
       "s27": "Version {version} · last edited by {name}",
       "s28": "Body cannot be empty",
       "s29": "Reload",
-      "s30": "Unsaved changes"
+      "s30": "Unsaved changes",
+      "s31": "Live collaboration",
+      "s32": "Syncing…",
+      "s33": "Sync failed, retrying"
     },
     "kb-share": {
       "s0": "Share knowledge base",

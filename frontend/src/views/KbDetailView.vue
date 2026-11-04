@@ -2,7 +2,7 @@
 // KB 详情（V3，复刻 knowledge-base/[id]/page.tsx）：统计头 + 上传区
 // （multipart files，201=已入队）+ 文档表（状态/轮询/删除）+ KB 设置
 // （改名/删库）+ 图谱入口。上传后 3s 轮询刷新直到无 processing 文档。
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { EditPen, RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
@@ -12,6 +12,8 @@ import {
   type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
 } from "@/api/kb";
 import { renderMarkdown } from "@/lib/markdown";
+import CollabMarkdownEditor from "@/components/kb/CollabMarkdownEditor.vue";
+import { createCollabSession, type CollabSession, type CollabStatus } from "@/lib/collab-session";
 import { ApiError } from "@/api/client";
 import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
@@ -308,7 +310,45 @@ const editorSaving = ref(false);
 const editorError = ref<string | null>(null);
 const editorRemote = ref<{ editedBy?: string; version?: number } | null>(null);
 const editorDirty = computed(() => editorText.value !== editorLoadedText.value);
-const editorPreview = computed(() => renderMarkdown(editorText.value));
+// Phase 2c: when a Yjs session is active the editor is CodeMirror-bound; the
+// textarea/save button stay as the fallback when bootstrap fails.
+const collabSession = shallowRef<CollabSession | null>(null);
+const collabEnabled = ref(false);
+const collabText = ref("");
+const collabStatus = ref<CollabStatus | "">("");
+let collabTextOff: (() => void) | null = null;
+let collabStatusOff: (() => void) | null = null;
+
+const editorPreview = computed(() =>
+  renderMarkdown(collabEnabled.value ? collabText.value : editorText.value)
+);
+
+function stopCollab() {
+  collabTextOff?.();
+  collabStatusOff?.();
+  collabTextOff = null;
+  collabStatusOff = null;
+  collabSession.value?.destroy();
+  collabSession.value = null;
+  collabEnabled.value = false;
+  collabStatus.value = "";
+  collabText.value = "";
+}
+
+async function startCollab(doc: KbDoc) {
+  stopCollab();
+  try {
+    const session = await createCollabSession(kbId, doc.id);
+    collabSession.value = session;
+    collabEnabled.value = true;
+    collabStatus.value = "synced";
+    collabTextOff = session.onText((value) => { collabText.value = value; });
+    collabStatusOff = session.onStatus((status) => { collabStatus.value = status; });
+  } catch {
+    // Fall back to the Phase 1 textarea + explicit save.
+    stopCollab();
+  }
+}
 
 function openDoc(d: KbDoc) {
   editorDoc.value = d;
@@ -319,6 +359,7 @@ function openDoc(d: KbDoc) {
   editorError.value = null;
   editorRemote.value = null;
   editorOpen.value = true;
+  void startCollab(d);
 }
 
 /** 其他成员保存后：用最新内容覆盖编辑器（仅在用户确认后，避免吞掉未保存输入）。 */
@@ -366,6 +407,13 @@ async function saveEditor() {
 
 function onKbEvent(event: Record<string, unknown>) {
   const type = String(event.type ?? "");
+  // Phase 2c: Yjs 增量直接进入当前会话，不参与列表归约
+  if (type === "doc_yjs") {
+    if (collabSession.value && editorDoc.value?.id === String(event.docId ?? "")) {
+      collabSession.value.applyRemote(String(event.update ?? ""));
+    }
+    return;
+  }
   // 事件语义在 lib/kb-events.ts（纯函数，单测覆盖）；这里只做副作用
   const result = applyKbEvent(docs.value, event);
   if (result.viewers) viewers.value = result.viewers;
@@ -379,8 +427,13 @@ function onKbEvent(event: Record<string, unknown>) {
   if (result.docs !== docs.value) docs.value = result.docs;
   if (type === "docs") schedulePoll();
   if (result.refresh) void refresh();
-  // 其他成员保存了正文：不自动覆盖，提示用户重新加载
-  if (result.docUpdated && editorOpen.value && editorDoc.value?.id === result.docUpdated.docId) {
+  // 其他成员保存了正文：不自动覆盖，提示用户重新加载（协同会话已实时同步）
+  if (
+    !collabEnabled.value &&
+    result.docUpdated &&
+    editorOpen.value &&
+    editorDoc.value?.id === result.docUpdated.docId
+  ) {
     editorRemote.value = {
       editedBy: result.docUpdated.editedBy,
       version: result.docUpdated.version,
@@ -694,11 +747,17 @@ function onKbEvent(event: Record<string, unknown>) {
         v-model="editorOpen"
         size="60%"
         :title="editorDoc?.name ?? ''"
+        @closed="stopCollab"
       >
         <div class="doc-editor">
           <div class="de-head">
             <span class="de-meta">
-              {{ t("page.document-list.s27", { version: editorBase, name: editorDoc?.editedBy || "—" }) }}
+              <template v-if="collabEnabled">
+                {{ collabStatus === "error" ? t("page.document-list.s33") : collabStatus === "syncing" ? t("page.document-list.s32") : t("page.document-list.s31") }}
+              </template>
+              <template v-else>
+                {{ t("page.document-list.s27", { version: editorBase, name: editorDoc?.editedBy || "—" }) }}
+              </template>
             </span>
             <el-radio-group
               v-model="editorMode"
@@ -714,7 +773,7 @@ function onKbEvent(event: Record<string, unknown>) {
           </div>
 
           <el-alert
-            v-if="editorRemote"
+            v-if="editorRemote && !collabEnabled"
             type="warning"
             :closable="false"
             show-icon
@@ -730,8 +789,13 @@ function onKbEvent(event: Record<string, unknown>) {
             </el-button>
           </el-alert>
 
+          <CollabMarkdownEditor
+            v-if="editorMode === 'edit' && collabEnabled && collabSession"
+            :text="collabSession.text"
+            :read-only="!canEdit"
+          />
           <el-input
-            v-if="editorMode === 'edit'"
+            v-else-if="editorMode === 'edit'"
             v-model="editorText"
             type="textarea"
             :rows="20"
@@ -752,11 +816,15 @@ function onKbEvent(event: Record<string, unknown>) {
           </p>
           <div class="de-foot">
             <span
-              v-if="editorDirty"
+              v-if="collabEnabled"
+              class="hint"
+            >{{ collabStatus === "error" ? t("page.document-list.s33") : collabStatus === "syncing" ? t("page.document-list.s32") : t("page.document-list.s31") }}</span>
+            <span
+              v-else-if="editorDirty"
               class="hint"
             >{{ t("page.document-list.s30") }}</span>
             <el-button
-              v-if="canEdit"
+              v-if="canEdit && !collabEnabled"
               type="primary"
               :loading="editorSaving"
               :disabled="!editorDirty"

@@ -45,6 +45,28 @@ export interface KbDoc {
   [key: string]: unknown;
 }
 
+/** P3 Phase 2: Yjs bootstrap (full update + state vector) for collab editing. */
+export function fetchCollabState(
+  kbId: string,
+  docId: string
+): Promise<{ update: string; vector: string; version: number }> {
+  return request(
+    `/api/knowledge-base/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(docId)}/collab`
+  );
+}
+
+/** P3 Phase 2: submit one Yjs update to the authoritative document state. */
+export function postCollabUpdate(
+  kbId: string,
+  docId: string,
+  update: string
+): Promise<{ ok: boolean; version: number }> {
+  return request(
+    `/api/knowledge-base/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(docId)}/collab`,
+    { method: "POST", body: { update } }
+  );
+}
+
 /** P3: save an edited body. A stale baseVersion → ApiError 409 version_conflict. */
 export function saveDocContent(
   kbId: string,
