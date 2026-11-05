@@ -32,7 +32,7 @@ applies_to: ">=1.2.0"
 | 我要写文档或评审文档 | [文档规范与模板](standards/README.md) |
 | 我要理解系统设计 | [总体架构](architecture/overview.md) |
 | 我要看架构图与数据流 | [系统架构图与设计说明](architecture/system-design.md) · [数据流与契约](architecture/system-design-runtime.md) |
-| 我要把单体拆成业务 + Python AI | [服务拆分实施手册](architecture/service-split.md) |
+| 我要把单体拆成业务 + Python AI | [服务拆分实施手册](architecture/service-split.md) · [阶段细则](architecture/service-split-phases.md) |
 
 ## 六大文档类别
 
