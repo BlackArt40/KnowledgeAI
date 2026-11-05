@@ -4,7 +4,7 @@ description: 统一技术文档的元数据、命名、代码示例、中文排�
 type: reference
 category: standards
 level: L1
-version: 1.1.0
+version: 1.2.0
 authors:
   - technical-writer
 owner: 技术文档负责人
@@ -128,6 +128,12 @@ related: [../standards/glossary.md]
 - 统一标签体系：`部署`、`鉴权`、`故障排查`、`RAG`、`API`、`SDK` 等。
 - 对外公开文档启用站点搜索（VitePress local search）。
 
+## 版本与修订记录
+
+- **始终一致**：frontmatter `version` 必须等于修订记录表里的最新版本号；无表的文档改内容时也要递增 `version`。版本表按时间排序，新行加在最新端（仓库内两种排序并存，改动时沿用该文件既有顺序）。
+- **实质变更要登记**：事实订正、口径变化、结构拆分、章节增删——递增次版本号，追加一行说明，并同步 `reviewed_at`。
+- **纯排版不递增**：错别字、标点、空格、链接修复不 bump 版本、不动 `reviewed_at`（这类改动无需登记，避免修订表被噪声淹没）。
+
 ## 评审与发布
 
 - 每篇文档按[评审 Checklist](doc-review-checklist.md) 逐项核对；
@@ -140,3 +146,4 @@ related: [../standards/glossary.md]
 |------|------|------|
 | 1.0.0 | 2026-08-20 | 初版（依据《技术文档体系方案》第三章；方案已归档至 archive/technical-docs-strategy.md） |
 | 1.1.0 | 2026-11-04 | 新增“中文排版”一节：对齐《中文技术文档的写作规范》，明确空格、标点、括号、数值、标题、段落与文件名细则；全站文档同步按该规范整改 |
+| 1.2.0 | 2026-11-05 | 新增“版本与修订记录”一节：frontmatter `version` 必须与修订表最新行一致；实质变更递增并更新 `reviewed_at`，纯排版改动不 bump（此前 36 篇文档因规则缺失未 bump） |

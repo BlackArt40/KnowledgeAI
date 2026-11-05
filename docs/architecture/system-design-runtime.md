@@ -4,7 +4,7 @@ description: KnowledgeAI 架构续篇（2026-11-04 代码核对）：问答 SSE�
 type: explanation
 category: architecture
 level: L1
-version: 1.0.0
+version: 1.0.1
 authors:
   - technical-writer
 owner: 技术负责人
@@ -159,7 +159,7 @@ flowchart TD
 | 邮箱类接口 | `email:<addr>:<endpoint>` | 3 | 路由内（防邮件轰炸） |
 | 公开分享 | `ip:<ip>` | 60 | 路由内（防令牌爆破） |
 
-`SKIP_PATHS` 共 12 条（4 条 SSE、2 个 webhook、通知轮询、`auth/me`、presence、公开分享、健康探针、bot 回调、OpenAPI），另有“任何以 `/events` 结尾”的后缀豁免。
+`SKIP_PATHS` 共 12 条（4 条 SSE、1 个 webhook、通知轮询、`auth/me`、presence、公开分享、健康探针、bot 回调、OpenAPI），另有“任何以 `/events` 结尾”的后缀豁免。
 
 ## 7. 契约与边界
 
@@ -265,3 +265,4 @@ flowchart TD
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0.0 | 2026-11-04 | 自 [系统架构图与设计说明](system-design.md) 1.0.1 拆出 §6～§10（数据流、契约、横切、演进风险、扩展指南），以满足单篇 < 500 行 |
+| 1.0.1 | 2026-11-05 | 修正 `SKIP_PATHS` 构成：webhook 为 1 个（`/api/billing/webhook`）而非 2 个，与 `src/proxy.ts` 的 12 条一致 |

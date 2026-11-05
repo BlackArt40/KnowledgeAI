@@ -4,11 +4,11 @@ description: KnowledgeAI 部署手册：三服务拆分部署（网关/业务/�
 type: how-to
 category: ops
 level: L2
-version: 1.3.1
+version: 1.3.2
 authors:
   - technical-writer
 owner: devops-owner
-reviewed_at: 2026-08-20
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -304,3 +304,4 @@ scripts/deploy/switch-frontend.sh revert-all  # 清空路由：页面流量回 N
 | 1.2.0 | 2026-10-13 | 新增“生产切换窗口（4.10）”部署时操作：前置预检清单、切流/观察/代码下线步骤、验证清单与回滚预案（承接阶段 1～6 验收与 G1-G10 总检结论） |
 | 1.3.0 | 2026-10-16 | 前端绞杀重写 V1(Vue 3 + Element Plus + Vite)：新增“前端切流与回退”节——deploy/nginx/routes.conf 单一事实源 + scripts/deploy/switch-frontend.sh 唯一入口（apply/rollback/revert-all，nginx -t 失败自动回写占位）；compose 网关挂载 switch conf 与 frontend/dist |
 | 1.3.1 | 2026-10-30 | 明确本地开发不使用 Docker（`pnpm dev` + `pnpm -C frontend dev`，无需环境变量），“方式一”由“本地 / 单机”改为“单机部署”；同步删除本地已作废的 compose override(3000→nginx / 3001→app) |
+| 1.3.2 | 2026-11-05 | 前端切流节页面数 28 → 30（`frontend/src/router/index.ts`）；`routes.conf` 仍为 28 条切流规则，两者口径分开表述 |
