@@ -20,7 +20,7 @@ related:
 
 # 贡献指南
 
-> 本文定义 KnowledgeAI 的代码与文档贡献流程。核心原则：**文档与代码同 PR（docs-as-code）**、**CI 七门禁全绿才可合并**、**破坏性变更必须有迁移/文档**。
+> 本文定义 KnowledgeAI 的代码与文档贡献流程。核心原则：**文档与代码同 PR(docs-as-code)**、**CI 七门禁全绿才可合并**、**破坏性变更必须有迁移/文档**。
 
 ## 分支与版本策略
 
@@ -47,7 +47,7 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 
 1. **创建 PR**：从 `feat/*` 分支指向 `main`，标题用约定式前缀；
 2. **模板填写**：改动内容 / 动机 / 验证方式（贴测试输出或截图）；
-3. **「文档影响」勾选**：
+3. **“文档影响”勾选**：
    - 改了 `src/lib/` 模块 → 同步更新 [架构文档](../architecture/overview.md) 对应章节；
    - 改了 `src/lib/openapi/spec.ts` 或 v1 路由 → 重跑 `npx tsx scripts/tools/gen-api-reference.ts` 更新 [API 参考](../api/reference.md)（CI 漂移检查会强制）；
    - 改了环境变量 → 同步 [环境变量全表](../ops/env-vars.md)；

@@ -16,7 +16,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 # KnowledgeAI 设计与实现记录
 
-> **文档定位**：本文由原《设计说明.md》拆分而来（2026-08-20），并作为设计决策的**持续记录处**按 十五·N 章节追加（见仓库 AGENTS.md「技术选型原则」——新增自建组件 / 框架替换须在此注明替代对象与理由）。模块架构速查以 [总体架构](../architecture/overview.md)、[RAG 引擎架构](../architecture/rag-engine.md)、[Agent 编排架构](../architecture/agent-orchestration.md) 及 [API 文档](../api/guide.md) 为准；本文侧重决策沿革与实现细节。文件保留于 `docs/archive/` 为历史路径，内容持续维护。
+> **文档定位**：本文由原《设计说明.md》拆分而来（2026-08-20），并作为设计决策的**持续记录处**按 十五·N 章节追加（见仓库 AGENTS.md“技术选型原则”——新增自建组件 / 框架替换须在此注明替代对象与理由）。模块架构速查以 [总体架构](../architecture/overview.md)、[RAG 引擎架构](../architecture/rag-engine.md)、[Agent 编排架构](../architecture/agent-orchestration.md) 及 [API 文档](../api/guide.md) 为准；本文侧重决策沿革与实现细节。文件保留于 `docs/archive/` 为历史路径，内容持续维护。
 
 ---
 ## 五、认证与用户系统
@@ -48,21 +48,21 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 2. **登录**：填写邮箱/密码 -> `POST /api/auth/login` -> 验证密码 + 签发 JWT -> 跳转仪表盘
 3. **会话维持**：AppShell 加载时 `GET /api/auth/me`（自动携带 Cookie）-> 获取用户信息 -> 未登录则跳转 `/login`
 4. **退出**：清除 localStorage + Cookie -> 跳转 `/login`
-5. **修改资料**：设置页「个人信息」标签从 `GET /api/auth/me` 拉取当前用户 -> 编辑姓名/修改密码 -> `PATCH /api/auth/me` -> 重签 JWT + 更新 Cookie
+5. **修改资料**：设置页“个人信息”标签从 `GET /api/auth/me` 拉取当前用户 -> 编辑姓名/修改密码 -> `PATCH /api/auth/me` -> 重签 JWT + 更新 Cookie
 
 ### 端到端验证（真实跑通）
 - 4 个演示账号登录（Owner/Admin/Editor/Viewer）均返回 JWT + 用户信息 ✅
-- 错误密码返回 401「邮箱或密码不正确」✅
-- 新用户注册 -> 重复邮箱返回 409「该邮箱已被注册」✅
+- 错误密码返回 401“邮箱或密码不正确”✅
+- 新用户注册 -> 重复邮箱返回 409“该邮箱已被注册”✅
 - `/api/auth/me` 携带 Token 返回用户、不携带返回 null ✅
 - AppShell 动态显示当前用户名 + 角色徽章 + 退出登录菜单 ✅
-- 设置页「个人信息」从 `/api/auth/me` 动态加载当前用户（姓名/邮箱/角色/套餐），不再硬编码 ✅
+- 设置页“个人信息”从 `/api/auth/me` 动态加载当前用户（姓名/邮箱/角色/套餐），不再硬编码 ✅
 - 修改姓名 `PATCH /api/auth/me` -> 重签 JWT + 持久化 ✅
 - 修改密码需验证当前密码，旧密码失效、新密码可登录 ✅
 
-> 🔌 生产环境：替换 SHA-256 为 PBKDF2/bcrypt（`session.ts` 已实现）；接入 NextAuth.js 支持 OAuth（Google/GitHub）；中间件层校验 JWT 保护路由。
+> 🔌 生产环境：替换 SHA-256 为 PBKDF2/bcrypt（`session.ts` 已实现）；接入 NextAuth.js 支持 OAuth(Google/GitHub)；中间件层校验 JWT 保护路由。
 
-## 六、知识库后端（第 3–4 周）
+## 六、知识库后端（第 3～4 周）
 
 ### API
 | 方法 | 路径 | 功能 |
@@ -78,7 +78,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ---
 
-## 七、智能问答后端 / RAG 引擎（第 5–6 周）
+## 七、智能问答后端 / RAG 引擎（第 5～6 周）
 
 ### RAG 引擎 `src/lib/rag/`（全异步化，支持 LLM Provider）
 - `embeddings.ts`：本地哈希嵌入（拉丁词 + CJK 字符/二元组 → 2048 维 L2 归一化），演示模式回退
@@ -100,7 +100,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 - `src/lib/chat/store.ts`：会话与消息持久化（内存）
 - 流式：`text/event-stream`，LLM 模式逐 token 实时推送 / 演示模式分段推送，末尾 `done` 事件携带引用 + 追问建议（followUps）
-- **联网搜索**（2026-08-10）：请求体 `webSearch: true` 时经 `searchExternal()` 仅检索 Web 源（Tavily/SerpAPI/Brave 或 demo），结果转 `RetrievedChunk` 合并进 RAG 上下文；`sources` 事件携带 `url` / `sourceType`，前端引用面板对 Web 来源展示可点击链接（🌐 图标 + 域名），多轮对话提示词统称「来源内容」
+- **联网搜索**(2026-08-10)：请求体 `webSearch: true` 时经 `searchExternal()` 仅检索 Web 源（Tavily/SerpAPI/Brave 或 demo），结果转 `RetrievedChunk` 合并进 RAG 上下文；`sources` 事件携带 `url` / `sourceType`，前端引用面板对 Web 来源展示可点击链接（🌐 图标 + 域名），多轮对话提示词统称“来源内容”
 
 ### 生产化接入（已完成 ✅）
 > RAG 引擎已通过 LLM Provider 适配层实现生产化（详见第十四章）：
@@ -111,13 +111,13 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 5. PDF/Word 解析 → 🔌 可替换 LangChain 文档加载器
 
 ### 端到端验证（真实跑通）
-- 上传 `secret.md` → 处理 → 索引 → 提问「旗舰功能代号？」→ 回答「Starlight」并引用该文档 ✅
+- 上传 `secret.md` → 处理 → 索引 → 提问“旗舰功能代号？”→ 回答“Starlight”并引用该文档 ✅
 - KB 隔离检索：查询 API 文档库仅命中 API 文档 ✅
 - 多引用排序、相似度百分比、会话持久化 ✅
 
 ---
 
-## 八、Agent 调研后端（第 7–8 周）
+## 八、Agent 调研后端（第 7～8 周）
 
 ### Agent 引擎 `src/lib/agent/`
 - `orchestrator.ts`：多 Agent 编排器，顺序执行 **规划→检索→分析→撰写**，逐 agent 推送进度与中间结果
@@ -140,7 +140,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 报告各章节基于真实文档、引用角标可点击高亮来源 ✅
 - 三种输出格式（报告/PPT/思维导图）、历史任务持久化、导出 Markdown ✅
 
-## 九、团队与权限后端（第 9–10 周）
+## 九、团队与权限后端（第 9～10 周）
 
 ### RBAC 权限模型 `src/lib/team/`
 - `types.ts`：4 个角色（Owner/Admin/Editor/Viewer）+ 10 项能力目录 + 共享知识库访问级别
@@ -150,14 +150,14 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### Team API
 | 方法 | 路径 | 功能 |
 | --- | --- | --- |
-| GET/PATCH | `/api/team` | 团队详情（含成员/统计/共享KB/审计）/ 修改设置 |
+| GET/PATCH | `/api/team` | 团队详情（含成员/统计/共享 KB/审计）/ 修改设置 |
 | POST | `/api/team/invite` | 邀请成员（邮箱+角色）→ 自动写审计 |
 | PATCH/DELETE | `/api/team/members/[id]` | 改角色 / 移除成员 → 自动写审计 |
-| PATCH | `/api/team/kb-access` | 共享知识库访问权限（全员可读/成员可编辑/仅Owner·Admin） |
+| PATCH | `/api/team/kb-access` | 共享知识库访问权限（全员可读/成员可编辑/仅 Owner·Admin） |
 | GET | `/api/team/audit` | 操作审计日志 |
 
 ### 端到端验证
-- 邀请成员 → 角色变更 → 审计日志实时记录「谁在何时做了什么」 ✅
+- 邀请成员 → 角色变更 → 审计日志实时记录“谁在何时做了什么” ✅
 - 权限矩阵可视化（角色 × 能力）、共享 KB 访问切换 ✅
 
 > 🔌 Integration point：`can()` 可接入 API 网关做统一鉴权；`store` 可替换 PostgreSQL 多租户隔离（每行带 `tenant_id`），审计日志可落库或接 ELK。
@@ -205,11 +205,11 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### AppShell 铃铛
 - 未读数徽章（>9 显示 9+）；登录后订阅 `/api/notifications/events`，连上即停 30s 轮询，断线自动重连期间恢复轮询兜底
 - 点击展开通知下拉面板（图标按类型着色 / 标题 / 正文 / 相对时间 / 未读高亮）
-- 单条点击已读 + 跳转链接、「全部已读」按钮
+- 单条点击已读 + 跳转链接、“全部已读”按钮
 
 > 🔌 生产环境：邮件通知接 Resend/SendGrid + Cron 定时发送每周摘要；站内通知接 Web Push / FCM；偏好 + 通知记录落 Prisma。
 
-## 十、订阅计费后端（第 10–11 周）
+## 十、订阅计费后端（第 10～11 周）
 
 ### 计费引擎 `src/lib/billing/`
 - `types.ts`：套餐（Plan）/ 订阅（Subscription）/ 账单（Invoice）/ 用量（Usage）/ 订单（Order）类型，及支付方式、状态中文标签
@@ -257,7 +257,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `totp.ts`：RFC 6238 TOTP（Node.js crypto 零依赖，通过测试向量 T=59->287082）+ otpauth:// URI + 恢复码生成 / SHA-256 哈希 / 一次性校验
 - `qr.ts`：otpauth URI -> QR 码 PNG dataURL（`qrcode` 库，SVG 兜底，双重 try/catch 永不抛出）
 - `store.ts`：真实 TOTP 注册流程（`start2FAEnrollment` 生成 secret + 恢复码哈希暂存 `pendingBackupCodes`，`verify2FAEnrollment` 校验 TOTP 后提交恢复码并启用）+ `verify2FALogin`（TOTP / 恢复码）+ 2FA 强制策略（`mustEnroll2FA` / `is2FARequiredForRole`）+ 会话撤销、登录历史（含失败审计）、隐私设置、GDPR 数据导出（内存，`globalThis` 持久）
-- `session.ts`：JWT 会话令牌 + 短时预授权令牌（`preAuthToken`，purpose:"2fa-enroll"）；`verifyToken` 拒绝带 `purpose` 字段的令牌，确保 preAuthToken 不可被当作会话；`hashPassword` / `verifyPassword`（PBKDF2-100k Web Crypto）
+- `session.ts`：JWT 会话令牌 + 短时预授权令牌（`preAuthToken`，purpose:"2fa-enroll"）；`verifyToken` 拒绝带 `purpose` 字段的令牌，确保 preAuthToken 不可被当作会话；`hashPassword` / `verifyPassword`(PBKDF2-100k Web Crypto)
 - `crypto.ts`（P3-4 落地）：AES-256-GCM + HKDF（`AUTH_SECRET` 派生密钥）`encrypt` / `decrypt` / `encryptToString` / `decryptFromString`（密文解密失败抛错，不再静默明文回退；旧明文行兼容透传）/ `isEncrypted`
 - `audit.ts`（P3-4 新增）：全局安全审计——`recordAudit`（actorId/actor/action/target/detail/ip + HMAC-SHA256 哈希链 `prevHash`->`hash`，追加式）+ `verifyAuditChain`（逐条重算校验，篡改即断链）+ `listAudit`（action/actor 子串 + from/to 时间范围 + limit 检索）+ `trimAudit`（`AUDIT_RETENTION_DAYS` 默认 90 天 + `AUDIT_MAX_ENTRIES` 内存上限）+ `loadAuditEvents`（hydrate 恢复，加载后自动校验链）
 
@@ -274,7 +274,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 | GET | `/api/admin/audit` | 审计检索（owner/admin；action/actor/from/to/limit 过滤，返回 `chainValid` 哈希链状态） |
 
 ### 端到端验证
-- 强制 2FA：管理员设 `required2FARoles` -> 用户登录返回 `mustEnroll2FA` + `preAuthToken` -> enroll（secret + QR + 恢复码）-> verify（TOTP）启用 + 发会话；preAuthToken 不可当会话（CRITICAL 修复）、已启用后重放 409、2FA 失败记入登录历史 ✅
+- 强制 2FA：管理员设 `required2FARoles` -> 用户登录返回 `mustEnroll2FA` + `preAuthToken` -> enroll（secret + QR + 恢复码）-> verify(TOTP)启用 + 发会话；preAuthToken 不可当会话（CRITICAL 修复）、已启用后重放 409、2FA 失败记入登录历史 ✅
 - 已认证用户开 / 关 2FA、会话撤销、隐私设置
 - GDPR 数据导出返回 JSON（含 exportedAt + 全部安全数据）✅
 - P3-4 加密：API Key secret 密文存储（内存 + DB `keyHash` 列），`validateApiKey` 解密比对；模型 Key 写 DB 加密 / hydrate 解密；登录密码 PBKDF2（旧 SHA-256 自动迁移）；`GET /api/api-keys` 不再返回完整 secret ✅
@@ -305,8 +305,8 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ## 十四、特殊页面与部署（第 12 周）
 
 ### 错误页与法务页
-- `not-found.tsx`（404）：渐变大字 + bg-grid + 返回首页/知识库
-- `error.tsx`（500）：客户端组件，错误码 digest + 重试 + 联系支持
+- `not-found.tsx`(404)：渐变大字 + bg-grid + 返回首页/知识库
+- `error.tsx`(500)：客户端组件，错误码 digest + 重试 + 联系支持
 - `/maintenance`：维护中页面（warning 配色 + 预计恢复时间）
 - `/privacy`：6 节隐私政策（GDPR / 个人信息保护法合规）
 - `/terms`：5 节服务条款（含 AI 生成内容免责声明）
@@ -320,7 +320,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ## 十五、生产化接入（Provider 适配层）
 
-所有核心模块均通过 Provider 适配层实现「配置即切换」——设置环境变量即启用真实服务，未配置则自动回退到本地演示模式，业务代码无需改动。
+所有核心模块均通过 Provider 适配层实现“配置即切换”——设置环境变量即启用真实服务，未配置则自动回退到本地演示模式，业务代码无需改动。
 
 ### LLM Provider `src/lib/llm/`
 - `provider.ts`：统一接口 `embedText()` / `chatComplete()` / `chatStream()`
@@ -332,7 +332,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `isLLMEnabled()` / `llmLabel()` 等改为 async，异步解析用户模型配置
 
 > 环境变量配置：`OPENAI_API_KEY` + `CHAT_MODEL` + `EMBEDDING_MODEL` + `OPENAI_BASE_URL`
-> 运行时配置：设置页「AI 模型」标签，无需重启即可切换模型（见下方「外部模型管理」）
+> 运行时配置：设置页“AI 模型”标签，无需重启即可切换模型（见下方“外部模型管理”）
 
 ### Payment Provider `src/lib/billing/provider.ts`
 - `createCheckoutSession()`：Stripe Checkout Session（订阅/一次性支付）→ 返回跳转 URL
@@ -343,7 +343,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 配置：`STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `STRIPE_PRICE_PRO` + `STRIPE_PRICE_ENT`
 
 ### Database `src/lib/db/`
-- `schema.prisma`：完整 PostgreSQL schema（User / Team / KB / Document / Conversation / Message / AgentTask / Subscription / Invoice / ApiKey / Session / LoginEvent）
+- `schema.prisma`：完整 PostgreSQL schema(User / Team / KB / Document / Conversation / Message / AgentTask / Subscription / Invoice / ApiKey / Session / LoginEvent)
 - `client.ts`：Prisma 懒加载单例（`getDb()` → 检测 `@prisma/client` 是否安装）
 - `repository.ts`：Repository 模式示例——`isDbEnabled()` 时查 Prisma，否则用内存 store
 - 所有 `store.ts` 均基于 `globalThis` 内存存储，接口与 Prisma 对齐，可平滑替换
@@ -360,7 +360,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `validateFile()`：文件类型白名单（12 种）+ 大小限制（`MAX_UPLOAD_MB`，默认 50MB）
 - 未配置时回退到本地 `.uploads/` 目录
 
-> 配置：`S3_ENDPOINT` + `S3_BUCKET` + `S3_ACCESS_KEY` + `S3_SECRET_KEY` + `S3_REGION` + `S3_PUBLIC_URL`(可选)
+> 配置：`S3_ENDPOINT` + `S3_BUCKET` + `S3_ACCESS_KEY` + `S3_SECRET_KEY` + `S3_REGION` + `S3_PUBLIC_URL`（可选）
 
 ### Vector Store `src/lib/rag/vector-store-*.ts`（P0 新增）
 - `vector-store-interface.ts`：VectorStore 抽象接口（indexChunks/clearDoc/clearKb/search/chunkCount）
@@ -380,16 +380,16 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 配置：`REDIS_URL` + `pnpm add bullmq ioredis`
 
 ### Rate Limiting `src/proxy.ts` + `src/lib/security/rate-limit.ts`（P0/P3 增强）
-- **分布式限流**（P3）：Redis Lua EVAL 原子滑动窗口（ZSET）——`REDIS_URL` 配置时启用 Redis（多实例全局生效），未配置时回退内存 Map（单实例）
-- **分级限流**（P3-3）：每请求按身份取单一维度——
+- **分布式限流**(P3)：Redis Lua EVAL 原子滑动窗口（ZSET）——`REDIS_URL` 配置时启用 Redis（多实例全局生效），未配置时回退内存 Map（单实例）
+- **分级限流**(P3-3)：每请求按身份取单一维度——
   - 匿名：`ip:<ip>` @ `RATE_LIMIT_ANON_PER_MIN`（默认 20）
   - 已认证（JWT cookie/Bearer）：`user:<userId>` @ `RATE_LIMIT_PER_MIN`（默认 200）
   - API Key（`kai_sk_` Bearer）：`apikey:<keyId>` @ `RATE_LIMIT_KEY_PER_MIN`（默认 500）
   - 按 KB（路由层，proxy 读不到 body/路径）：`kb:<kbId>` @ `RATE_LIMIT_KB_PER_MIN`（默认 60，应低于用户限额）——落点 `/api/chat`（SSE 在 SKIP_PATHS 中，路由内补 user + kb 两维度）与 `/api/knowledge-base/[id]` 的 `loadAccessible`
 - `proxy.ts` 为 Node runtime，按请求解析 cookie / Bearer JWT（Web Crypto `verifyToken`，无效/过期按匿名处理）与 API Key（`validateApiKey`，未注册按匿名）
-- **准确的 `Retry-After`**（P3-3）：Redis Lua 取 ZSET 最早条目 score + window 作为 `resetAt`（旧实现固定 `now + window` 虚高）；内存窗口起点即首个请求，本就准确
+- **准确的 `Retry-After`**(P3-3)：Redis Lua 取 ZSET 最早条目 score + window 作为 `resetAt`（旧实现固定 `now + window` 虚高）；内存窗口起点即首个请求，本就准确
 - 429 响应：`{ error, retryAfter, dimension }` + `Retry-After` + `X-RateLimit-Limit/Remaining/Reset` 头；放行响应不带 `X-RateLimit-*`（避免 Next.js proxy 头合并覆盖路由层 KB 429 的准确头）
-- **限流仪表盘**（P3-3）：`GET /api/admin/ratelimit`（owner/admin）→ `{ mode, limits, live, recent }`，管理后台「限流仪表盘」Card 展示各维度实时用量/剩余/重置 + 限额配置 + Provider 状态面板
+- **限流仪表盘**(P3-3)：`GET /api/admin/ratelimit`(owner/admin)→ `{ mode, limits, live, recent }`，管理后台“限流仪表盘”Card 展示各维度实时用量/剩余/重置 + 限额配置 + Provider 状态面板
 - 应用于 `/api/*`（排除 SSE 流式端点 `/api/chat` `/api/agent/run`、webhook、高频轮询——见 `SKIP_PATHS`）
 - 配置：`RATE_LIMIT_PER_MIN` + `RATE_LIMIT_ANON_PER_MIN` + `RATE_LIMIT_KEY_PER_MIN` + `RATE_LIMIT_KB_PER_MIN`（env-gated，`REDIS_URL` 启用分布式）
 
@@ -397,7 +397,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `provider.ts`：统一搜索接口 `searchExternal()`（Web Tavily/SerpAPI/Brave + 网页深度抓取 + ArXiv + GitHub）
 - `types.ts`：`ExternalResult`（sourceType + url + 质量评分）+ `deduplicateResults()` 按 URL 去重 + `qualityScore()` 相关度/时效/权威性评分
 - 未配置 key 时回退到 demo 模拟结果；`getSourceConfig()` env-gated（Web 需 key，ArXiv 免费，GitHub 可选 token）
-- 消费方：① Agent 调研 searcher 节点（内部 KB + 外部源，citations 携带 sourceType + URL）；② Chat「联网搜索」开关（仅 Web 源，合并进 RAG 上下文）
+- 消费方：① Agent 调研 searcher 节点（内部 KB + 外部源，citations 携带 sourceType + URL）；② Chat“联网搜索”开关（仅 Web 源，合并进 RAG 上下文）
 
 > 配置：`TAVILY_API_KEY` / `SERPAPI_KEY` / `BRAVE_SEARCH_KEY` / `GITHUB_TOKEN`（ArXiv 无需 key）
 
@@ -408,7 +408,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 🔌 生产环境替换为 NextAuth.js / better-auth（OAuth + CSRF + 会话管理）
 
 ### 外部模型管理 `src/lib/models/`
-用户可在设置页「AI 模型」标签导入外部 LLM，无需重启即可驱动 RAG 与 Agent。
+用户可在设置页“AI 模型”标签导入外部 LLM，无需重启即可驱动 RAG 与 Agent。
 
 - `types.ts`：`ProviderId`（6 个预设）+ `ModelConfig` / `ModelConfigSafe`（API Key 脱敏）
 - `store.ts`：模型 CRUD + 6 个提供商预设（OpenAI / DeepSeek / Moonshot / 硅基流动 / Ollama / 自定义）+ `getActiveModel()`（默认 > 首个已启用）+ `sanitize()`（Key 脱敏 `sk-x••••xxxx`）
@@ -425,11 +425,11 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 设为默认时自动启用，且全局仅一个默认模型
 - 连接测试结果（ok/失败 + 延迟）持久化到模型配置，UI 展示
 - 添加表单选择提供商后自动填充 Base URL + 模型名候选（datalist）
-- **拉取模型列表**：填入 Key + Base URL 后点击「拉取可用模型列表」-> 调用提供商 `GET /v1/models` -> 自动分类对话模型 / 嵌入模型 -> 下拉选择真实可用模型（可切回手动输入）
+- **拉取模型列表**：填入 Key + Base URL 后点击“拉取可用模型列表”-> 调用提供商 `GET /v1/models` -> 自动分类对话模型 / 嵌入模型 -> 下拉选择真实可用模型（可切回手动输入）
 - 🔌 生产环境：API Key 加密存储（KMS / Vault）；模型配置落 Prisma
 
 ### Provider 状态可视化
-管理后台「系统配置」卡新增**生产环境接入状态**面板，实时展示 7 项 Provider 的启用情况（LLM / 嵌入 / 数据库 / 存储 / 支付 / 限流 / 外部数据源），绿点=已启用、灰点=演示模式。
+管理后台“系统配置”卡新增**生产环境接入状态**面板，实时展示 7 项 Provider 的启用情况（LLM / 嵌入 / 数据库 / 存储 / 支付 / 限流 / 外部数据源），绿点=已启用、灰点=演示模式。
 
 ### 端到端验证（演示模式）
 - 限流：连续请求 54 次后返回 `429 Too Many Requests` + `Retry-After` ✅
@@ -442,9 +442,9 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 事件总线 `src/lib/realtime/`
 - `bus.ts`：channel 化发布/订阅（`Map<channel, Set<listener>>`，挂 globalThis 防 HMR；`subscribe` / `publish`，listener 异常隔离）；单实例内存实现，可扩展 Redis Pub/Sub（仿 `queue/agent-bus-redis.ts`）
-- `connections.ts`（2026-10-30）：在线连接注册表——按「分组 + 成员」引用计数（多标签页只算一人）、`touch` 心跳续期、TTL 惰性清理 + 20s/30s 周期清扫（代理吞掉 abort 时兜底）；presence 与共览者共用
-- `presence.ts`：在线状态——`connectPresence`（SSE 建立，返回幂等断开句柄）/ `disconnectPresence` / `touchPresence`（路由心跳续期）/ `getOnlineUsers`（60s TTL）；每次变更广播全量在线列表到 `presence` channel
-- `viewers.ts`（2026-10-30）：知识库共览者——`joinKbViewers`（引用计数）/ `touchKbViewers` / `getKbViewers`（90s TTL）；变更以 `{ type: "viewers", kbId, viewers }` 广播到该库的 `kb:<id>` channel（与数据变更共用一条 SSE）
+- `connections.ts`(2026-10-30)：在线连接注册表——按“分组 + 成员”引用计数（多标签页只算一人）、`touch` 心跳续期、TTL 惰性清理 + 20s/30s 周期清扫（代理吞掉 abort 时兜底）；presence 与共览者共用
+- `presence.ts`：在线状态——`connectPresence`（SSE 建立，返回幂等断开句柄）/ `disconnectPresence` / `touchPresence`（路由心跳续期）/ `getOnlineUsers`(60s TTL)；每次变更广播全量在线列表到 `presence` channel
+- `viewers.ts`(2026-10-30)：知识库共览者——`joinKbViewers`（引用计数）/ `touchKbViewers` / `getKbViewers`(90s TTL)；变更以 `{ type: "viewers", kbId, viewers }` 广播到该库的 `kb:<id>` channel（与数据变更共用一条 SSE）
 - `use-sse.ts`（前端 hook）：fetch + `\n\n` 切帧 + 忽略注释帧 + 自动重连 + AbortController 清理
 
 ### API（全部 SSE 带 30s `: ping` 心跳帧）
@@ -458,9 +458,9 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 | PATCH | `/api/knowledge-base/[id]` | 支持 `baseVersion` 乐观并发控制，冲突返回 409 |
 
 ### 关键设计
-- **乐观并发控制（OCC）**：`KnowledgeBase.version` 每次设置更新 +1；PATCH 携带 `baseVersion`（客户端上次所见版本），不匹配返回 `409 { error, currentVersion }`——并发编辑不覆盖他人修改（验收「并发编辑无数据冲突」）。以 OCC 替代 CRDT/OT（当前编辑场景足够且简单）
+- **乐观并发控制（OCC）**：`KnowledgeBase.version` 每次设置更新 +1；PATCH 携带 `baseVersion`（客户端上次所见版本），不匹配返回 `409 { error, currentVersion }`——并发编辑不覆盖他人修改（验收“并发编辑无数据冲突”）。以 OCC 替代 CRDT/OT（当前编辑场景足够且简单）
 - **在线判定**：SSE 连接即在线（AppShell 全局 presence 流），连接引用计数归零才离线；路由 30s 心跳 `touch` 续期，代理丢连接由 60s TTL + 20s 清扫兜底（2026-10-30 修复：此前只在建连时记一次 lastSeen，长连接 60s 后会被误判离线；多标签页关一个也会误下线）
-- **共览者**：KB 事件流同时承担「谁在看这个库」——进入页面即登记、离开即移除、30s 心跳续期，前端在标题旁渲染头像堆叠（含「+N」），与文档/设置变更共用同一条 SSE
+- **共览者**：KB 事件流同时承担“谁在看这个库”——进入页面即登记、离开即移除、30s 心跳续期，前端在标题旁渲染头像堆叠（含“+N”），与文档/设置变更共用同一条 SSE
 - **共享会话权限**：仅 owner 可共享/取消；团队成员可查看（需能访问其 KB）并可实时收新消息
 - **proxy 限流**：`/api/kb`、`/api/team/presence` 加入 SKIP_PATHS（长连接）；KB events 路由内 `kbRateLimit` 兜底
 
@@ -507,7 +507,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 分享：匿名 200 → 过期 410；密码错误 401 / 正确 200；次数用尽 403；撤销 404
 
 ### 权限管理收口（2026-10-30）
-- **角色层级**：`rbac.ts` 改成「低阶能力 + 追加」的继承式声明，并导出 `ROLE_RANK` / `outranks` / `canManageMember` / `assignableRoles` / `Permission` 联合类型；`can()` 调用点去掉 `as never`。
+- **角色层级**：`rbac.ts` 改成“低阶能力 + 追加”的继承式声明，并导出 `ROLE_RANK` / `outranks` / `canManageMember` / `assignableRoles` / `Permission` 联合类型；`can()` 调用点去掉 `as never`。
 - **相对权限**：`PATCH/DELETE /api/team/members/[id]` 要求调用者严格高于目标（Admin 不能降级/移除同级 Admin），且只能授予低于自己的角色；邀请同规则（Admin 不能邀请 Admin），团队保持单 Owner。
 - **角色即时生效**：`updateMemberRole` 通过 `setUserRole` 同步账号角色，`removeMember` 将账号降级为 `viewer`；`getRequestUser` 改为按 token 的 userId 读实时账号（并拒绝非 active），降级/封禁对已签发 token 立即生效；登录接口拒绝封禁账号。
 - **KB 共享权限**：`PATCH /api/team/kb-access` 允许 Team 管理者**或 KB 所有者**调整 `access`，成员级 `editor/viewer` 仍仅 KB 所有者；校验 `access` 枚举、成员邮箱必须属于团队；`GET /api/team` 的 `memberRoles` 映射仅管理者/KB 所有者可见，其他人只拿 `memberRoleCount`；响应新增 `permissions` + `matrix`，前端不再硬编码角色。
@@ -518,24 +518,24 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### 共享与分发（2026-10-30）
 - **库级公开链接**：`src/lib/kb/kb-share.ts`——单库单链接（token `ks_`，重建即替换旧 token），支持 expiresAt / PBKDF2 密码 / maxViews / views，口径与 `doc-share.ts` 一致；`GET|POST|DELETE /api/knowledge-base/[id]/share` 用 `canEditKb` 鉴权（含 workspace 边界），创建/撤销进 `sharelink.create|revoke` 审计链。
 - **公开读取**：`GET /api/share/kb/[token]`（无鉴权，token 即凭证）返回库元信息 + 可见文档列表（文档级 `private` 一律剔除，列表只带 160 字摘要）；`?doc=<id>` 返回单篇前 3000 字正文预览，且**不计访问次数**（只有整页加载计数），翻文档不会烧掉次数额度。错误码沿用 410 过期 / 401 密码 / 403 次数用尽 / 404 撤销或未知。
-- **前端入口**：V6 迁移时丢失的文档分享对话框在 Vue 侧恢复（`frontend/src/components/kb/ShareLinkDialog.vue`，库级/文档级共用同一套有效期/密码/上限表单）；KB 详情页新增标题行「分享」与每行「分享文档」按钮，链接可复制、展示有效期与访问次数、可一键撤销。
+- **前端入口**：V6 迁移时丢失的文档分享对话框在 Vue 侧恢复（`frontend/src/components/kb/ShareLinkDialog.vue`，库级/文档级共用同一套有效期/密码/上限表单）；KB 详情页新增标题行“分享”与每行“分享文档”按钮，链接可复制、展示有效期与访问次数、可一键撤销。
 - **公开页**：`/share-kb/:token`（`frontend/src/views/share/ShareKbView.vue`）——加载/密码门/过期/用尽/无效五态 + 库信息 + 文档列表 + 按需正文预览；网关 `deploy/nginx/routes.conf` 增加 `/share-kb/*`。
 - **安全**：文档分享 `POST` 响应此前会把 `passwordHash` 原样返回，现与 `GET` 一致脱敏；库级链接同样只返回 token、设置与计数。
 - **验证**：`scripts/smoke/test-kb-share.ts` 30/30（含 private 文档隐藏、密码/过期/次数/撤销、审计链）；`src/lib/kb/kb-share.test.ts` 9/9；`frontend/e2e/share.spec.ts` 1/1（库链接匿名只读 + 文档链接入口）。
 
 ### 可观测与通知（2026-11-02）
 - **团队活动流**：`src/lib/team/activity.ts` 把两份审计合并成统一条目——团队 store 的成员/角色/共享权限记录（`AuditLog`）与安全审计的 `sharelink.create|revoke`、`kb.access_change`、`doc.access_change`（hash 链）。纯函数负责分类（member / permission / share / content / team / security）、`q` 全文匹配、`before` 分页与 CSV；安全审计是全局的，路由只保留 actor 属于当前团队成员的事件（旧行无 `actorId` 时按 actor 名匹配）。
-- **活动 API**：`GET /api/team/activity`（owner/admin）支持 `category` / `q` / `before` / `limit`（JSON 上限 200，CSV 上限 1000），`format=csv` 返回带 UTF-8 BOM 的附件；未知分类 400。
+- **活动 API**：`GET /api/team/activity`(owner/admin)支持 `category` / `q` / `before` / `limit`（JSON 上限 200，CSV 上限 1000），`format=csv` 返回带 UTF-8 BOM 的附件；未知分类 400。
 - **通知联动**：新增 `teamActivity` 通道（`NotificationPrefs.teamActivity`，migration `20261102120000_notification_team_activity`，默认开启）。`src/lib/team/notify.ts` 按事件选择受众：邀请/角色变更/移除 → 当事人；成员级 KB 授权 → 被授权人；共享访问级别变更 → 全体成员；库级公开分享创建/撤销 → 其他管理者；文档分享与文档权限 → 库主。`exceptUserId` 保证操作者不通知自己。
-- **通知实时化**：`notify` / 已读 / 删除向总线 `user:<id>` 频道广播；`GET /api/notifications/events`（SSE，30s ping）先推 `init` 快照再推增量。AppShell 登录后订阅，连上即停 30s 轮询，断线重连期间恢复轮询（`subscribeEvents` 自带重连）。
-- **前端**：团队页用「团队活动」卡替换原审计列表（分类 chips + 搜索 + 加载更多 + CSV 导出）；设置页通知偏好新增「团队动态」开关；铃铛新增团队色图标。
+- **通知实时化**：`notify` / 已读 / 删除向总线 `user:<id>` 频道广播；`GET /api/notifications/events`(SSE，30s ping)先推 `init` 快照再推增量。AppShell 登录后订阅，连上即停 30s 轮询，断线重连期间恢复轮询（`subscribeEvents` 自带重连）。
+- **前端**：团队页用“团队活动”卡替换原审计列表（分类 chips + 搜索 + 加载更多 + CSV 导出）；设置页通知偏好新增“团队动态”开关；铃铛新增团队色图标。
 - **验证**：`scripts/smoke/test-team-activity.ts` 23/23（活动流权限/合并/筛选/搜索/CSV、分享事件入流、SSE 实时到达、偏好静音）；`src/lib/team/activity.test.ts` 7/7、`src/lib/team/notify.test.ts` 6/6、通知广播单测 3/3；`frontend/e2e/kb.spec.ts` 团队用例新增活动流断言。
 
 ## 十五·七、多租户隔离（P4-3，2026-08-10）
 
 ### Workspace 模型
 - `src/lib/workspace/store.ts`：`Workspace { id, name, plan, ownerId, members[]（email）, createdAt }`
-- 默认 `ws_default`（"KnowledgeAI 团队"）含全部 seed 用户——**现有行为零变化**；DB 侧 Prisma Team/TeamMember 模型已备（多团队骨架），内存 store 与之 1:1 映射（演示模式）
+- 默认 `ws_default`（“KnowledgeAI 团队”）含全部 seed 用户——**现有行为零变化**；DB 侧 Prisma Team/TeamMember 模型已备（多团队骨架），内存 store 与之 1:1 映射（演示模式）
 - `listWorkspaces(email)` / `getWorkspace` / `createWorkspace`（owner=创建者，审计 `workspace.create`）/ `resolveWorkspace`（成员校验，非法回退默认）/ `setWorkspacePlan`（checkout 支付后升级）
 
 ### 用户上下文（非破坏）
@@ -545,12 +545,12 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### 数据隔离
 | 实体 | workspaceId 挂载 | 路由校验 |
 | --- | --- | --- |
-| KnowledgeBase | seed/创建/HMR backfill | 列表按 ws 过滤；详情/设置/删除/上传跨 ws 403（loadAccessible） |
+| KnowledgeBase | seed/创建/HMR backfill | 列表按 ws 过滤；详情/设置/删除/上传跨 ws 403(loadAccessible) |
 | Conversation | 创建时（请求 ws） | 列表/详情/共享按 ws 过滤 |
 | AgentTask | 创建时 | 列表按 ws 过滤；任务归属校验（owner 或同 ws 成员） |
 
 ### Workspace 配置与计费
-- `usageByWorkspace`（qaUsed/agentTasks/storageBytes）：`recordQa(userId, workspaceId)` + `recordAgentTask(workspaceId)`（chat / agent run 计量）
+- `usageByWorkspace`(qaUsed/agentTasks/storageBytes)：`recordQa(userId, workspaceId)` + `recordAgentTask(workspaceId)`（chat / agent run 计量）
 - `/api/usage`：按当前 ws 统计（QA/Agent/存储/KB 数）+ `workspace.plan` 配额（qaLimit/storageLimit/agentLimit）
 - `/api/billing`：返回 `workspace { id, name, plan, usage }`；checkout 支付成功 → `setWorkspacePlan` 升级 ws plan
 - 模型配置保留 per-user、限流保持 user 级（文档注明，可扩展 ws 维度）
@@ -566,14 +566,14 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 计费：QA 计量只计入当前 ws、ws-B 独立 meters + plan=free、/api/billing 返回 ws plan/usage
 - 回退：未知 ws cookie → 默认 ws；匿名正常
 
-## 十五·八、移动端适配与 PWA（P5-1，2026-08-10）
+## 十五·八、移动端适配与 PWA(P5-1，2026-08-10)
 
 ### 响应式布局
 - **Sheet 抽屉原语** `src/components/ui/sheet.tsx`（Radix Dialog 底座）：滚动锁定 / Escape / 焦点圈闭 / aria + 入场出场动画（tw-animate-css），side="left|right"
 - **AppShell**：桌面侧栏 `w-64 lg:block`；移动端抽屉替换为 Sheet（导航后自动关闭）+ 屏幕左缘右滑手势打开
 - **chat 三栏**（移动端重点改造）：
-  - 会话列表桌面 `hidden md:flex w-64`（<768px 完全不可达的缺口）→ 移动 Sheet（header「会话」按钮 `md:hidden`），选中即关闭
-  - 引用来源桌面 `hidden xl:flex w-72` → 移动 Sheet（「来源」按钮 `xl:hidden`）
+  - 会话列表桌面 `hidden md:flex w-64`（<768px 完全不可达的缺口）→ 移动 Sheet（header“会话”按钮 `md:hidden`），选中即关闭
+  - 引用来源桌面 `hidden xl:flex w-72` → 移动 Sheet（“来源”按钮 `xl:hidden`）
   - KB 选择器 `w-[220px]` → `min-w-0 flex-1 sm:w-[220px] sm:flex-none`；就绪 badge 移动端隐藏
   - 容器高度 `.chat-height` 类（100dvh + 100vh 回退 + lg 断点双值，见 globals.css）
 - **页面微修**：KB 卡片 meta 行 `flex-wrap`、标题 truncate；详情页头部/面包屑 min-w-0；通知下拉 `w-[calc(100vw-2rem)] max-w-80`
@@ -585,7 +585,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `useMediaQuery` 用 `useSyncExternalStore`（SSR 安全，hydration 后取真实值）
 
 ### 移动端上传
-- upload-zone accept 增补 `image/*`（走既有 OCR 管线）+ 独立「拍照上传」按钮（`capture="environment"`，桌面浏览器自动退化为文件选择）
+- upload-zone accept 增补 `image/*`（走既有 OCR 管线）+ 独立“拍照上传”按钮（`capture="environment"`，桌面浏览器自动退化为文件选择）
 - `next.config.ts`：`Permissions-Policy` 放开 `camera=(self)`（麦克风/定位仍禁用）
 
 ### PWA（手写，零新依赖）
@@ -622,7 +622,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 键盘导航绑定面板容器级 keydown（焦点在 Tab/结果行均生效）：`↑/↓` 移动、`Enter` 跳转、`Esc` 先清空输入再关闭
 - `HighlightMatch`：query 空格分词 + `<mark>` 高亮
 - 最近搜索 `kai-recent-search`（localStorage，去重最多 8 条）+ 空态快捷操作
-- 入口：AppShell 顶部触发按钮（⌘K badge）+ 移动端 icon + `useGlobalHotkey`（Cmd/Ctrl+K）
+- 入口：AppShell 顶部触发按钮（⌘K badge）+ 移动端 icon + `useGlobalHotkey`(Cmd/Ctrl+K)
 
 ### 深链补全
 | 目标 | URL | 实现 |
@@ -656,16 +656,16 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### 回答再生（不同参数）
 - `generateStream/generateAsync` 加 `temperature?`（默认 0.3，ChatOptions 已支持）
 - /api/chat body `{ regenerate, temperature, topK }`：regenerate 时 `popLastAssistantMessage`（内存+DB 删除）+ **不重复添加 user 消息**（修复旧回答留历史 + 重复问题的 quirk）
-- 前端 regenerate → temperature 0.7 + topK（settings.topK+3）
+- 前端 regenerate → temperature 0.7 + topK(settings.topK+3)
 
 ### 知识库推荐
 - `GET /api/knowledge-base/recommend?q=&excludeKbId=`：query 与 KB name/desc/文档名做 2-gram 重叠打分（前缀含 query 加权 +10），workspace 过滤 + canViewKb，top 3
-- chat 页每次提问后消息流底部渲染「相关知识库推荐」条（点击切换 KB）
+- chat 页每次提问后消息流底部渲染“相关知识库推荐”条（点击切换 KB）
 
 ### 对话归档与标签
-- `Conversation.archived/tags`（schema + migration）；**顺带修复 shared/workspaceId 不落库**（persist/hydrate 补上，DB 模式重启不再丢失）
+- `Conversation.archived/tags`(schema + migration)；**顺带修复 shared/workspaceId 不落库**（persist/hydrate 补上，DB 模式重启不再丢失）
 - PATCH 扩展 `{ archived, tags }`；列表 API 默认排除归档（`?archived=1` 查归档，dashboard 自动排除）
-- 会话列表「我的会话 / 已归档」视图切换 + 标签 chips（#tag）+ ⋯ 菜单（桌面 hover / 移动长按：归档/恢复、编辑标签、删除）
+- 会话列表“我的会话 / 已归档”视图切换 + 标签 chips(#tag)+ ⋯ 菜单（桌面 hover / 移动长按：归档/恢复、编辑标签、删除）
 
 ### 端到端验证（全部通过 ✅）
 - `test-chat-markdown.tsx` 24/24（renderToString 组件断言）；`test-chat-enhance.ts` 29/29（反馈持久化/查询/400、**降权 ratio 断言**、再生替换语义、归档过滤/恢复/dashboard、标签、推荐）；`test-chat-enhance-ui.mjs` 21/21（CDP：回答渲染、点踩备注提交、再生、⋯ 菜单归档/标签、推荐条）
@@ -682,20 +682,20 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### 全站提取（45+ 文件 / 685 key）
 - 提取工具支持：JSX 文本节点（含空格变体）/ 属性 / 对象值 / 模板行跳过；多行文本与模板串手动补
 - server 组件（privacy/terms/maintenance/not-found）转 `serverT()`；client 用 `useT`
-- 模块级文案函数化：navGroups/titleMap（labelKey）、plans/columns/reviews、ERROR_UI、SUGGESTION_TEMPLATES、exportConversation（t + locale 参数）
-- **slug 冲突修复**：非 (app) 文件原共享 `page.page` key 空间（login 的「邮箱」被 share-doc 的「受保护」覆盖）——按目录 slug（login/register/2fa-enroll/verify-email/privacy/terms/share-doc/report-share/maintenance/not-found/error）
+- 模块级文案函数化：navGroups/titleMap(labelKey)、plans/columns/reviews、ERROR_UI、SUGGESTION_TEMPLATES、exportConversation（t + locale 参数）
+- **slug 冲突修复**：非 (app) 文件原共享 `page.page` key 空间（login 的“邮箱”被 share-doc 的“受保护”覆盖）——按目录 slug(login/register/2fa-enroll/verify-email/privacy/terms/share-doc/report-share/maintenance/not-found/error)
 
 ### 语言切换与持久化
 - AppShell 顶栏 Globe 下拉（zh/en 即时切换）+ settings 个人信息语言选择（PATCH /api/auth/me { locale }）
 - 三层持久化：localStorage（首屏）+ `kai-locale` cookie（SSR 协商）+ `User.locale`（DB，migration `p5_4_user_locale`）
 
 ### 端到端验证（全部通过 ✅）
-- `test-i18n-coverage.ts` 4/4：zh/en key 树一致（无缺失/孤儿）+ **src/app + src/components 零残留中文**（「所有 UI 文案无硬编码」的可验证形式）
-- `test-i18n.mjs` 12/12（dev + prod CDP）：默认中文 → Globe 切英文即时生效 → localStorage/cookie/lang 持久化 → reload 保持 → 切回 → settings 持久化到 profile
+- `test-i18n-coverage.ts` 4/4：zh/en key 树一致（无缺失/孤儿）+ **src/app + src/components 零残留中文**（“所有 UI 文案无硬编码”的可验证形式）
+- `test-i18n.mjs` 12/12(dev + prod CDP)：默认中文 → Globe 切英文即时生效 → localStorage/cookie/lang 持久化 → reload 保持 → 切回 → settings 持久化到 profile
 - 回归全绿：PWA 32/32、布局 17/17、全局搜索 27/27、渲染器 24/24、对话增强 29/29、PWA 离线 5/5
 
 ### 范围说明
-- 服务端 API 错误消息（66 文件 / 87 条唯一）与 Agent 提示词/导出模板（lib）不在 UI 文案范围——前端展示 API 错误时的兜底文案（「网络错误」「请求失败」等）已 i18n
+- 服务端 API 错误消息（66 文件 / 87 条唯一）与 Agent 提示词/导出模板（lib）不在 UI 文案范围——前端展示 API 错误时的兜底文案（“网络错误”“请求失败”等）已 i18n
 - metadata/SEO 经 generateMetadata 按 cookie locale 双语
 
 ## 十五·十二、暗色模式与主题增强（P5-5，2026-08-11）
@@ -709,11 +709,11 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 入口与 UI
 - `src/components/theme-toggle.tsx` 重构：图标（Sun/Moon/Monitor 反映当前模式）+ 三选项下拉（亮色/暗色/跟随系统），Esc/外点关闭；签名不变 `{ className? }`，营销 navbar ×2 / auth layout / AppShell 四处兼容
-- 设置页新增「外观」tab（`page.settings.s72`，Palette 图标，`?tab=appearance` 深链自动可用）：`src/components/app/theme-settings.tsx`
+- 设置页新增“外观”tab（`page.settings.s72`，Palette 图标，`?tab=appearance` 深链自动可用）：`src/components/app/theme-settings.tsx`
   - 主题模式：三段按钮（立即生效 + 动画）
   - 高对比度：Switch（`html.high-contrast` + `kai-hc`）+ WCAG AA 说明
-  - 品牌色：6 色板 swatch（owner 可点选 PATCH 即时生效；非 owner 禁用 + 提示「仅工作区所有者可修改」）
-- 全局搜索设置清单新增「外观与主题」→ `/settings?tab=appearance`
+  - 品牌色：6 色板 swatch（owner 可点选 PATCH 即时生效；非 owner 禁用 + 提示“仅工作区所有者可修改”）
+- 全局搜索设置清单新增“外观与主题”→ `/settings?tab=appearance`
 
 ### 高对比度模式（无障碍，WCAG AA）
 - `.high-contrast`（手动开关）+ `@media (prefers-contrast: more)`（系统级）两路径，同一套覆盖值
@@ -728,17 +728,17 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 色板（`src/lib/theme/brand-colors.ts`）：indigo/emerald/sky/violet/fuchsia/rose，每色定义亮/暗/高对比三套 `--primary/--primary-foreground/--ring/--accent/--accent-foreground/--brand-from/--brand-via/--brand-to`（亮色白字 ≥4.5:1 调校；渐变按 hue+22/+49 派生）
 
 ### 端到端验证（全部通过 ✅）
-- `test-theme.ts` 17/17（HTTP）：GET 暴露 brandColor；PATCH 非法 400 / 匿名 401 / viewer 403 / owner 200 + 回读；审计 `workspace.update` + 链完整；清理恢复
-- `test-theme-ui.mjs` 37/37（CDP）：三模式（默认跟随系统实时切换、亮/暗持久化 + reload 保持）、过渡 class 出现与清除、高对比度开关 + reload + **WCAG AA computed 实测**、品牌色（点选 → CSS 变量 + reload SSR 保持、viewer 禁用）
+- `test-theme.ts` 17/17(HTTP)：GET 暴露 brandColor；PATCH 非法 400 / 匿名 401 / viewer 403 / owner 200 + 回读；审计 `workspace.update` + 链完整；清理恢复
+- `test-theme-ui.mjs` 37/37(CDP)：三模式（默认跟随系统实时切换、亮/暗持久化 + reload 保持）、过渡 class 出现与清除、高对比度开关 + reload + **WCAG AA computed 实测**、品牌色（点选 → CSS 变量 + reload SSR 保持、viewer 禁用）
 - 回归全绿：i18n coverage 4/4、i18n CDP 12/12、全局搜索 27/27 + UI 13/13、移动端/PWA 17/17、对话增强 29/29、tsc、build
 
 ### 顺带修复
-- 全局搜索空态快捷操作按钮文案 key 指错（与文档状态共用 s13/s15 → 显示「已就绪/处理中」）→ 补 `page.global-search.s19-21` 独立 key，UI 测试恢复 13/13
+- 全局搜索空态快捷操作按钮文案 key 指错（与文档状态共用 s13/s15 → 显示“已就绪/处理中”）→ 补 `page.global-search.s19-21` 独立 key，UI 测试恢复 13/13
 
 ## 十五·十三、应用监控（P6-1，2026-08-11）
 
 ### 架构决策（零依赖自研）
-- **追踪**：不接 OpenTelemetry SDK（重量级依赖 + Next 16 + Edge middleware 集成脆弱，与项目零依赖惯例冲突）——AsyncLocalStorage 上下文传播 + `X-Trace-Id` 头 + 内存 span 环形存储，满足「全链路可追踪」验收
+- **追踪**：不接 OpenTelemetry SDK（重量级依赖 + Next 16 + Edge middleware 集成脆弱，与项目零依赖惯例冲突）——AsyncLocalStorage 上下文传播 + `X-Trace-Id` 头 + 内存 span 环形存储，满足“全链路可追踪”验收
 - **Sentry**：不接 @sentry SDK——实现标准 **Envelope 协议**直投（`POST {dsn}/api/{projectId}/envelope/` + `X-Sentry-Auth: Sentry sentry_version=7, sentry_key=..., sentry_client=...`），`SENTRY_DSN` 配置时真实上报，未配置内存兜底（Provider fallback 惯例）
 
 ### 核心模块（`src/lib/obs/`）
@@ -749,9 +749,9 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 埋点覆盖
 - **路由**（withApiTrace，12 个）：/api/chat（SSE 流内 finally 终结，autoEnd:false 覆盖全生命周期）、/api/search、/api/agent/run、/api/workspaces、/api/auth/me、/api/knowledge-base(+upload)、/api/agent/tasks、/api/chat/conversations(+[id])
-- **proxy**（Edge）：`X-Trace-Id` 生成/透传 → 注入下游请求头 + 回写响应头；**已知边界**：Next 16 middleware 无法观察下游响应（adapter 源码验证），请求 SLI 由路由内 withApiTrace 记录（覆盖已埋点路由）
+- **proxy**(Edge)：`X-Trace-Id` 生成/透传 → 注入下游请求头 + 回写响应头；**已知边界**：Next 16 middleware 无法观察下游响应（adapter 源码验证），请求 SLI 由路由内 withApiTrace 记录（覆盖已埋点路由）
 - **RAG**：`retrieve()` → `rag.retrieve` span + `recordRag`（覆盖 rewrite→多查询→rerank 全链）
-- **LLM**：provider.ts 四函数（chatComplete/chatStream/embedText/embedBatch）→ `llm.*` span + `recordLlm`（读取响应 `data.usage` 与 SSE `[DONE]` 前 usage 行，**不改函数签名**）；demo 模式抽取式回退在 generator.ts 记 `llm.generate`（model "demo"）——全链路 api→rag→llm 在演示模式同样成立
+- **LLM**：provider.ts 四函数（chatComplete/chatStream/embedText/embedBatch）→ `llm.*` span + `recordLlm`（读取响应 `data.usage` 与 SSE `[DONE]` 前 usage 行，**不改函数签名**）；demo 模式抽取式回退在 generator.ts 记 `llm.generate`(model "demo")——全链路 api→rag→llm 在演示模式同样成立
 - **文档**：upload 路由 parseDocument 计时 + doc-process 队列 handler（`recordDoc`，payload.traceId 经 `startProcessing` 从 ALS 透传）
 - **Agent**：agent-run handler `runTask` 包 `agent-run` 根 span + `recordAgent`
 
@@ -763,12 +763,12 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### 仪表盘（`/admin/monitoring`，owner/admin）
 - `GET /api/admin/monitoring`（单端点聚合：请求 SLI/分钟序列/延迟分位/LLM 分布/RAG/DOC/AGENT/最近 traces+errors/uptime）+ `GET /api/admin/monitoring/traces?id=`（span 树）
 - 页面区块：QPS 折线（复用 UsageChart SVG）、4 张 SLI 卡（QPS/总数/错误率/P50·P95·P99）、LLM 模型分布表（calls/tokens/cost/avg + 合计行）、RAG/文档/Agent 卡、最近追踪（点击展开 span 树，kind 彩色 chips）、最近错误
-- AppShell nav「监控」入口（s27，Activity 图标）；非 admin 由 AppShell routeGuard 重定向（页面 fetch 403 时保持骨架不崩溃）
+- AppShell nav“监控”入口（s27，Activity 图标）；非 admin 由 AppShell routeGuard 重定向（页面 fetch 403 时保持骨架不崩溃）
 
 ### 端到端验证（全部通过 ✅）
-- `test-monitoring.ts` 34/34（HTTP）：权限 401/403/200 + 结构；**全链路**：X-Trace-Id 搜索 → api span；聊天 → api→rag→llm 且 parentId 链正确；错误上报可见；SLI 填充（QPS/错误率/P95/demo 模型 tokens/成本）
+- `test-monitoring.ts` 34/34(HTTP)：权限 401/403/200 + 结构；**全链路**：X-Trace-Id 搜索 → api span；聊天 → api→rag→llm 且 parentId 链正确；错误上报可见；SLI 填充（QPS/错误率/P95/demo 模型 tokens/成本）
 - `test-sentry.ts` 24/24（纯库 + 本地 receiver）：DSN 解析、envelope 结构（32 hex event_id/帧解析/双平台）、**真实投递断言**（URL/X-Sentry-Auth/content-type/载荷）、429 接受、无 DSN 零网络
-- `test-monitoring-ui.mjs` 14/14（CDP）：owner 全区块渲染 + span 树展开 + editor 重定向
+- `test-monitoring-ui.mjs` 14/14(CDP)：owner 全区块渲染 + span 树展开 + editor 重定向
 - 回归全绿：i18n coverage 4/4、i18n CDP、全局搜索 27/27 + UI 13/13、对话增强 29/29、主题 37/37、移动端 17/17、tsc、build
 
 ## 十五·十四、结构化日志（P6-2，2026-08-11）
@@ -777,32 +777,32 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 架构决策（pino + Edge/浏览器双适配）
 - **引入 pino 10**（按 ROADMAP 计划采用真实日志库，未沿用零依赖自研——pino 依赖链轻、JSON 输出 + 分级 + redact 与验收标准一一对应；`next.config.ts` serverExternalPackages 追加 pino 保障 standalone 动态 require 安全）。
-- **Edge 运行时无法 import pino**（node:stream）：`src/lib/obs/log-edge.ts` 自研同构 JSON（纯 Web-API，`console.<level>(JSON.stringify({level,msg,ts,...fields}))`），proxy 专用；是全库唯一允许 console.* 的文件（`test-logging.ts` 静态扫描断言）。
+- **Edge 运行时无法 import pino**(node:stream)：`src/lib/obs/log-edge.ts` 自研同构 JSON（纯 Web-API，`console.<level>(JSON.stringify({level,msg,ts,...fields}))`），proxy 专用；是全库唯一允许 console.* 的文件（`test-logging.ts` 静态扫描断言）。
 - **浏览器**：`pino/browser`（`src/lib/obs/log-browser.ts`，asObject 输出对象；无 redact 支持，故客户端 3 个站点只传状态码/消息，不传敏感值，已注明）；类型经 `src/types/pino-browser.d.ts` 声明。
 
 ### 核心模块（src/lib/obs/）
 - `log.ts`——Node 侧 pino 单例：
   - **分级**：`LOG_LEVEL`（debug|info|warn|error，默认 info；含 fatal/trace/silent）+ `setLogLevel()` 运行时切换
-  - **requestId 关联**：`mixin()` 每行读取 `currentTraceCtx()?.traceId`（ALS 同步生效）→ traced 请求内所有日志自动带 `requestId`（== X-Trace-Id），**零调用点改动**
-  - **脱敏**：pino redact（censor `***`）内置敏感键表（apiKey/api_key/apikey/secret/clientSecret/secretKey/password/passwd/pwd/token/accessToken/refreshToken/authToken/idToken/tokens/authorization/credential(s)/cookie(s)/x-api-key/x-auth-token/privateKey/bearer）× 每键三级通配 `K`/`*.K`/`*.*.K`（fast-redact 无 `**` 深通配，pino 10 实测 `*.*.key` 命中 `a.b.key`）+ `LOG_REDACT_KEYS` 扩展；err 走 pino 内置 err serializer（{type,message,stack}）
+  - **requestId 关联**：`mixin()` 每行读取 `currentTraceCtx()?.traceId`（ALS 同步生效）→ traced 请求内所有日志自动带 `requestId`(== X-Trace-Id)，**零调用点改动**
+  - **脱敏**：pino redact（censor `***`）内置敏感键表（apiKey/api_key/apikey/secret/clientSecret/secretKey/password/passwd/pwd/token/accessToken/refreshToken/authToken/idToken/tokens/authorization/credential(s）/cookie(s)/x-api-key/x-auth-token/privateKey/bearer）× 每键三级通配 `K`/`*.K`/`*.*.K`（fast-redact 无 `**` 深通配，pino 10 实测 `*.*.key` 命中 `a.b.key`）+ `LOG_REDACT_KEYS` 扩展；err 走 pino 内置 err serializer({type,message,stack})
   - **Loki 聚合**：自定义 Writable destination（tee stdout + 内存环 + 批量队列），`LOG_LOKI_URL` **惰性读取**（未设置 = 仅 stdout 零网络）；2s/100 条批量 `POST /loki/api/v1/push`（streams[{stream:{app:"knowledgeai",env},values:[[ns,line]]}]），失败静默丢弃 + 计数（每 20 次一条直写 stdout 告警，避免递归），永不抛异常；`flushLogs()` 供测试/退出前冲刷
   - **内存环**：`__KAI_LOG_STORE__`（cap 1000，存 redact 后行，level 归一化字符串）→ `recentLogs({level?,requestId?,limit?})`
 - `redact.ts`——纯 Web-API 自由文本脱敏：`redactText()` 掩码 sk-/pk-/rk- key、`Bearer <token>`、`key=value`/`key: value`（排除 Bearer 误吞）、任意 scheme URL userinfo、500 字符截断（provider 错误响应体等无法按 key 脱敏的文本）
 - `log-edge.ts`——proxy Edge 日志（见上）；`log-browser.ts`——客户端日志
 
 ### 埋点关联（requestId 全链路）
-- **proxy**：rate-limit 分支后一行 `http.request`（method/path/requestId/dimension/rateLimited/status=429）——Edge JSON 直写 stdout；SKIP_PATHS（SSE/轮询）不打，由路由侧覆盖
+- **proxy**：rate-limit 分支后一行 `http.request`(method/path/requestId/dimension/rateLimited/status=429)——Edge JSON 直写 stdout；SKIP_PATHS（SSE/轮询）不打，由路由侧覆盖
 - **路由终结**：`trace.ts finalizeRecord`（仍在 ALS 上下文内）→ `http.response`（method/path/status/durationMs，api 源）/ `queue.finish`（job/status/durationMs，queue 源）——与 proxy 行同 requestId 可串
 - **全站迁移**：133 处 console.* → pino（src/lib 25 文件 + src/app/api 2 路由 + proxy/instrumentation/worker/seed + 根级 3 运维脚本 + 客户端 3 处）；`[module]` 前缀保留在 msg；错误对象入 `{err}` 字段；`prisma/seed.ts` 演示密码改入 `password` 字段自动掩码；scripts/smoke + tests 为测试夹具不迁移（其 console 输出即断言报告）
 
 ### 查询 API
 - `GET /api/admin/logs?level=&requestId=&limit=`（owner/admin，force-dynamic，limit ≤500 默认 200）→ `{logs, total}`，镜像 /api/admin/monitoring 模式；Edge proxy 行在独立进程 stdout，不在环内（文档注明）
 
-### 环境变量（.env.example「结构化日志 (P6-2)」段）
+### 环境变量（.env.example“结构化日志 (P6-2）”段）
 - `LOG_LEVEL="info"`、`LOG_LOKI_URL=""`（Loki 聚合，未设置演示模式）、`LOG_REDACT_KEYS=""`（追加 redact 路径）
 
 ### 端到端验证（全部通过 ✅）
-- `test-logging.ts` 15/15（HTTP + 静态扫描）：**静态扫描零 console.\***（src/lib + src/app/api + proxy/instrumentation/worker/seed/根级脚本，唯一白名单 log-edge.ts 且其不 import pino/node）；/api/admin/logs 权限 401/403/200 + 结构（ts/level(string)/msg）；`?level=warn` 过滤；**requestId 串联**（X-Trace-Id → ?requestId= 命中 + http.response 字段）；limit
+- `test-logging.ts` 15/15（HTTP + 静态扫描）：**静态扫描零 console.\***（src/lib + src/app/api + proxy/instrumentation/worker/seed/根级脚本，唯一白名单 log-edge.ts 且其不 import pino/node）；/api/admin/logs 权限 401/403/200 + 结构（ts/level(string）/msg）；`?level=warn` 过滤；**requestId 串联**（X-Trace-Id → ?requestId= 命中 + http.response 字段）；limit
 - `test-logging-sink.ts` 35/35（纯库 + 本地 receiver）：顶层/1 级/2 级嵌套脱敏（Loki 载荷 + 环双断言，raw body 无密钥原文）；err 序列化；requestId（trace 内带/trace 外无）；分级丢弃；**Loki 真实推送**（URL/Content-Type/streams/app/values/JSON 可解析）；未配置零网络；500 失败容忍 + 恢复；recentLogs 过滤
 - 回归全绿：monitoring 34/34、sentry 24/24、i18n coverage 4/4、全局搜索 27/27、对话增强 29/29、tsc、build（pino 外部化 + pino/browser 客户端打包 + Edge proxy 编译）
 
@@ -819,7 +819,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 单元测试（vitest + @vitest/coverage-v8）
 - `vitest.config.ts`：node 环境、`@/` 别名、coverage include 四目录；**排除**外部服务后端（chromadb/pgvector/pinecone——需真实服务）与 ocr.ts（需 tesseract 二进制），文档注明
-- 23 测试文件 / 151 用例：纯函数全覆盖（chunker/embeddings/bm25/hybrid-search/query-rewrite parse/reranker parse/session/crypto 系/plans/rbac/types labels）+ globalThis 内存存储状态机（auth/billing/team store、retriever/indexer/vector-store）+ `vi.mock("@/lib/llm/provider")` 覆盖 LLM 抽象路径（generateAsync/generateStream/rewriteQuery/rerank 重排与失败回退）+ 重型依赖 mock（pdf-parse/mammoth/xlsx）+ fetcher（vi.stubGlobal fetch）
+- 23 测试文件 / 151 用例：纯函数全覆盖（chunker/embeddings/bm25/hybrid-search/query-rewrite parse/reranker parse/session/crypto 系/plans/rbac/types labels）+ globalThis 内存存储状态机（auth/billing/team store、retriever/indexer/vector-store）+ `vi.mock("@/lib/llm/provider")` 覆盖 LLM 抽象路径（generateAsync/generateStream/rewriteQuery/rerank 重排与失败回退）+ 重型依赖 mock(pdf-parse/mammoth/xlsx)+ fetcher(vi.stubGlobal fetch)
 - **实测覆盖率**：Lines **86.08%** / Functions **91.03%** / Statements **84.97%** / Branches **76.33%**（阈值 70/70/70/60 全过）
 
 ### 集成测试修复（tests/ 三套件）
@@ -827,19 +827,19 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 修复：三套件补 `login()`（POST /api/auth/login demo 账号 → kai-token cookie 挂所有请求）；适配安全契约（2FA enroll/verify 替代旧 enable/disable、rateLimitPerMin 为 env-controlled、限流探测读 config 实际阈值）
 - 结果：functional 25/25、api 38/38、performance 24 基准 + 限流第 200 次精确 429
 
-### E2E（Playwright）
+### E2E(Playwright)
 - `playwright.config.ts`：`locale: "zh-CN"`（应用按 Accept-Language 选语言包，断言基于中文文案）、webServer 自动 `pnpm dev`、失败截图 + trace on-first-retry
-- `e2e/main-flow.spec.ts` 4 用例：**登录**（UI 表单 → /dashboard + 导航渲染）→ **上传**（新建知识库 → setInputFiles 上传 `e2e/fixtures/sample.md` → 文档「就绪」）→ **问答**（/chat 提问 → 用户气泡 + 助手回答气泡）→ **Agent**（topic 输入（含水合竞态重试）→「调研中…」→「开始调研」恢复 + 调研结果报告）
-- 注意：受控输入框需在 React 水合后 fill（否则与默认值竞争），测试用「填充后校验 + 重试」模式
+- `e2e/main-flow.spec.ts` 4 用例：**登录**（UI 表单 → /dashboard + 导航渲染）→ **上传**（新建知识库 → setInputFiles 上传 `e2e/fixtures/sample.md` → 文档“就绪”）→ **问答**（/chat 提问 → 用户气泡 + 助手回答气泡）→ **Agent**（topic 输入（含水合竞态重试）→“调研中…”→“开始调研”恢复 + 调研结果报告）
+- 注意：受控输入框需在 React 水合后 fill（否则与默认值竞争），测试用“填充后校验 + 重试”模式
 
 ### 部署自动化（GHCR + SSH + 蓝绿）
-- `deploy.yml`（push main，paths-ignore docs）：buildx 构建推 GHCR（`staging-<sha>` + `latest-staging`，gha cache）→ `staging` job：`STAGING_HOST/USER/SSH_KEY` secrets 门控（未配置自动跳过，镜像仍推送）→ `scripts/deploy/staging.sh`（SSH：docker pull → compose up app+worker → Docker HEALTHCHECK 等待 30×5s，未健康退出码 1）
+- `deploy.yml`(push main，paths-ignore docs)：buildx 构建推 GHCR（`staging-<sha>` + `latest-staging`，gha cache）→ `staging` job：`STAGING_HOST/USER/SSH_KEY` secrets 门控（未配置自动跳过，镜像仍推送）→ `scripts/deploy/staging.sh`（SSH：docker pull → compose up app+worker → Docker HEALTHCHECK 等待 30×5s，未健康退出码 1）
 - `deploy-prod.yml`（workflow_dispatch + `environment: production` 手动审批门）：推 `prod-<sha>` + `latest-prod` → `scripts/deploy/blue-green.sh`（容器级蓝绿：新版本备用端口 :3001 起容器 + health-cmd 健康轮询 → 通过后停旧启新接管 :3000；失败自动清理新容器回滚，旧版本持续服务；trap EXIT 兜底清理）
 - 服务器侧要求：docker + docker compose、`.env` 环境文件、GHCR 拉取权限；secrets：STAGING_*/PROD_HOST/PROD_USER/PROD_SSH_KEY/PROD_PORT
 
 ### 顺带修复
-- eslint flat config 未忽略 `.claude/`（含 worktree 构建产物）→ 补 globalIgnores（.claude/.zcode/coverage/playwright-report/test-results/.playwright）；`scripts/**/*.tsx` 补豁免（test-chat-markdown.tsx 的 @ts-nocheck）
-- `pnpm lint` 从 33915 problems（1860 errors）→ 0 errors / 16 存量 warnings
+- eslint flat config 未忽略 `.claude/`（含 worktree 构建产物）→ 补 globalIgnores(.claude/.zcode/coverage/playwright-report/test-results/.playwright)；`scripts/**/*.tsx` 补豁免（test-chat-markdown.tsx 的 @ts-nocheck）
+- `pnpm lint` 从 33915 problems(1860 errors)→ 0 errors / 16 存量 warnings
 
 ### 端到端验证（全部通过 ✅）
 - `pnpm test:unit`：23 文件 151 测试全绿 + 覆盖率阈值全过
@@ -854,37 +854,37 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 目标：K8s liveness / readiness 探针正常工作；依赖服务不可用时探针返回 503；就绪失败自动通知。
 
 ### 端点设计（公开、免限流、带追踪）
-- 三个端点均公开（无鉴权）、`force-dynamic`、`withApiTrace` 包裹（http.response 日志与 SLI 一致）；proxy SKIP_PATHS 加入 `"/api/health"` 前缀（探针每 5-30s 高频访问不得限流，沿用 `/api/auth/me` 模式）
+- 三个端点均公开（无鉴权）、`force-dynamic`、`withApiTrace` 包裹（http.response 日志与 SLI 一致）；proxy SKIP_PATHS 加入 `"/api/health"` 前缀（探针每 5～30s 高频访问不得限流，沿用 `/api/auth/me` 模式）
 - `GET /api/health` — **存活**：恒 200 `{status:"ok", version, uptimeMs, ts}`，与依赖完全解耦（进程活着即 ok）
 - `GET /api/health/ready` — **就绪**：三检查并行 → 无 degraded 则 200 `{status:"ok", checks, ts}`；有 degraded 则 **503** `{status:"degraded", checks, degraded, degradedSince}`
 - `GET /api/health/db` — **数据库**：ok/skipped → 200；degraded → 503（含 detail）
 
 ### 依赖检查（src/lib/health/readiness.ts）
-- **语义**：未配置的依赖 = `skipped`（演示模式是合法运行态，整体保持就绪）；**配置了但不可达 = degraded**（整体 503）——这是「依赖不可用时返回 503」的验收语义
-- `checkDb`：`DATABASE_URL` 未配置 → skipped；配置了 → `getDb()` + `$queryRaw("SELECT 1")`（Prisma 惰性连接、无超时配置，必须 `Promise.race` 3s 显式超时；连接拒绝即时失败）→ ok/degraded（latencyMs/detail）
-- `checkRedis`：`REDIS_URL` 未配置 → skipped；配置了 → 动态 import ioredis 新建客户端（`lazyConnect + retryStrategy:()=>null + connectTimeout 3s`）`connect()` 3s 超时（ioredis 类型未声明 ping/call——Commander 动态命令，用类型完备的 connect()：连接成功即可达），finally `disconnect()`
+- **语义**：未配置的依赖 = `skipped`（演示模式是合法运行态，整体保持就绪）；**配置了但不可达 = degraded**（整体 503）——这是“依赖不可用时返回 503”的验收语义
+- `checkDb`：`DATABASE_URL` 未配置 → skipped；配置了 → `getDb()` + `$queryRaw("SELECT 1")`（Prisma 惰性连接、无超时配置，必须 `Promise.race` 3s 显式超时；连接拒绝即时失败）→ ok/degraded(latencyMs/detail)
+- `checkRedis`：`REDIS_URL` 未配置 → skipped；配置了 → 动态 import ioredis 新建客户端（`lazyConnect + retryStrategy:()=>null + connectTimeout 3s`）`connect()` 3s 超时（ioredis 类型未声明 ping/call——Commander 动态命令，用类型完备的 connect(）：连接成功即可达），finally `disconnect()`
 - `checkLlm`：`OPENAI_API_KEY` 未配置 → skipped；配置了 → `GET {baseUrl}/models`（`OPENAI_BASE_URL` 默认 `https://api.openai.com/v1`，直接读 env 不走 per-user 解析；5s AbortSignal；非 2xx/异常 → degraded——401 无效 key 也算 degraded，符合连通性语义；不消耗 token）
 
 ### 告警状态机
 - globalThis `__KAI_HEALTH_STATE__`（HMR 不重置）：`degraded / degradedSince / lastAlertAt / lastRecoveredAt / failures ring(50)`
 - ok→degraded 转移：`notify(userId, "securityAlert", ...)` 给全部 owner/admin（`listUsers` 过滤角色+状态，尊重通知频道开关）+ `log.error` 结构化日志 + `reportError`（错误环 + SENTRY_DSN 门控）
-- 持续降级每 10 分钟重报（去重防风暴）；degraded→ok 恢复通知「已恢复」；`resetReadinessState()` 供测试
+- 持续降级每 10 分钟重报（去重防风暴）；degraded→ok 恢复通知“已恢复”；`resetReadinessState()` 供测试
 
 ### 容器 / K8s 配置
 - Dockerfile HEALTHCHECK、docker-compose app、blue-green.sh health-cmd：全部 `http://127.0.0.1:3000/` → `/api/health`（liveness；busybox wget，alpine 自带；staging.sh 依赖 Docker 健康状态自动生效）
 - `k8s/deployment.yaml` 示例清单：startupProbe `/api/health`（30×2s=60s 启动容错）+ livenessProbe `/api/health`（30s 周期）+ readinessProbe `/api/health/ready`（10s 周期，503 → 摘流量）+ Service
 
 ### 顺带修复：optional-modules.d.ts 桩类型遮蔽
-- `src/types/optional-modules.d.ts` 为 bullmq/ioredis/pdf-parse/mammoth/xlsx 声明了最小桩类型（零依赖时期遗留），注释声称「安装后真实类型取代桩类型」——**实为错误**：ambient `declare module` 永远遮蔽包自带类型（ioredis Redis#connect 等真实 API 全部不可见，P6-4 首个实现即被此坑命中）
+- `src/types/optional-modules.d.ts` 为 bullmq/ioredis/pdf-parse/mammoth/xlsx 声明了最小桩类型（零依赖时期遗留），注释声称“安装后真实类型取代桩类型”——**实为错误**：ambient `declare module` 永远遮蔽包自带类型（ioredis Redis#connect 等真实 API 全部不可见，P6-4 首个实现即被此坑命中）
 - 移除五个真实依赖的桩类型（保留未安装的 @aws-sdk 与无类型包的 pdf-parse）→ 真实类型生效；rate-limit/agent-bus/bullmq-queue/parser 现有代码零改动通过 tsc
 
 ### 端到端验证（全部通过 ✅）
-- `test-health.ts` 22/22（HTTP）：存活 200 + 结构；demo 就绪 200（checks db/redis/llm 全 skipped）；db 200；**30 次连续探测无 429**；**503 路径**（:3100 生产实例 + 死端口 DATABASE_URL/REDIS_URL）→ ready 503 degraded 含 db/redis + degradedSince、db 503、**存活仍 200**；**告警端到端**（503 后 owner 收到「服务依赖不可用」站内通知）
-- `readiness.test.ts` 10/10（vitest）：skipped 三分支、db/llm degraded（死端口即时失败）、告警状态机（转移通知 owner/admin、同窗口去重、恢复通知、静默无变化）
+- `test-health.ts` 22/22(HTTP)：存活 200 + 结构；demo 就绪 200（checks db/redis/llm 全 skipped）；db 200；**30 次连续探测无 429**；**503 路径**（:3100 生产实例 + 死端口 DATABASE_URL/REDIS_URL）→ ready 503 degraded 含 db/redis + degradedSince、db 503、**存活仍 200**；**告警端到端**（503 后 owner 收到“服务依赖不可用”站内通知）
+- `readiness.test.ts` 10/10(vitest)：skipped 三分支、db/llm degraded（死端口即时失败）、告警状态机（转移通知 owner/admin、同窗口去重、恢复通知、静默无变化）
 - 回归：vitest 全量 161/161、logging 15/15、logging-sink 35/35、monitoring 34/34、`pnpm lint` 0 errors、tsc、build
 - 说明：503 路径用生产 `next start` 实例（Next dev 同一项目目录有进程锁，不允许第二实例；测试首跑自动 `pnpm build`）
 
-## 十五·十七、开放 API 与 SDK（P7-1，2026-08-12）
+## 十五·十七、开放 API 与 SDK(P7-1，2026-08-12)
 
 > 目标：OpenAPI 文档可交互测试；三种语言 SDK 可用；Webhook 事件可靠推送（含重试）。
 
@@ -901,7 +901,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 ### Webhook 引擎（`src/lib/webhooks/`）
 - 订阅模型 `WebhookSubscription`（url/secret/events[]/active/failures/lastError）+ Prisma 迁移 `p7_1_webhook_subscriptions` + persist/hydrate 四件套。
 - 投递：`webhook-deliver` 队列任务（新 JobType）——每次 job 一次 HTTP 尝试（10s 超时），队列级 3 次指数退避重试；2xx 恢复健康，非 2xx/网络错误累加 failures 直至死信。签名头 `X-KAI-Signature: sha256=HMAC(secret, body)` + `X-KAI-Event` + `X-KAI-Delivery`。
-- 触发点：`processDocInQueue` 文档就绪（`kb.ready`）、`agentRunHandler` 任务完成（`agent.completed`）、billing 计量跨额度（`usage.alert`，按 (workspace, limit) 去重防风暴）。
+- 触发点：`processDocInQueue` 文档就绪（`kb.ready`）、`agentRunHandler` 任务完成（`agent.completed`）、billing 计量跨额度（`usage.alert`，按 （workspace, limit） 去重防风暴）。
 - CRUD API：`/api/v1/webhooks`（列表/创建/更新/删除/测试 ping），工作区隔离 + 变更审计。
 
 ### 三语言 SDK（`sdk/`）
@@ -909,7 +909,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 验证：`test-sdk.ts` 用三种 SDK 对 live server 全流程实测（登录建 key → 各端点）。
 
 ### 开发者门户
-- `/developer`（AppShell「开发者」导航，owner/admin/editor）：快速开始（三语言片段）、Webhook 管理（CRUD + 测试 + 投递记录）、用量统计（CallLog 24h 时序 + 端点分布）；`/api-keys` 页新增 24h 调用量图。
+- `/developer`（AppShell“开发者”导航，owner/admin/editor）：快速开始（三语言片段）、Webhook 管理（CRUD + 测试 + 投递记录）、用量统计（CallLog 24h 时序 + 端点分布）；`/api-keys` 页新增 24h 调用量图。
 
 ## 十五·十八、插件 / 集成市场（P7-2，2026-08-12）
 
@@ -921,12 +921,12 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `/developer` 集成 tab 生成安装片段；提示专用 chat:read 密钥并定期轮换。
 
 ### 群机器人（Slack / 飞书 / 钉钉）
-- `src/lib/integrations/bots.ts`：BotBinding（platform/kbId/tokenHash）——token 创建时一次性展示、SHA-256 哈希存储；Prisma `BotIntegration` 迁移 `p7_2_bot_integrations`。
-- 回调 `POST /api/v1/integrations/bot/m/<token>`（proxy SKIP_PATHS）：token 即凭据（401）；`integration:<id>` 独立限流（`RATE_LIMIT_INTEGRATION_PER_MIN` 默认 120）；平台解析（Slack/飞书 url_verification challenge 原样回显、事件/文本消息；钉钉 text.content；`x-kai-platform` 覆盖头；`test` 平台返回原始 JSON）。
+- `src/lib/integrations/bots.ts`：BotBinding(platform/kbId/tokenHash)——token 创建时一次性展示、SHA-256 哈希存储；Prisma `BotIntegration` 迁移 `p7_2_bot_integrations`。
+- 回调 `POST /api/v1/integrations/bot/m/<token>`(proxy SKIP_PATHS)：token 即凭据（401）；`integration:<id>` 独立限流（`RATE_LIMIT_INTEGRATION_PER_MIN` 默认 120）；平台解析（Slack/飞书 url_verification challenge 原样回显、事件/文本消息；钉钉 text.content；`x-kai-platform` 覆盖头；`test` 平台返回原始 JSON）。
 - 回答：`askOnce`（`src/lib/chat/ask-once.ts`）在进程内消费共享 SSE 管线（同一套权限/RAG/负反馈/KB 档位），按平台格式回复。
 
 ### Chrome 扩展 + n8n/Zapier
-- `integrations/chrome-extension/`：MV3（contextMenus + storage），右键选中文字 → 结果页经 background 桥接问答；设置页存 API Key/KB/endpoint。
+- `integrations/chrome-extension/`：MV3(contextMenus + storage)，右键选中文字 → 结果页经 background 桥接问答；设置页存 API Key/KB/endpoint。
 - n8n/Zapier：v1 API + Webhook 事件即工作流接入，`/developer` 提供 n8n HTTP Request 节点示例。
 
 ### VS Code 扩展（2026-08-13）
@@ -939,7 +939,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `src/lib/integrations/sync/confluence.ts`：`GET /rest/api/content?spaceKey=&limit=20&expand=body.storage`（Basic auth `CONFLUENCE_EMAIL:CONFLUENCE_TOKEN`）→ `htmlToMarkdown`（ac:structured-macro 解包保留 rich-text 体、h1-h6/列表/表格管道行+分隔行/代码/链接/行内格式）。env：`CONFLUENCE_BASE_URL/EMAIL/TOKEN` + `CONFLUENCE_API_URL` 覆写。
 - 同步入口 `src/lib/integrations/sync/index.ts`：逐页 `addDocument`（自动入队 doc-process）+ **按文档名去重**（重跑幂等）+ 审计 `integration.sync` + 结构化日志；路由 `POST /api/v1/integrations/sync/{notion,confluence}`（登录或 API Key `kb:write` + canEditKb，未配置 400、KB 404、上游失败 502）。
 - 通用文本建文档端点 `POST /api/v1/knowledge-bases/[id]/documents`（body `{name, content}`，`kb:write` scope，同名 409——同步/扩展的幂等基础）。
-- 开发者门户「文档同步」Card：KB 下拉 + databaseId/spaceKey 输入 + 同步按钮 + 导入/跳过/失败摘要。
+- 开发者门户“文档同步”Card：KB 下拉 + databaseId/spaceKey 输入 + 同步按钮 + 导入/跳过/失败摘要。
 - 验收：`scripts/smoke/test-sync.ts` 15/15（mock Notion :5090 / Confluence :5091 + :3100 实例：导入 2+2、重跑去重、4 文档 ready、同步内容可检索、审计、未配置 400）+ 转换器单测 `sync.test.ts` 10/10。
 
 ## 十五·十九、知识图谱（P7-3，2026-08-12）
@@ -947,11 +947,11 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 目标：自动从文档中抽取实体与关系；图谱可视化可交互探索；GraphRAG 检索精度优于纯向量检索。
 
 ### NER 抽取（`src/lib/kg/extract.ts`）
-- 确定性 demo 路径（测试依赖）：中文人名（姓 + 名 + 可选头衔，分词歧义用「头衔优先 + 裸名边界」交替解决）、组织（后缀表 + 分隔符/动词停用词的 tempered token，避免「晨曦科技与蓝海集团」吞并与「做支付」误吞）、引号概念（「」“”《》""）、事件（日期/届次前缀 + 大会/峰会…后缀）；英文人名/组织/概念/事件。
+- 确定性 demo 路径（测试依赖）：中文人名（姓 + 名 + 可选头衔，分词歧义用“头衔优先 + 裸名边界”交替解决）、组织（后缀表 + 分隔符/动词停用词的 tempered token，避免“晨曦科技与蓝海集团”吞并与“做支付”误吞）、引号概念（“”“”《》""）、事件（日期/届次前缀 + 大会/峰会…后缀）；英文人名/组织/概念/事件。
 - LLM 配置时走 Vision/JSON 增强；`extractRelations` 抽取同句共现（过滤自环），`aggregateMentions` 统计出现次数。
 
 ### 图谱存储 + 落库
-- `src/lib/kg/store.ts`：globalThis `__KAI_GRAPH_STORE__`（entities/relations/labelIndex/docGraphs）；`indexDocGraph` 按文档增量合并（幂等重索引、删文档即撤贡献）；`expandEntities` 1-hop 邻居加权扩展；`clearKbGraph`。
+- `src/lib/kg/store.ts`：globalThis `__KAI_GRAPH_STORE__`(entities/relations/labelIndex/docGraphs)；`indexDocGraph` 按文档增量合并（幂等重索引、删文档即撤贡献）；`expandEntities` 1-hop 邻居加权扩展；`clearKbGraph`。
 - Prisma `KnowledgeEntity`/`KnowledgeRelation`（迁移 `p7_3_knowledge_graph`，id 为 (kbId,label) 稳定哈希，upsert 幂等）+ persist/hydrate。
 - 管线：`processDocInQueue` 索引后调用 `indexDocGraph`；`deleteKb` 清图。
 
@@ -961,17 +961,17 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ### 可视化 + API
 - `GET /api/knowledge-base/[id]/graph`（workspace + canViewKb + kb 档限流）与 `graph/search?q=`。
-- `/knowledge-base/[id]/graph` 页面 + KB 详情「知识图谱」入口：`src/components/app/knowledge-graph.tsx` 手写 SVG 力导向图（斥力+弹簧迭代；节点按类型着色、拖拽、滚轮缩放、点击高亮邻居 + 详情面板 + 邻居跳转 chips）。边以标签寻址（API 形态），节点带 `data-id` 供测试/调试。
+- `/knowledge-base/[id]/graph` 页面 + KB 详情“知识图谱”入口：`src/components/app/knowledge-graph.tsx` 手写 SVG 力导向图（斥力+弹簧迭代；节点按类型着色、拖拽、滚轮缩放、点击高亮邻居 + 详情面板 + 邻居跳转 chips）。边以标签寻址（API 形态），节点带 `data-id` 供测试/调试。
 
 ## 十五·二十、多模态支持（P7-4，2026-08-12）
 
 > 目标：图片文档可被检索；支持图片 + 文本混合提问；支持语音问答闭环。
 
 ### 图片索引（`src/lib/rag/vision.ts`）
-- `describeImage(buf, mime)`：LLM 配置时用 OpenAI content-parts（`{type:"image_url", url:"data:..."}`）生成中文描述（`src/lib/llm` 的 `wireMessages` 统一映射）；demo 回退 OCR（tesseract）+ 尺寸（@napi-rs/canvas）。`parseImage` 接入后图片文档带视觉描述入索引。
+- `describeImage(buf, mime)`：LLM 配置时用 OpenAI content-parts（`{type:"image_url", url:"data:..."}`）生成中文描述（`src/lib/llm` 的 `wireMessages` 统一映射）；demo 回退 OCR(tesseract)+ 尺寸（@napi-rs/canvas）。`parseImage` 接入后图片文档带视觉描述入索引。
 
 ### 混合提问
-- `/api/chat`（+v1）body 新增 `images?: {mime, data}[]`（≤4 张）：LLM 模式透传 content parts（generator 的 `buildRagPrompt` 把图片挂到当前用户消息）；demo 模式逐张 `imageContextLine` 并入提问上下文。畸形图片容错。
+- `/api/chat`(+v1)body 新增 `images?: {mime, data}[]`（≤4 张）：LLM 模式透传 content parts（generator 的 `buildRagPrompt` 把图片挂到当前用户消息）；demo 模式逐张 `imageContextLine` 并入提问上下文。畸形图片容错。
 - 字幕：`.srt/.vtt` 解析（去时间戳/序号/内联标签 → 对白文本），`DocType.subtitle` + `docTypeFromName` + 文件白名单 + 类型图标。
 
 ### 语音闭环（`src/lib/voice/` + `src/types/web-speech.d.ts`）
@@ -984,21 +984,21 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 > 目标：Google / GitHub 一键登录可用；OAuth 用户自动创建 / 关联账号；支持解绑社交账号。
 
 ### 架构：Auth.js v5 仅作 OAuth 引擎
-- `next-auth@5.0.0-beta.32`（Google + GitHub provider），**应用会话体系不变**（`kai-token` JWT + `guard.ts`/`getRequestUser` 零改动）。OAuth 协议全程（Authorization Code + PKCE + CSRF state + token 交换 + profile 拉取）由库处理。
+- `next-auth@5.0.0-beta.32`(Google + GitHub provider)，**应用会话体系不变**（`kai-token` JWT + `guard.ts`/`getRequestUser` 零改动）。OAuth 协议全程（Authorization Code + PKCE + CSRF state + token 交换 + profile 拉取）由库处理。
 - `src/lib/auth/authjs.ts`：NextAuth 配置——providers 按 `GOOGLE_/GITHUB_CLIENT_ID|SECRET` env 门控（未配置不注册，登录页按钮隐藏）；`trustHost: true` + 显式 `secret`（复用 `AUTH_SECRET`）；`pages: {signIn: "/login", error: "/login"}`；jwt callback 把 `oauthProvider/oauthProviderId` 写入 Auth.js JWT。
-- **桥接路由** `GET /api/auth/oauth/bridge`（`src/app/api/auth/oauth/bridge/route.ts`）：provider dance 完成后 Auth.js 302 到 `callbackUrl`（= bridge，`?cb=` 保留最终跳转）→ `getToken({req, secret})` 解密 Auth.js JWT 读取身份 → 登录模式 `upsertOauthUser`（① 已有 provider 关联 → 直接登录；② 邮箱匹配 → 自动关联（账号关联）；③ 新建无密码账号 `createOAuthUser`）→ `createToken` 铸造 kai-token + cookie → 302 目标页；**绑定模式**（请求已带 kai-token 会话，设置页「绑定」）：`linkOauthToUser` 把身份挂到当前用户（邮箱/provider 冲突 → `?error=oauth_link_conflict` 回落 /login）。
+- **桥接路由** `GET /api/auth/oauth/bridge`（`src/app/api/auth/oauth/bridge/route.ts`）：provider dance 完成后 Auth.js 302 到 `callbackUrl`（= bridge，`?cb=` 保留最终跳转）→ `getToken({req, secret})` 解密 Auth.js JWT 读取身份 → 登录模式 `upsertOauthUser`（① 已有 provider 关联 → 直接登录；② 邮箱匹配 → 自动关联（账号关联）；③ 新建无密码账号 `createOAuthUser`）→ `createToken` 铸造 kai-token + cookie → 302 目标页；**绑定模式**（请求已带 kai-token 会话，设置页“绑定”）：`linkOauthToUser` 把身份挂到当前用户（邮箱/provider 冲突 → `?error=oauth_link_conflict` 回落 /login）。
 - **2FA 策略**：OAuth 登录跳过应用 TOTP 与强制绑定门（provider MFA 视为已认证；`mustEnroll2FA` 对 OAuth 用户不拦截）——文档注明。
 - **解绑**：`DELETE /api/auth/oauth/link?provider=`（requireRole 任意登录态）→ `unlinkOauthProvider`：无密码且无其他 provider 时 400（至少保留一种登录方式）；审计 `auth.oauth_unlink`。
 - **数据**：`User.oauthLinks Json?`（provider→providerAccountId，migration `p3_2_oauth_links`），persist/hydrate 全链路；OAuth-only 账号 `passwordHash=null`（`verifyCredentials` 拒绝密码登录；PATCH /api/auth/me 首次设置密码免当前密码）。
 
 ### 前端
 - 登录/注册页 OAuth 按钮 → `src/lib/auth/oauth-signin.ts` `oauthSignIn()`：GET `/api/auth/signin/{provider}` 在 v5 **不支持**（抛 UnsupportedAction → Configuration），统一 POST：`/api/auth/csrf` 取 token → POST signin（`redirect: "manual"`）→ 导航到 302 Location（provider 授权页）；`/api/auth/providers` 动态显隐按钮；`?error=` 参数映射友好提示（未配置/取消/绑定冲突）。
-- 设置页「安全」tab 新增「社交账号」Card（2FA 与登录设备之间）：已绑定徽章 + 绑定按钮（bridge `?cb=/settings?tab=security` 绑定模式）+ 解绑确认 dialog；app-shell 用户菜单新增「账号管理」→ `/settings?tab=security`。
+- 设置页“安全”tab 新增“社交账号”Card（2FA 与登录设备之间）：已绑定徽章 + 绑定按钮（bridge `?cb=/settings?tab=security` 绑定模式）+ 解绑确认 dialog；app-shell 用户菜单新增“账号管理”→ `/settings?tab=security`。
 
 ### 实现要点（生产构建验证）
 - **跨 realm URL 陷阱**：app 代码 `new URL()` 创建的实例在 Next 生产 chunk 与 @auth/core 不同 realm，`new URL(跨realm实例)` 抛 "Receiver must be an instance of class URL"（`/api/auth/providers` 即崩）。provider 端点一律传**字符串**（`normalizeEndpoint` 在库内 realm 转 URL）。
 - **GitHub 端点覆盖**：GitHub 默认 authorization/token/userinfo 指向真实 github.com（无效 client → 404 "Not Found"）；且 Auth.js 用 provider 配置**覆盖** discovery 端点 → 显式传字符串 `authorization/token/userinfo`（`GITHUB_ISSUER` 派生）。
-- **Google（OIDC）**：默认无 authorization.url（只有 issuer）→ 传 `GOOGLE_ISSUER` 即走自定义 discovery；token 响应需 `id_token`（oauth4webapi `requireIdToken`）+ discovery 含 `jwks_uri`（mock 用 RS256 签发）。
+- **Google(OIDC)**：默认无 authorization.url（只有 issuer）→ 传 `GOOGLE_ISSUER` 即走自定义 discovery；token 响应需 `id_token`（oauth4webapi `requireIdToken`）+ discovery 含 `jwks_uri`（mock 用 RS256 签发）。
 - **getToken secret**：bridge 必须显式传 `secret`（env 推断要求进程有 AUTH_SECRET，演示模式无）。
 - merge.js 深合并跳过 `undefined` 值——不能靠 `{url: undefined}` 清掉默认 URL。
 
@@ -1008,25 +1008,25 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ## 十五·二十二、成熟框架替换自研组件（P7-5，2026-08-13）
 
-> 目标：按「技术选型原则」复核自研组件，凡存在成熟、兼容的现成方案一律替换；对外 API 面（函数签名 / SSE 事件名 / 测试断言）保持不变，旧代码删除，新适配层重新配测试。
+> 目标：按“技术选型原则”复核自研组件，凡存在成熟、兼容的现成方案一律替换；对外 API 面（函数签名 / SSE 事件名 / 测试断言）保持不变，旧代码删除，新适配层重新配测试。
 
 ### 替换清单（8 项，全部替换 + 验收）
 
 | 领域 | 原自研（已删除） | 现成方案（已采用） | 适配层 |
 | --- | --- | --- | --- |
 | JWT 会话 | `src/lib/auth/session.ts` 手写 HS256 + b64url | **jose**（Auth.js v5 的既有依赖，零新增下载） | `SignJWT`/`jwtVerify`/`base64url`；2FA pre-auth `purpose` 拒绝逻辑保留；旧 token 格式可继续验证（wire-compat 测试） |
-| TOTP 2FA | `src/lib/security/totp.ts` 手写 RFC 6238 + base32 | **otplib v13**（`@otplib/*`） | 函数式 API `generateSync`/`verifySync`/`generateURI`；epoch 为**秒**；`epochTolerance` 单位为**秒**（±1 step = ±30s）；backup codes 保留（非 TOTP） |
+| TOTP 2FA | `src/lib/security/totp.ts` 手写 RFC 6238 + base32 | **otplib v13**（`@otplib/*`） | 函数式 API `generateSync`/`verifySync`/`generateURI`；epoch 为**秒**；`epochTolerance` 单位为**秒**(±1 step = ±30s)；backup codes 保留（非 TOTP） |
 | BM25 关键词检索 | `src/lib/rag/bm25.ts` 手写 BM25 + CJK unigram/bigram | **miniSearch v7** | 自定义 `tokenize`（latin 词 + CJK 一元/二元组）；`bm25` 参数在 search 调用而非构造器（v7 API）；`docId::chunkIndex` 唯一 id + `__KAI_BM25_DOCS__` 跟踪表（re-index/删除）；discard 幂等容错 |
 | Markdown 渲染 | `src/components/app/chat-markdown.tsx` 手写 tokenizer（440 行） | **react-markdown + remark-gfm + rehype-highlight** | `[n]` 引用 chip 改为 rehype 插件（文本节点 → `<button data-cite>`，容器 onClick 委托）；mermaid `graph LR` chip 流保留（`-->(?!>)` 边界）；fenced 代码块经 `pre` 组件提取 language/代码 + 复制按钮；`tok-*` 高亮类 → `hljs-*`（globals.css 新增深色主题） |
 | 力导向布局 | `knowledge-graph.tsx` 手写斥力/弹簧迭代 | **d3-force** | 布局抽为纯函数 `src/lib/kg/layout.ts`（`forceSimulation.tick(300)` 同步、确定性 → SSR/客户端同坐标）；边保持 label 引用 |
-| 代码高亮 | 关键词 tokenizer（5 语言子集） | **rehype-highlight**（highlight.js） | 随 Markdown 渲染器一并替换，`hljs-*` 类 + 深色 token 主题 |
+| 代码高亮 | 关键词 tokenizer（5 语言子集） | **rehype-highlight**(highlight.js) | 随 Markdown 渲染器一并替换，`hljs-*` 类 + 深色 token 主题 |
 | i18n 核心 | `src/lib/i18n/translate.ts` 手写点路径解析 | **i18next v26** | 消息包原样作 resources；`{var}` 单大括号插值（自定义 prefix/suffix）；`escapeValue:false`（React 文本节点已转义，避免双重转义）；缺 key 回退 key 本身、缺 var 保留占位符（n8n 模板 `&#123;&#123; $json.question &#125;&#125;` 不受影响）；`useT`/`serverT`/`t(locale)`/`normalizeLocale` API 不变（`getFixedT` 绑定 locale） |
 | LLM 客户端层 | `src/lib/llm/provider.ts` 手写 fetch + SSE 解析 | **Vercel AI SDK（`ai` + `@ai-sdk/openai`）** | `generateText`/`streamText`/`embed`/`embedMany`；图片消息 → AI SDK image part；`allowSystemInMessages:true`（generator 以 messages[0] 传 system）；`maxOutputTokens`（v7 命名）；usage 字段 `inputTokens`/`outputTokens`；HTTP 错误（带 statusCode）优雅降级、网络错误照常抛出；demo fallback 与 SSE 协议（`sources`/`token`/`done`）不变 |
 
 ### 架构解耦（随附修复，2026-08-13）
 - **模块环清理**（Brooks 架构审计驱动）：`rag/embeddings` → `src/lib/llm/embeddings.ts`（断 llm↔rag）；`security/rate-limit` → `src/lib/rate-limit.ts`（断 chat↔security）；`security/crypto` → `src/lib/crypto.ts` + hydrateAudit 改直接播种 `__KAI_AUDIT_STORE__`（断 db↔security，审计链改为由 GET /api/admin/audit 按查询校验）；`Role`/`ROLE_LABEL`/`ROLE_DESC` → `src/lib/roles.ts`（断 auth↔team）。模块扫描确认运行时 2 节点环为 0。
-- **chat 页拆分**：`src/app/(app)/chat/page.tsx` 1575 → 1098 行，提取 `chat/conversation-list.tsx`（ConversationList/Item/TagEditor）、`chat/sources-panel.tsx`、`chat/chat-empty-state.tsx`。
-- **集成套件 helper 收敛**：`tests/helpers.mjs`（login/api/BASE/AUTH）取代三套件各自实现。
+- **chat 页拆分**：`src/app/(app)/chat/page.tsx` 1575 → 1098 行，提取 `chat/conversation-list.tsx`(ConversationList/Item/TagEditor)、`chat/sources-panel.tsx`、`chat/chat-empty-state.tsx`。
+- **集成套件 helper 收敛**：`tests/helpers.mjs`(login/api/BASE/AUTH)取代三套件各自实现。
 
 ### 验收标准与结果
 - **`npx tsc --noEmit`** ✅ 零错误；**`pnpm lint`** ✅ 零告警；**`pnpm test:unit`** ✅ 40 文件 / 292 测试全绿，覆盖率 lines 83.8% / branches 72.1%（门槛 70%/60%）。
@@ -1036,20 +1036,20 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 
 ## 十五·二十三、技术栈审查与修复（2026-08-14）
 
-> 按「技术选型原则：不造重复轮子」对全量技术栈复核：P7-5 的 8 项替换逐文件核实通过；自研组件逐项对照成熟替代方案；依赖清单做健康度扫描。共 4 项修复 + 5 项自研补记理由。
+> 按“技术选型原则：不造重复轮子”对全量技术栈复核：P7-5 的 8 项替换逐文件核实通过；自研组件逐项对照成熟替代方案；依赖清单做健康度扫描。共 4 项修复 + 5 项自研补记理由。
 
 ### 修复清单
 
 | # | 领域 | 问题 | 修复 |
 | --- | --- | --- | --- |
 | 1 | 支付（P0-3） | Stripe 走手写 REST 客户端（raw fetch + 手写 form 编码）；`verifyWebhook` 为空实现（只要带 `stripe-signature` 头即通过，伪造回调可直接升级订阅） | 改用官方 **stripe SDK**（动态导入，demo 模式零接触）：`checkout.sessions.create` + `webhooks.constructEvent`（HMAC + ±300s 时间戳容差，抛错即拒）；`PRICE_MAP` 改惰性读 env；新增 4 条 SDK 路径单测 |
-| 2 | 文档解析（P1-1） | npm `xlsx@0.18.5` 停更（官方已移至 cdn.sheetjs.com），含 CVE-2023-30533（原型污染）/ CVE-2024-22363（ReDoS） | xlsx 升级 **SheetJS CDN 0.20.3**（URL 依赖，`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`） |
+| 2 | 文档解析（P1-1） | npm `xlsx@0.18.5` 停更（官方已移至 cdn.sheetjs.com），含 CVE-2023-30533（原型污染）/ CVE-2024-22363(ReDoS) | xlsx 升级 **SheetJS CDN 0.20.3**（URL 依赖，`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`） |
 | 3 | 文档解析（P1-1） | `pdf-parse` 维护停滞、捆绑旧 pdf.js 内核，与 OCR 管线已在用的 `pdfjs-dist` 双轨 | PDF 文本提取统一到 **pdfjs-dist**（`getTextContent` + hasEOL 分行 + 可选 metadata 标题），删除 pdf-parse 依赖与 ambient 桩 |
 | 4 | 依赖卫生 | `@types/qrcode` 误放 dependencies | 移入 devDependencies |
 
 ### 复核结论（维持自研，补记替代对象与理由）
 
-见上方「自研的案例」表格新增 5 行（主题引擎 / 分片断点上传 / PWA Service Worker / 统计图表 / 全局搜索命令面板）。其余自研（obs 监控追踪、crypto 标准算法薄封装、分级限流、HMAC 审计链、模式 NER、进程内实时总线、三语言 SDK）此前均已记录替代对象与理由，复核通过。
+见上方“自研的案例”表格新增 5 行（主题引擎 / 分片断点上传 / PWA Service Worker / 统计图表 / 全局搜索命令面板）。其余自研（obs 监控追踪、crypto 标准算法薄封装、分级限流、HMAC 审计链、模式 NER、进程内实时总线、三语言 SDK）此前均已记录替代对象与理由，复核通过。
 
 ### 验收
 
@@ -1064,8 +1064,8 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 | # | 级别 | 问题 | 修复 |
 | --- | --- | --- | --- |
 | 5 | 中（跨租户泄露） | `GET /api/v1/webhooks` 的投递记录 `listDeliveryRecords(undefined, 30)` 未按租户过滤，返回全局最近 30 条（含他租户订阅 URL 等 credential-ish 信息） | `DeliveryRecord` 增加 `workspaceId`（投递时由队列 handler 写入）；`listDeliveryRecords(workspaceId, subscriptionId?, limit)` 强制租户边界；两个 v1 路由按 `u.workspaceId` 过滤；单测新增租户隔离断言 |
-| 6 | 中（越权） | `/api/v1/webhooks*` 仅 `getRequestUser` 认证，API key 调用者无 scope 约束，与「v1 表面 scope 强制」声明不符 | 新增 `webhooks:write` scope（SCOPES + API Key 创建 UI 自动出现）；列表/详情/更新/删除/测试 5 个操作全部 `requireApiKeyScope(req, "webhooks:write")`（JWT 会话不受影响） |
-| 7 | 低（fail-open） | `is2FARequiredForRole` 配置读取异常时静默返回 false，2FA 强制策略被悄悄削弱 | 改为 fail-closed：异常时 `log.warn` + 视为「要求 2FA」 |
+| 6 | 中（越权） | `/api/v1/webhooks*` 仅 `getRequestUser` 认证，API key 调用者无 scope 约束，与“v1 表面 scope 强制”声明不符 | 新增 `webhooks:write` scope（SCOPES + API Key 创建 UI 自动出现）；列表/详情/更新/删除/测试 5 个操作全部 `requireApiKeyScope(req, "webhooks:write")`（JWT 会话不受影响） |
+| 7 | 低（fail-open） | `is2FARequiredForRole` 配置读取异常时静默返回 false，2FA 强制策略被悄悄削弱 | 改为 fail-closed：异常时 `log.warn` + 视为“要求 2FA” |
 
 ## 十五·二十四、密码重置与邮箱验证（P8，2026-08-29）
 
@@ -1087,8 +1087,8 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - 链接 base：`NEXT_PUBLIC_APP_URL`（既有公网约定，反代后必须显式设置）→ `src/lib/email/deliver.ts` `authLink()` + `enqueueEmailSend()`（三路由共用，消除重复）。
 
 ### 验证
-- 单测 18 例（password-reset 10 + email-verify 8）：token 生命周期、过期/篡改/重放、并发重放、短密码不烧 token、锁定清除、会话吊销；i18n 键位齐平（email.* + reset-password s9-s11「链接无效」态）。
-- reset-password 页无 token 渲染「链接无效」态而非必然失败的表单；登录页「忘记密码」入口。
+- 单测 18 例（password-reset 10 + email-verify 8）：token 生命周期、过期/篡改/重放、并发重放、短密码不烧 token、锁定清除、会话吊销；i18n 键位齐平（email.* + reset-password s9-s11“链接无效”态）。
+- reset-password 页无 token 渲染“链接无效”态而非必然失败的表单；登录页“忘记密码”入口。
 
 ## 十五·二十五、全仓静态安全扫描整改（2026-08-29）
 
@@ -1098,7 +1098,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - **URL 收敛**：全部脚本统一 `scripts/smoke/lib/base-url.ts` `resolveSmokeBase()`——BASE_URL env 收敛为校验过的本地端口号再重建 origin，env 原串永不进请求 URL（SSRF 判定的红线：请求 URL 必须字面量或派生自该守卫）。
 - **凭据字节拼装**：`password123` / `kai_sk_*` 等测试凭据一律 `Buffer.from([...]).toString()`（共享 `scripts/smoke/lib/demo.ts` `DEMO_PASSWORD`；字符串拼接 / `.repeat()` 会被扫描器归一化识别仍拦截）；测试新密码同理（store.test / e2e）。
 - **动态 require 清零**：`require(计算路径)` 乃至源码字符串中的 `require(` 文本都触发命令注入标注——test-vscode 改静态 ESM 导入。
-- **解释器输入清零**：`node -e` / `python3 -c` 内联脚本一律拦截（即使全静态字符串）——SDK 演练固化为仓库内脚本 `scripts/smoke/sdk-smoke-js.mjs` / `sdk-smoke-py.py`，运行时配置走子进程 env（KAI_*），代码内插码生成清零。
+- **解释器输入清零**：`node -e` / `python3 -c` 内联脚本一律拦截（即使全静态字符串）——SDK 演练固化为仓库内脚本 `scripts/smoke/sdk-smoke-js.mjs` / `sdk-smoke-py.py`，运行时配置走子进程 env(KAI_*)，代码内插码生成清零。
 
 ### src 应用代码硬化（7 项）
 - `oauth-signin.ts`：provider 白名单 + 字面量 signin 路径（provider 值不再进 URL）；callbackUrl 开放重定向守卫（仅应用内绝对路径）。
@@ -1109,7 +1109,7 @@ related: [../architecture/overview.md, ../architecture/design-system.md]
 - `prisma/seed.ts` / `widget` / `sync.js` / `kai_sdk.py` / i18n-extract.py 同步整改。
 
 ### 流程沉淀
-- 门禁不消费独立深度扫描产物，按自身扫描器判定；修复以「逐文件编辑 → 钩子即时扫描反馈」循环验证（`test-oauth.ts` 首个 clear 证明模式有效后量产）。
+- 门禁不消费独立深度扫描产物，按自身扫描器判定；修复以“逐文件编辑 → 钩子即时扫描反馈”循环验证（`test-oauth.ts` 首个 clear 证明模式有效后量产）。
 - 残留 medium（启发式标注）：graph 路由 `getGraph`（数值排序，无注入面）、settings 页 oauthSignIn 跨文件污点——已向用户说明，不拦门禁。
 
 
@@ -1215,41 +1215,41 @@ KnowledgeAI/
 
 | 领域 | 现成方案 | 理由 |
 | --- | --- | --- |
-| OAuth 社交登录（P3-2） | Auth.js v5（next-auth@beta） | 协议实现（Authorization Code + PKCE + CSRF + state + token 交换）复杂且安全敏感，库维护成熟；应用只做会话桥接 |
+| OAuth 社交登录（P3-2） | Auth.js v5(next-auth@beta) | 协议实现（Authorization Code + PKCE + CSRF + state + token 交换）复杂且安全敏感，库维护成熟；应用只做会话桥接 |
 | 任务队列（P0-4） | BullMQ + Redis | 重试/死信/多实例/调度开箱即用 |
 | 持久化（P0-1） | Prisma + PostgreSQL | 类型安全 ORM + 迁移工具链 |
 | 无障碍原语（P5-1） | Radix UI（Dialog/Select 等） | 焦点圈闭/滚动锁/键盘导航等 a11y 细节自研成本高 |
 | 结构化日志（P6-2） | pino | JSON 输出 + redact 脱敏与验收标准一一对应 |
-| 文档解析（P1-1） | pdfjs-dist / mammoth / xlsx（SheetJS CDN 0.20.3）/ tesseract.js | 格式解析属深度领域，自研不可行；pdf-parse 维护停滞已统一至 pdfjs-dist（2026-08-14） |
+| 文档解析（P1-1） | pdfjs-dist / mammoth / xlsx(SheetJS CDN 0.20.3)/ tesseract.js | 格式解析属深度领域，自研不可行；pdf-parse 维护停滞已统一至 pdfjs-dist(2026-08-14) |
 | API 文档（P7-1） | swagger-ui-dist | 交互式文档 UI 成熟稳定 |
 | JWT 会话（P7-5） | jose | HS256/Web Crypto 标准实现，Auth.js 既有依赖；旧 token wire-compat |
-| TOTP 2FA（P7-5） | otplib | RFC 6238/4226 标准实现 + 测试向量锁定 |
+| TOTP 2FA(P7-5) | otplib | RFC 6238/4226 标准实现 + 测试向量锁定 |
 | BM25 检索（P7-5） | miniSearch | 零依赖 BM25 库，自定义 CJK tokenizer |
 | Markdown 渲染（P7-5） | react-markdown + remark-gfm + rehype-highlight | unified 生态成熟，GFM/安全/高亮开箱即用 |
 | 图谱布局（P7-5） | d3-force | 力导向物理引擎标准实现 |
-| i18n（P7-5） | i18next | 框架无关、无 Next 版本耦合，消息包零改写迁移 |
-| LLM 客户端（P7-5） | Vercel AI SDK（ai + @ai-sdk/openai） | 多 provider/流式/嵌入统一抽象，Edge 兼容 |
+| i18n(P7-5) | i18next | 框架无关、无 Next 版本耦合，消息包零改写迁移 |
+| LLM 客户端（P7-5） | Vercel AI SDK(ai + @ai-sdk/openai) | 多 provider/流式/嵌入统一抽象，Edge 兼容 |
 | 支付（P0-3） | stripe（官方 SDK，动态导入） | Checkout / Webhook 验签 / 重试 / 类型开箱即用；替换手写 REST 客户端与空验签（2026-08-14） |
 
 **自研的案例（均注明替代对象与理由）**：
 
 | 领域 | 替代对象 | 自研理由（现状） |
 | --- | --- | --- |
-| i18n（P5-4） | next-intl | 原理由：Next 16.3 API 迁移窗口、无前缀模式需路由重构。**P7-5 已改用 i18next**（框架无关，无 Next 版本耦合），自研核心删除 |
+| i18n(P5-4) | next-intl | 原理由：Next 16.3 API 迁移窗口、无前缀模式需路由重构。**P7-5 已改用 i18next**（框架无关，无 Next 版本耦合），自研核心删除 |
 | 监控/追踪（P6-1） | OTel SDK / Sentry SDK | 与 Next Edge proxy 集成成本高、依赖重；自研 ALS 追踪 + Envelope 协议直投覆盖验收（**维持自研**） |
-| JWT/TOTP（P3-1/P3-4） | jsonwebtoken / speakeasy / bcrypt | **P7-5 已改用 jose / otplib**；PBKDF2/AES 仍为 Web Crypto / node:crypto 标准算法薄封装（**维持**） |
+| JWT/TOTP(P3-1/P3-4) | jsonwebtoken / speakeasy / bcrypt | **P7-5 已改用 jose / otplib**；PBKDF2/AES 仍为 Web Crypto / node:crypto 标准算法薄封装（**维持**） |
 | Markdown/PDF/PPTX/OPML 导出（P2-3） | markdown-it / pdfkit / pptxgenjs | 导出为受控自有格式，零依赖自重实现（**维持**——与渲染侧 react-markdown 无关） |
 | 主题引擎（P5-5） | next-themes | 需求含高对比度 + Workspace 品牌色 + 过渡动画（超出 next-themes 能力）；全引擎 248 行，替换收益低（**维持自研**，2026-08-14 复核补记） |
-| 分片断点上传（P0-4） | tus（tus-js-client + @tus/server） | 服务端为自定义存储 + demo 零依赖约束；引入 tus 需新增服务端协议层，集成成本高于自研收益（**维持自研**，2026-08-14 复核补记） |
-| PWA Service Worker（P5-1） | workbox | 仅需 precache / SWR / network-first 三策略（sw.js 106 行），引入收益低（**维持自研**，2026-08-14 复核补记） |
+| 分片断点上传（P0-4） | tus(tus-js-client + @tus/server) | 服务端为自定义存储 + demo 零依赖约束；引入 tus 需新增服务端协议层，集成成本高于自研收益（**维持自研**，2026-08-14 复核补记） |
+| PWA Service Worker(P5-1) | workbox | 仅需 precache / SWR / network-first 三策略（sw.js 106 行），引入收益低（**维持自研**，2026-08-14 复核补记） |
 | 统计图表（P6-1） | recharts / visx | 仅一种折线图（usage-chart.tsx 86 行），替换收益低（**维持自研**，2026-08-14 复核补记） |
 | 全局搜索命令面板（P5-2） | cmdk | 需多分类 Tab + 高亮 + 深链定制，手写键盘导航已覆盖验收，替换收益中低（**维持自研**，2026-08-14 复核补记） |
 
-> 判断基准：**兼容性风险 > 依赖重量 > 集成成本 > 自研成本**。当现成方案在 Next 16 / Edge 下兼容性存疑、或引入依赖的收益低于其成本时，自研并文档化是合理的例外——但默认路径永远是「先找现成的」。
+> 判断基准：**兼容性风险 > 依赖重量 > 集成成本 > 自研成本**。当现成方案在 Next 16 / Edge 下兼容性存疑、或引入依赖的收益低于其成本时，自研并文档化是合理的例外——但默认路径永远是“先找现成的”。
 
-## 十五·二十六、验收 smoke 套件接入 CI（2026-09-29）
+## 十五·二十六、验收 smoke 套件接入 CI(2026-09-29)
 
-> 背景：`scripts/smoke/` 下 55 个验收脚本（AGENTS.md 里记着 30/30、25/25、28/28 的验收结论）此前**只能手工运行**——`.github/workflows/` 里 grep `smoke` 零命中，脚本随重构漂移无人察觉（实测已出现 6 个红项：otplib 升级后 2FA URI 断言过期、crypto 模块搬家后 import 404、PBKDF2 迁移后哈希断言过期、SDK 缺 `webhooks:write` scope、`file://file://` 双前缀、SSRF 守卫挡住本机 webhook 接收端）。本次把它们变成两个 CI job，并顺带修掉「脚本之间互相污染」这一类隐性缺陷。
+> 背景：`scripts/smoke/` 下 55 个验收脚本（AGENTS.md 里记着 30/30、25/25、28/28 的验收结论）此前**只能手工运行**——`.github/workflows/` 里 grep `smoke` 零命中，脚本随重构漂移无人察觉（实测已出现 6 个红项：otplib 升级后 2FA URI 断言过期、crypto 模块搬家后 import 404、PBKDF2 迁移后哈希断言过期、SDK 缺 `webhooks:write` scope、`file://file://` 双前缀、SSRF 守卫挡住本机 webhook 接收端）。本次把它们变成两个 CI job，并顺带修掉“脚本之间互相污染”这一类隐性缺陷。
 
 ### 调度器（不是把 55 个脚本硬编码进 yaml）
 - `scripts/smoke/lib/manifest.ts`：脚本清单 + 分组（`lib` / `limits` / `http` / `ui` / `infra`）+ 每项前置条件（`chrome`/`ocr`/`go`/`python`/`db`/`chromadb`/`pinecone-mock`）与超时；`package.json` 的脚本名 = `${id}.ts`（UI 为 `.mjs`）。
@@ -1265,9 +1265,9 @@ KnowledgeAI/
 1. **`--elevate` 的必要性**：`/api/chat` 的路由内 user 档位取 `getBaseLimit()`（优先 admin store，demo 硬编码 60/min），**不受 `RATE_LIMIT_PER_MIN` 影响**——同一 server 窗口跑十几个脚本会累积触发 429，导致 chat 相关断言（monitoring 的 llm span、workspaces 的计量、global-search 的文档命中、audit 的条目数）随机变红。runner 因此在开跑前 `PATCH /api/admin/config` 抬高该档位并在结束时恢复；`limits` 组与 `--elevate` 互斥（runner 直接报错），因为它断言的就是文档默认值。
 2. **SSRF 守卫 vs 本机 webhook 接收端**：`src/lib/security/ssrf.ts` 正确拒绝回环地址，但 `test-webhooks.ts` 必须在 `127.0.0.1` 起接收端 → 新增**仅非生产生效**的 `SSRF_ALLOW_PRIVATE_HOSTS`（`privateTargetsAllowed()` = env 为 `true` **且** `NODE_ENV !== "production"`），三个 webhook 调用点（建单/改单/投递 `src/lib/queue/handlers.ts`）传 `{ allowPrivate: true }`；RAG 网页抓取 `src/lib/rag/fetcher.ts` 保持严格。备选方案（相机砍掉 15 项投递断言、换成公网地址）因丢掉核心覆盖/离线不可行而否决。
 
-### 脚本自足化（让「重复跑」与「乱序」不再是失败源）
+### 脚本自足化（让“重复跑”与“乱序”不再是失败源）
 - `test-2fa-http`：原本只重置策略、从不关 2FA，污染 `admin@knowledgeai.dev` 并连带打挂后续 5 个脚本；改为一次性账号 + 开跑前守卫（已污染则 fail-fast 提示重启 server）+ 末尾真清理（重置策略 + disable + 重新密码登录自检）。
-- `test-global-search` / `test-audit-encrypt` / `test-monitoring`：不再依赖种子 KB 里的文档（会被别的脚本删掉），改为自建 fixture KB + 上传 + （monitoring）轮询文档 `status === "ready"`。
+- `test-global-search` / `test-audit-encrypt` / `test-monitoring`：不再依赖种子 KB 里的文档（会被别的脚本删掉），改为自建 fixture KB + 上传 + (monitoring)轮询文档 `status === "ready"`。
 - 三个 CDP UI 脚本：收尾的 `exitCode is not defined` / `console.error(e)`（断言全过但进程非零退出）修复。
 - 另修：`test-oauth` 用 `resolveSmokeBase()` 后不再被 docker 栈的 `0.0.0.0:3000` 影响（并补上漏掉的 `DEMO_PASSWORD` import）；`test-sync`/`test-vscode`/`test-integrations` 需 :3100 空闲（残留实例会使其超时）。
 
@@ -1294,7 +1294,7 @@ KnowledgeAI/
 - **双端同步义务**（改 Next 侧必须同步 Vue 侧）：① `frontend/index.html` 首帧主题/语言脚本 ↔ `src/app/layout.tsx` themeScript（同 localStorage key）；② `frontend/src/styles/tokens.css` ↔ `src/app/globals.css` 的 `:root/.dark` 令牌块。V6 退役后 Vue 侧成为唯一事实源。
 - **Element Plus 暗色对齐**：EP 暗色由 `html.dark` 激活，与 kai-theme 三模式引擎同构；`styles/element-adapter.css` 把 `--el-color-primary` 等映射到 HSL 令牌（color-mix 派生梯度），品牌色 `applyBrandColor` 改 `--primary` 后自动传导到 EP 组件。
 - **绞杀路由（后续阶段启用）**：`deploy/nginx.conf` server 级 include switch.conf（精确/正则 location 优先于 `location /` 兜底），`deploy/nginx/routes.conf` 是已迁移路径的单一事实源，回退 = 换回上一版 routes.conf + `nginx -s reload`。
-- CI 新增第 9 个 job `frontend`（vue-tsc → eslint → vitest → vite build），与 Next 八门禁并存；根 `tsconfig.json` exclude `frontend/`、根 ESLint ignore `frontend/**`。
+- CI 新增第 9 个 job `frontend`(vue-tsc → eslint → vitest → vite build)，与 Next 八门禁并存；根 `tsconfig.json` exclude `frontend/`、根 ESLint ignore `frontend/**`。
 
 **阶段规划**：V1 认证+静态页 → V2 工作台骨架（AppShell/Cmd+K/设置）→ V3 知识库（图谱 d3-force）→ V4 聊天+Agent+账务 → V5 管理端+门户 → V6 Next 前端退役 + 八门禁改写。每阶段独立 PR + 验收文档 + 网关回退演练。
 
@@ -1304,27 +1304,27 @@ KnowledgeAI/
 
 **V3 落地（2026-10-16，验收：deliverables/service-split/frontend-v3-acceptance-2026-10-16.md）**：知识库三页（列表卡片/新建/删除 + 详情上传 multipart files/文档状态 3s 轮询/KB 设置 + 图谱 SVG——computeGraphLayout 经 @shared 复用 d3-force 纯函数，frontend 新增 d3-force 依赖）+ /team（聚合/邀请/角色/移除/审计）+ /api-keys（脱敏/创建一次性明文/撤销）。e2e 20/20；演练 21/21。实测踩坑：① vite proxy 字符串前缀 "/api" 会把 /api-keys **页面**也代理到 Next（Next 同名页顶掉 Vue 视图）——必须 `^/api/` 正则；② client.ts 对 FormData 误设 JSON Content-Type 且序列化 body——multipart 必须透传；③ i18n key 必须用真实命名空间（page.kb / page.new-kb-dialog / page.upload-zone / page.document-list / page.knowledge-base-[id] / page.invite-dialog 等），禁臆造。
 
-**V4 落地（2026-10-17，验收：deliverables/service-split/frontend-v4-acceptance-2026-10-17.md）**：业务页全量接管（累计 23/28 路由）——/chat（SSE 流式对话：@shared/sse 单源消费，事件 sources/token/done 冻结；markdown + 引用 chips：markdown-it html:false 净化 + 渲染后把正文 `[n]` 注入为 `<button data-cite>`、`<pre>/<code>` 内不转换，等价 Next 侧 rehype 插件；反馈以 done 事件的 messageId 为 serverId；regenerate 走 0.7 高温 + topK+3 服务端换参重试；归档/标签/共享会话/联网搜索/图片附件 base64≤4/导出 MD/示例问按 KB 文档推导/追问建议/KB 推荐/深链接 `?kb=&conv=`）、/agent（SSE init/step/done/error/end 冻结；composer 公开检索 `public` 哨兵规避空值语义；时间线 + DAG（task.dagNodes 未就绪时按 steps/模板推导）；报告编辑 PUT / 版本 diff（@shared/agent/diff）恢复 / 评论 / 分享（过期/密码/限览）/ 导出 md|pdf|pptx|mindmap；深链接 `?task=`）、/billing /checkout /usage（套餐目录、对比表、状态/支付方式标签全部 @shared/billing/{types,plans} 单源，STATUS_LABEL 中文常量与 Next 同源直用不包 t()）。AppShell 导航 V1-V4 全部 migrated + titleMap 对齐 Next；GlobalSearch 迁移前缀扩至 9 条。e2e 26/26——新增 **SSE 事件名契约断言**（page.request 读全响应体断言 `"type":"sources|token|done"` 与 `"type":"init|step|done"`，把「事件名不变」从约定变成测试）；演练 5.5 段增 /chat 切流断言。语音 STT/TTS 与移动端横滑切换按批准范围后置。
+**V4 落地（2026-10-17，验收：deliverables/service-split/frontend-v4-acceptance-2026-10-17.md）**：业务页全量接管（累计 23/28 路由）——/chat（SSE 流式对话：@shared/sse 单源消费，事件 sources/token/done 冻结；markdown + 引用 chips：markdown-it html:false 净化 + 渲染后把正文 `[n]` 注入为 `<button data-cite>`、`<pre>/<code>` 内不转换，等价 Next 侧 rehype 插件；反馈以 done 事件的 messageId 为 serverId；regenerate 走 0.7 高温 + topK+3 服务端换参重试；归档/标签/共享会话/联网搜索/图片附件 base64≤4/导出 MD/示例问按 KB 文档推导/追问建议/KB 推荐/深链接 `?kb=&conv=`）、/agent（SSE init/step/done/error/end 冻结；composer 公开检索 `public` 哨兵规避空值语义；时间线 + DAG（task.dagNodes 未就绪时按 steps/模板推导）；报告编辑 PUT / 版本 diff(@shared/agent/diff)恢复 / 评论 / 分享（过期/密码/限览）/ 导出 md|pdf|pptx|mindmap；深链接 `?task=`）、/billing /checkout /usage（套餐目录、对比表、状态/支付方式标签全部 @shared/billing/{types,plans} 单源，STATUS_LABEL 中文常量与 Next 同源直用不包 t(））。AppShell 导航 V1-V4 全部 migrated + titleMap 对齐 Next；GlobalSearch 迁移前缀扩至 9 条。e2e 26/26——新增 **SSE 事件名契约断言**（page.request 读全响应体断言 `"type":"sources|token|done"` 与 `"type":"init|step|done"`，把“事件名不变”从约定变成测试）；演练 5.5 段增 /chat 切流断言。语音 STT/TTS 与移动端横滑切换按批准范围后置。
 
 **V5 落地（2026-10-17，验收：deliverables/service-split/frontend-v5-acceptance-2026-10-17.md）**：管理端与门户（累计 **28/28 路由全量接管**）——/admin（八统计卡 + 收入柱图 + 用户封禁/解封 + 系统配置含 2FA 角色矩阵 + KB 监控 + 速率限制看板 + Provider 状态 + 安全审计链校验，概览/用户/KB/配置类型 @shared/admin/types 单源）、/admin/monitoring（SLI 四卡 + QPS 曲线复用 UsageChart + 队列快照 + LLM 成本按模型 + RAG/文档/Agent 三卡 + 追踪 span 树展开 + 错误环）、/developer（快速开始 SDK 三语言示例 + Webhook 管理/测试/投递记录 + 用量 24h 分桶图 + 集成市场：Widget 片段生成/群机器人一次性 token/Notion·Confluence 同步）、/docs（Swagger UI，swagger-ui-dist 资产单源在 Next public/vendor——开发走 vite proxy `^/vendor/`、生产走网关兜底，spec 从 /api/openapi.json，共享 buildSwaggerUiConfig）、首页 `/`（营销七节 + KnowledgeConsole 四场景脚本化演示 + LiveStatus 轮询 /api/health/ready）。**首页 SEO 预渲染**：build 末步 Vite SSR 构建（仅 HomeView 最小应用：pinia + i18n + EP ID/ZINDEX 注入）+ @vue/server-renderer 产出 dist/home.html，switch-frontend.sh 对 "/" 特判 `try_files /home.html /index.html =404`——国内搜索引擎不执行 JS，静态首帧是硬需求；AppShell 导航全量 migrated（含补齐的 /admin/monitoring 项）+ titleMap 对齐。e2e 31/31（新增 admin 概览/monitoring/developer 集成 tab/docs swagger/首页五用例）；i18n 4/4（全量复用既有键，零新增）；演练含 `/` 预渲染首帧断言。实测踩坑：① SFC script 块按裸文本解析——**注释里**的字面闭合 script 标签也会提前终止块（模板全部丢失 setup 绑定，vue-tsc 报一片 Cannot find name），字符串与注释都要写成 `<\/script>`；② SSR 构建必须继承主 vite.config（否则 alias/vue 插件丢失），SSR bundle 放 node_modules/.kai-prerender 才能解析外部化的 vue/i18next 裸导入（tmp 目录不在解析链上）；③ EP tabs 所有 pane 常驻 DOM——多 tab 同类选择器断言必须限定 #pane-{id}。
 
-**V6 落地（2026-10-17，验收：deliverables/service-split/frontend-v6-acceptance-2026-10-17.md）**：**Next 页面层退役，绞杀重写收官**——① 删除 `src/app` 页面层（28 个 page.tsx + (app)/(auth)/docs/privacy/terms/maintenance/r/share-doc + error/not-found/globals.css）、`src/components`（56 文件）、`src/hooks`、`src/types/web-speech.d.ts`；Next 退为纯 API（src/app 仅剩 /api/** + 最小根 layout——App Router 编译必需；proxy.ts/instrumentation/worker/lib 全保留，删除前已验证 lib 与 api 对 components/hooks 零反向依赖）。② 页面承载双端拓扑：本地/CI 用 vite preview（:4173，frontend dist + preview.proxy ^/api/ 与 ^/vendor/）+ preview-home-fallback 插件镜像网关 `location = /` 的 home.html 优先行为；生产仍由网关 routes.conf（27 条）切流。③ 旧 UI 测试全量改写打 Vue DOM（用户决策）：根 e2e main-flow 8 用例（登录/官网登录态/演示台四场景/退出/上传/问答/Agent）、functional 双基址（API :3000 + 页面 :4173 壳断言，`/` 保留预渲染内容断言，404 拆 SPA 层 200+壳 与 API 层 404 两个断言）、smoke ui 组 9 个 CDP 脚本（Radix→EP 换算：dropdown 菜单项 `.el-dropdown-menu__item` teleport、select trigger `.el-select__wrapper[role=combobox]`/选项 `.el-select-dropdown__item` teleport、tabs pane 常驻限 #pane-*、drawer 可见匹配；i18n 菜单项文本随 UI 语言双语匹配）。test-chat-markdown.tsx（SSR 渲染已删 React 组件）退役，断言迁移为 frontend/src/lib/markdown.test.ts。④ PWA 迁移：sw 注册迁 `frontend/src/pwa/sw-register.ts`（import.meta.env.PROD）；public/sw.js VERSION→v6-vue-1，运行时缓存清单 `/_next/static`→`/assets/`（E3/E4 加固保留）；frontend 新增 copyPwaAssets 插件构建期把 public/ 的 sw.js/sw-config.json/manifest/icons 拷入 dist（单源不拷 vendor/widget）。⑤ i18n 残留扫描收缩为仅 frontend/src（语言包仍单源 src/lib）。⑥ CI：integration job 探活改 /api/health + 加 preview 步骤；e2e job 加显式 frontend build；smoke job ui 组前加 preview 拉起。实测踩坑：① **SFC/注释里的字面闭合 script 标签会终止 SFC script 块**（字符串与注释都要 `<\/script>`）；② SSR 预渲染必须继承主 vite.config + bundle 放 node_modules 树内 + EP 需 ID/ZINDEX 注入 + ThemeToggle 的 pinia 需注册；③ **getByText exact 匹配不到裸文本节点**（文本与计数徽标同父时无元素 textContent 恰等——按稳定类名锚定）；④ preview SPA fallback 使 `/` 返回 index.html 而非 home.html——需显式 preview 中间件镜像网关优先级；⑤ **vite preview 不服务根 public/**——PWA 资产需构建期显式拷贝；⑥ run-all 组内脚本依赖文件存在性（退役脚本须同步摘 manifest）。V6 遗留：KbGraphView 边高亮用节点 id 匹配而 @shared/kg/layout 端点是 label（Next 版同源问题，后续修复）；语音 STT/TTS 仍未迁移（V4 起后置）。
+**V6 落地（2026-10-17，验收：deliverables/service-split/frontend-v6-acceptance-2026-10-17.md）**：**Next 页面层退役，绞杀重写收官**——① 删除 `src/app` 页面层（28 个 page.tsx + (app）/(auth)/docs/privacy/terms/maintenance/r/share-doc + error/not-found/globals.css）、`src/components`（56 文件）、`src/hooks`、`src/types/web-speech.d.ts`；Next 退为纯 API（src/app 仅剩 /api/** + 最小根 layout——App Router 编译必需；proxy.ts/instrumentation/worker/lib 全保留，删除前已验证 lib 与 api 对 components/hooks 零反向依赖）。② 页面承载双端拓扑：本地/CI 用 vite preview（:4173，frontend dist + preview.proxy ^/api/ 与 ^/vendor/）+ preview-home-fallback 插件镜像网关 `location = /` 的 home.html 优先行为；生产仍由网关 routes.conf（27 条）切流。③ 旧 UI 测试全量改写打 Vue DOM（用户决策）：根 e2e main-flow 8 用例（登录/官网登录态/演示台四场景/退出/上传/问答/Agent）、functional 双基址（API :3000 + 页面 :4173 壳断言，`/` 保留预渲染内容断言，404 拆 SPA 层 200+壳 与 API 层 404 两个断言）、smoke ui 组 9 个 CDP 脚本（Radix→EP 换算：dropdown 菜单项 `.el-dropdown-menu__item` teleport、select trigger `.el-select__wrapper[role=combobox]`/选项 `.el-select-dropdown__item` teleport、tabs pane 常驻限 #pane-*、drawer 可见匹配；i18n 菜单项文本随 UI 语言双语匹配）。test-chat-markdown.tsx（SSR 渲染已删 React 组件）退役，断言迁移为 frontend/src/lib/markdown.test.ts。④ PWA 迁移：sw 注册迁 `frontend/src/pwa/sw-register.ts`(import.meta.env.PROD)；public/sw.js VERSION→v6-vue-1，运行时缓存清单 `/_next/static`→`/assets/`（E3/E4 加固保留）；frontend 新增 copyPwaAssets 插件构建期把 public/ 的 sw.js/sw-config.json/manifest/icons 拷入 dist（单源不拷 vendor/widget）。⑤ i18n 残留扫描收缩为仅 frontend/src（语言包仍单源 src/lib）。⑥ CI：integration job 探活改 /api/health + 加 preview 步骤；e2e job 加显式 frontend build；smoke job ui 组前加 preview 拉起。实测踩坑：① **SFC/注释里的字面闭合 script 标签会终止 SFC script 块**（字符串与注释都要 `<\/script>`）；② SSR 预渲染必须继承主 vite.config + bundle 放 node_modules 树内 + EP 需 ID/ZINDEX 注入 + ThemeToggle 的 pinia 需注册；③ **getByText exact 匹配不到裸文本节点**（文本与计数徽标同父时无元素 textContent 恰等——按稳定类名锚定）；④ preview SPA fallback 使 `/` 返回 index.html 而非 home.html——需显式 preview 中间件镜像网关优先级；⑤ **vite preview 不服务根 public/**——PWA 资产需构建期显式拷贝；⑥ run-all 组内脚本依赖文件存在性（退役脚本须同步摘 manifest）。V6 遗留：KbGraphView 边高亮用节点 id 匹配而 @shared/kg/layout 端点是 label（Next 版同源问题，后续修复）；语音 STT/TTS 仍未迁移（V4 起后置）。
 
-**V7 落地（2026-10-19，验收：deliverables/service-split/frontend-v7-acceptance-2026-10-19.md）**：可选收尾（V6 验收「遗留与后续」清单执行）——① **KbGraphView 边高亮缺陷修复**（Next 版同源问题）：组件以节点 id（ent_*）匹配边端点，而 `@shared/kg/layout` 输出端点是 label（API 形状；layout 单测注释「renderer resolves positions by label」即此契约）——匹配恒失败导致边坐标全部塌在 (0,0) 且选中后邻接边不变色；修在组件侧（layout 的 labelSet 端点过滤保证 label 必有对应节点，computed 里 label→id 一次换算统一到 id 空间，模板/邻居集/变暗逻辑零改动），test-graph-ui 恢复「邻接边 primary 高亮」断言 + 新增「边坐标锚定（无全零线，节点坐标被 clamp ≥30）」断言，点击目标改为按 mentions 降序换算 DOM 序的必有邻接边 hub 节点（13/13）。② **WCAG 高对比度移植**：tokens.css 补齐 `.high-contrast`/`.high-contrast.dark`/`@media (prefers-contrast: more)` 令牌块（自已退役的 globals.css 同源移植，级联顺序语义保持 .dark → .high-contrast → .high-contrast.dark → @media 内 :root/.dark、后定义者胜；EP 变量经 element-adapter.css 的 hsl(var(--x)) 动态传导无需额外适配；globals 版 `.text-*-500` 500 色阶修正为 Tailwind 类专用，Vue 无该类不移植）；test-theme-ui 恢复 8 项 WCAG 计算对比度断言（AA_JS 自包含测量：.shell 正文/底色、.ws-plan 次要文字、.ws-btn 边界、临时 probe 元素经真实级联解析 --primary/--primary-foreground；文字 ≥4.5:1、边界 ≥3:1），38/38。③ **网关与镜像语义复核**：`location /` 兜底**保留**（Next public/ 单源静态资产 /vendor/swagger-ui、/widget、PWA 仍靠它可达，未切页面路径 Next 404），仅把过时注释（「页面 + 静态资源」）改纯 API 兜底口径；Dockerfile standalone-clean 剥离清单补齐 V6 后混入的 frontend/services/docs/deliverables/deploy/playwright-report/compose split/AGENTS.md/README.md（本地模拟剥离 + node server.js 启动验证 /api/health 与 vendor/widget 均 200）；docker-compose.split.yml 头注与 app 服务注释同步。④ **frontend/e2e 并入 CI**（31 用例：认证 9/工作台 7/知识库 4/聊天+Agent 6/管理端 5，与根 e2e 8 主流程 + smoke ui 特性深检互补）：e2e job 根套件后追加 `pnpm --filter kai-frontend test:e2e`（其 webServer 自动拉起 Next dev :3000 抬高限流 + vite dev :5173，根 e2e 结束已释放端口无冲突），报告 artifact 路径加 frontend/test-results。⑤ **docs 双前端描述清理**：deployment-guide（revert-all 注记「V6 起 Next 无页面层，仅回滚到 V5 之前代码时成立」、未切页面路径 Next 兜底 404、「跨壳」措辞退役）+ service-split.md 前端替换节改 V6 完成态（28/28、Next 纯 API）+ 顺手修 deployment-guide→faq 的 `#troubleshooting` 死锚点；AGENTS.md 主题段更新为 V6/V7 后口径（frontend/index.html 预置脚本唯一实现、HC 在 tokens.css、品牌色无 SSR 注入、ThemeSettings.vue）。遗留：graph-rag demo 检索质量 2/20（distractor baseline 偶不被骗——demo 哈希嵌入对测试语料的敏感性漂移，调语料会波及依赖精确模式的 extract.ts 测试，明确后置）；语音 STT/TTS 迁移（V4 起后置，最大遗留，宜另立阶段）。
+**V7 落地（2026-10-19，验收：deliverables/service-split/frontend-v7-acceptance-2026-10-19.md）**：可选收尾（V6 验收“遗留与后续”清单执行）——① **KbGraphView 边高亮缺陷修复**（Next 版同源问题）：组件以节点 id(ent_*)匹配边端点，而 `@shared/kg/layout` 输出端点是 label（API 形状；layout 单测注释“renderer resolves positions by label”即此契约）——匹配恒失败导致边坐标全部塌在 (0,0) 且选中后邻接边不变色；修在组件侧（layout 的 labelSet 端点过滤保证 label 必有对应节点，computed 里 label→id 一次换算统一到 id 空间，模板/邻居集/变暗逻辑零改动），test-graph-ui 恢复“邻接边 primary 高亮”断言 + 新增“边坐标锚定（无全零线，节点坐标被 clamp ≥30）”断言，点击目标改为按 mentions 降序换算 DOM 序的必有邻接边 hub 节点（13/13）。② **WCAG 高对比度移植**：tokens.css 补齐 `.high-contrast`/`.high-contrast.dark`/`@media (prefers-contrast: more)` 令牌块（自已退役的 globals.css 同源移植，级联顺序语义保持 .dark → .high-contrast → .high-contrast.dark → @media 内 :root/.dark、后定义者胜；EP 变量经 element-adapter.css 的 hsl(var(--x）) 动态传导无需额外适配；globals 版 `.text-*-500` 500 色阶修正为 Tailwind 类专用，Vue 无该类不移植）；test-theme-ui 恢复 8 项 WCAG 计算对比度断言（AA_JS 自包含测量：.shell 正文/底色、.ws-plan 次要文字、.ws-btn 边界、临时 probe 元素经真实级联解析 --primary/--primary-foreground；文字 ≥4.5:1、边界 ≥3:1），38/38。③ **网关与镜像语义复核**：`location /` 兜底**保留**（Next public/ 单源静态资产 /vendor/swagger-ui、/widget、PWA 仍靠它可达，未切页面路径 Next 404），仅把过时注释（“页面 + 静态资源”）改纯 API 兜底口径；Dockerfile standalone-clean 剥离清单补齐 V6 后混入的 frontend/services/docs/deliverables/deploy/playwright-report/compose split/AGENTS.md/README.md（本地模拟剥离 + node server.js 启动验证 /api/health 与 vendor/widget 均 200）；docker-compose.split.yml 头注与 app 服务注释同步。④ **frontend/e2e 并入 CI**（31 用例：认证 9/工作台 7/知识库 4/聊天+Agent 6/管理端 5，与根 e2e 8 主流程 + smoke ui 特性深检互补）：e2e job 根套件后追加 `pnpm --filter kai-frontend test:e2e`（其 webServer 自动拉起 Next dev :3000 抬高限流 + vite dev :5173，根 e2e 结束已释放端口无冲突），报告 artifact 路径加 frontend/test-results。⑤ **docs 双前端描述清理**：deployment-guide（revert-all 注记“V6 起 Next 无页面层，仅回滚到 V5 之前代码时成立”、未切页面路径 Next 兜底 404、“跨壳”措辞退役）+ service-split.md 前端替换节改 V6 完成态（28/28、Next 纯 API）+ 顺手修 deployment-guide→faq 的 `#troubleshooting` 死锚点；AGENTS.md 主题段更新为 V6/V7 后口径（frontend/index.html 预置脚本唯一实现、HC 在 tokens.css、品牌色无 SSR 注入、ThemeSettings.vue）。遗留：graph-rag demo 检索质量 2/20（distractor baseline 偶不被骗——demo 哈希嵌入对测试语料的敏感性漂移，调语料会波及依赖精确模式的 extract.ts 测试，明确后置）；语音 STT/TTS 迁移（V4 起后置，最大遗留，宜另立阶段）。
 
-**V8 落地（2026-10-19，验收：deliverables/service-split/frontend-v8-acceptance-2026-10-19.md）**：遗留清零（V7 验收「遗留与后续」两项全部解决）——① **语音 STT/TTS 迁移 Vue**（V4 起后置的最大遗留）：`src/lib/voice/{stt,tts}.ts` 本就是框架无关可注入纯封装（V6 保留），经 `@shared/voice/*` 零拷贝复用，新增 `frontend/src/lib/use-speech.ts`（`useSpeechRecognition`/`useSpeechSynthesis` 两个 composable，等价退役的 React hooks：supported 标记、listening/speaking 状态、中间转写、一次一路自动 cancel、onBeforeUnmount 清理；locale 经共享 i18next 实例在 start/speak 调用时实时读取）；ChatView 加麦克风按钮（`Microphone` 图标，listening 时 destructive 色 + 呼吸脉冲，中间转写拼接上屏 `:value`+`@input` 替代 v-model，终稿自动 `send(text)`）+ MessageBubble 加朗读按钮（`Reading` 图标，一次一路 speak 前自动 cancel，朗读内容剥 `[n]` 引用标记，ttsSupported=false 隐藏）；i18n 新增 `page.chat.s83-86`（语音输入/停止语音输入/朗读回答/停止朗读，双语言包同步，parity 保持）；无需 ambient types（lib.dom 已含 speechSynthesis，stt.ts 自带 cast）。test-multimodal-ui 恢复 2 条语音断言（mic 按钮存在性按 headless SpeechRecognition 支持度正反断言 + 回答结束后朗读按钮出现），11/11。② **graph-rag 检索质量 2/20 根因修复**：实为环境属性而非语料缺陷——「干扰项骗过 plain 基线」的前提只在词面型嵌入（demo/本地哈希，CI 形态）下成立；配置真实嵌入（EMBEDDING_MODEL）时语义检索本就该把答案文档排前，plain 不被骗是嵌入质量更好。test-graph-rag 改环境自适应：经 `GET /api/admin/config` 探测 embedding provider，真实嵌入时跳过 2 条前提依赖断言（保留 GraphRAG 自身正确性断言：top-1 命中答案集 + 干扰项沉底 + graphRag 完美），demo 形态保持全量断言强度（20/20 实测复验）。实测确认：demo 模式 20/20（前提成立）、真实嵌入 18/18（2 条按设计跳过）。③ SettingsView 未用 `router` lint warning 清理（V5 遗留，frontend lint 归零）。实测踩坑：① shell 残留 `CI=true` 会使根 playwright `reuseExistingServer:!CI` 失效报「端口已被占用」——本地跑 e2e 需 `env -u CI`；② 根 e2e Agent 用例在真实 LLM（首 token 80-100s）+ 刚重启的 dev 下偶发 90s 超时，隔离复跑即过；③ AGENTS.md 行内裸写 `[n]` 会被 markdown 解析为链接引用——需反引号包裹。
+**V8 落地（2026-10-19，验收：deliverables/service-split/frontend-v8-acceptance-2026-10-19.md）**：遗留清零（V7 验收“遗留与后续”两项全部解决）——① **语音 STT/TTS 迁移 Vue**（V4 起后置的最大遗留）：`src/lib/voice/{stt,tts}.ts` 本就是框架无关可注入纯封装（V6 保留），经 `@shared/voice/*` 零拷贝复用，新增 `frontend/src/lib/use-speech.ts`（`useSpeechRecognition`/`useSpeechSynthesis` 两个 composable，等价退役的 React hooks：supported 标记、listening/speaking 状态、中间转写、一次一路自动 cancel、onBeforeUnmount 清理；locale 经共享 i18next 实例在 start/speak 调用时实时读取）；ChatView 加麦克风按钮（`Microphone` 图标，listening 时 destructive 色 + 呼吸脉冲，中间转写拼接上屏 `:value`+`@input` 替代 v-model，终稿自动 `send(text)`）+ MessageBubble 加朗读按钮（`Reading` 图标，一次一路 speak 前自动 cancel，朗读内容剥 `[n]` 引用标记，ttsSupported=false 隐藏）；i18n 新增 `page.chat.s83-86`（语音输入/停止语音输入/朗读回答/停止朗读，双语言包同步，parity 保持）；无需 ambient types（lib.dom 已含 speechSynthesis，stt.ts 自带 cast）。test-multimodal-ui 恢复 2 条语音断言（mic 按钮存在性按 headless SpeechRecognition 支持度正反断言 + 回答结束后朗读按钮出现），11/11。② **graph-rag 检索质量 2/20 根因修复**：实为环境属性而非语料缺陷——“干扰项骗过 plain 基线”的前提只在词面型嵌入（demo/本地哈希，CI 形态）下成立；配置真实嵌入（EMBEDDING_MODEL）时语义检索本就该把答案文档排前，plain 不被骗是嵌入质量更好。test-graph-rag 改环境自适应：经 `GET /api/admin/config` 探测 embedding provider，真实嵌入时跳过 2 条前提依赖断言（保留 GraphRAG 自身正确性断言：top-1 命中答案集 + 干扰项沉底 + graphRag 完美），demo 形态保持全量断言强度（20/20 实测复验）。实测确认：demo 模式 20/20（前提成立）、真实嵌入 18/18（2 条按设计跳过）。③ SettingsView 未用 `router` lint warning 清理（V5 遗留，frontend lint 归零）。实测踩坑：① shell 残留 `CI=true` 会使根 playwright `reuseExistingServer:!CI` 失效报“端口已被占用”——本地跑 e2e 需 `env -u CI`；② 根 e2e Agent 用例在真实 LLM（首 token 80～100s）+ 刚重启的 dev 下偶发 90s 超时，隔离复跑即过；③ AGENTS.md 行内裸写 `[n]` 会被 markdown 解析为链接引用——需反引号包裹。
 
-**V9 视觉巡检修复（2026-10-21）**：按「逐页浏览 + 随机交互 + 回归复验」对 Vue 前端做了一轮设计/布局验收（1440/768/390 三档，普通用户与管理员的全部路由 + 认证/静态/分享页），修复均为既有实现的缺陷，未引入新组件或框架替换。① **认证页未挂载 AuthLayout**（影响 6 页，最严重）：router 里没有任何 meta，App.vue 只有 `meta.shell` 分支，AuthLayout.vue 是死代码——登录/注册/验证/忘记/重置/2FA 全部渲染成全宽裸表单（按钮拉伸到 100% 视口、无品牌分屏、verify-email 横向溢出 4px）；修法：六个 auth 路由加 `meta: { auth: true }`，App.vue 增加 `<AuthLayout v-else-if>` 分支；同时补 `.auth-shell > * { min-width: 0 }`（grid 子项 min-width:auto 在 390px 撑出 9px 滚动）。② **全局基础样式缺失**：EP theme-chalk 不含 body 归零，`body` 默认 8px 边距使整站页面四周留白、且原生 textarea 以 content-box 计算使 `width:100%` 溢出容器（Agent 主题输入框实测溢出 13px）；在 tokens.css 追加 `*,*::before,*::after{box-sizing:border-box}` + `html,body{margin:0}` + body 背景/字体，一处修复覆盖全站。③ **工作台统计卡零内边距**：`.card` 无 padding 而 `.stat` 未补，导致图标贴边、右上徽标被卡片裁掉；补 `padding: 18px 20px`，占位字符「◆」换成按指标区分的 EP 图标（问答/额度/知识库/文档）。④ **知识库头像不可见**：API 的 `color` 是 Next 版 Tailwind 类名片段（`from-primary/15`），写进 inline `background` 是非法值 → 白字落在透明底上（列表/详情/移动端都像「标题莫名右移」）；新增 `frontend/src/lib/kb-color.ts`（合法色字面量透传，其余按名称哈希落到固定渐变调色板），列表与详情共用。⑤ **i18n 原始 key 泄漏 11 处**：KbListView 新建对话框（`page.knowledge-base.s2/s11/s13` → `page.new-kb-dialog.*`）、KbDetailView 设置对话框描述（→ `page.kb-settings-dialog.s18`）、TeamView 邀请对话框标题（→ `page.invite-dialog.s0`）、ModelSettings 的 s40-s44 键本身缺失（补齐 API Key/Base URL/对话模型/嵌入模型）；另修 4 处「键存在但语义错位」：模型对话框把「获取 API Key」「不使用」当作名称/提供商标签（→ s5/s4）、Agent 表单把「导出」「报告」「分享设置」当知识库/公开检索/导出标签（→ 新增 s90/s91 + s0）、文档状态 `STATUS_LABEL` 未过 `t()` 且 queued/parsing/chunking 直接显示英文（→ 新增 s16-s18 + 走 t()）。全部新键 zh/en 同步（`test-i18n-coverage` 4/4：parity、无孤儿键、无中文残留）。⑥ **设置页**：标题恒为「安全 / 个人信息」（把 tab 名当页标题）、个人资料卡标题误用 `page.settings.s3`（AI 模型）、姓名输入框永远空（只写不读）；改为 s97/s98/s99 + `refreshUser` 回填 `profileName` + 套餐枚举本地化（free/pro/enterprise → 免费版/专业版/企业版，复用 `page.usage.plan*`，工作台/管理后台同步）。⑦ **顶栏标题**：补 `/admin`、`/admin/monitoring`、`/checkout` 与 `/knowledge-base/*`（含 `/graph`）前缀匹配，此前一律回退「工作台」；`.page-title` 加 nowrap+ellipsis（移动端「智能问答」曾折行成两行）。⑧ **空态与图表**：UsageChart 原先在无数据时用固定示例序列兜底（0 次问答却画出上升曲线），改为全 0/空序列显式「暂无用量数据」+ 虚线基线；管理后台收入趋势空图补「暂无收入数据」+ 基线；API 密钥页空态由裸按钮改为虚线卡片（图标/标题/说明/CTA），并修标题与副标题重复；知识图谱页头改为「{库名} · 知识图谱」、搜索占位符改「搜索实体…」、空态用 s6/s7 文案。⑨ **404 页**重做：原为 Next 默认英文样式（未走 i18n、无品牌、body 留白成框），改为品牌字标 + 渐变 404 + `page.not-found` 文案 + 双 CTA（返回首页/前往知识库）。⑩ **移动端横向溢出**：team 统计卡 4 列 + `grid` 子项 min-width:auto（溢 68px）、settings 标签栏撑宽（已改可滚动 + min-width:0）、developer 四个带图标 tab 撑到 702px + 代码块 min-content 溢出（tabs 滚动 + `.snippet/.card min-width:0`）、chat 发送键禁用态改为中性灰（原淡紫近不可见）、输入框占位文案去掉冗余「(Enter 发送)」以免窄屏折行被裁。⑪ **套餐展示的数据源纠偏**（侧栏「升级专业版」硬编码式判断）：支付成功在后端写 `setWorkspacePlan(user.workspaceId, plan)`，`users.plan` 只由 `payOrder → updateUserPlan` 写给**付款人**（同工作区其他成员仍是旧值），而侧栏/工作台/设置都读 `user.plan` → 已升级用户永远被判定为免费版（侧栏一直挂升级引导、工作台徽标显示免费版、设置页套餐显示 free，与计费页「专业版 生效中」自相矛盾）。新增 `frontend/src/lib/workspace-store.ts`（`GET /api/workspaces` 的 active.plan 为唯一事实源：列表 + 当前名称 + `currentPlan`/`onFreePlan` 计算属性，`refreshWorkspaces()` 供升级/取消后回刷）与 `frontend/src/lib/plan.ts`（free/pro/enterprise → i18n key 单源映射，替换 Dashboard/Settings/Admin 三处重复映射表）；AppShell 的工作区列表与工作区套餐徽标改读该 store、升级卡条件由 `user.plan === 'free'` 改为 `onFreePlan`（仅「已取到且确为 free」才渲染，未取到时不闪 CTA）；CheckoutView 支付成功、BillingView 进入页面与取消/恢复后调 `refreshWorkspaces()`——升级完成后无需刷新页面，侧栏引导即消失、徽标变「专业版」。⑫ **后端契约对齐（API 调用方同口径）**：`/api/auth/me`、`/api/auth/login`、`/api/v1/me` 返回的 `user.plan` 改为「当前工作区生效套餐」（新增 `workspace/store.ts: effectiveWorkspacePlan(req, user)`：先按 `kai-workspace` cookie 解析租户、再回落 `resolveWorkspace`，与 guard 同口径；`/api/v1/me` 另补 `workspaceName`，OpenAPI `MeResponse` 同步增加 `plan`/`workspaceName` 字段）；管理端 `listUsers`/`recentSignups`/`setUserStatus` 的 `plan` 改取 `resolveWorkspace(u.id,u.email).plan`，月收入改为按工作区计费（新增 `listAllWorkspaces()` 去重，同一工作区多成员只计一次，封禁所有者的工作区不计），否则用户表显示升级态而收入按人头重复计。单测：`me-route` 补「返回工作区套餐而非 users.plan」「按 cookie 切租户取套餐」2 例，`admin/store` 补「用户表 plan 取工作区」「月收入按工作区去重=49 而非 196」2 例。⑬ **pgvector 扩展自举（部署缺陷）**：`CREATE EXTENSION vector` 此前只写在注释里当人工前置，全新 `docker compose up`（镜像 `pgvector/pgvector:pg16`、扩展可用但未安装）后首次检索即 500 `type "vector" does not exist`；改为 `PgVectorStore.ensureSchema()` 先执行 `ensureVectorExtension()`（`CREATE EXTENSION IF NOT EXISTS vector`，**经 execDdl 走竞争容错**——app/worker 同启时第二个进程会撞 `pg_extension` 23505，实测复现）；无权限时 `warnOnce` 给出可执行提示（DBA 手动执行或换镜像），不再抛裸 SQL 错。`.env.example`、`docs/ops/env-vars.md`、`docs/faq/faq.md`、`docs/ops/deployment-guide.md` 同步改「自动创建 + 无权限兜底」口径。单测：`vector-store-pgvector.test.ts` 断言首条 DDL 为建扩展、建表语句后移一位，并新增「扩展 23505 竞争容错」例（117 通过）。验证：`vue-tsc`/`eslint`/`vitest`(21，含新增 planLabelKey 3 例)/`pnpm -C frontend build`（含 home 预渲染）全绿，公共页 390/768/1440 无横向溢出，登录态 19 条路由 390px 无溢出；`frontend/e2e` 在本机（复用已占用 :3000 的 docker 服务、生产限流生效）串行 33/34 通过，唯一失败为忘记密码用例依赖 dev 才返回的 demo 重置链接（生产形态 API 只回 `{ok:true}`），并行跑时的 9 条失败经 `--workers=1` 复跑全部转绿，属环境限流而非回归。
+**V9 视觉巡检修复（2026-10-21）**：按“逐页浏览 + 随机交互 + 回归复验”对 Vue 前端做了一轮设计/布局验收（1440/768/390 三档，普通用户与管理员的全部路由 + 认证/静态/分享页），修复均为既有实现的缺陷，未引入新组件或框架替换。① **认证页未挂载 AuthLayout**（影响 6 页，最严重）：router 里没有任何 meta，App.vue 只有 `meta.shell` 分支，AuthLayout.vue 是死代码——登录/注册/验证/忘记/重置/2FA 全部渲染成全宽裸表单（按钮拉伸到 100% 视口、无品牌分屏、verify-email 横向溢出 4px）；修法：六个 auth 路由加 `meta: { auth: true }`，App.vue 增加 `<AuthLayout v-else-if>` 分支；同时补 `.auth-shell > * { min-width: 0 }`（grid 子项 min-width:auto 在 390px 撑出 9px 滚动）。② **全局基础样式缺失**：EP theme-chalk 不含 body 归零，`body` 默认 8px 边距使整站页面四周留白、且原生 textarea 以 content-box 计算使 `width:100%` 溢出容器（Agent 主题输入框实测溢出 13px）；在 tokens.css 追加 `*,*::before,*::after{box-sizing:border-box}` + `html,body{margin:0}` + body 背景/字体，一处修复覆盖全站。③ **工作台统计卡零内边距**：`.card` 无 padding 而 `.stat` 未补，导致图标贴边、右上徽标被卡片裁掉；补 `padding: 18px 20px`，占位字符“◆”换成按指标区分的 EP 图标（问答/额度/知识库/文档）。④ **知识库头像不可见**：API 的 `color` 是 Next 版 Tailwind 类名片段（`from-primary/15`），写进 inline `background` 是非法值 → 白字落在透明底上（列表/详情/移动端都像“标题莫名右移”）；新增 `frontend/src/lib/kb-color.ts`（合法色字面量透传，其余按名称哈希落到固定渐变调色板），列表与详情共用。⑤ **i18n 原始 key 泄漏 11 处**：KbListView 新建对话框（`page.knowledge-base.s2/s11/s13` → `page.new-kb-dialog.*`）、KbDetailView 设置对话框描述（→ `page.kb-settings-dialog.s18`）、TeamView 邀请对话框标题（→ `page.invite-dialog.s0`）、ModelSettings 的 s40-s44 键本身缺失（补齐 API Key/Base URL/对话模型/嵌入模型）；另修 4 处“键存在但语义错位”：模型对话框把“获取 API Key”“不使用”当作名称/提供商标签（→ s5/s4）、Agent 表单把“导出”“报告”“分享设置”当知识库/公开检索/导出标签（→ 新增 s90/s91 + s0）、文档状态 `STATUS_LABEL` 未过 `t()` 且 queued/parsing/chunking 直接显示英文（→ 新增 s16-s18 + 走 t(））。全部新键 zh/en 同步（`test-i18n-coverage` 4/4：parity、无孤儿键、无中文残留）。⑥ **设置页**：标题恒为“安全 / 个人信息”（把 tab 名当页标题）、个人资料卡标题误用 `page.settings.s3`（AI 模型）、姓名输入框永远空（只写不读）；改为 s97/s98/s99 + `refreshUser` 回填 `profileName` + 套餐枚举本地化（free/pro/enterprise → 免费版/专业版/企业版，复用 `page.usage.plan*`，工作台/管理后台同步）。⑦ **顶栏标题**：补 `/admin`、`/admin/monitoring`、`/checkout` 与 `/knowledge-base/*`（含 `/graph`）前缀匹配，此前一律回退“工作台”；`.page-title` 加 nowrap+ellipsis（移动端“智能问答”曾折行成两行）。⑧ **空态与图表**：UsageChart 原先在无数据时用固定示例序列兜底（0 次问答却画出上升曲线），改为全 0/空序列显式“暂无用量数据”+ 虚线基线；管理后台收入趋势空图补“暂无收入数据”+ 基线；API 密钥页空态由裸按钮改为虚线卡片（图标/标题/说明/CTA），并修标题与副标题重复；知识图谱页头改为“{库名} · 知识图谱”、搜索占位符改“搜索实体…”、空态用 s6/s7 文案。⑨ **404 页**重做：原为 Next 默认英文样式（未走 i18n、无品牌、body 留白成框），改为品牌字标 + 渐变 404 + `page.not-found` 文案 + 双 CTA（返回首页/前往知识库）。⑩ **移动端横向溢出**：team 统计卡 4 列 + `grid` 子项 min-width:auto（溢 68px）、settings 标签栏撑宽（已改可滚动 + min-width:0）、developer 四个带图标 tab 撑到 702px + 代码块 min-content 溢出（tabs 滚动 + `.snippet/.card min-width:0`）、chat 发送键禁用态改为中性灰（原淡紫近不可见）、输入框占位文案去掉冗余“（Enter 发送）”以免窄屏折行被裁。⑪ **套餐展示的数据源纠偏**（侧栏“升级专业版”硬编码式判断）：支付成功在后端写 `setWorkspacePlan(user.workspaceId, plan)`，`users.plan` 只由 `payOrder → updateUserPlan` 写给**付款人**（同工作区其他成员仍是旧值），而侧栏/工作台/设置都读 `user.plan` → 已升级用户永远被判定为免费版（侧栏一直挂升级引导、工作台徽标显示免费版、设置页套餐显示 free，与计费页“专业版 生效中”自相矛盾）。新增 `frontend/src/lib/workspace-store.ts`（`GET /api/workspaces` 的 active.plan 为唯一事实源：列表 + 当前名称 + `currentPlan`/`onFreePlan` 计算属性，`refreshWorkspaces()` 供升级/取消后回刷）与 `frontend/src/lib/plan.ts`（free/pro/enterprise → i18n key 单源映射，替换 Dashboard/Settings/Admin 三处重复映射表）；AppShell 的工作区列表与工作区套餐徽标改读该 store、升级卡条件由 `user.plan === 'free'` 改为 `onFreePlan`（仅“已取到且确为 free”才渲染，未取到时不闪 CTA）；CheckoutView 支付成功、BillingView 进入页面与取消/恢复后调 `refreshWorkspaces()`——升级完成后无需刷新页面，侧栏引导即消失、徽标变“专业版”。⑫ **后端契约对齐（API 调用方同口径）**：`/api/auth/me`、`/api/auth/login`、`/api/v1/me` 返回的 `user.plan` 改为“当前工作区生效套餐”（新增 `workspace/store.ts: effectiveWorkspacePlan(req, user)`：先按 `kai-workspace` cookie 解析租户、再回落 `resolveWorkspace`，与 guard 同口径；`/api/v1/me` 另补 `workspaceName`，OpenAPI `MeResponse` 同步增加 `plan`/`workspaceName` 字段）；管理端 `listUsers`/`recentSignups`/`setUserStatus` 的 `plan` 改取 `resolveWorkspace(u.id,u.email).plan`，月收入改为按工作区计费（新增 `listAllWorkspaces()` 去重，同一工作区多成员只计一次，封禁所有者的工作区不计），否则用户表显示升级态而收入按人头重复计。单测：`me-route` 补“返回工作区套餐而非 users.plan”“按 cookie 切租户取套餐”2 例，`admin/store` 补“用户表 plan 取工作区”“月收入按工作区去重=49 而非 196”2 例。⑬ **pgvector 扩展自举（部署缺陷）**：`CREATE EXTENSION vector` 此前只写在注释里当人工前置，全新 `docker compose up`（镜像 `pgvector/pgvector:pg16`、扩展可用但未安装）后首次检索即 500 `type "vector" does not exist`；改为 `PgVectorStore.ensureSchema()` 先执行 `ensureVectorExtension()`（`CREATE EXTENSION IF NOT EXISTS vector`，**经 execDdl 走竞争容错**——app/worker 同启时第二个进程会撞 `pg_extension` 23505，实测复现）；无权限时 `warnOnce` 给出可执行提示（DBA 手动执行或换镜像），不再抛裸 SQL 错。`.env.example`、`docs/ops/env-vars.md`、`docs/faq/faq.md`、`docs/ops/deployment-guide.md` 同步改“自动创建 + 无权限兜底”口径。单测：`vector-store-pgvector.test.ts` 断言首条 DDL 为建扩展、建表语句后移一位，并新增“扩展 23505 竞争容错”例（117 通过）。验证：`vue-tsc`/`eslint`/`vitest`（21，含新增 planLabelKey 3 例）/`pnpm -C frontend build`（含 home 预渲染）全绿，公共页 390/768/1440 无横向溢出，登录态 19 条路由 390px 无溢出；`frontend/e2e` 在本机（复用已占用 :3000 的 docker 服务、生产限流生效）串行 33/34 通过，唯一失败为忘记密码用例依赖 dev 才返回的 demo 重置链接（生产形态 API 只回 `{ok:true}`），并行跑时的 9 条失败经 `--workers=1` 复跑全部转绿，属环境限流而非回归。
 
-**V10 P1 债项收敛（2026-10-21）**：① **套餐单写入口**：`billing/store.ts: payOrder` 不再回写 `users.plan`（此前付款人变 pro、同工作区其他成员仍 free，两个真相并存），`auth/store.updateUserPlan()` 与其单测一并删除，`User.plan` 标注 `@deprecated`（只读兼容）；`payOrder` 单测改为断言「订阅升级但 users.plan 保持 free」。② **管理端删号接口**：新增 `DELETE /api/admin/users/[id]`（owner/admin；不能删自己、不能删 Owner，审计 `admin.user_delete`），数据清理抽到 `admin/store.deleteUserDeep()`（KB→会话→Agent 任务→安全→计费→成员关系→个人工作区→用户行），配套新增 `db/persist.deleteWorkspaceFromDb()`（先删 `kb_chunks` 再删 `Workspace`，否则重启复活）、`workspace/store.deleteWorkspacesOwnedBy()`（默认租户永不删）与 `removeMemberEverywhere()`；前端管理端用户表加「删除账号」（仅 owner 可见、确认弹窗，i18n s78/s79）。③ **e2e 环境自适应**：忘记密码用例先探 `POST /api/auth/forgot-password` 是否返回 `demoResetUrl`（`NODE_ENV !== production` 才有），再断言 demo 链接存在/不存在，避免生产形态必挂。④ **残留清理脚本**：`scripts/cleanup-e2e-fixtures.ts`（默认 dry-run，`--apply` 执行；按 `V3-E2E-KB-/V4-SSE-/V4-CHAT-` 前缀删库、按 `kai-e2e-*@test.local` 删号，走管理端 API 不碰 DB），登记到 FAQ 第 11 条。⑤ **顺带修 #44 回归**：`UsageChart` 空态分支的根节点补 `usage-chart` 类（此前全 0 数据只渲染 `.chart-empty`，`admin/monitoring` e2e 的 `.usage-chart` 断言在无流量环境下失败）。验证：单测新增 8 例（路由 3 + 工作区 2 + 计费改写 + 既有），本地 3005 实例跑通「造残留 → dry-run → --apply → 归零」，含扩展自举后的检索链路。
+**V10 P1 债项收敛（2026-10-21）**：① **套餐单写入口**：`billing/store.ts: payOrder` 不再回写 `users.plan`（此前付款人变 pro、同工作区其他成员仍 free，两个真相并存），`auth/store.updateUserPlan()` 与其单测一并删除，`User.plan` 标注 `@deprecated`（只读兼容）；`payOrder` 单测改为断言“订阅升级但 users.plan 保持 free”。② **管理端删号接口**：新增 `DELETE /api/admin/users/[id]`（owner/admin；不能删自己、不能删 Owner，审计 `admin.user_delete`），数据清理抽到 `admin/store.deleteUserDeep()`（KB→会话→Agent 任务→安全→计费→成员关系→个人工作区→用户行），配套新增 `db/persist.deleteWorkspaceFromDb()`（先删 `kb_chunks` 再删 `Workspace`，否则重启复活）、`workspace/store.deleteWorkspacesOwnedBy()`（默认租户永不删）与 `removeMemberEverywhere()`；前端管理端用户表加“删除账号”（仅 owner 可见、确认弹窗，i18n s78/s79）。③ **e2e 环境自适应**：忘记密码用例先探 `POST /api/auth/forgot-password` 是否返回 `demoResetUrl`（`NODE_ENV !== production` 才有），再断言 demo 链接存在/不存在，避免生产形态必挂。④ **残留清理脚本**：`scripts/cleanup-e2e-fixtures.ts`（默认 dry-run，`--apply` 执行；按 `V3-E2E-KB-/V4-SSE-/V4-CHAT-` 前缀删库、按 `kai-e2e-*@test.local` 删号，走管理端 API 不碰 DB），登记到 FAQ 第 11 条。⑤ **顺带修 #44 回归**：`UsageChart` 空态分支的根节点补 `usage-chart` 类（此前全 0 数据只渲染 `.chart-empty`，`admin/monitoring` e2e 的 `.usage-chart` 断言在无流量环境下失败）。验证：单测新增 8 例（路由 3 + 工作区 2 + 计费改写 + 既有），本地 3005 实例跑通“造残留 → dry-run → --apply → 归零”，含扩展自举后的检索链路。
 
-**V11 P2 可访问性与一致性（2026-10-22）**：按「脚本化审计 → 修复 → 复验」处理 P2 —— ① **审计方法**：Playwright 遍历 26 条路由 × {768,1440} × {light,dark}，用 `document.scrollWidth - clientWidth` 查横向溢出、用 `locator('body').ariaSnapshot()` 查无名称的表单控件（早前用 innerText/aria-label 自算会漏掉 `<label>` 隐式关联与 placeholder 兜底，误报 20+ 条）。② **可访问名**：修完 4 处真实缺失（管理端「允许注册 / 维护模式 / 2FA 角色」开关、设置页「数据保留期」下拉、设置页通知偏好与隐私三开关、外观高对比度开关），并给搜索框/文本域/下拉补显式 `aria-label`（chat 会话搜索、提问框、KB 选择；agent 主题与 KB；team 成员角色；admin 用户搜索；graph 实体搜索）。③ **管理端 i18n 错位**（Next 版就存在、Vue 移植时沿用）：用户表表头把 `s4/s5/s6`（限流仪表盘 / Provider 状态 / 审计日志）当成「用户 / 套餐 / 知识库」，限流档位标签与 KB 监控首列同样错用；页头红色徽标写着「收入趋势」，h1 又和首张卡标题重复「用户管理」——新增 `s80 用户 / s81 套餐 / s82 知识库 / s83 名称 / s84 管理员`，h1 改走 `page.app-shell.s17`（管理后台），徽标改「管理员」。④ **收入趋势柱状图**：柱子按列宽铺满像一排色块，`.rev-bar` 加 `max-width:56px` + 垂直渐变，才读得出「柱」。⑤ 复验：26 路由 × 2 断点 × 2 主题 **横向溢出 0、无名控件 0**；`frontend/e2e` admin+workbench 12/12、根单测 78 文件 512 用例、`vue-tsc`/`eslint`/`pnpm -C frontend build`（含预渲染）/`test-i18n-coverage` 4/4 全绿。遗留（P3）：`/docs` 的 Swagger 容器内部控件无名属第三方资产。P3 追记（2026-10-22）：① 管理端统计卡改为与工作台同构（图标瓦片左上 + 数值 + label 收尾，替换「label 上/图标右上」），颜色语义保留 per-metric tint；② 用 #47 的整库重建接口把 5 个种子知识库的向量全部补齐（此前 pgvector 故障期为空，演示问答 `sources=0` → `sources=2`），运维上「重装/重建向量库后」执行一次整库重建即可恢复演示体验。**V12 审查结论落地（2026-10-22）**：对 b595553..main 做全量代码审查，五条结论中三条采纳 —— ① **删号权限收紧为仅 Owner**：`DELETE /api/admin/users/[id]` 由 owner/admin 双角色改为 owner-only（删号不可逆，权限级别高于可逆的封禁；封禁仍是 PATCH owner/admin），管理端 UI 本来就只对 owner 显示该按钮。② **自助删号进审计链**：`DELETE /api/auth/me` 删除前补 `recordAudit({ action: "account.delete" })`（此前账号「凭空消失」、哈希链里查无此事；actor 用被删账号自身，故必须写在删除前），单测断言条目存在且 `verifyAuditChain().valid`。③ **队列批量入队**：`JobQueue` 新增 `enqueueBulk(type, payloads)`（best-effort：逐项失败带下标与原因，不抛异常）；Memory 实现逐项入队 + 背压短路，BullMQ 实现一次 `counts` 拿剩余容量 + 一次 `addBulk`（幂等 jobId 保留），`queue/index` 导出同名函数；整库重建路由改用它（复位仍是同步内存写），避免 N 次 Redis 往返。单测：memory/bullmq 各 2 例（成功路径 + 背压路径）、reindex 路由改断言 enqueueBulk 参数、me-route 2 例。其余两条结论（admin 全局角色无租户作用域、Swagger 第三方控件无名）记录为设计语义，暂不处理。**V15 D 组：可观测性与收尾（2026-10-22）**：① **整库重建批量持久化**：新增 `db/persist.persistDocs()`（本地 PrismaClient shim 未声明 `$transaction`，取到就走事务、取不到退化为并发 upsert；失败只记日志与模块其他写穿函数一致），`kb/store.resetDocsForReindex()` 一次改内存 + 一次批量写，替换逐篇 upsert —— 百篇库从 N 次往返降为 1 次，且不会出现「前一半写进去、后一半没写」。② **切片数取真实值**：`indexDocument()` 原先返回 void，本地处理路径只能用 `estimateChunks()` 估算并写进 `doc.chunks`，UI 显示「1 个切片」而实际 5 个以上；改为返回真实 `chunks.length` 并在索引完成后覆盖估算值（估算仍用于处理中的进度展示）。实测种子库重建后 chunks 从 1,1,1 变为 1,2,2（与 chunkSize=500 对 500~1000 字正文的预期一致）。③ **监控面板自动刷新**：`/admin/monitoring` 由「只在进入时拉一次」改为 15s 轮询，且 `document.visibilityState !== "visible"` 时跳过（后台标签页不打接口、不占限流），单次失败不打断轮询，`onBeforeUnmount` 清理定时器；实测 18s 内 2 次请求。④ **`/docs` 可访问性**：Swagger UI 内部 DOM 是第三方资产无法改，改为补齐我们可控的外围——页面自有 `<h1>「API 参考文档」`、说明文案（含键盘操作提示）、`我的 OpenAPI JSON 下载`兜底链接，容器加 `role="region"` + `aria-label`，这样读屏器至少有文档大纲与替代路径；`swagger-ui-dist` 版本维持 5.32.12（替换 vendored bundle 会产生不可评审的大文件 diff，后续随上游再 vendor）。
+**V11 P2 可访问性与一致性（2026-10-22）**：按“脚本化审计 → 修复 → 复验”处理 P2 —— ① **审计方法**：Playwright 遍历 26 条路由 × {768,1440} × {light,dark}，用 `document.scrollWidth - clientWidth` 查横向溢出、用 `locator('body').ariaSnapshot()` 查无名称的表单控件（早前用 innerText/aria-label 自算会漏掉 `<label>` 隐式关联与 placeholder 兜底，误报 20+ 条）。② **可访问名**：修完 4 处真实缺失（管理端“允许注册 / 维护模式 / 2FA 角色”开关、设置页“数据保留期”下拉、设置页通知偏好与隐私三开关、外观高对比度开关），并给搜索框/文本域/下拉补显式 `aria-label`（chat 会话搜索、提问框、KB 选择；agent 主题与 KB；team 成员角色；admin 用户搜索；graph 实体搜索）。③ **管理端 i18n 错位**（Next 版就存在、Vue 移植时沿用）：用户表表头把 `s4/s5/s6`（限流仪表盘 / Provider 状态 / 审计日志）当成“用户 / 套餐 / 知识库”，限流档位标签与 KB 监控首列同样错用；页头红色徽标写着“收入趋势”，h1 又和首张卡标题重复“用户管理”——新增 `s80 用户 / s81 套餐 / s82 知识库 / s83 名称 / s84 管理员`，h1 改走 `page.app-shell.s17`（管理后台），徽标改“管理员”。④ **收入趋势柱状图**：柱子按列宽铺满像一排色块，`.rev-bar` 加 `max-width:56px` + 垂直渐变，才读得出“柱”。⑤ 复验：26 路由 × 2 断点 × 2 主题 **横向溢出 0、无名控件 0**；`frontend/e2e` admin+workbench 12/12、根单测 78 文件 512 用例、`vue-tsc`/`eslint`/`pnpm -C frontend build`（含预渲染）/`test-i18n-coverage` 4/4 全绿。遗留（P3）：`/docs` 的 Swagger 容器内部控件无名属第三方资产。P3 追记（2026-10-22）：① 管理端统计卡改为与工作台同构（图标瓦片左上 + 数值 + label 收尾，替换“label 上/图标右上”），颜色语义保留 per-metric tint；② 用 #47 的整库重建接口把 5 个种子知识库的向量全部补齐（此前 pgvector 故障期为空，演示问答 `sources=0` → `sources=2`），运维上“重装/重建向量库后”执行一次整库重建即可恢复演示体验。**V12 审查结论落地（2026-10-22）**：对 b595553..main 做全量代码审查，五条结论中三条采纳 —— ① **删号权限收紧为仅 Owner**：`DELETE /api/admin/users/[id]` 由 owner/admin 双角色改为 owner-only（删号不可逆，权限级别高于可逆的封禁；封禁仍是 PATCH owner/admin），管理端 UI 本来就只对 owner 显示该按钮。② **自助删号进审计链**：`DELETE /api/auth/me` 删除前补 `recordAudit({ action: "account.delete" })`（此前账号“凭空消失”、哈希链里查无此事；actor 用被删账号自身，故必须写在删除前），单测断言条目存在且 `verifyAuditChain().valid`。③ **队列批量入队**：`JobQueue` 新增 `enqueueBulk(type, payloads)`（best-effort：逐项失败带下标与原因，不抛异常）；Memory 实现逐项入队 + 背压短路，BullMQ 实现一次 `counts` 拿剩余容量 + 一次 `addBulk`（幂等 jobId 保留），`queue/index` 导出同名函数；整库重建路由改用它（复位仍是同步内存写），避免 N 次 Redis 往返。单测：memory/bullmq 各 2 例（成功路径 + 背压路径）、reindex 路由改断言 enqueueBulk 参数、me-route 2 例。其余两条结论（admin 全局角色无租户作用域、Swagger 第三方控件无名）记录为设计语义，暂不处理。**V15 D 组：可观测性与收尾（2026-10-22）**：① **整库重建批量持久化**：新增 `db/persist.persistDocs()`（本地 PrismaClient shim 未声明 `$transaction`，取到就走事务、取不到退化为并发 upsert；失败只记日志与模块其他写穿函数一致），`kb/store.resetDocsForReindex()` 一次改内存 + 一次批量写，替换逐篇 upsert —— 百篇库从 N 次往返降为 1 次，且不会出现“前一半写进去、后一半没写”。② **切片数取真实值**：`indexDocument()` 原先返回 void，本地处理路径只能用 `estimateChunks()` 估算并写进 `doc.chunks`，UI 显示“1 个切片”而实际 5 个以上；改为返回真实 `chunks.length` 并在索引完成后覆盖估算值（估算仍用于处理中的进度展示）。实测种子库重建后 chunks 从 1,1,1 变为 1,2,2（与 chunkSize=500 对 500～1000 字正文的预期一致）。③ **监控面板自动刷新**：`/admin/monitoring` 由“只在进入时拉一次”改为 15s 轮询，且 `document.visibilityState !== "visible"` 时跳过（后台标签页不打接口、不占限流），单次失败不打断轮询，`onBeforeUnmount` 清理定时器；实测 18s 内 2 次请求。④ **`/docs` 可访问性**：Swagger UI 内部 DOM 是第三方资产无法改，改为补齐我们可控的外围——页面自有 `<h1>「API 参考文档」`、说明文案（含键盘操作提示）、`我的 OpenAPI JSON 下载`兜底链接，容器加 `role="region"` + `aria-label`，这样读屏器至少有文档大纲与替代路径；`swagger-ui-dist` 版本维持 5.32.12（替换 vendored bundle 会产生不可评审的大文件 diff，后续随上游再 vendor）。
 
-**V14 B 组：覆盖与演示密度（2026-10-22）**：① **e2e 补两条真实 UI 路径**（此前两个功能只有路由级单测）：`kb.spec` 新增「重建索引」——复用已有知识库而非新建（重建的典型场景就是存量库缺向量，且 e2e 对 kb 维度限流敏感），断言点击后 `POST .../reindex` 返回 200、文档回到就绪且无失败态；提示文案不断言（文档进入处理态后 card-head 会切成「N 个处理中…」，提示仅存在数百毫秒，属易碎断言）。`admin-developer.spec` 新增「删号按钮仅 owner 可见」：admin 登录下全表无「删除账号」但「封禁」仍在（证明行内操作正常渲染），owner 登录下至少一行有删除入口。踩坑记录：本地复用 docker 应用跑 e2e 时会被默认限流打成 429（CI 是靠 webServer 命令里的 `RATE_LIMIT_*` 抬高额度，本地复用旧服务不生效）→ 改为临时停掉 nginx 容器、让 Playwright 按 CI 同款方式自起 Next dev，11/11 全绿。② **种子内容扩充**：新增 `prisma/seed-kbs.ts`（5 库 9 篇真实中文语料，覆盖产品需求/设计规范/发布计划/鉴权/错误码/财报/部署/排障/CHANGELOG），替换原先「每库 1 篇 45 字节占位文档 + 写死 chunks:12（实际向量为空）」；文档按 `doc_seed_<kb>_<n>` 确定性 upsert，重跑幂等，旧占位文档（`*_sample.md`）顺带清理。③ **启动自动重投**：种子文档以 `queued` 落库（向量必须由真实切片/嵌入产出），新增 `kb/store.resumePendingDocs()` 并在 DB 水合末尾调用——否则这些文档没人处理会永远卡在 queued；队列按 `doc-process-<docId>` 去重，与在跑的 worker 不冲突，重复调用无副作用（单测覆盖「重投集合 == 未完成集合」与「全 ready 时返回 0」）。
+**V14 B 组：覆盖与演示密度（2026-10-22）**：① **e2e 补两条真实 UI 路径**（此前两个功能只有路由级单测）：`kb.spec` 新增“重建索引”——复用已有知识库而非新建（重建的典型场景就是存量库缺向量，且 e2e 对 kb 维度限流敏感），断言点击后 `POST .../reindex` 返回 200、文档回到就绪且无失败态；提示文案不断言（文档进入处理态后 card-head 会切成“N 个处理中…”，提示仅存在数百毫秒，属易碎断言）。`admin-developer.spec` 新增“删号按钮仅 owner 可见”：admin 登录下全表无“删除账号”但“封禁”仍在（证明行内操作正常渲染），owner 登录下至少一行有删除入口。踩坑记录：本地复用 docker 应用跑 e2e 时会被默认限流打成 429（CI 是靠 webServer 命令里的 `RATE_LIMIT_*` 抬高额度，本地复用旧服务不生效）→ 改为临时停掉 nginx 容器、让 Playwright 按 CI 同款方式自起 Next dev，11/11 全绿。② **种子内容扩充**：新增 `prisma/seed-kbs.ts`（5 库 9 篇真实中文语料，覆盖产品需求/设计规范/发布计划/鉴权/错误码/财报/部署/排障/CHANGELOG），替换原先“每库 1 篇 45 字节占位文档 + 写死 chunks:12（实际向量为空）”；文档按 `doc_seed_<kb>_<n>` 确定性 upsert，重跑幂等，旧占位文档（`*_sample.md`）顺带清理。③ **启动自动重投**：种子文档以 `queued` 落库（向量必须由真实切片/嵌入产出），新增 `kb/store.resumePendingDocs()` 并在 DB 水合末尾调用——否则这些文档没人处理会永远卡在 queued；队列按 `doc-process-<docId>` 去重，与在跑的 worker 不冲突，重复调用无副作用（单测覆盖“重投集合 == 未完成集合”与“全 ready 时返回 0”）。
 
-**V13 收口三件（2026-10-22）**：① `prisma/schema.prisma` 给 `User.plan` 补 `/// @deprecated` 文档注释（TS 侧早已标注，DB schema 层没有；实测 `prisma migrate diff --from-migrations --to-schema-datamodel` 仍输出 `No difference detected`，注释不产生漂移）。② **生成物抖动治理**：`frontend/src/components.d.ts` 由 unplugin-vue-components 产出，dev（按需 HMR）与 build（一次性全量扫描）写出的 `El*` 条目不同，同一份代码交替执行会来回改写（实测连跑两次 build 稳定、但 dev 与 build 交替即抖动）；改为**取消版本控制 + 加入 .gitignore**，并在 `vite.config.ts` 注明「仅作本地 IDE 类型提示、vue-tsc 不依赖它」（实测 `rm` 掉该文件后 `vue-tsc --noEmit` 仍 exit 0）。③ `docs/architecture/overview.md` 新增核心决策 7「角色模型：平台管理员 vs 工作区成员」，明确 `User.role` 是平台级跨租户语义（`/api/admin/*` 全局视图是设计意图）、工作区内权限走 Team 角色与 KB access、删号仅 Owner，并说明将来做 SaaS 多租户运营需拆 platform_admin/workspace_admin（对应审查结论 4 的文档收尾）。
+**V13 收口三件（2026-10-22）**：① `prisma/schema.prisma` 给 `User.plan` 补 `/// @deprecated` 文档注释（TS 侧早已标注，DB schema 层没有；实测 `prisma migrate diff --from-migrations --to-schema-datamodel` 仍输出 `No difference detected`，注释不产生漂移）。② **生成物抖动治理**：`frontend/src/components.d.ts` 由 unplugin-vue-components 产出，dev（按需 HMR）与 build（一次性全量扫描）写出的 `El*` 条目不同，同一份代码交替执行会来回改写（实测连跑两次 build 稳定、但 dev 与 build 交替即抖动）；改为**取消版本控制 + 加入 .gitignore**，并在 `vite.config.ts` 注明“仅作本地 IDE 类型提示、vue-tsc 不依赖它”（实测 `rm` 掉该文件后 `vue-tsc --noEmit` 仍 exit 0）。③ `docs/architecture/overview.md` 新增核心决策 7“角色模型：平台管理员 vs 工作区成员”，明确 `User.role` 是平台级跨租户语义（`/api/admin/*` 全局视图是设计意图）、工作区内权限走 Team 角色与 KB access、删号仅 Owner，并说明将来做 SaaS 多租户运营需拆 platform_admin/workspace_admin（对应审查结论 4 的文档收尾）。
 
-⑥ **重建索引接口**（种子/故障期文档向量缺失的兜底）：pgvector 故障期间上传的文档正文已落库（`KbDocument.content` 持久化）但向量行为空，新增 `POST /api/knowledge-base/[id]/documents/[docId]/reindex`（edit 权限、无正文 422、处理中 409、入队失败 markDocFailed + 503）与整库 `POST /api/knowledge-base/[id]/reindex`（canEditKb、跳过处理中/无正文、queued/skipped/failed 计数、审计 `kb.reindex`）；`kb/store.resetDocForReindex()` 复位状态（索引器自身 clearDoc 后重写，幂等）；详情页文档行与页头加「重建索引」（i18n s19-s21）。
+⑥ **重建索引接口**（种子/故障期文档向量缺失的兜底）：pgvector 故障期间上传的文档正文已落库（`KbDocument.content` 持久化）但向量行为空，新增 `POST /api/knowledge-base/[id]/documents/[docId]/reindex`（edit 权限、无正文 422、处理中 409、入队失败 markDocFailed + 503）与整库 `POST /api/knowledge-base/[id]/reindex`（canEditKb、跳过处理中/无正文、queued/skipped/failed 计数、审计 `kb.reindex`）；`kb/store.resetDocForReindex()` 复位状态（索引器自身 clearDoc 后重写，幂等）；详情页文档行与页头加“重建索引”（i18n s19-s21）。
 
 ## 十七、本地运行
 
@@ -1361,4 +1361,4 @@ docker run -p 3000:3000 --env-file .env.local knowledgeai
 | `wk10-11/` | `usage-light/dark.png` | 用量计量卡 + 14 天趋势图 |
 | `wk10-11/` | `checkout-light/dark.png` | 收银台支付流程 |
 
-> 第 1–10 周的早期截图（落地页/仪表盘/知识库/问答/Agent/团队）在开发过程中拍摄，可按需重新生成。
+> 第 1～10 周的早期截图（落地页/仪表盘/知识库/问答/Agent/团队）在开发过程中拍摄，可按需重新生成。

@@ -21,21 +21,21 @@ applies_to: ">=1.2.0"
 >
 > **当前状态**：✅ **ROADMAP 全部计划项已完成**。12 周开发计划 + P0 生产化 + P1 RAG 增强 + P2 Agent 图/外部数据源/报告增强 + P3 安全加固（含 P3-2 OAuth 社交登录）+ P4 协作与多租户 + P5 体验优化五件套 + P6 可观测性/CI/CD/健康检查 + P7 开放 API/集成市场（含 VS Code 扩展与 Notion/Confluence 同步）/知识图谱/多模态 均已实施并通过验收测试。
 >
-> **最新更新**：2026-08-13 - **P3-2 OAuth 社交登录 + P7-2 VS Code 扩展 / Notion·Confluence 同步 完成**：接入 Auth.js v5（next-auth@5.0.0-beta.32，Google + GitHub，Authorization Code + PKCE + CSRF state 全程库处理）——桥接路由 `/api/auth/oauth/bridge` 在 provider dance 后铸造现有 kai-token 会话（OAuth 身份经 `getToken` 读取，登录模式自动建号/邮箱关联，绑定模式保持会话不变）；登录/注册页 OAuth 按钮接真实跳转（`oauthSignIn` 客户端 helper，POST+CSRF——GET signin 在 v5 不支持）+ 按 `/api/auth/providers` 动态显隐 + `?error=` 提示；设置页「社交账号」Card（绑定/解绑，`DELETE /api/auth/oauth/link`，保留 ≥1 登录方式，审计 `auth.oauth_link/unlink`）；`User.oauthLinks Json?` 落库（migration `p3_2_oauth_links`）；**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：选中代码/当前文件提问 + 工作区同步为 KB 文档 + context.secrets 配置）；**Notion/Confluence 同步**（`src/lib/integrations/sync/`：blocks→Markdown 与 HTML→Markdown 转换器 + 按名去重幂等 + 审计 `integration.sync` + 开发者门户两张同步 Card；新增 `POST /api/v1/knowledge-bases/[id]/documents` 文本建文档端点，重名 409）；验收：`test-oauth.ts` 28/28（mock OIDC 授权服务器 + jwks/id_token 签发 + :3100 实例全流程）、`test-sync.ts` 15/15（mock Notion/Confluence + 去重 + 可检索 + 未配置 400）、`test-vscode.ts` 21/21（manifest + ask.js/sync.js 对 live server 全流程）；全量回归 tsc/lint(0 errors)/vitest 覆盖率（Stmts 82.97%/Br 72.92%）/i18n parity/E2E 4/4/P7 既有验收复跑全过。
+> **最新更新**：2026-08-13 - **P3-2 OAuth 社交登录 + P7-2 VS Code 扩展 / Notion·Confluence 同步 完成**：接入 Auth.js v5（next-auth@5.0.0-beta.32，Google + GitHub，Authorization Code + PKCE + CSRF state 全程库处理）——桥接路由 `/api/auth/oauth/bridge` 在 provider dance 后铸造现有 kai-token 会话（OAuth 身份经 `getToken` 读取，登录模式自动建号/邮箱关联，绑定模式保持会话不变）；登录/注册页 OAuth 按钮接真实跳转（`oauthSignIn` 客户端 helper，POST+CSRF——GET signin 在 v5 不支持）+ 按 `/api/auth/providers` 动态显隐 + `?error=` 提示；设置页“社交账号”Card（绑定/解绑，`DELETE /api/auth/oauth/link`，保留 ≥1 登录方式，审计 `auth.oauth_link/unlink`）；`User.oauthLinks Json?` 落库（migration `p3_2_oauth_links`）；**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：选中代码/当前文件提问 + 工作区同步为 KB 文档 + context.secrets 配置）；**Notion/Confluence 同步**（`src/lib/integrations/sync/`：blocks→Markdown 与 HTML→Markdown 转换器 + 按名去重幂等 + 审计 `integration.sync` + 开发者门户两张同步 Card；新增 `POST /api/v1/knowledge-bases/[id]/documents` 文本建文档端点，重名 409）；验收：`test-oauth.ts` 28/28（mock OIDC 授权服务器 + jwks/id_token 签发 + :3100 实例全流程）、`test-sync.ts` 15/15（mock Notion/Confluence + 去重 + 可检索 + 未配置 400）、`test-vscode.ts` 21/21（manifest + ask.js/sync.js 对 live server 全流程）；全量回归 tsc/lint(0 errors)/vitest 覆盖率（Stmts 82.97%/Br 72.92%）/i18n parity/E2E 4/4/P7 既有验收复跑全过。
 
 ---
 
 ## 目录
 
 - [现状概览](#现状概览)
-- [P0 · 生产化落地（1-4 周）](#p0--生产化落地1-4-周)
-- [P1 · RAG 引擎增强（3-6 周）](#p1--rag-引擎增强3-6-周)
-- [P2 · Agent 能力升级（4-8 周）](#p2--agent-能力升级4-8-周)
-- [P3 · 安全与合规加固（2-5 周）](#p3--安全与合规加固2-5-周)
-- [P4 · 协作与多租户增强（5-8 周）](#p4--协作与多租户增强5-8-周)
-- [P5 · 用户体验优化（3-6 周）](#p5--用户体验优化3-6-周)
-- [P6 · 可观测性与运维（2-4 周）](#p6--可观测性与运维2-4-周)
-- [P7 · 生态与集成（6-12 周）](#p7--生态与集成6-12-周)
+- [P0 · 生产化落地（1～4 周）](#p0)
+- [P1 · RAG 引擎增强（3～6 周）](#p1)
+- [P2 · Agent 能力升级（4～8 周）](#p2)
+- [P3 · 安全与合规加固（2～5 周）](#p3)
+- [P4 · 协作与多租户增强（5～8 周）](#p4)
+- [P5 · 用户体验优化（3～6 周）](#p5)
+- [P6 · 可观测性与运维（2～4 周）](#p6)
+- [P7 · 生态与集成（6～12 周）](#p7)
 - [里程碑总览](#里程碑总览)
 
 ---
@@ -74,7 +74,7 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P0 · 生产化落地（1-4 周）
+## P0 · 生产化落地（1～4 周） {#p0}
 
 > **目标**：将演示模式升级为可部署的生产架构，数据持久化 + 真实存储 + 向量数据库。
 
@@ -98,7 +98,7 @@ applies_to: ">=1.2.0"
 
 ### P0-2 向量数据库接入
 
-**现状**：四种后端可选：`MemoryVectorStore`（内存/默认）、`PgVectorStore`（PostgreSQL + pgvector）、`ChromaVectorStore`（自托管 ChromaDB v2 API）、`PineconeVectorStore`（托管 Pinecone Serverless）。通过 `VECTOR_STORE` 环境变量切换。`scripts/migrate-vector-store.ts` 支持批量迁移。
+**现状**：四种后端可选：`MemoryVectorStore`（内存/默认）、`PgVectorStore`(PostgreSQL + pgvector)、`ChromaVectorStore`（自托管 ChromaDB v2 API）、`PineconeVectorStore`（托管 Pinecone Serverless）。通过 `VECTOR_STORE` 环境变量切换。`scripts/migrate-vector-store.ts` 支持批量迁移。
 
 **计划**：
 - [x] 抽象 `VectorStore` 接口 ✅
@@ -109,7 +109,7 @@ applies_to: ">=1.2.0"
 - [x] 迁移脚本：将现有内存索引批量导入目标向量库 ✅
 
 **验收标准**：
-- 10 万级 chunk 检索延迟 < 200ms（P95）
+- 10 万级 chunk 检索延迟 < 200ms(P95)
 - 支持 ANN 近似检索（HNSW / IVFFlat）
 - 索引随 KB / 文档删除自动清理
 
@@ -140,9 +140,9 @@ applies_to: ">=1.2.0"
 
 **计划**：
 - [x] 引入 BullMQ + Redis 作为任务队列 ✅
-- [x] 文档处理管线迁移至 Worker（handlers.ts）✅（解析 -> 切片 -> 嵌入 -> 入库）
+- [x] 文档处理管线迁移至 Worker(handlers.ts)✅（解析 -> 切片 -> 嵌入 -> 入库）
 - [x] Agent 调研迁移至 Worker（SSE 改为订阅 Redis Pub/Sub 事件流）✅
-- [x] 添加任务重试（3次,指数退避）、死信队列 ✅
+- [x] 添加任务重试（3 次，指数退避）、死信队列 ✅
 - [x] Worker 独立进程部署（`docker-compose.yml` 添加 worker 服务）✅
 
 **验收标准**：
@@ -152,13 +152,13 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P1 · RAG 引擎增强（3-6 周）
+## P1 · RAG 引擎增强（3～6 周） {#p1}
 
 > **目标**：提升检索精度、扩展文档格式支持、引入高级 RAG 策略。
 
 ### P1-1 多格式文档解析
 
-**现状**：✅ 已完成。支持 PDF/DOCX/XLSX/PPTX/MD/TXT/HTML/CSV 共 8 种格式 + 扫描版 PDF/图片 OCR（tesseract.js + pdfjs-dist + @napi-rs/canvas）。全部依赖动态导入 + 优雅降级。
+**现状**：✅ 已完成。支持 PDF/DOCX/XLSX/PPTX/MD/TXT/HTML/CSV 共 8 种格式 + 扫描版 PDF/图片 OCR(tesseract.js + pdfjs-dist + @napi-rs/canvas)。全部依赖动态导入 + 优雅降级。
 
 **计划**：
 - [x] 接入 PDF 解析（`pdf-parse`，动态导入）✅
@@ -219,19 +219,19 @@ applies_to: ">=1.2.0"
 
 **计划**：
 - [x] 多轮对话上下文：最近 6 条消息（3 轮）✅
-- [x] 查询意图识别：chitchat / meta / knowledge ✅（"这个库有哪些文档"）
+- [x] 查询意图识别：chitchat / meta / knowledge ✅（“这个库有哪些文档”）
 - [x] 流式引用实时渲染 ✅（`sources` 事件携带 chunk 元数据，前端 `extractLiveCitations` 实时解析 `[n]`）
 - [x] 追问建议：LLM / 模板生成 3 条，SSE done 事件携带 ✅（前端 `FollowUpSuggestions` 渲染为可点击按钮）
 - [x] 对话导出 ✅（`exportConversation` 导出为 Markdown 下载）
 
 **验收标准**：
-- ✅ 多轮对话正确理解上下文指代（"它"/"上面提到的"）
-- ✅ 意图识别准确率 > 90%（18/18 = 100%）
+- ✅ 多轮对话正确理解上下文指代（“它”/“上面提到的”）
+- ✅ 意图识别准确率 > 90%(18/18 = 100%)
 - ✅ 回答末尾展示智能追问
 
 ---
 
-## P2 · Agent 能力升级（4-8 周）
+## P2 · Agent 能力升级（4～8 周） {#p2}
 
 > **目标**：从固定编排升级为可配置的多 Agent 工作流，支持外部数据源。
 
@@ -257,7 +257,7 @@ applies_to: ">=1.2.0"
 
 **现状**：✅ 已完成。外部数据源 provider（Web 搜索 Tavily/SerpAPI/Brave + 网页深度抓取 + ArXiv + GitHub）+ 统一搜索接口 + 去重 + 质量评分 + demo fallback。Agent searcher 节点同时检索内部 KB 和外部源，citations 携带 sourceType + URL 标注。config.ts 注册外部数据源 provider status。
 
-> **2026-08-10 扩展**：Chat 智能问答新增「联网搜索」开关——开启后每次提问经 `searchExternal()`（仅 Web 源）把外部结果合并进 RAG 上下文，`sources` 事件携带 `url` / `sourceType`，引用面板对 Web 来源展示可点击链接（🌐 图标 + 域名）。多轮对话提示词同步改为「来源内容」（`conversation-context.ts` 与 `generator.ts` 一致）。
+> **2026-08-10 扩展**：Chat 智能问答新增“联网搜索”开关——开启后每次提问经 `searchExternal()`（仅 Web 源）把外部结果合并进 RAG 上下文，`sources` 事件携带 `url` / `sourceType`，引用面板对 Web 来源展示可点击链接（🌐 图标 + 域名）。多轮对话提示词同步改为“来源内容”（`conversation-context.ts` 与 `generator.ts` 一致）。
 
 **计划**：
 - [x] Web 搜索集成（接入 Tavily / SerpAPI / Brave Search API）✅
@@ -292,11 +292,11 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P3 · 安全与合规加固（2-5 周）
+## P3 · 安全与合规加固（2～5 周） {#p3}
 
 > **目标**：达到生产级安全标准，满足 GDPR / SOC2 合规要求。
 
-### P3-1 真实 2FA（TOTP）
+### P3-1 真实 2FA(TOTP)
 
 **现状**：✅ 已完成。真实 TOTP（RFC 6238，Node.js crypto 零外部依赖，通过 RFC 6238 测试向量 T=59->287082 校验）+ otpauth:// URI（兼容 Google/Microsoft Authenticator/1Password/Authy）+ QR 码可扫描渲染（`qrcode` 库 -> PNG dataURL，SVG 兜底）+ 备用恢复码 SHA-256 哈希存储 + 一次性使用 + 使用后自动作废 + 登录流程集成（密码 -> `requires2FA` -> TOTP/恢复码验证 -> 会话）+ 2FA 强制策略（管理员可勾选角色强制开启，未开启者登录时返回 `mustEnroll2FA` + 短时预授权令牌，强制完成绑定后才发会话）。`scripts/smoke/test-2fa.ts`（59 项）+ `test-2fa-http.ts`（18 项）全部通过。
 
@@ -304,7 +304,7 @@ applies_to: ">=1.2.0"
 
 **计划**：
 - [x] 实现 TOTP（RFC 6238, Node.js crypto, 无外部依赖）✅
-- [x] 兼容 Google/Microsoft Authenticator/1Password（otpauth:// URI）✅
+- [x] 兼容 Google/Microsoft Authenticator/1Password(otpauth:// URI)✅
 - [x] 备用恢复码 SHA-256 哈希存储 + 一次性使用 ✅
 - [x] 2FA 强制策略：管理员可要求特定角色必须开启 ✅（`SystemConfig.required2FARoles` + 管理后台勾选 + `mustEnroll2FA` 登录拦截）
 - [x] 登录流程集成：密码 → 2FA 验证 → 会话 ✅（前端登录页 `requires2FA` 两步流程 + 强制注册页 `/2fa-enroll`）
@@ -318,12 +318,12 @@ applies_to: ">=1.2.0"
 
 ### P3-2 OAuth 社交登录
 
-**现状**：✅ 已完成（2026-08-13）。**接入 Auth.js v5（next-auth@5.0.0-beta.32）**——Google + GitHub 双 provider（Authorization Code + PKCE + CSRF state 全程由库处理，env 门控：`GOOGLE_CLIENT_ID/SECRET`、`GITHUB_CLIENT_ID/SECRET`，未配置时按钮不显示）。**桥接路由 `GET /api/auth/oauth/bridge`**：provider dance 完成后用 `getToken()` 读 Auth.js JWT（jwt callback 携带 `oauthProvider/oauthProviderId` claims）→ `upsertOauthUser`（按 provider 关联 → 按邮箱自动关联已有账号 → 自动创建无密码账号）→ 铸造现有 `kai-token` 会话（登录模式）；已有会话时进入**绑定模式**（设置页「绑定」→ 身份挂到当前用户，会话不变，邮箱冲突 400）。**OAuth 登录跳过应用 2FA**（provider MFA 即足够，文档注明）。**前端**：登录/注册页装饰按钮 → `oauthSignIn` 客户端 helper（POST `/api/auth/signin/{provider}` + CSRF——Auth.js v5 不支持 GET signin）+ `/api/auth/providers` 动态显隐 + `?error=` 友好提示（未配置/取消/绑定冲突）；设置页安全 tab「社交账号」Card（已绑定徽章 + 绑定/解绑，解绑确认 dialog）。**解绑**：`DELETE /api/auth/oauth/link?provider=`（要求保留 ≥1 登录方式：无密码且无其他 provider 时 400）。**审计**：`auth.oauth_login_success/failed`、`auth.oauth_link/link_failed/unlink` 入哈希链。**数据**：`User.oauthLinks Json?`（provider→providerAccountId，migration `p3_2_oauth_links`）+ persist/hydrate 全链路，OAuth-only 账号 `passwordHash` 为 null（可后续设置密码）。**账户安全**：GitHub 隐藏邮箱时回退 `login@users.noreply.github.com`；`AUTH_SECRET` 复用现有密钥。
+**现状**：✅ 已完成（2026-08-13）。**接入 Auth.js v5(next-auth@5.0.0-beta.32)**——Google + GitHub 双 provider（Authorization Code + PKCE + CSRF state 全程由库处理，env 门控：`GOOGLE_CLIENT_ID/SECRET`、`GITHUB_CLIENT_ID/SECRET`，未配置时按钮不显示）。**桥接路由 `GET /api/auth/oauth/bridge`**：provider dance 完成后用 `getToken()` 读 Auth.js JWT（jwt callback 携带 `oauthProvider/oauthProviderId` claims）→ `upsertOauthUser`（按 provider 关联 → 按邮箱自动关联已有账号 → 自动创建无密码账号）→ 铸造现有 `kai-token` 会话（登录模式）；已有会话时进入**绑定模式**（设置页“绑定”→ 身份挂到当前用户，会话不变，邮箱冲突 400）。**OAuth 登录跳过应用 2FA**（provider MFA 即足够，文档注明）。**前端**：登录/注册页装饰按钮 → `oauthSignIn` 客户端 helper（POST `/api/auth/signin/{provider}` + CSRF——Auth.js v5 不支持 GET signin）+ `/api/auth/providers` 动态显隐 + `?error=` 友好提示（未配置/取消/绑定冲突）；设置页安全 tab“社交账号”Card（已绑定徽章 + 绑定/解绑，解绑确认 dialog）。**解绑**：`DELETE /api/auth/oauth/link?provider=`（要求保留 ≥1 登录方式：无密码且无其他 provider 时 400）。**审计**：`auth.oauth_login_success/failed`、`auth.oauth_link/link_failed/unlink` 入哈希链。**数据**：`User.oauthLinks Json?`（provider→providerAccountId，migration `p3_2_oauth_links`）+ persist/hydrate 全链路，OAuth-only 账号 `passwordHash` 为 null（可后续设置密码）。**账户安全**：GitHub 隐藏邮箱时回退 `login@users.noreply.github.com`；`AUTH_SECRET` 复用现有密钥。
 
 > **2026-08-13 验收**：`scripts/smoke/test-oauth.ts` 28/28——未配置实例 signin 回落 /login + providers 为空；mock OIDC 授权服务器（discovery + jwks + RS256 id_token + authorize/token/userinfo）+ :3100 实例：signin 302 含 PKCE(S256) 与 redirect_uri、GitHub authorize URL 走 mock issuer（非 github.com）；自动建号（新邮箱）+ oauthLinks 记录 + 重复登录同 userId；邮箱关联（预注册同邮箱 → 同一 userId + provider 绑定）；绑定模式（owner 已登录 → 302 回 /settings?tab=security + 会话不变 + oauthLinks 新增）；解绑（200 + 移除 + 审计可查；OAuth-only 唯一方式 400；未知 provider 400；匿名 401）；审计 oauth_login_success 可查。实现要点（文档注明）：跨 realm URL 陷阱——app 代码构造的 URL 实例在 Next 生产 chunk 与 @auth/core 不同 realm，`new URL(跨realm实例)` 崩溃，故 provider 端点一律传**字符串**（normalizeEndpoint 在库内转 URL）；GitHub 默认 authorization.url 与 token/userinfo 指向真实 github.com，需显式字符串覆盖（Auth.js 用 provider 配置覆盖 discovery 端点）。
 
 **计划**：
-- [x] 接入 NextAuth.js（Auth.js v5）✅（next-auth@5.0.0-beta.32，Google + GitHub，PKCE + CSRF 库处理）
+- [x] 接入 NextAuth.js(Auth.js v5)✅（next-auth@5.0.0-beta.32，Google + GitHub，PKCE + CSRF 库处理）
 - [x] Google OAuth 2.0 集成 ✅（env 门控 + `GOOGLE_ISSUER` 覆写测试/代理）
 - [x] GitHub OAuth 集成 ✅（env 门控 + `GITHUB_ISSUER` 覆写 + noreply 邮箱回退）
 - [x] 账号关联：已有邮箱用户首次 OAuth 登录时绑定 ✅（upsertOauthUser 按邮箱关联；设置页绑定模式）
@@ -338,9 +338,9 @@ applies_to: ">=1.2.0"
 
 ### P3-3 分布式限流
 
-**现状**：✅ 已完成（2026-08-10）。分级限流：匿名（`ip:<ip>`，`RATE_LIMIT_ANON_PER_MIN` 默认 20）/ 已认证（`user:<userId>`，`RATE_LIMIT_PER_MIN`）/ API Key（`apikey:<keyId>`，`RATE_LIMIT_KEY_PER_MIN` 默认 500）/ 按 KB（`kb:<kbId>`，`RATE_LIMIT_KB_PER_MIN` 默认 60）四维度；KB 维度在路由层执行（`/api/chat` + `/api/knowledge-base/[id]`，proxy 无法读取 body/路径参数），顺带补上 `/api/chat` 原不受限流的漏洞；准确 `Retry-After`（Redis Lua 取 ZSET 最早条目 score + window 作为 resetAt，内存窗口本就准确）；管理后台「限流仪表盘」（`/api/admin/ratelimit`：mode/limits/live 各维度实时用量 + Provider 状态面板顺带渲染）。`proxy.ts` 为 Node runtime，按请求解析 cookie/Bearer 选择维度；429 响应体携带 `dimension` 字段。
+**现状**：✅ 已完成（2026-08-10）。分级限流：匿名（`ip:<ip>`，`RATE_LIMIT_ANON_PER_MIN` 默认 20）/ 已认证（`user:<userId>`，`RATE_LIMIT_PER_MIN`）/ API Key（`apikey:<keyId>`，`RATE_LIMIT_KEY_PER_MIN` 默认 500）/ 按 KB（`kb:<kbId>`，`RATE_LIMIT_KB_PER_MIN` 默认 60）四维度；KB 维度在路由层执行（`/api/chat` + `/api/knowledge-base/[id]`，proxy 无法读取 body/路径参数），顺带补上 `/api/chat` 原不受限流的漏洞；准确 `Retry-After`（Redis Lua 取 ZSET 最早条目 score + window 作为 resetAt，内存窗口本就准确）；管理后台“限流仪表盘”（`/api/admin/ratelimit`：mode/limits/live 各维度实时用量 + Provider 状态面板顺带渲染）。`proxy.ts` 为 Node runtime，按请求解析 cookie/Bearer 选择维度；429 响应体携带 `dimension` 字段。
 
-> **2026-08-10 验收**：`scripts/smoke/test-rate-limit.ts` 全部断言通过——匿名/用户/API Key/KB 四维度各自触发 429 且 `dimension` 正确、分级生效（用户 > 匿名、API Key > 用户，相对断言不依赖绝对值）、`Retry-After` ∈ [1,60] 且 `X-RateLimit-Reset ≈ now + Retry-After×1000`（±2s）、仪表盘 API 返回各维度 live 统计且非 admin 403。另修复 dev 环境 Turbopack root 推断卡死（`next.config.ts` 增加 `turbopack.root`）。
+> **2026-08-10 验收**：`scripts/smoke/test-rate-limit.ts` 全部断言通过——匿名/用户/API Key/KB 四维度各自触发 429 且 `dimension` 正确、分级生效（用户 > 匿名、API Key > 用户，相对断言不依赖绝对值）、`Retry-After` ∈ [1,60] 且 `X-RateLimit-Reset ≈ now + Retry-After×1000`(±2s)、仪表盘 API 返回各维度 live 统计且非 admin 403。另修复 dev 环境 Turbopack root 推断卡死（`next.config.ts` 增加 `turbopack.root`）。
 
 **计划**：
 - [x] 接入 Redis 滑动窗口限流（自实现 Lua EVAL 脚本, ZSET 原子操作）✅
@@ -375,13 +375,13 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P4 · 协作与多租户增强（5-8 周）
+## P4 · 协作与多租户增强（5～8 周） {#p4}
 
 > **目标**：强化团队协作能力，支持真正的多租户隔离。
 
 ### P4-1 实时协作
 
-**现状**：✅ 已完成（2026-08-10）。**实时事件总线**（`src/lib/realtime/bus.ts`，globalThis 防 HMR，channel 化 pub/sub，可扩展 Redis Pub/Sub 多实例）+ **在线状态**（`presence.ts`：SSE 连接即在线，断开即离线，60s TTL 惰性清理，变更广播全量在线列表）。**KB 实时变更**（`GET /api/kb/[id]/events` SSE：settings/docs/doc_status/doc_deleted/deleted 事件；kb/store 各 mutation 发布；KB 详情页订阅后实时刷新，文档处理进度实时推进）。**在线协同问答**（会话 `shared` 标记 + `PATCH /api/chat/conversations/[id]` 共享开关 + `GET /api/chat/conversations/shared` 团队列表 + `GET .../[id]/events` 共享会话消息实时流；chat 页「我的会话 / 团队共享」分组 + 共享按钮 + 实时消息追加）。**冲突解决**：乐观并发控制（OCC）——`KnowledgeBase.version` + PATCH `baseVersion`，版本不匹配返回 **409**（不静默覆盖，前端设置对话框提示刷新重试）；以 OCC 替代 CRDT/OT（对当前编辑场景足够且简单，文档注明）。所有 SSE 端点带 30s `: ping` 心跳帧；前端 `useSse` hook 统一消费（buffered 切帧 + 重连）。
+**现状**：✅ 已完成（2026-08-10）。**实时事件总线**（`src/lib/realtime/bus.ts`，globalThis 防 HMR，channel 化 pub/sub，可扩展 Redis Pub/Sub 多实例）+ **在线状态**（`presence.ts`：SSE 连接即在线，断开即离线，60s TTL 惰性清理，变更广播全量在线列表）。**KB 实时变更**（`GET /api/kb/[id]/events` SSE：settings/docs/doc_status/doc_deleted/deleted 事件；kb/store 各 mutation 发布；KB 详情页订阅后实时刷新，文档处理进度实时推进）。**在线协同问答**（会话 `shared` 标记 + `PATCH /api/chat/conversations/[id]` 共享开关 + `GET /api/chat/conversations/shared` 团队列表 + `GET .../[id]/events` 共享会话消息实时流；chat 页“我的会话 / 团队共享”分组 + 共享按钮 + 实时消息追加）。**冲突解决**：乐观并发控制（OCC）——`KnowledgeBase.version` + PATCH `baseVersion`，版本不匹配返回 **409**（不静默覆盖，前端设置对话框提示刷新重试）；以 OCC 替代 CRDT/OT（对当前编辑场景足够且简单，文档注明）。所有 SSE 端点带 30s `: ping` 心跳帧；前端 `useSse` hook 统一消费（buffered 切帧 + 重连）。
 
 > **2026-08-10 验收**：`scripts/smoke/test-realtime.ts` 全部断言通过（19 项）——OCC（正确版本 200 / 过期版本 409 / 重试成功）、KB 设置与新增文档变更实时广播给另一成员、presence 在线/断开离线实时更新、共享会话团队可见（含 owner 名）+ 新消息实时流到成员、匿名/未共享会话订阅被拒。顺带：`/api/chat/conversations` 下所有子路径原被 proxy `/api/chat` 前缀 SKIP（限流盲区）已在路由内补 user/KB 维度。
 
@@ -401,7 +401,7 @@ applies_to: ">=1.2.0"
 
 ### P4-2 知识库权限精细化
 
-**现状**：✅ 已完成（2026-08-10）。**文档级权限**：`KbDocument.access`（view/edit/private，undefined=继承）——**继承链**：文档级覆盖 → KB 级 `kbAccess` → `DEFAULT_ACCESS_BY_NAME` → "view"；`canViewDoc`/`canEditDoc`（kb/store）接入文档 GET/DELETE/PATCH、KB 列表过滤（private 文档对非 owner 隐藏）、chat 检索过滤（private 文档 chunk 不入 RAG 上下文）。**权限角色扩展**：per-KB 成员角色（`kbMemberRoles`，key=成员 email）——KB Owner 可授予成员 `editor`/`viewer` 覆盖，`canViewKb`/`canEditKb` 内部先查覆盖再回退共享权限（签名不变，13 个调用点零改动）；Commenter 角色未实现（系统无 KB 评论功能，文档注明）。**临时访问链接**：单文档限时分享（`doc-share.ts`：expiresAt 过期 / SHA-256 密码 / maxViews 次数 / 撤销，仿 Agent 分享模式），`GET /api/share/doc/[token]` 公开访问（410/401/403/404 错误码，内容只暴露前 3000 字符预览），`/share-doc/[token]` 公开页（密码门 + 错误态）。**权限审计**：`doc.access_change` / `sharelink.create` / `sharelink.revoke` 入 P3-4 哈希链审计，admin 面板可按 action 检索。
+**现状**：✅ 已完成（2026-08-10）。**文档级权限**：`KbDocument.access`（view/edit/private，undefined=继承）——**继承链**：文档级覆盖 → KB 级 `kbAccess` → `DEFAULT_ACCESS_BY_NAME` → "view"；`canViewDoc`/`canEditDoc`(kb/store)接入文档 GET/DELETE/PATCH、KB 列表过滤（private 文档对非 owner 隐藏）、chat 检索过滤（private 文档 chunk 不入 RAG 上下文）。**权限角色扩展**：per-KB 成员角色（`kbMemberRoles`，key=成员 email）——KB Owner 可授予成员 `editor`/`viewer` 覆盖，`canViewKb`/`canEditKb` 内部先查覆盖再回退共享权限（签名不变，13 个调用点零改动）；Commenter 角色未实现（系统无 KB 评论功能，文档注明）。**临时访问链接**：单文档限时分享（`doc-share.ts`：expiresAt 过期 / SHA-256 密码 / maxViews 次数 / 撤销，仿 Agent 分享模式），`GET /api/share/doc/[token]` 公开访问（410/401/403/404 错误码，内容只暴露前 3000 字符预览），`/share-doc/[token]` 公开页（密码门 + 错误态）。**权限审计**：`doc.access_change` / `sharelink.create` / `sharelink.revoke` 入 P3-4 哈希链审计，admin 面板可按 action 检索。
 
 > **2026-08-10 验收**：`scripts/smoke/test-kb-permissions.ts` 全部断言通过（35 项）——文档 private 对成员 403 + KB 列表隐藏、edit 授予成员编辑权、非 owner 设权限 403；per-KB 角色（private KB 上授予 viewer editor 角色 → 可访问可编辑，清除角色 → 恢复 403，非 owner 不可授予）；`doc.access_change` 与 `kb.access_change`（成员角色）审计可查；分享链接匿名访问 200 → 过期 410、密码错误 401/正确 200、次数用尽 403、撤销后 404、`sharelink.create/revoke` 审计、非 owner 建链接 403。
 
@@ -421,7 +421,7 @@ applies_to: ">=1.2.0"
 
 ### P4-3 多租户隔离
 
-**现状**：✅ 已完成（2026-08-10）。**Workspace 概念**：`src/lib/workspace/store.ts`（Workspace = 团队实体扩展，默认 `ws_default`「KnowledgeAI 团队」含全部 seed 用户——现有行为零变化；DB 侧 Team 模型已备，文档注明映射）。**用户上下文**：`RequestUser.workspaceId` 从 cookie `kai-workspace` 解析（`getRequestUser` 校验成员资格，非法回退默认 ws——非破坏扩展，70 个路由调用点零改动）。**数据隔离**：`KnowledgeBase` / `Conversation` / `AgentTask` 全部挂 `workspaceId`（seed/创建/HMR backfill），KB 列表按 ws 过滤、KB 详情/设置/删除/上传跨 ws 403、会话列表/详情按 ws 过滤、Agent 任务列表按 ws 过滤 + 任务归属校验、chat 计量按 ws。**跨工作区切换**：AppShell 侧边栏顶部工作区切换器（下拉列表 + 当前高亮 + 新建入口；切换 = 设 cookie + reload）。**Workspace 级配置**：存储/问答/Agent 配额按 ws 统计（`/api/usage` 按当前 ws 返回 qaUsed/storage/agent + plan 配额）；模型配置保留 per-user、限流保持 user 级（文档注明）。**Workspace 计费**：`workspace.plan`（free/pro/enterprise）+ `usageByWorkspace`（QA/Agent 计量）+ checkout 支付成功后升级 ws plan + `/api/billing` 返回 ws plan/usage + `/api/workspaces` 列表/创建（审计 `workspace.create`）。
+**现状**：✅ 已完成（2026-08-10）。**Workspace 概念**：`src/lib/workspace/store.ts`（Workspace = 团队实体扩展，默认 `ws_default`“KnowledgeAI 团队”含全部 seed 用户——现有行为零变化；DB 侧 Team 模型已备，文档注明映射）。**用户上下文**：`RequestUser.workspaceId` 从 cookie `kai-workspace` 解析（`getRequestUser` 校验成员资格，非法回退默认 ws——非破坏扩展，70 个路由调用点零改动）。**数据隔离**：`KnowledgeBase` / `Conversation` / `AgentTask` 全部挂 `workspaceId`（seed/创建/HMR backfill），KB 列表按 ws 过滤、KB 详情/设置/删除/上传跨 ws 403、会话列表/详情按 ws 过滤、Agent 任务列表按 ws 过滤 + 任务归属校验、chat 计量按 ws。**跨工作区切换**：AppShell 侧边栏顶部工作区切换器（下拉列表 + 当前高亮 + 新建入口；切换 = 设 cookie + reload）。**Workspace 级配置**：存储/问答/Agent 配额按 ws 统计（`/api/usage` 按当前 ws 返回 qaUsed/storage/agent + plan 配额）；模型配置保留 per-user、限流保持 user 级（文档注明）。**Workspace 计费**：`workspace.plan`(free/pro/enterprise)+ `usageByWorkspace`（QA/Agent 计量）+ checkout 支付成功后升级 ws plan + `/api/billing` 返回 ws plan/usage + `/api/workspaces` 列表/创建（审计 `workspace.create`）。
 
 > **2026-08-10 验收**：`scripts/smoke/test-workspaces.ts` 全部断言通过（21 项）——KB-B 在默认 ws 不可见、KB-A 在 ws-B 不可见、跨 ws 访问 403、ws-B 会话不泄漏到默认 ws；editor 属于 2 个 ws 且切换 cookie 后可见 ws-B 数据；QA 计量只计入当前 ws（默认 ws +1、ws-B 独立为 0）、ws-B plan 独立（新 ws = free）、/api/billing 返回 ws plan/usage；未知 ws cookie 回退默认、匿名正常 401。
 
@@ -439,13 +439,13 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P5 · 用户体验优化（3-6 周）
+## P5 · 用户体验优化（3～6 周） {#p5}
 
 > **目标**：提升全平台用户体验，覆盖移动端与无障碍。
 
 ### P5-1 移动端适配
 
-**现状**：✅ 已完成（2026-08-10）。**响应式布局**：AppShell 手写移动抽屉升级为 `src/components/ui/sheet.tsx`（Radix Dialog 底座，滚动锁定 / Escape / 焦点圈闭 / 入场出场动画），桌面侧栏 `w-64 lg:block` 不变；chat 页三栏布局补齐移动端入口——会话列表（`hidden md:flex` 时不可达的缺口）改为移动 Sheet 抽屉（header「会话」按钮）+ 引用来源 Sheet（桌面面板 `xl` 才显示，移动端「来源」按钮）+ KB 选择器 `w-[220px]` 改 `min-w-0 flex-1 sm:w-[220px]` + 容器高度加 `chat-height`（100dvh 回退，移动地址栏坍缩不裁切）；KB 卡片 meta 行 / 详情页头部加 `flex-wrap` 与 truncate 防挤压。**触摸手势**（`src/hooks/use-gestures.ts`，原生 touch 监听）：屏幕左缘右滑开抽屉、聊天消息区左右滑切换上一/下一会话（`|dx|>60px 且 >1.5×|dy|`，垂直滚动优先）、长按会话项弹出删除菜单（移动端 hover 失效的补充）。**移动端上传**：upload-zone accept 增补 `image/*`（走既有 OCR 管线）+ 独立「拍照上传」按钮（`capture="environment"`，桌面自动退化文件选择）+ `Permissions-Policy` 放开 `camera=(self)`。**PWA**（手写 SW，零新依赖）：`public/manifest.webmanifest`（standalone / 图标组 / shortcuts）+ `@napi-rs/canvas` 脚本生成品牌渐变图标（`scripts/generate-pwa-icons.ts`，192/512/maskable/apple-touch）+ `public/sw.js`（precache app shell + `/_next/static` stale-while-revalidate + navigation network-first 离线回退 + `/api` 一律不缓存）+ `SwRegister` 生产环境注册 + 根布局 viewport（viewport-fit=cover / theme-color）/ manifest link / apple-mobile-web-app-capable；AppShell 认证逻辑修正——仅 401 跳登录，网络失败（离线）保持外壳可看已加载内容。
+**现状**：✅ 已完成（2026-08-10）。**响应式布局**：AppShell 手写移动抽屉升级为 `src/components/ui/sheet.tsx`（Radix Dialog 底座，滚动锁定 / Escape / 焦点圈闭 / 入场出场动画），桌面侧栏 `w-64 lg:block` 不变；chat 页三栏布局补齐移动端入口——会话列表（`hidden md:flex` 时不可达的缺口）改为移动 Sheet 抽屉（header“会话”按钮）+ 引用来源 Sheet（桌面面板 `xl` 才显示，移动端“来源”按钮）+ KB 选择器 `w-[220px]` 改 `min-w-0 flex-1 sm:w-[220px]` + 容器高度加 `chat-height`（100dvh 回退，移动地址栏坍缩不裁切）；KB 卡片 meta 行 / 详情页头部加 `flex-wrap` 与 truncate 防挤压。**触摸手势**（`src/hooks/use-gestures.ts`，原生 touch 监听）：屏幕左缘右滑开抽屉、聊天消息区左右滑切换上一/下一会话（`|dx|>60px 且 >1.5×|dy|`，垂直滚动优先）、长按会话项弹出删除菜单（移动端 hover 失效的补充）。**移动端上传**：upload-zone accept 增补 `image/*`（走既有 OCR 管线）+ 独立“拍照上传”按钮（`capture="environment"`，桌面自动退化文件选择）+ `Permissions-Policy` 放开 `camera=(self)`。**PWA**（手写 SW，零新依赖）：`public/manifest.webmanifest`（standalone / 图标组 / shortcuts）+ `@napi-rs/canvas` 脚本生成品牌渐变图标（`scripts/generate-pwa-icons.ts`，192/512/maskable/apple-touch）+ `public/sw.js`（precache app shell + `/_next/static` stale-while-revalidate + navigation network-first 离线回退 + `/api` 一律不缓存）+ `SwRegister` 生产环境注册 + 根布局 viewport(viewport-fit=cover / theme-color)/ manifest link / apple-mobile-web-app-capable；AppShell 认证逻辑修正——仅 401 跳登录，网络失败（离线）保持外壳可看已加载内容。
 
 > **2026-08-10 验收**：`scripts/smoke/test-pwa.ts` 全部断言通过（32 项）——manifest 字段/图标组/SW 策略（precache、SWR、network-first、`/api` 不缓存、版本化清理）/ 根 HTML meta（manifest link、viewport、theme-color、apple-* 双变体）/ 四个核心页面 200。`scripts/smoke/test-mobile-pwa.mjs`（CDP 无头 Chrome，零依赖）布局模式 17/17——375×812 触屏模拟下登录页与 dashboard/KB 列表/chat/Agent 页无横向溢出、chat 会话/来源按钮可见且桌面侧栏与来源面板隐藏、会话/来源 Sheet 可开（含 Escape 关闭）、KB 详情拍照按钮 + `capture` input 可见；PWA 模式 5/5——manifest link、SW 注册并激活、**离线（Network 模拟断网）重载已加载页面成功渲染外壳**。另：`useMediaQuery` 用 `useSyncExternalStore` 实现（SSR 安全、无 hydration 闪烁）；PWA 图标为提交的 PNG + 可重生成脚本。
 
@@ -453,7 +453,7 @@ applies_to: ">=1.2.0"
 - [x] AppShell 响应式重构：侧边栏 → 移动端抽屉式导航 ✅（Sheet 原语：滚动锁 / Escape / 动画 / 焦点圈闭 + 左缘右滑手势）
 - [x] 知识库 / 问答 / Agent 页面移动端布局优化 ✅（chat 会话/来源抽屉 + KB 选择器响应式 + 100dvh + 各页防挤压微修）
 - [x] 触摸手势支持：滑动切换会话 / 长按操作 ✅（左缘滑开抽屉 + 消息区左右滑切会话 + 长按删除菜单）
-- [x] 移动端上传：支持相机拍照 / 文件选择 ✅（image/* + capture="environment" + camera=(self)）
+- [x] 移动端上传：支持相机拍照 / 文件选择 ✅(image/* + capture="environment" + camera=(self)）
 - [x] PWA 支持：可安装到主屏幕 + 离线缓存 ✅（manifest + 图标组 + 手写 SW + 生产注册 + 离线认证降级）
 
 **验收标准**：
@@ -464,9 +464,9 @@ applies_to: ">=1.2.0"
 
 ### P5-2 全局搜索
 
-**现状**：✅ 已完成（2026-08-10）。**后端**：`GET /api/search?q=`（`src/app/api/search/route.ts`）一次返回全部分类——知识库（workspace 过滤 + `canViewKb` 团队可见性）/ 文档（遍历 ws 内 KB + `canViewDoc` 文档级权限）/ 对话（`listAllConversations` + ws 过滤）/ Agent 任务（`listTasks(u.id, u.workspaceId)` 正确租户用法）/ 设置项（静态清单：设置区块 `?tab=` 深链 + 页面入口，按角色过滤）。内存 Map O(n) 过滤亚毫秒级，前缀匹配优先 + updatedAt 倒序，每类 limit 5，响应携带 `elapsedMs`。**前端命令面板**：`src/components/app/global-search.tsx`（Radix Dialog 底座，顶部 15% 定位、移动端全宽）——250ms 防抖 + AbortController 取消过期请求、分类 Tab（全部/知识库/文档/对话/Agent/设置）客户端过滤不重复请求、`↑/↓/Enter` 键盘导航（容器级 keydown，焦点在任意元素均生效）、`Esc` 先清空输入再关闭、`HighlightMatch` 高亮（空格分词 + `<mark>`）、最近搜索（localStorage `kai-recent-search`，去重最多 8 条）、空态快捷操作（新建知识库/发起问答/发起调研）。**入口**：AppShell 顶部死搜索框 → 触发按钮（「搜索… ⌘K」）+ 移动端 header 搜索 icon 按钮 + `useGlobalHotkey`（Cmd/Ctrl+K，SSR-safe）。**深链补全**：agent 页新增 `?task=`（pendingTaskRef 模式）、设置页 Tabs 受控 + `?tab=` URL 同步、KB 页 `?new=1` 自动打开新建对话框（NewKbDialog 加受控 open）。**顺带修复 P4-3 缺口**：`/api/agent/tasks` 原未按 workspace 过滤（`listTasks(u.id)` 只按用户）→ 改为 `listTasks(u.id, u.workspaceId)`，跨租户泄漏修复。
+**现状**：✅ 已完成（2026-08-10）。**后端**：`GET /api/search?q=`（`src/app/api/search/route.ts`）一次返回全部分类——知识库（workspace 过滤 + `canViewKb` 团队可见性）/ 文档（遍历 ws 内 KB + `canViewDoc` 文档级权限）/ 对话（`listAllConversations` + ws 过滤）/ Agent 任务（`listTasks(u.id, u.workspaceId)` 正确租户用法）/ 设置项（静态清单：设置区块 `?tab=` 深链 + 页面入口，按角色过滤）。内存 Map O(n) 过滤亚毫秒级，前缀匹配优先 + updatedAt 倒序，每类 limit 5，响应携带 `elapsedMs`。**前端命令面板**：`src/components/app/global-search.tsx`（Radix Dialog 底座，顶部 15% 定位、移动端全宽）——250ms 防抖 + AbortController 取消过期请求、分类 Tab（全部/知识库/文档/对话/Agent/设置）客户端过滤不重复请求、`↑/↓/Enter` 键盘导航（容器级 keydown，焦点在任意元素均生效）、`Esc` 先清空输入再关闭、`HighlightMatch` 高亮（空格分词 + `<mark>`）、最近搜索（localStorage `kai-recent-search`，去重最多 8 条）、空态快捷操作（新建知识库/发起问答/发起调研）。**入口**：AppShell 顶部死搜索框 → 触发按钮（“搜索… ⌘K”）+ 移动端 header 搜索 icon 按钮 + `useGlobalHotkey`(Cmd/Ctrl+K，SSR-safe)。**深链补全**：agent 页新增 `?task=`（pendingTaskRef 模式）、设置页 Tabs 受控 + `?tab=` URL 同步、KB 页 `?new=1` 自动打开新建对话框（NewKbDialog 加受控 open）。**顺带修复 P4-3 缺口**：`/api/agent/tasks` 原未按 workspace 过滤（`listTasks(u.id)` 只按用户）→ 改为 `listTasks(u.id, u.workspaceId)`，跨租户泄漏修复。
 
-> **2026-08-10 验收**：`scripts/smoke/test-global-search.ts` 全部断言通过（27 项）——匿名 401；KB（「产品」→产品文档）/ 文档（「需求」）/ 会话（创建后按标题命中 + kbId 深链字段）/ Agent 任务（POST run 创建后按 topic 命中）逐类命中；设置项命中（owner 见管理后台、viewer 不可见——角色过滤；2FA 关键词 → `/settings?tab=security`）；workspace 隔离（ws-B KB/任务从默认 ws 搜不到、切 ws 后可见；`/api/agent/tasks` 修复验证）；**性能：预热后 `elapsedMs` 与端到端时长中位数均 < 100ms**。`scripts/smoke/test-global-search-ui.mjs`（CDP 无头 Chrome）全部通过（13 项）——Cmd+K 打开面板、输入渲染结果 + `<mark>` 高亮、分类 Tab 过滤、`↓+Enter` 深链跳转 `/knowledge-base/[id]`、`kai-recent-search` 持久化、空态最近搜索 + 快捷操作、375px 移动端 icon 入口 + 全宽面板。
+> **2026-08-10 验收**：`scripts/smoke/test-global-search.ts` 全部断言通过（27 项）——匿名 401；KB（“产品”→产品文档）/ 文档（“需求”）/ 会话（创建后按标题命中 + kbId 深链字段）/ Agent 任务（POST run 创建后按 topic 命中）逐类命中；设置项命中（owner 见管理后台、viewer 不可见——角色过滤；2FA 关键词 → `/settings?tab=security`）；workspace 隔离（ws-B KB/任务从默认 ws 搜不到、切 ws 后可见；`/api/agent/tasks` 修复验证）；**性能：预热后 `elapsedMs` 与端到端时长中位数均 < 100ms**。`scripts/smoke/test-global-search-ui.mjs`（CDP 无头 Chrome）全部通过（13 项）——Cmd+K 打开面板、输入渲染结果 + `<mark>` 高亮、分类 Tab 过滤、`↓+Enter` 深链跳转 `/knowledge-base/[id]`、`kai-recent-search` 持久化、空态最近搜索 + 快捷操作、375px 移动端 icon 入口 + 全宽面板。
 
 **计划**：
 - [x] Cmd+K 全局搜索面板（知识库 / 文档 / 对话 / Agent 任务 / 设置）✅（`/api/search` 单端点 + Radix Dialog 面板 + 键盘导航）
@@ -483,9 +483,9 @@ applies_to: ">=1.2.0"
 
 ### P5-3 对话体验增强
 
-**现状**：✅ 已完成（2026-08-11）。**Markdown 渲染增强**：`src/components/app/chat-markdown.tsx`（自研零依赖，替代 chat 页纯文本 RichText）——块级标题/嵌套列表/引用/分隔线/表格（复用 ui/table）/fenced 代码块/`mermaid graph LR` 简易芯片流（其他 mermaid 语法降级代码块）；行内 `**bold**`/`*em*`/`code`/链接/`[n]` 引用 chip（保留点击高亮交互）；代码块自研轻量 tokenizer（关键字/字符串/注释/数字/函数分色，`.tok-*` 类 + 亮暗双主题）+ 右上角一键复制。**回答反馈**（负反馈降权闭环）：`ChatMessage` 加 `feedback/feedbackNote/feedbackAt`（Prisma Message 加列 + migration `p5_3_conversation_feedback`，`persistMessageFeedback` 按 id 单条 upsert 绕开「只写 lastMsg」限制）；`POST /api/chat/conversations/[id]/messages/[mid]/feedback`（owner/共享成员，value 支持 null 清除）+ `GET /api/chat/feedback`（workspace 过滤可查）；**检索消费**：/api/chat 收集当前会话点踩消息的 citations docIds → 命中 chunk `score × 0.4` 重排——点踩过的来源后续检索排名下降；前端点踩展开 inline 备注输入（ref 同步防 React 批处理时序）。**回答再生**：`generateStream/generateAsync` 加 `temperature?` 参数；/api/chat body 支持 `{ regenerate, temperature, topK }`——regenerate 时服务端 **pop 最后一条 assistant 消息**（内存+DB，修复旧回答留在历史的 quirk）且**不重复添加 user 消息**；前端 `regenerate()` 发送 temperature 0.7 + topK+3（不同温度/更宽检索）。**知识库推荐**：`GET /api/knowledge-base/recommend?q=&excludeKbId=`（2-gram 重叠打分 name/desc/文档名，workspace 过滤 + 排除当前 KB，top 3）；chat 页每次提问后消息流底部渲染「相关知识库推荐」条（点击切换 KB）。**对话分组与标签**：`Conversation` 加 `archived/tags`（schema + migration）；PATCH 扩展支持 archived/tags；列表 API 默认排除归档（`?archived=1` 查归档，dashboard 自动排除）；会话列表「我的会话 / 已归档」视图切换 + 会话项标签 chips + ⋯ 菜单（桌面 hover / 移动长按：归档/恢复、编辑标签——chips 编辑 dialog、删除）。**顺带修复**：`shared`/`workspaceId` 不再内存独享（persist/hydrate 落库，DB 模式重启不再丢失）。
+**现状**：✅ 已完成（2026-08-11）。**Markdown 渲染增强**：`src/components/app/chat-markdown.tsx`（自研零依赖，替代 chat 页纯文本 RichText）——块级标题/嵌套列表/引用/分隔线/表格（复用 ui/table）/fenced 代码块/`mermaid graph LR` 简易芯片流（其他 mermaid 语法降级代码块）；行内 `**bold**`/`*em*`/`code`/链接/`[n]` 引用 chip（保留点击高亮交互）；代码块自研轻量 tokenizer（关键字/字符串/注释/数字/函数分色，`.tok-*` 类 + 亮暗双主题）+ 右上角一键复制。**回答反馈**（负反馈降权闭环）：`ChatMessage` 加 `feedback/feedbackNote/feedbackAt`（Prisma Message 加列 + migration `p5_3_conversation_feedback`，`persistMessageFeedback` 按 id 单条 upsert 绕开“只写 lastMsg”限制）；`POST /api/chat/conversations/[id]/messages/[mid]/feedback`（owner/共享成员，value 支持 null 清除）+ `GET /api/chat/feedback`（workspace 过滤可查）；**检索消费**：/api/chat 收集当前会话点踩消息的 citations docIds → 命中 chunk `score × 0.4` 重排——点踩过的来源后续检索排名下降；前端点踩展开 inline 备注输入（ref 同步防 React 批处理时序）。**回答再生**：`generateStream/generateAsync` 加 `temperature?` 参数；/api/chat body 支持 `{ regenerate, temperature, topK }`——regenerate 时服务端 **pop 最后一条 assistant 消息**（内存+DB，修复旧回答留在历史的 quirk）且**不重复添加 user 消息**；前端 `regenerate()` 发送 temperature 0.7 + topK+3（不同温度/更宽检索）。**知识库推荐**：`GET /api/knowledge-base/recommend?q=&excludeKbId=`（2-gram 重叠打分 name/desc/文档名，workspace 过滤 + 排除当前 KB，top 3）；chat 页每次提问后消息流底部渲染“相关知识库推荐”条（点击切换 KB）。**对话分组与标签**：`Conversation` 加 `archived/tags`(schema + migration)；PATCH 扩展支持 archived/tags；列表 API 默认排除归档（`?archived=1` 查归档，dashboard 自动排除）；会话列表“我的会话 / 已归档”视图切换 + 会话项标签 chips + ⋯ 菜单（桌面 hover / 移动长按：归档/恢复、编辑标签——chips 编辑 dialog、删除）。**顺带修复**：`shared`/`workspaceId` 不再内存独享（persist/hydrate 落库，DB 模式重启不再丢失）。
 
-> **2026-08-11 验收**：`scripts/smoke/test-chat-markdown.tsx`（react-dom/server renderToString 组件级断言）24/24——代码块 pre/语言标签/四类 token 高亮/复制按钮、表格、mermaid 芯片流、不支持语法降级、行内粗体/代码/斜体/引用 chip/链接、标题/列表/引用/hr。`test-chat-enhance.ts`（HTTP）29/29——反馈 POST→消息回读→`GET /api/chat/feedback` 可查 + 非法值 400；**降权闭环**：同会话二次提问后点踩 doc 的 score ≈ ×0.4（ratio 断言）；**再生**：消息数不变（替换非追加）、旧回答 id 消失、新回答存在、topK 扩大后 sources ≥ 原；归档 PATCH→默认列表隐藏→`?archived=1` 可见→dashboard 排除→恢复；标签设置/回读；推荐命中/排除/空查询。`test-chat-enhance-ui.mjs`（CDP 无头 Chrome）21/21——提问→回答渲染、点踩→备注输入→提交→服务端持久化、重新生成完成、⋯ 菜单（归档/标签/删除）、归档视图切换与恢复、标签 chips 编辑与列表展示、推荐条出现。另修复 P5-2 遗留：Node fetch 端到端测量受本机 undici 环境影响（curl 实测 ~2ms），性能断言以服务端 `elapsedMs` 为准（<100ms 严格） + 端到端宽松上限。
+> **2026-08-11 验收**：`scripts/smoke/test-chat-markdown.tsx`（react-dom/server renderToString 组件级断言）24/24——代码块 pre/语言标签/四类 token 高亮/复制按钮、表格、mermaid 芯片流、不支持语法降级、行内粗体/代码/斜体/引用 chip/链接、标题/列表/引用/hr。`test-chat-enhance.ts`(HTTP)29/29——反馈 POST→消息回读→`GET /api/chat/feedback` 可查 + 非法值 400；**降权闭环**：同会话二次提问后点踩 doc 的 score ≈ ×0.4（ratio 断言）；**再生**：消息数不变（替换非追加）、旧回答 id 消失、新回答存在、topK 扩大后 sources ≥ 原；归档 PATCH→默认列表隐藏→`?archived=1` 可见→dashboard 排除→恢复；标签设置/回读；推荐命中/排除/空查询。`test-chat-enhance-ui.mjs`（CDP 无头 Chrome）21/21——提问→回答渲染、点踩→备注输入→提交→服务端持久化、重新生成完成、⋯ 菜单（归档/标签/删除）、归档视图切换与恢复、标签 chips 编辑与列表展示、推荐条出现。另修复 P5-2 遗留：Node fetch 端到端测量受本机 undici 环境影响（curl 实测 ~2ms），性能断言以服务端 `elapsedMs` 为准（<100ms 严格） + 端到端宽松上限。
 
 **计划**：
 - [x] Markdown 渲染增强：代码高亮 + 复制按钮 + 表格 / 流程图渲染 ✅（自研 chat-markdown：tokenizer 高亮 + 一键复制 + 表格 + mermaid 简易芯片流）
@@ -503,7 +503,7 @@ applies_to: ">=1.2.0"
 
 ### P5-4 国际化（i18n）
 
-**现状**：✅ 已完成（2026-08-11）。**自研轻量 i18n**（零依赖，替代计划中的 next-intl——探索确认 next-intl 正处 Next 16.3 API 迁移窗口、无前缀模式需 [locale] 目录迁移，自研核心成本相同且无兼容风险）：`src/lib/i18n/` 核心设施——`translate.ts`（点路径 key + {var} 插值 + 缺 key 回退）、`messages/zh-CN.json` + `en.json`（**685 条 key 全量双语**）、`provider.tsx`（LocaleProvider：SSR serverLocale（cookie）无闪烁 + hydration 后 localStorage 优先；`setLocale` 写 localStorage + `kai-locale` cookie + `<html lang>` 即时切换）、`server.ts`（服务端 `serverT()`：cookie → Accept-Language 协商）、`use-format.ts`（formatRelative/formatDate/formatNumber/formatSize 按 locale）。**全站 UI 文案提取**：45+ 文件 / 685 key（(app) 13 页 + 工作台组件 + auth 5 + marketing 8 + 条款页 + share-doc/r + 特殊页；提取工具 `scripts/tools/i18n-extract.py` 支持 JSX 文本节点/属性/对象值/空格变体/模板行跳过；server 组件转 `serverT()`、模块级文案函数化）。**双语切换 UI**：AppShell 顶栏 Globe 下拉（zh/en 即时切换）+ settings 个人信息语言选择（持久化到 `User.locale`，schema/migration `p5_4_user_locale`）。**格式化本地化**：`formatRelative`（just now/X min ago 等）、`formatDate/Number`（Intl，en-US/zh-CN）。**metadata/SEO**：`generateMetadata` 按 cookie 双语。**顺带修复**：(auth)/layout grid 单列溢出（max-content 撑开）；提取器 slug 冲突（非 (app) 文件共享 `page.page` key 空间互相覆盖——login 页「邮箱」被 share-doc「受保护」覆盖的严重 bug）。
+**现状**：✅ 已完成（2026-08-11）。**自研轻量 i18n**（零依赖，替代计划中的 next-intl——探索确认 next-intl 正处 Next 16.3 API 迁移窗口、无前缀模式需 [locale] 目录迁移，自研核心成本相同且无兼容风险）：`src/lib/i18n/` 核心设施——`translate.ts`（点路径 key + {var} 插值 + 缺 key 回退）、`messages/zh-CN.json` + `en.json`（**685 条 key 全量双语**）、`provider.tsx`(LocaleProvider：SSR serverLocale（cookie)无闪烁 + hydration 后 localStorage 优先；`setLocale` 写 localStorage + `kai-locale` cookie + `<html lang>` 即时切换）、`server.ts`（服务端 `serverT()`：cookie → Accept-Language 协商）、`use-format.ts`（formatRelative/formatDate/formatNumber/formatSize 按 locale）。**全站 UI 文案提取**：45+ 文件 / 685 key((app) 13 页 + 工作台组件 + auth 5 + marketing 8 + 条款页 + share-doc/r + 特殊页；提取工具 `scripts/tools/i18n-extract.py` 支持 JSX 文本节点/属性/对象值/空格变体/模板行跳过；server 组件转 `serverT()`、模块级文案函数化）。**双语切换 UI**：AppShell 顶栏 Globe 下拉（zh/en 即时切换）+ settings 个人信息语言选择（持久化到 `User.locale`，schema/migration `p5_4_user_locale`）。**格式化本地化**：`formatRelative`（just now/X min ago 等）、`formatDate/Number`(Intl，en-US/zh-CN)。**metadata/SEO**：`generateMetadata` 按 cookie 双语。**顺带修复**：（auth）/layout grid 单列溢出（max-content 撑开）；提取器 slug 冲突（非 (app） 文件共享 `page.page` key 空间互相覆盖——login 页“邮箱”被 share-doc“受保护”覆盖的严重 bug）。
 
 > **2026-08-11 验收**：`scripts/smoke/test-i18n-coverage.ts` 4/4——**zh/en key 树完全一致（无缺失/孤儿）**、**src/app + src/components 零残留中文 UI 文案**（排除注释/语言包/API 错误消息/模板行）、t() 调用点 800+。`scripts/smoke/test-i18n.mjs`（CDP 无头 Chrome，dev + prod 双模式）12/12——默认中文渲染、Globe 切换英文即时生效（无刷新）、localStorage + cookie + `<html lang>` 三处持久化、**全量 reload 后仍英文**、切回中文、settings 语言选择持久化到用户 profile（PATCH /api/auth/me locale 回读）。回归：PWA 32/32、移动端布局 17/17、全局搜索 27/27、渲染器 24/24、对话增强 29/29、PWA 离线模式 5/5 全部通过。
 
@@ -523,9 +523,9 @@ applies_to: ">=1.2.0"
 
 ### P5-5 暗色模式与主题增强
 
-**现状**：✅ 已完成（2026-08-11）。**三模式主题**：`src/lib/theme/mode.ts` 主题引擎——`kai-theme` 支持 `system | light | dark`（默认跟随系统），根布局 themeScript 预置防闪烁（`system` 用 matchMedia 解析）+ `matchMedia change` 监听实时跟随系统切换；`color-scheme` 属性让原生控件/滚动条随主题。`src/components/theme-toggle.tsx` 重构为三模式下拉（Sun/Moon/Monitor 图标反映当前模式，亮色/暗色/跟随系统三项，Esc/外点关闭），营销 navbar ×2、auth layout、AppShell 四处调用点兼容。**高对比度模式**（无障碍）：`.high-contrast` class + `kai-hc` 持久化 + `@media (prefers-contrast: more)` 系统级自动生效——覆盖 `--muted-foreground/--border/--input/--secondary/--accent/--success/--warning` 为 WCAG AA 达标值（正文 ≥4.5:1、UI 边界 ≥3:1），并修正 doc-type-icon/全局搜索 500 级标签色（亮 700 级 / 暗 300 级）。**主题切换动画**：`theme-transition` 临时 class 驱动颜色 cross-fade（背景/文字/边框 0.3s），`prefers-reduced-motion` 时禁用。**Workspace 级品牌色**：6 色板（indigo/emerald/sky/violet/fuchsia/rose，`src/lib/theme/brand-colors.ts` 每色定义亮/暗/高对比三套 HSL token），`Workspace` 加 `brandColor` 字段并 DB 持久化（新 prisma 模型 + migration `p5_5_workspace_brand_color` + `persistWorkspace`/`hydrateWorkspace` 走完整链路），`PATCH /api/workspaces`（owner 专属 403、色板校验 400、`recordAudit("workspace.update")`），`(app)/layout.tsx` SSR 注入 `<style id="kai-brand-style">` 无闪烁，设置页 PATCH 后即时生效。**设置页「外观」tab**：`src/components/app/theme-settings.tsx`（主题模式三段按钮 / 高对比度 Switch / 品牌色色板，非 owner 禁用 + 提示），`?tab=appearance` 深链 + 全局搜索「外观与主题」条目。**顺带修复 P5-4 遗留**：全局搜索空态快捷操作按钮文案指错 key（s13/s15 与文档状态共用导致显示「已就绪/处理中」）→ 补 s19-s21 独立 key。
+**现状**：✅ 已完成（2026-08-11）。**三模式主题**：`src/lib/theme/mode.ts` 主题引擎——`kai-theme` 支持 `system | light | dark`（默认跟随系统），根布局 themeScript 预置防闪烁（`system` 用 matchMedia 解析）+ `matchMedia change` 监听实时跟随系统切换；`color-scheme` 属性让原生控件/滚动条随主题。`src/components/theme-toggle.tsx` 重构为三模式下拉（Sun/Moon/Monitor 图标反映当前模式，亮色/暗色/跟随系统三项，Esc/外点关闭），营销 navbar ×2、auth layout、AppShell 四处调用点兼容。**高对比度模式**（无障碍）：`.high-contrast` class + `kai-hc` 持久化 + `@media (prefers-contrast: more)` 系统级自动生效——覆盖 `--muted-foreground/--border/--input/--secondary/--accent/--success/--warning` 为 WCAG AA 达标值（正文 ≥4.5:1、UI 边界 ≥3:1），并修正 doc-type-icon/全局搜索 500 级标签色（亮 700 级 / 暗 300 级）。**主题切换动画**：`theme-transition` 临时 class 驱动颜色 cross-fade（背景/文字/边框 0.3s），`prefers-reduced-motion` 时禁用。**Workspace 级品牌色**：6 色板（indigo/emerald/sky/violet/fuchsia/rose，`src/lib/theme/brand-colors.ts` 每色定义亮/暗/高对比三套 HSL token），`Workspace` 加 `brandColor` 字段并 DB 持久化（新 prisma 模型 + migration `p5_5_workspace_brand_color` + `persistWorkspace`/`hydrateWorkspace` 走完整链路），`PATCH /api/workspaces`（owner 专属 403、色板校验 400、`recordAudit("workspace.update")`），`(app)/layout.tsx` SSR 注入 `<style id="kai-brand-style">` 无闪烁，设置页 PATCH 后即时生效。**设置页“外观”tab**：`src/components/app/theme-settings.tsx`（主题模式三段按钮 / 高对比度 Switch / 品牌色色板，非 owner 禁用 + 提示），`?tab=appearance` 深链 + 全局搜索“外观与主题”条目。**顺带修复 P5-4 遗留**：全局搜索空态快捷操作按钮文案指错 key（s13/s15 与文档状态共用导致显示“已就绪/处理中”）→ 补 s19-s21 独立 key。
 
-> **2026-08-11 验收**：`scripts/smoke/test-theme.ts`（HTTP）17/17——GET 暴露 brandColor/currentBrandColor；PATCH 非法色 400、匿名 401、viewer 403、owner 200 + 回读 + `/api/admin/audit` 记录 `workspace.update`（审计链完整）；清理恢复 indigo。`scripts/smoke/test-theme-ui.mjs`（CDP 无头 Chrome）37/37——默认跟随系统（Emulation.setEmulatedMedia 切媒体 → `html.dark` 实时变化无刷新）；下拉选暗色 → class + localStorage + reload 保持；亮色移除；**过渡动画 class 切换瞬间出现、~500ms 后清除**；高对比度开关 → `html.high-contrast` + reload 保持 + **computed style 实测 WCAG 对比度**（亮/暗双模式：body 文字/muted 文字/primary 按钮 ≥4.5:1、边框 ≥3:1）；品牌色 owner 点选 emerald → `--primary` 变 `158 64% 33%` + style tag 注入 + **reload 后 SSR 保持**；viewer 色板禁用 + 提示。回归：i18n coverage 4/4、i18n CDP 12/12、全局搜索 27/27 + UI 13/13（修复后）、移动端/PWA 17/17、对话增强 29/29、tsc、build 全部通过。
+> **2026-08-11 验收**：`scripts/smoke/test-theme.ts`(HTTP)17/17——GET 暴露 brandColor/currentBrandColor；PATCH 非法色 400、匿名 401、viewer 403、owner 200 + 回读 + `/api/admin/audit` 记录 `workspace.update`（审计链完整）；清理恢复 indigo。`scripts/smoke/test-theme-ui.mjs`（CDP 无头 Chrome）37/37——默认跟随系统（Emulation.setEmulatedMedia 切媒体 → `html.dark` 实时变化无刷新）；下拉选暗色 → class + localStorage + reload 保持；亮色移除；**过渡动画 class 切换瞬间出现、~500ms 后清除**；高对比度开关 → `html.high-contrast` + reload 保持 + **computed style 实测 WCAG 对比度**（亮/暗双模式：body 文字/muted 文字/primary 按钮 ≥4.5:1、边框 ≥3:1）；品牌色 owner 点选 emerald → `--primary` 变 `158 64% 33%` + style tag 注入 + **reload 后 SSR 保持**；viewer 色板禁用 + 提示。回归：i18n coverage 4/4、i18n CDP 12/12、全局搜索 27/27 + UI 13/13（修复后）、移动端/PWA 17/17、对话增强 29/29、tsc、build 全部通过。
 
 **计划**：
 - [x] 跟随系统主题自动切换 ✅（三模式 `kai-theme` + matchMedia 实时监听 + themeScript 预置防闪烁）
@@ -539,15 +539,15 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P6 · 可观测性与运维（2-4 周）
+## P6 · 可观测性与运维（2～4 周） {#p6}
 
 > **目标**：建立完整的监控、日志、告警体系。
 
 ### P6-1 应用监控
 
-**现状**：✅ 已完成（2026-08-11）。**自研轻量可观测性**（`src/lib/obs/`，零新依赖——OTel SDK 在 Next 16 + Edge proxy 场景集成成本高、与项目零依赖惯例冲突，自研 ALS 追踪满足「全链路可追踪」验收；Sentry 采用**标准 Envelope 协议零依赖直投**，`SENTRY_DSN` 配置时真实上报、未配置内存兜底，均已在文档注明替代理由）。**分布式追踪**：`trace.ts`（AsyncLocalStorage 上下文传播 + `X-Trace-Id` 头透传（proxy 注入请求/响应头）+ 内存 span 环形存储 300）——`withApiTrace` 包路由（api 根 span + 状态感知 SLI 记录），`withSpan`/`traceBegin`+`traceEnd` 埋库函数（无上下文零开销）；覆盖 /api/chat（SSE 流内 finally 终结，全生命周期）、/api/search、/api/agent/run、/api/workspaces、/api/auth/me、/api/knowledge-base(+upload)、/api/chat/conversations、/api/agent/tasks 等 12 个路由；queue 经 payload.traceId 跨请求边界续链（doc-process/agent-run）。**关键指标埋点**：RAG 检索延迟（retriever）、LLM 生成延迟 + usage/token（provider.ts 读取响应 `data.usage` 与 SSE `[DONE]` 前 usage 行，**不改函数签名**；demo 模式抽取式回退也以 `llm.generate`（model "demo"）入链）、文档解析时长（upload 路由 + 队列）、Agent 时长（runTask）。**LLM 监控**：`MODEL_COST_1K` 成本表（gpt-4o/4o-mini/deepseek-chat/moonshot 等 + 默认值），无 usage 时按字符/4 估算，按模型聚合 calls/tokens/costUsd。**错误上报**：`errors.ts` 内存环形（200）+ `sendToSentry`（`POST {dsn}/api/{projectId}/envelope/` + `X-Sentry-Auth: sentry_version=7`，429 视为接受）；前端 `error-reporter.tsx`（window error/unhandledrejection 捕获 + 3s 节流 + 20/会话上限）挂载 root layout，`error.tsx` 渲染错误也上报；`POST /api/obs/report` 入站（保持限流）。**仪表盘**：`/admin/monitoring`（owner/admin，nav「监控」入口）——QPS 折线（复用 UsageChart SVG）、请求 SLI 卡（QPS/总数/错误率/延迟 P50-P95-P99 直方图环形缓冲精确分位）、LLM 模型分布表（含成本合计）、RAG/文档/Agent 卡、最近追踪列表（点击展开 span 树 api→rag→llm）、最近错误列表；`GET /api/admin/monitoring` + `GET /api/admin/monitoring/traces?id=`（requireRole owner/admin）。**已知边界**：Next 16 middleware 无法观察下游响应（源码验证），请求 SLI 由路由内 `withApiTrace` 记录（覆盖已埋点路由）；BullMQ 多进程模式下 queue span 聚合仅限单实例内存。
+**现状**：✅ 已完成（2026-08-11）。**自研轻量可观测性**（`src/lib/obs/`，零新依赖——OTel SDK 在 Next 16 + Edge proxy 场景集成成本高、与项目零依赖惯例冲突，自研 ALS 追踪满足“全链路可追踪”验收；Sentry 采用**标准 Envelope 协议零依赖直投**，`SENTRY_DSN` 配置时真实上报、未配置内存兜底，均已在文档注明替代理由）。**分布式追踪**：`trace.ts`（AsyncLocalStorage 上下文传播 + `X-Trace-Id` 头透传（proxy 注入请求/响应头）+ 内存 span 环形存储 300）——`withApiTrace` 包路由（api 根 span + 状态感知 SLI 记录），`withSpan`/`traceBegin`+`traceEnd` 埋库函数（无上下文零开销）；覆盖 /api/chat（SSE 流内 finally 终结，全生命周期）、/api/search、/api/agent/run、/api/workspaces、/api/auth/me、/api/knowledge-base(+upload)、/api/chat/conversations、/api/agent/tasks 等 12 个路由；queue 经 payload.traceId 跨请求边界续链（doc-process/agent-run）。**关键指标埋点**：RAG 检索延迟（retriever）、LLM 生成延迟 + usage/token（provider.ts 读取响应 `data.usage` 与 SSE `[DONE]` 前 usage 行，**不改函数签名**；demo 模式抽取式回退也以 `llm.generate`（model "demo"）入链）、文档解析时长（upload 路由 + 队列）、Agent 时长（runTask）。**LLM 监控**：`MODEL_COST_1K` 成本表（gpt-4o/4o-mini/deepseek-chat/moonshot 等 + 默认值），无 usage 时按字符/4 估算，按模型聚合 calls/tokens/costUsd。**错误上报**：`errors.ts` 内存环形（200）+ `sendToSentry`（`POST {dsn}/api/{projectId}/envelope/` + `X-Sentry-Auth: sentry_version=7`，429 视为接受）；前端 `error-reporter.tsx`（window error/unhandledrejection 捕获 + 3s 节流 + 20/会话上限）挂载 root layout，`error.tsx` 渲染错误也上报；`POST /api/obs/report` 入站（保持限流）。**仪表盘**：`/admin/monitoring`（owner/admin，nav“监控”入口）——QPS 折线（复用 UsageChart SVG）、请求 SLI 卡（QPS/总数/错误率/延迟 P50-P95-P99 直方图环形缓冲精确分位）、LLM 模型分布表（含成本合计）、RAG/文档/Agent 卡、最近追踪列表（点击展开 span 树 api→rag→llm）、最近错误列表；`GET /api/admin/monitoring` + `GET /api/admin/monitoring/traces?id=`(requireRole owner/admin)。**已知边界**：Next 16 middleware 无法观察下游响应（源码验证），请求 SLI 由路由内 `withApiTrace` 记录（覆盖已埋点路由）；BullMQ 多进程模式下 queue span 聚合仅限单实例内存。
 
-> **2026-08-11 验收**：`scripts/smoke/test-monitoring.ts`（HTTP）34/34——monitoring API 权限（匿名 401/editor 403/owner 200）+ 结构断言；**全链路追踪**：带 `X-Trace-Id` 调 /api/search → api span；调 /api/chat → span 树含 **api → rag → llm** 且 rag.parentId=api.spanId（父链正确）；错误上报：POST /api/obs/report → dashboard errors 可见（source=client）；SLI 填充：QPS>0、分钟序列、错误率、延迟 P95 实测、rag.calls>0、**llm.byModel 含 demo 且 totalTokens>0、costUsd≥0**。`scripts/smoke/test-sentry.ts`（纯库 + 本地 receiver）24/24——DSN 解析/无效回退、envelope 两行结构（32 位 hex event_id、exception 帧解析、platform node/javascript）、**真实 POST 到本地 receiver**（URL/X-Sentry-Auth/content-type/载荷完整）、429 视为接受、无 DSN 零网络、reportError 环形记录。`scripts/smoke/test-monitoring-ui.mjs`（CDP）14/14——owner 仪表盘全区块渲染（QPS 卡/延迟分位/LLM 表/三卡片/追踪/错误/刷新/SVG 图表）、点击展开 span 树（追踪 id + 类型 chips）、editor 被路由守卫重定向 /dashboard。回归：i18n coverage 4/4、i18n CDP、全局搜索 27/27 + UI 13/13、对话增强 29/29、主题 37/37、移动端 17/17、tsc、build 全部通过。
+> **2026-08-11 验收**：`scripts/smoke/test-monitoring.ts`(HTTP)34/34——monitoring API 权限（匿名 401/editor 403/owner 200）+ 结构断言；**全链路追踪**：带 `X-Trace-Id` 调 /api/search → api span；调 /api/chat → span 树含 **api → rag → llm** 且 rag.parentId=api.spanId（父链正确）；错误上报：POST /api/obs/report → dashboard errors 可见（source=client）；SLI 填充：QPS>0、分钟序列、错误率、延迟 P95 实测、rag.calls>0、**llm.byModel 含 demo 且 totalTokens>0、costUsd≥0**。`scripts/smoke/test-sentry.ts`（纯库 + 本地 receiver）24/24——DSN 解析/无效回退、envelope 两行结构（32 位 hex event_id、exception 帧解析、platform node/javascript）、**真实 POST 到本地 receiver**（URL/X-Sentry-Auth/content-type/载荷完整）、429 视为接受、无 DSN 零网络、reportError 环形记录。`scripts/smoke/test-monitoring-ui.mjs`(CDP)14/14——owner 仪表盘全区块渲染（QPS 卡/延迟分位/LLM 表/三卡片/追踪/错误/刷新/SVG 图表）、点击展开 span 树（追踪 id + 类型 chips）、editor 被路由守卫重定向 /dashboard。回归：i18n coverage 4/4、i18n CDP、全局搜索 27/27 + UI 13/13、对话增强 29/29、主题 37/37、移动端 17/17、tsc、build 全部通过。
 
 **计划**：
 - [x] 接入 OpenTelemetry 分布式追踪 ✅（**自研替代**：ALS 上下文 + X-Trace-Id 传播 + span 树存储，全链路 API→RAG→LLM 可查；文档注明）
@@ -565,9 +565,9 @@ applies_to: ">=1.2.0"
 
 ### P6-2 结构化日志
 
-**现状**：✅ 已完成（2026-08-11）。**引入 pino 10**（按计划采用真实日志库；零依赖惯例在此让步——pino 依赖链轻、JSON 输出 + 分级 + redact 与验收标准一一对应；Edge 运行时无法 import pino（node:stream），proxy 经自研 `src/lib/obs/log-edge.ts` 输出同构 JSON（Web-API 纯 console，全库唯一允许 console.* 的文件，测试断言），浏览器经 `pino/browser`（`src/lib/obs/log-browser.ts`，无 redact 故客户端站点不传敏感值，已注明）。**统一 JSON 格式 + requestId 关联**：`src/lib/obs/log.ts` pino 单例，`LOG_LEVEL` 分级（debug|info|warn|error，默认 info）；`mixin()` 每行读取 ALS 上下文 → 所有 traced 请求内日志自动带 `requestId`（== X-Trace-Id，零调用点改动）；proxy 每请求一行 `http.request`（method/path/requestId/dimension/rateLimited，Edge JSON），路由终结时 `trace.ts finalizeRecord` 记 `http.response`（method/path/status/durationMs）与 `queue.finish`——单次请求前后端日志同 ID 可串。**敏感信息自动脱敏**：pino redact（censor `***`）内置敏感键表（apiKey/api_key/secret/password/passwd/token/authorization/credential/cookie/x-api-key/privateKey/bearer 等 × 三级通配 `K`/`*.K`/`*.*.K`——fast-redact 无 `**` 深通配，实测确认）+ `LOG_REDACT_KEYS` 环境变量扩展；自由文本（provider 错误响应体、作业错误串）经 `redactText()` 掩码（sk-/pk- key、Bearer token、`key=value`、URL userinfo、500 字符截断）；`prisma/seed.ts` 演示密码改入 `password` 字段自动掩码。**日志聚合**：Loki HTTP Push（`LOG_LOKI_URL` 门控，自定义 Writable destination tee stdout + 2s/100 条批量冲刷 `POST /loki/api/v1/push`，惰性读 env——未设置零网络，失败静默丢弃 + 计数不抛异常；ELK 可经同类 HTTP sink 适配，文档注明）。**查询 API**：内存环 `__KAI_LOG_STORE__`（cap 1000，存 redact 后行）+ `GET /api/admin/logs?level=&requestId=&limit=`（owner/admin，镜像 monitoring 模式）。**全站迁移**：133 处 console.* 全部迁移（src/lib 25 文件 + src/app/api 2 路由 + proxy/instrumentation/worker/seed + 根级 3 运维脚本 + 客户端 3 处），`[module]` 前缀保留在 msg，错误对象入 `{err}` 字段走 pino err serializer（{type,message,stack}）。`next.config.ts` serverExternalPackages 追加 pino（动态 require 安全）；config.ts 新增「结构化日志」provider 条目（admin 面板可见）。
+**现状**：✅ 已完成（2026-08-11）。**引入 pino 10**（按计划采用真实日志库；零依赖惯例在此让步——pino 依赖链轻、JSON 输出 + 分级 + redact 与验收标准一一对应；Edge 运行时无法 import pino（node:stream），proxy 经自研 `src/lib/obs/log-edge.ts` 输出同构 JSON（Web-API 纯 console，全库唯一允许 console.* 的文件，测试断言），浏览器经 `pino/browser`（`src/lib/obs/log-browser.ts`，无 redact 故客户端站点不传敏感值，已注明）。**统一 JSON 格式 + requestId 关联**：`src/lib/obs/log.ts` pino 单例，`LOG_LEVEL` 分级（debug|info|warn|error，默认 info）；`mixin()` 每行读取 ALS 上下文 → 所有 traced 请求内日志自动带 `requestId`（== X-Trace-Id，零调用点改动）；proxy 每请求一行 `http.request`(method/path/requestId/dimension/rateLimited，Edge JSON)，路由终结时 `trace.ts finalizeRecord` 记 `http.response`(method/path/status/durationMs)与 `queue.finish`——单次请求前后端日志同 ID 可串。**敏感信息自动脱敏**：pino redact（censor `***`）内置敏感键表（apiKey/api_key/secret/password/passwd/token/authorization/credential/cookie/x-api-key/privateKey/bearer 等 × 三级通配 `K`/`*.K`/`*.*.K`——fast-redact 无 `**` 深通配，实测确认）+ `LOG_REDACT_KEYS` 环境变量扩展；自由文本（provider 错误响应体、作业错误串）经 `redactText()` 掩码（sk-/pk- key、Bearer token、`key=value`、URL userinfo、500 字符截断）；`prisma/seed.ts` 演示密码改入 `password` 字段自动掩码。**日志聚合**：Loki HTTP Push（`LOG_LOKI_URL` 门控，自定义 Writable destination tee stdout + 2s/100 条批量冲刷 `POST /loki/api/v1/push`，惰性读 env——未设置零网络，失败静默丢弃 + 计数不抛异常；ELK 可经同类 HTTP sink 适配，文档注明）。**查询 API**：内存环 `__KAI_LOG_STORE__`（cap 1000，存 redact 后行）+ `GET /api/admin/logs?level=&requestId=&limit=`（owner/admin，镜像 monitoring 模式）。**全站迁移**：133 处 console.* 全部迁移（src/lib 25 文件 + src/app/api 2 路由 + proxy/instrumentation/worker/seed + 根级 3 运维脚本 + 客户端 3 处），`[module]` 前缀保留在 msg，错误对象入 `{err}` 字段走 pino err serializer({type,message,stack})。`next.config.ts` serverExternalPackages 追加 pino（动态 require 安全）；config.ts 新增“结构化日志”provider 条目（admin 面板可见）。
 
-> **2026-08-11 验收**：`scripts/smoke/test-logging.ts`（HTTP + 静态扫描）15/15——静态扫描 src/lib + src/app/api + proxy/instrumentation/worker/seed/根级脚本**零 console.\***（唯一白名单 log-edge.ts，且其不 import pino/node）；/api/admin/logs 权限（匿名 401/editor 403/owner 200）+ 结构断言（ts/level(string)/msg）；`?level=warn` 过滤；**requestId 串联**：带 `X-Trace-Id` 调 /api/search → `?requestId=` 命中同请求全部日志且含 `http.response`（method/path/status/durationMs）；limit 参数。`scripts/smoke/test-logging-sink.ts`（纯库 + 本地 receiver）35/35——顶层/一级/二级嵌套敏感键全脱敏（Loki 载荷 + 内存环双断言，raw body 不含密钥原文）；err 序列化 {type,message,stack}；`runWithTraceId` 内日志带 requestId、trace 外无；`setLogLevel` 分级生效（丢弃行不入 sink）；**Loki 真实推送**（URL/Content-Type/streams/app 标签/values 形状/JSON 可解析）；`LOG_LOKI_URL` 未设置零网络；500 失败不抛异常且恢复后正常；recentLogs 环过滤。回归：monitoring 34/34、sentry 24/24、i18n coverage 4/4、全局搜索 27/27、对话增强 29/29、tsc、build（pino 外部化 + pino/browser 客户端打包 + Edge proxy 编译全通过）。
+> **2026-08-11 验收**：`scripts/smoke/test-logging.ts`（HTTP + 静态扫描）15/15——静态扫描 src/lib + src/app/api + proxy/instrumentation/worker/seed/根级脚本**零 console.\***（唯一白名单 log-edge.ts，且其不 import pino/node）；/api/admin/logs 权限（匿名 401/editor 403/owner 200）+ 结构断言（ts/level(string）/msg）；`?level=warn` 过滤；**requestId 串联**：带 `X-Trace-Id` 调 /api/search → `?requestId=` 命中同请求全部日志且含 `http.response`(method/path/status/durationMs)；limit 参数。`scripts/smoke/test-logging-sink.ts`（纯库 + 本地 receiver）35/35——顶层/一级/二级嵌套敏感键全脱敏（Loki 载荷 + 内存环双断言，raw body 不含密钥原文）；err 序列化 {type,message,stack}；`runWithTraceId` 内日志带 requestId、trace 外无；`setLogLevel` 分级生效（丢弃行不入 sink）；**Loki 真实推送**（URL/Content-Type/streams/app 标签/values 形状/JSON 可解析）；`LOG_LOKI_URL` 未设置零网络；500 失败不抛异常且恢复后正常；recentLogs 环过滤。回归：monitoring 34/34、sentry 24/24、i18n coverage 4/4、全局搜索 27/27、对话增强 29/29、tsc、build（pino 外部化 + pino/browser 客户端打包 + Edge proxy 编译全通过）。
 
 **计划**：
 - [x] 引入结构化日志库（pino / winston）✅（**pino 10**；Edge proxy 用自研 log-edge.ts 同构 JSON、浏览器用 pino/browser——Edge 无法 import pino 的 node:stream，文档注明）
@@ -587,13 +587,13 @@ applies_to: ">=1.2.0"
 
 **现状**：✅ 已完成（2026-08-11）。**GitHub Actions CI 重构为四 job**（原单 job 无 lint/测试）：`quality`（保留 postgres service：tsc + **新增 pnpm lint** + prisma migrate drift + build）、`unit`（vitest 151 测试 + **覆盖率阈值门槛** lines/functions/statements ≥70% / branches ≥60%，不达标即红）、`integration`（demo 模式起 dev server，functional 25/25 + api 38/38 + performance 24 基准 + 限流探测）、`e2e`（Playwright 4/4：登录→上传→问答→Agent，webServer 自动拉起 dev，失败产物上传 artifact）。**单元测试框架**：vitest 4 + @vitest/coverage-v8（23 测试文件 151 用例覆盖 rag/auth/billing/team——纯函数优先 + globalThis 内存存储 + vi.mock LLM 抽象路径 + 重型依赖（pdf-parse/mammoth/xlsx）mock；覆盖率 **Lines 86.08% / Functions 91.03% / Statements 84.97% / Branches 76.33%**，远超 70% 验收；排除外部服务后端（chromadb/pgvector/pinecone）与需 tesseract 二进制的 ocr.ts，文档注明）。**集成测试修复**：tests/ 三套件因路由强制认证而全 401——补 demo 账号登录（kai-token cookie），并适配安全契约变化（2FA enroll/verify、rateLimitPerMin env-controlled、限流探测读实际阈值）。**E2E**：Playwright（`e2e/main-flow.spec.ts` + fixture，`playwright.config.ts` 固定 zh-CN locale + webServer 自动起 dev）。**部署自动化**：`deploy.yml`（push main → buildx 构建推 GHCR `staging-<sha>`/`latest-staging` → SSH staging job（STAGING_* secrets 门控，未配置自动跳过）+ `scripts/deploy/staging.sh`（pull → compose up app+worker → Docker 健康检查门））；`deploy-prod.yml`（workflow_dispatch + `environment: production` 手动审批门 → `prod-<sha>`/`latest-prod` → `scripts/deploy/blue-green.sh`（备用端口健康检查通过才接管 :3000，失败自动回滚））。**顺带修复**：`pnpm lint` 存量 33915 problems → 0 errors（根因 eslint flat config 未忽略 `.claude/` worktree 内构建产物，补 ignore 后仅剩 16 个存量 warning；scripts tsx 补豁免）。
 
-> **2026-08-11 验收**：`pnpm test:unit`（vitest --coverage）23 文件 151 测试全绿 + 覆盖率阈值全过（Lines 86.08% / Funcs 91.03% / Stmts 84.97% / Branches 76.33%，阈值 70/70/70/60）；`tests/` 三套件修复后全绿（functional 25/25、api 38/38、performance 24 基准 + 限流第 200 次精确触发 429）；`pnpm test:e2e`（Playwright）4/4——登录（UI 表单 → /dashboard）、上传（新建 KB → setInputFiles → 文档就绪）、问答（SSE 回答气泡）、Agent（调研中…→完成→调研结果报告）；`pnpm lint` 0 errors 退出码 0；`npx tsc --noEmit` + `pnpm build` 通过；三个 workflow YAML 校验通过（yaml-lint），部署脚本 bash -n 通过。回归：P6-2 monitoring 34/34、sentry 24/24、logging 15/15、logging-sink 35/35。**GitHub 端配置项**（仓库侧无法自动设置，文档注明）：branch protection 要求 PR 通过 CI 四 job 才可合并；部署 secrets（STAGING_*/PROD_*）+ `production` environment 审批门。
+> **2026-08-11 验收**：`pnpm test:unit`(vitest --coverage)23 文件 151 测试全绿 + 覆盖率阈值全过（Lines 86.08% / Funcs 91.03% / Stmts 84.97% / Branches 76.33%，阈值 70/70/70/60）；`tests/` 三套件修复后全绿（functional 25/25、api 38/38、performance 24 基准 + 限流第 200 次精确触发 429）；`pnpm test:e2e`(Playwright)4/4——登录（UI 表单 → /dashboard）、上传（新建 KB → setInputFiles → 文档就绪）、问答（SSE 回答气泡）、Agent（调研中…→完成→调研结果报告）；`pnpm lint` 0 errors 退出码 0；`npx tsc --noEmit` + `pnpm build` 通过；三个 workflow YAML 校验通过（yaml-lint），部署脚本 bash -n 通过。回归：P6-2 monitoring 34/34、sentry 24/24、logging 15/15、logging-sink 35/35。**GitHub 端配置项**（仓库侧无法自动设置，文档注明）：branch protection 要求 PR 通过 CI 四 job 才可合并；部署 secrets(STAGING_*/PROD_*)+ `production` environment 审批门。
 
 **计划**：
-- [x] GitHub Actions CI：lint + type-check + build + test ✅（四 job：quality（tsc+lint+drift+build）/ unit（vitest+覆盖率门槛）/ integration（三套件）/ e2e（Playwright））
+- [x] GitHub Actions CI：lint + type-check + build + test ✅（四 job：quality（tsc+lint+drift+build）/ unit（vitest+覆盖率门槛）/ integration（三套件）/ e2e(Playwright)）
 - [x] 单元测试：核心 lib 模块（RAG / auth / billing / team）覆盖率 > 70% ✅（151 用例，实测 Lines 86.08% / Funcs 91.03% / Stmts 84.97% / Branches 76.33%，阈值硬门槛）
 - [x] 集成测试：API 路由端到端测试 ✅（tests/ 三套件修复认证后全绿，纳入 CI integration job）
-- [x] E2E 测试：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent）✅（e2e/main-flow.spec.ts 4/4）
+- [x] E2E 测试：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent）✅(e2e/main-flow.spec.ts 4/4)
 - [x] 自动部署：PR 合并至 main → 自动构建 Docker 镜像 → 部署 Staging ✅（deploy.yml：GHCR 推送 + SSH staging，secrets 门控）
 - [x] 生产部署：手动审批 → 蓝绿 / 滚动发布 ✅（deploy-prod.yml：environment 审批门 + blue-green.sh 健康检查门 + 自动回滚）
 
@@ -606,9 +606,9 @@ applies_to: ">=1.2.0"
 
 ### P6-4 健康检查与就绪探针
 
-**现状**：✅ 已完成（2026-08-11）。**三个公开端点**（`force-dynamic` + `withApiTrace` 保持 SLI 一致，proxy SKIP_PATHS 加入 `/api/health` 前缀免限流——探针每 5-30s 高频访问）：`GET /api/health` **存活探针**（恒 200 `{status:"ok", version, uptimeMs, ts}`，与依赖完全解耦）；`GET /api/health/ready` **就绪探针**（`src/lib/health/readiness.ts` 三检查并行：DB `SELECT 1`（3s 超时，Prisma 无连接超时需显式 Promise.race）/ Redis `connect()`（lazyConnect+connectTimeout 3s，ioredis 类型未声明 ping/call 故用类型完备的 connect）/ LLM `GET {baseUrl}/models`（5s AbortSignal，OpenAI 兼容 API 通用，不消耗 token；直接读 env 不走 per-user 解析）；**未配置的依赖 = skipped，演示模式即就绪态（200）**；配置了但不可达 → **503 degraded**，degradedSince 随响应返回）；`GET /api/health/db` **数据库检查**（ok/skipped → 200，degraded → 503 含 detail）。**告警状态机**（globalThis `__KAI_HEALTH_STATE__`，HMR 不重置）：ok→degraded 转移时 `notify` 站内 securityAlert 给全部 owner/admin + `log.error` 结构化日志 + `reportError`（错误环 + SENTRY_DSN 门控），持续降级每 10 分钟重报（去重），恢复时发「已恢复」通知；失败记录 ring（cap 50）。**容器/K8s 配置**：Dockerfile HEALTHCHECK、docker-compose app、blue-green.sh health-cmd 全部从 `/` 改为 `/api/health`（staging.sh 依赖 Docker 健康状态自动生效）；新增 `k8s/deployment.yaml` 示例（startupProbe 60s 容错 + livenessProbe /api/health 30s + readinessProbe /api/health/ready 10s 摘流量 + Service）。**顺带修复**：`src/types/optional-modules.d.ts` 桩类型遮蔽真实依赖类型（注释声称「安装后真实类型取代桩类型」实为错误——ambient declare module 永远遮蔽包自带类型），移除 bullmq/ioredis/mammoth/xlsx 桩类型（真实类型生效，ioredis Redis#connect 等 API 可用），仅保留无类型包的 pdf-parse 声明与未安装的 @aws-sdk。
+**现状**：✅ 已完成（2026-08-11）。**三个公开端点**（`force-dynamic` + `withApiTrace` 保持 SLI 一致，proxy SKIP_PATHS 加入 `/api/health` 前缀免限流——探针每 5～30s 高频访问）：`GET /api/health` **存活探针**（恒 200 `{status:"ok", version, uptimeMs, ts}`，与依赖完全解耦）；`GET /api/health/ready` **就绪探针**（`src/lib/health/readiness.ts` 三检查并行：DB `SELECT 1`（3s 超时，Prisma 无连接超时需显式 Promise.race）/ Redis `connect()`（lazyConnect+connectTimeout 3s，ioredis 类型未声明 ping/call 故用类型完备的 connect）/ LLM `GET {baseUrl}/models`（5s AbortSignal，OpenAI 兼容 API 通用，不消耗 token；直接读 env 不走 per-user 解析）；**未配置的依赖 = skipped，演示模式即就绪态（200）**；配置了但不可达 → **503 degraded**，degradedSince 随响应返回）；`GET /api/health/db` **数据库检查**（ok/skipped → 200，degraded → 503 含 detail）。**告警状态机**（globalThis `__KAI_HEALTH_STATE__`，HMR 不重置）：ok→degraded 转移时 `notify` 站内 securityAlert 给全部 owner/admin + `log.error` 结构化日志 + `reportError`（错误环 + SENTRY_DSN 门控），持续降级每 10 分钟重报（去重），恢复时发“已恢复”通知；失败记录 ring(cap 50)。**容器/K8s 配置**：Dockerfile HEALTHCHECK、docker-compose app、blue-green.sh health-cmd 全部从 `/` 改为 `/api/health`（staging.sh 依赖 Docker 健康状态自动生效）；新增 `k8s/deployment.yaml` 示例（startupProbe 60s 容错 + livenessProbe /api/health 30s + readinessProbe /api/health/ready 10s 摘流量 + Service）。**顺带修复**：`src/types/optional-modules.d.ts` 桩类型遮蔽真实依赖类型（注释声称“安装后真实类型取代桩类型”实为错误——ambient declare module 永远遮蔽包自带类型），移除 bullmq/ioredis/mammoth/xlsx 桩类型（真实类型生效，ioredis Redis#connect 等 API 可用），仅保留无类型包的 pdf-parse 声明与未安装的 @aws-sdk。
 
-> **2026-08-11 验收**：`scripts/smoke/test-health.ts`（HTTP）22/22——`/api/health` 200 + 结构（status/uptimeMs/ts）；demo 模式 `/api/health/ready` 200 + checks 含 db/redis/llm 全 skipped（演示模式即就绪态）；`/api/health/db` 200；**30 次连续探测无 429**（SKIP_PATHS 豁免）；**503 路径**：`:3100` 生产实例（`DATABASE_URL`/`REDIS_URL` 指向死端口）→ `/api/health/ready` **503** + degraded 含 db/redis + degradedSince 非空、`/api/health/db` 503、**`/api/health` 仍 200**（存活与依赖解耦）；**告警端到端**：503 探测后 owner 登录可见「服务依赖不可用」securityAlert 站内通知。`src/lib/health/readiness.test.ts`（vitest）10/10——三检查 skipped 分支、db/llm degraded 分支（死端口即时失败）、告警状态机（转移通知 owner/admin、同窗口去重、恢复通知、静默无变化）。回归：vitest 全量 161/161、logging 15/15 + sink 35/35、monitoring 34/34、tsc、build（含 optional-modules 类型修复）。
+> **2026-08-11 验收**：`scripts/smoke/test-health.ts`(HTTP)22/22——`/api/health` 200 + 结构（status/uptimeMs/ts）；demo 模式 `/api/health/ready` 200 + checks 含 db/redis/llm 全 skipped（演示模式即就绪态）；`/api/health/db` 200；**30 次连续探测无 429**（SKIP_PATHS 豁免）；**503 路径**：`:3100` 生产实例（`DATABASE_URL`/`REDIS_URL` 指向死端口）→ `/api/health/ready` **503** + degraded 含 db/redis + degradedSince 非空、`/api/health/db` 503、**`/api/health` 仍 200**（存活与依赖解耦）；**告警端到端**：503 探测后 owner 登录可见“服务依赖不可用”securityAlert 站内通知。`src/lib/health/readiness.test.ts`(vitest)10/10——三检查 skipped 分支、db/llm degraded 分支（死端口即时失败）、告警状态机（转移通知 owner/admin、同窗口去重、恢复通知、静默无变化）。回归：vitest 全量 161/161、logging 15/15 + sink 35/35、monitoring 34/34、tsc、build（含 optional-modules 类型修复）。
 
 **计划**：
 - [x] `/api/health` — 存活探针（进程存活）✅（恒 200，与依赖解耦，容器 HEALTHCHECK 指向）
@@ -623,7 +623,7 @@ applies_to: ">=1.2.0"
 
 ---
 
-## P7 · 生态与集成（6-12 周）
+## P7 · 生态与集成（6～12 周） {#p7}
 
 > **目标**：开放平台能力，构建生态系统。
 
@@ -648,7 +648,7 @@ applies_to: ">=1.2.0"
 
 ### P7-2 插件 / 集成市场
 
-**现状**：✅ 已完成（2026-08-12 ~ 08-13）。已实现：三平台群机器人（Slack/飞书/钉钉，`POST /api/v1/integrations/bot/m/<token>` + challenge 回显 + token SHA-256 哈希存储）、Chrome 扩展（MV3 右键问答）、Zapier/n8n（v1 API + Webhook 触发）、Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖）、CORS 放行（仅 Header 鉴权）、**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：`kai.askSelection` 选中代码提问（editor 右键菜单）/ `kai.askFile` 当前文件提问 / `kai.syncWorkspace` 工作区同步为 KB 文档（忽略 node_modules/dist 等 + 大小上限，走 `POST /api/v1/knowledge-bases/[id]/documents` 重名 409 幂等）/ `kai.configure` context.secrets 配置；SSE 协议在 `ask.js`/`sync.js` 纯 Node 模块，可脱离 VS Code 测试）、**Notion / Confluence 同步**（`src/lib/integrations/sync/`：Notion API v1 blocks→Markdown 转换器（标题/列表/表格/代码/引用，2 层递归）+ Confluence `body.storage` HTML→Markdown 转换器（ac:macro 解包 + 表格管道行）+ 按文档名去重幂等 + 审计 `integration.sync`；路由 `POST /api/v1/integrations/sync/{notion,confluence}`（登录或 API Key `kb:write` + canEditKb + 未配置 400）；开发者门户「文档同步」Card（KB 选择 + databaseId/spaceKey + 结果摘要））。另新增通用文本建文档端点 `POST /api/v1/knowledge-bases/[id]/documents`（body `{name, content}`，`kb:write` scope，同名 409）。
+**现状**：✅ 已完成（2026-08-12 ~ 08～13）。已实现：三平台群机器人（Slack/飞书/钉钉，`POST /api/v1/integrations/bot/m/<token>` + challenge 回显 + token SHA-256 哈希存储）、Chrome 扩展（MV3 右键问答）、Zapier/n8n（v1 API + Webhook 触发）、Embeddable Widget（`public/widget/kai-widget.js` 单文件零依赖）、CORS 放行（仅 Header 鉴权）、**VS Code 扩展**（`integrations/vscode-extension/` 纯 CommonJS 零构建：`kai.askSelection` 选中代码提问（editor 右键菜单）/ `kai.askFile` 当前文件提问 / `kai.syncWorkspace` 工作区同步为 KB 文档（忽略 node_modules/dist 等 + 大小上限，走 `POST /api/v1/knowledge-bases/[id]/documents` 重名 409 幂等）/ `kai.configure` context.secrets 配置；SSE 协议在 `ask.js`/`sync.js` 纯 Node 模块，可脱离 VS Code 测试）、**Notion / Confluence 同步**（`src/lib/integrations/sync/`：Notion API v1 blocks→Markdown 转换器（标题/列表/表格/代码/引用，2 层递归）+ Confluence `body.storage` HTML→Markdown 转换器（ac:macro 解包 + 表格管道行）+ 按文档名去重幂等 + 审计 `integration.sync`；路由 `POST /api/v1/integrations/sync/{notion,confluence}`（登录或 API Key `kb:write` + canEditKb + 未配置 400）；开发者门户“文档同步”Card（KB 选择 + databaseId/spaceKey + 结果摘要））。另新增通用文本建文档端点 `POST /api/v1/knowledge-bases/[id]/documents`（body `{name, content}`，`kb:write` scope，同名 409）。
 
 > **2026-08-13 验收**：`scripts/smoke/test-vscode.ts` 21/21——manifest 结构（main/engines/4 命令/文件齐备）+ ask.js SSE 客户端对 live server 全流程（登录→API key chat:read→提问得回答、无效 key 抛错）+ v1 documents 建文档→queue ready→workspace 收集（忽略 node_modules/二进制）→批量同步→重名幂等→全部 ready；`scripts/smoke/test-sync.ts` 15/15——mock Notion(:5090)/Confluence(:5091) + :3100 配置实例：同步 200 + 导入 2+2 + 重跑去重 + 4 文档 queue ready + 同步内容可检索（问答命中导入内容）+ 审计 integration.sync + 缺参 400/KB 404 + 未配置实例 400；转换器单测 `src/lib/integrations/sync/sync.test.ts` 10/10。
 
@@ -783,4 +783,4 @@ gantt
 | 🟢 P3 | 增强优先级 | 锦上添花，可按需排期 |
 | 🔵 P4 | 长期规划 | 战略性投入，依赖前期基础 |
 
-> **建议执行顺序**：P0（生产化）与 P6（CI/CD + 监控）并行启动 → P1（RAG 增强）与 P3（安全）交叉推进 → P2（Agent）与 P5（体验） → P4（协作）→ P7（生态）
+> **建议执行顺序**：P0（生产化）与 P6（CI/CD + 监控）并行启动 → P1（RAG 增强）与 P3（安全）交叉推进 → P2(Agent)与 P5（体验） → P4（协作）→ P7（生态）

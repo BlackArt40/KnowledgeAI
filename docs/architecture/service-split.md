@@ -31,21 +31,21 @@ related:
 
 # 服务拆分实施手册（国内常见三层）
 
-> 本文给出把当前 Next.js 单体拆成「业务服务 + Python AI 服务 + 前端」的可执行计划：每个阶段的工作拆分、接口、回滚与验收标准。当前生产架构仍以[总体架构](overview.md)为准；未完成对应阶段前，不要在运行时启用拆分路径。
+> 本文给出把当前 Next.js 单体拆成“业务服务 + Python AI 服务 + 前端”的可执行计划。计划覆盖每个阶段的工作拆分、接口、回滚与验收标准。当前生产架构仍以[总体架构](overview.md)为准；未完成对应阶段前，不要在运行时启用拆分路径。
 >
 > AI 辅助编写，已人工校核。
 
-阅读后你应能：按阶段开工、按清单验收、在任一步失败时回滚到上一阶段仍可用的单体（或上一稳定切面）。
+阅读后你应能：按阶段开工、按清单验收，并在任一步失败时回滚。回滚目标是上一阶段仍可用的单体（或上一稳定切面）。
 
 ## 背景与前置条件
 
-当前系统是单仓库全栈：页面与 API 同在 Next.js 16 进程，[读路径以内存 Store 为事实源](adr/adr-0001-in-memory-store-write-through-db.md)，文档处理与 Agent 走[后台队列](adr/adr-0002-background-job-queue.md)，RAG 在 `src/lib/rag/`，租户边界是 [Workspace](adr/adr-0003-multi-tenant-isolation.md)。
+当前系统是单仓库全栈：页面与 API 同在 Next.js 16 进程，[读路径以内存 Store 为事实源](adr/adr-0001-in-memory-store-write-through-db.md)。文档处理与 Agent 走[后台队列](adr/adr-0002-background-job-queue.md)，RAG 在 `src/lib/rag/`，租户边界是 [Workspace](adr/adr-0003-multi-tenant-isolation.md)。
 
 国内常见拆法：
 
 | 层 | 建议实现 | 承接现有模块 |
 |----|----------|----------------|
-| 前端 | 继续 React + TypeScript（不必为对齐国内而重写 Vue）<br/>**〔已被推翻〕**——2026-10 拍板 Vue 3 绞杀重写并已收官（V0-V8），见下文「前端替换」节 | 原 `src/app/(app)`、`src/components/`（已删除，Vue 等价物在 `frontend/`） |
+| 前端 | 继续 React + TypeScript（不必为对齐国内而重写 Vue）<br/>**〔已被推翻〕**——2026-10 拍板 Vue 3 绞杀重写并已收官（V0-V8），见下文“前端替换”节 | 原 `src/app/(app)`、`src/components/`（已删除，Vue 等价物在 `frontend/`） |
 | 业务服务 | Java 17+ Spring Boot，或 Go | `auth/` `workspace/` `team/` `billing/` `kb/`（元数据）`chat/`（会话）`apikeys/` `webhooks/`（投递）`proxy.ts`（限流） |
 | AI 服务 | Python 3.12 + FastAPI + 独立 worker | `rag/` `llm/` `kg/` `external/` `agent/` |
 
@@ -59,7 +59,7 @@ related:
 
 | 轨道 | 做到哪一阶段 | 适用 |
 |------|----------------|------|
-| 简历 / 学习 | 阶段 0～3 完成即可演示「Python RAG + 现有 Next BFF」 | AI 应用 / 全栈岗 |
+| 简历 / 学习 | 阶段 0～3 完成即可演示“Python RAG + 现有 Next BFF” | AI 应用 / 全栈岗 |
 | 生产 / Java 岗 | 做到阶段 4～6 | 国内 ToB、多实例、Java 后端简历 |
 
 ## 目标架构
@@ -132,7 +132,7 @@ flowchart TB
 
 ### 目标
 
-在改架构前留下可对比的基线，避免拆分后「行为变了但说不清」。
+在改架构前留下可对比的基线，避免拆分后“行为变了但说不清”。
 
 ### 范围
 
@@ -183,7 +183,7 @@ flowchart TB
 | 1.1 | 新建 `services/ai/`（或独立仓库） | FastAPI、uvicorn、pyproject.toml、Dockerfile（框架选型见 [ADR-0008](adr/adr-0008-ai-service-framework.md)） |
 | 1.2 | 移植解析/切片 | 对齐 `parser.ts` / `chunker.ts` 的格式集合（PDF/Word/MD/TXT/CSV 文本类先做；Excel/HTML 次之；OCR/PPT 标迭代 1b） |
 | 1.3 | 嵌入与向量 | 默认 pgvector；`EMBEDDING_*` 与现网模型名对齐，避免新旧索引混用 |
-| 1.4 | 混合检索 | 向量 + BM25 + 重排；返回结构对齐现有 `RetrievedChunk`（id/text/score/docId/source） |
+| 1.4 | 混合检索 | 向量 + BM25 + 重排；返回结构对齐现有 `RetrievedChunk`(id/text/score/docId/source) |
 | 1.5 | 流式生成 | OpenAI 兼容网关（DeepSeek / 通义 / 硅基流动）；SSE 帧转成与现网相同的 `event:` 名 |
 | 1.6 | Next 适配器 | `src/lib/rag/remote.ts`：开关打开则 HTTP 调 Python；失败可降级或 503（选定一种并写进 runbook） |
 | 1.7 | 队列 | `doc-process` 仍由现有 worker 消费，handler 内部调 Python `POST /internal/index`（同步或再投 Python 队列，二选一，推荐 Python 侧再入队以免占 Node worker） |
@@ -224,7 +224,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 ### 降级策略（阶段 1 必须写死一种）
 
-推荐：**Python 不可用 → 问答 503 + Retry-After，不静默回退本地哈希 RAG**（避免「有时准有时胡编」）。索引任务进死信，文档状态保持 `processing`/`failed`。
+推荐：**Python 不可用 → 问答 503 + Retry-After，不静默回退本地哈希 RAG**（避免“有时准有时胡编”）。索引任务进死信，文档状态保持 `processing`/`failed`。
 
 ### 验收标准
 
@@ -261,10 +261,10 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 |----|--------|------|
 | 2.1 | 存储配置 | `S3_ENDPOINT` `S3_BUCKET` `S3_ACCESS_KEY` `S3_SECRET_KEY`；compose 加 `minio`；同步 `.env.example` 与[环境变量文档](../ops/env-vars.md)（env parity 为 CI 门禁） |
 | 2.2 | 上传链路 | 复用 `src/lib/upload/` 与 `src/lib/storage/`：complete 时写 `objectKey`，本地落盘仅作未开 S3 的回退 |
-| 2.3 | 索引入参 | `/internal/index` 的 `source.type` 只允许 `s3`（bucket+key）或 `presignedUrl`（短 TTL） |
+| 2.3 | 索引入参 | `/internal/index` 的 `source.type` 只允许 `s3`(bucket+key)或 `presignedUrl`（短 TTL） |
 | 2.4 | 权限 | 预签名 PUT/GET TTL ≤ 15 分钟；bucket 私有 |
 | 2.5 | 清理 | 删文档时业务侧删对象 + 调 `DELETE /internal/index/{docId}` |
-| 2.6 | 下线共享卷 | compose 中 app/worker/ai **不再**为解析链路依赖同一 `uploads` 卷（可暂留空目录以免旧代码崩，但验收按「不读共享卷」） |
+| 2.6 | 下线共享卷 | compose 中 app/worker/ai **不再**为解析链路依赖同一 `uploads` 卷（可暂留空目录以免旧代码崩，但验收按“不读共享卷”） |
 
 ### 验收标准
 
@@ -275,10 +275,10 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | A2.3 | 安全 | 对象 URL 未配置时不可公网匿名下载 | 无签名 GET → 403 |
 | A2.4 | 安全 | 预签名过期后 GET 失败 | 把 TTL 调到 5s 后重试 |
 | A2.5 | 数据 | 删除文档后对象与向量均不存在 | 删文档后列 bucket + retrieve 为空 |
-| A2.6 | 回归 | 未配 S3 时本地回退仍可用（若保留）或启动失败并明确报错（若生产禁止回退） | 两种模式写进 env 文档并测一种「官方」路径 |
+| A2.6 | 回归 | 未配 S3 时本地回退仍可用（若保留）或启动失败并明确报错（若生产禁止回退） | 两种模式写进 env 文档并测一种“官方”路径 |
 | A2.7 | 运维 | 备份说明：Postgres + bucket 缺一不可恢复知识库 | runbook 一节 |
 
-**退出**：A2.1～A2.5、A2.7 通过。生产配置必须禁止「只配 DB 不配 bucket」。
+**退出**：A2.1～A2.5、A2.7 通过。生产配置必须禁止“只配 DB 不配 bucket”。
 
 ---
 
@@ -313,7 +313,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | A3.4 | 功能 | 同租户问答结果与阶段 1 无显著差异（引用仍指向本 KB 文档） | 对比同一问题 |
 | A3.5 | 回归 | ADR-0003 相关权限测试仍绿 | 现有 team/kb 单测 |
 
-**退出**：A3.1～A3.3 必须自动化并纳入 CI（可放 `services/ai/tests/`）。此阶段完成即「简历轨道」可交付演示。
+**退出**：A3.1～A3.3 必须自动化并纳入 CI（可放 `services/ai/tests/`）。此阶段完成即“简历轨道”可交付演示。
 
 ---
 
@@ -330,7 +330,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 ### 语言选择（开工前写进 ADR）
 
-**已选定：Java 17 + Spring Boot 3**（[ADR-0009](adr/adr-0009-business-service-language.md)，2026-10-13）：目标「生产 / Java 岗」轨道 + 国内 ToB 主流；组件映射、密码/JWT 逐字节兼容契约、Flyway baseline 策略均记录在该 ADR。Go 备选未采纳。
+**已选定：Java 17 + Spring Boot 3**（[ADR-0009](adr/adr-0009-business-service-language.md)，2026-10-13）：目标“生产 / Java 岗”轨道 + 国内 ToB 主流；组件映射、密码/JWT 逐字节兼容契约、Flyway baseline 策略均记录在该 ADR。Go 备选未采纳。
 
 | 选择 | 何时 |
 |------|------|
@@ -343,7 +343,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | ID | 工作包 | 迁移来源 | 说明 |
 |----|--------|----------|------|
 | 4.1 | 身份 | `src/lib/auth/` `apikeys/` `security/totp` | JWT 签发、API Key 哈希、2FA；密钥比较恒定时间 |
-| 4.2 | 租户与 RBAC | `workspace/` `team/` `roles.ts` | `canViewKb` 等签名保持「workspace 必填」 |
+| 4.2 | 租户与 RBAC | `workspace/` `team/` `roles.ts` | `canViewKb` 等签名保持“workspace 必填” |
 | 4.3 | KB 元数据 | `kb/store.ts` 非索引部分 | 文档状态机：uploaded → processing → ready/failed |
 | 4.4 | 会话 | `chat/store.ts` | 消息落库；SSE 只转发 AI 流，落库仍在业务侧 |
 | 4.5 | 计费用量 | `billing/` | 计量在业务服务；问答成功回调 `recordQa` |
@@ -355,9 +355,9 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 ### 切换步骤（生产窗口）
 
-> 部署时操作的执行手册（预检清单 / 逐步操作 / 验证清单 / 回滚预案）已沉淀至 [部署指南「生产切换窗口（4.10）」](../ops/deployment-guide.md)；本节保留决策要点。
+> 部署时操作的执行手册（预检清单 / 逐步操作 / 验证清单 / 回滚预案）已沉淀至[部署指南“生产切换窗口（4.10）”](../ops/deployment-guide.md)。本节保留决策要点。
 
-1. 业务服务只读影子流量（双写可选，阶段 4 推荐「停写内存、只写 DB」，因为 DB 已是写穿目标）。
+1. 业务服务只读影子流量（双写可选，阶段 4 推荐“停写内存、只写 DB”，因为 DB 已是写穿目标）。
 2. 将浏览器 API 反代到业务服务，AI 开关保持开。
 3. 观察就绪探针：`revocationDegraded` / `queueBackpressured` 语义对齐 [ADR-0006](adr/adr-0006-read-path-storage-evolution.md) / [ADR-0007](adr/adr-0007-queue-backpressure.md)。
 4. 连续 24h 无 P0 后删除 Next 内业务 handler。
@@ -377,7 +377,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | A4.9 | 回归 | 阶段 1～3 验收抽测仍通过 | 清单复跑 |
 | A4.10 | 清理 | 生产路径无 `globalThis.__KAI_KB_STORE__` 读取 | 代码搜索门禁 |
 
-**退出**：A4.1～A4.7、A4.10 必须。A4.8 在单机演示可记录为「未测，多实例待阶段 6」。
+**退出**：A4.1～A4.7、A4.10 必须。A4.8 在单机演示可记录为“未测，多实例待阶段 6”。
 
 ---
 
@@ -401,7 +401,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | 5.3 | 进度 | Redis channel `agent:<taskId>`；帧 `init/step/done/error/end` |
 | 5.4 | 公开报告 | `shareConfig.enabled === true` 才可匿名读；缺省 403（现网语义） |
 | 5.5 | Webhook | 业务服务在文档 ready、agent 完成、用量阈值时投递；签名头 `X-KAI-Signature` |
-| 5.6 | 邮件 | `email-send` 可留在业务 worker（Resend），不必进 Python |
+| 5.6 | 邮件 | `email-send` 可留在业务 worker(Resend)，不必进 Python |
 
 ### 验收标准
 
@@ -438,7 +438,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | 6.1 | 前端环境 | `NEXT_PUBLIC_API_BASE`；Cookie `Secure`/`SameSite`；登录跨域若拆域名则改 BFF 同域反代（推荐继续同域） |
 | 6.2 | 网关 | Nginx/Caddy/Traefik：`/api` → 业务；静态 → 前端；超时对 SSE 关闭缓冲 |
 | 6.3 | 多副本 | 业务 2 副本 + Redis；AI worker 可水平扩；向量库与 OSS 为外部依赖 |
-| 6.4 | 探针 | 存活 `/api/health`；就绪 `/api/health/ready`（DB/Redis/AI/queue/revocation） |
+| 6.4 | 探针 | 存活 `/api/health`；就绪 `/api/health/ready`(DB/Redis/AI/queue/revocation) |
 | 6.5 | PWA | SW 不缓存 `/api`；kill switch `public/sw-config.json` 仍有效 |
 | 6.6 | 文档与 CI | 更新 overview：生产形态改为三服务；CI 增加 AI 单测 job |
 
@@ -451,20 +451,20 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | A6.3 | 功能 | SSE 在网关下 60s+ 不断 | 长问答 |
 | A6.4 | 安全 | Python Service 无 NodePort/公网 LB | 清单审计 |
 | A6.5 | 安全 | 密钥只在业务/AI 环境变量，不进前端包 | 构建产物扫描 |
-| A6.6 | 运维 | 蓝绿/滚动期间无「新旧都不可用」空窗 | 演练一次发布 |
+| A6.6 | 运维 | 蓝绿/滚动期间无“新旧都不可用”空窗 | 演练一次发布 |
 | A6.7 | 文档 | `docs/architecture/overview.md` 与部署指南已描述三服务，且标明单体文档的适用版本 | 文档评审 |
 
 **退出**：A6.1～A6.5 必须。Vue 重写不阻塞退出。
 
 ### 前端替换（Vue 3 绞杀重写，2026-10-16 起）
 
-上表「可选：Vue3 重写」**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 28 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（28 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
+上表“可选：Vue3 重写”**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 30 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（28 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
 
 ---
 
 ## 跨阶段验收矩阵（总检）
 
-阶段全部完成后，用下表做一次放行评审。任一项「生产轨道」失败则不得宣称拆分完成。
+阶段全部完成后，用下表做一次放行评审。任一项“生产轨道”失败则不得宣称拆分完成。
 
 | ID | 断言 | 简历轨道 | 生产轨道 |
 |----|------|----------|----------|
@@ -495,17 +495,17 @@ KnowledgeAI/          # 现仓库
 每阶段合并门禁最低集：
 
 - 阶段 0～3：现有 `pnpm lint` + `pnpm test:unit` + e2e 主路径 + AI 租户负例；
-- 阶段 4～6：再加上业务服务单测/集成测试与「代码搜索禁止 Store 读生产路径」。
+- 阶段 4～6：再加上业务服务单测/集成测试与“代码搜索禁止 Store 读生产路径”。
 
 ## 风险与显式非目标
 
 | 风险 | 缓解 |
 |------|------|
 | 双实现（TS RAG + Python RAG）行为漂移 | 阶段 1 用同一批夹具文档对比引用 id；尽快把 Node RAG 标为 deprecated |
-| 内存 Store 与 DB 短暂不一致在拆分中被放大 | 阶段 4 直接以 DB 为准，不要「两个缓存再同步」 |
+| 内存 Store 与 DB 短暂不一致在拆分中被放大 | 阶段 4 直接以 DB 为准，不要“两个缓存再同步” |
 | 一人并行三个仓库 | 严格串行阶段；简历轨道停在阶段 3 |
-| 为「像大厂」上注册中心/网格 | 非目标；compose 内网 DNS 足够到阶段 6 |
-| 前端重写拖垮拆分 | 已出清：Vue 3 绞杀重写 V0-V8 收官（28/28 页面），拆分只涉及后端，前端仍是纯 `/api` 消费者 |
+| 为“像大厂”上注册中心/网格 | 非目标；compose 内网 DNS 足够到阶段 6 |
+| 前端重写拖垮拆分 | 已出清：Vue 3 绞杀重写 V0-V8 收官（V6 基线 28 页 + 后续新增，现 30 个页面），拆分只涉及后端，前端仍是纯 `/api` 消费者 |
 
 ## 相关文档
 
@@ -530,5 +530,5 @@ KnowledgeAI/          # 现仓库
 |------|------|------|
 | 1.0.0 | 2026-10-12 | 初版：国内三层拆法的七阶段工作包与验收标准 |
 | 1.1.0 | 2026-10-12 | 修订：related 补齐 ADR-0006/Webhook；阶段 2 补环境变量 parity 要求；阶段 1 格式归属澄清；引入 ADR-0008（AI 服务框架选型） |
-| 1.2.0 | 2026-10-13 | 阶段 1-6 全部实施完成：部署产物落库（docker-compose.split.yml 一键起 + 滚动发布、deploy/nginx.conf 网关、k8s/split.yaml 三服务清单）；阶段 6 演练实测暴露并修复 Tomcat 默认 30s 异步超时掐断 SSE（业务侧 spring.mvc.async.request-timeout 对齐网关）；ADR-0008 修订 1.1.0（Agent 队列 arq → 语言中立 Redis List） |
-| 1.3.0 | 2026-10-16 | 阶段 6「可选 Vue3 重写」启动实施（V1）：frontend/ 认证/静态/分享 11 路由 + 网关绞杀切流机制（routes.conf + switch-frontend.sh，秒级回退）；共享资产单源复用，/api 契约冻结 |
+| 1.2.0 | 2026-10-13 | 阶段 1～6 全部实施完成：部署产物落库（docker-compose.split.yml 一键起 + 滚动发布、deploy/nginx.conf 网关、k8s/split.yaml 三服务清单）；阶段 6 演练实测暴露并修复 Tomcat 默认 30s 异步超时掐断 SSE（业务侧 spring.mvc.async.request-timeout 对齐网关）；ADR-0008 修订 1.1.0（Agent 队列 arq → 语言中立 Redis List） |
+| 1.3.0 | 2026-10-16 | 阶段 6“可选 Vue3 重写”启动实施（V1）：frontend/ 认证/静态/分享 11 路由 + 网关绞杀切流机制（routes.conf + switch-frontend.sh，秒级回退）；共享资产单源复用，/api 契约冻结 |

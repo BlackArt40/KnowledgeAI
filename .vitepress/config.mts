@@ -12,14 +12,6 @@ export default withMermaid(defineConfig({
   srcExclude: ['superpowers/**', 'screenshots/**'],
   cleanUrls: true,
   lastUpdated: true,
-  // 存量中文文件名迁移重定向（旧链接 → 新路径，避免死链）
-  rewrites: {
-    '产品文档.md': 'getting-started/product-overview.md',
-    '项目结构.md': 'getting-started/project-structure.md',
-    '设计说明.md': 'architecture/design-system.md',
-    'ROADMAP.md': 'archive/ROADMAP.md',
-    '技术文档体系方案.md': 'archive/technical-docs-strategy.md'
-  },
 
   themeConfig: {
     siteTitle: 'KnowledgeAI 文档中心',
@@ -63,6 +55,8 @@ export default withMermaid(defineConfig({
           text: '架构设计',
           items: [
             { text: '总体架构', link: '/architecture/overview' },
+            { text: '系统架构图与设计说明', link: '/architecture/system-design' },
+            { text: '系统架构：数据流与契约', link: '/architecture/system-design-runtime' },
             { text: '服务拆分实施手册', link: '/architecture/service-split' },
             { text: 'RAG 引擎架构', link: '/architecture/rag-engine' },
             { text: 'Agent 编排架构', link: '/architecture/agent-orchestration' },
@@ -102,7 +96,7 @@ export default withMermaid(defineConfig({
         {
           text: '归档（只读）',
           items: [
-            { text: '开发路线图 ROADMAP', link: '/archive/ROADMAP' },
+            { text: '开发路线图', link: '/archive/roadmap' },
             { text: '设计与实现记录', link: '/archive/design-and-implementation-log' },
             { text: '技术文档体系方案（归档）', link: '/archive/technical-docs-strategy' }
           ]

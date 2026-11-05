@@ -23,7 +23,7 @@ related:
 本手册记录**已有可独立复现的触发条件、判定步骤、验收标准和回滚动作**的运维流程。
 每条目都遵循同一结构：症状 → 判定 → 处置 → 验收 → 回滚。
 
-> 术语与约定见 [监控与告警](monitoring.md)。所有"网络可达性"结论都必须用
+> 术语与约定见 [监控与告警](monitoring.md)。所有“网络可达性”结论都必须用
 > `curl --noproxy '*'` 或 `nc -z` 取得——经由代理的 `curl` 可能返回伪造的 502，
 > 不能作为服务健康状况的证据。
 
@@ -36,8 +36,8 @@ related:
 
 ### 症状
 
-在宿主机上已经"关闭服务"，但 `http://localhost:3000/`（或对应域名）仍能打开登录页，
-甚至"看起来还能登录"。
+在宿主机上已经“关闭服务”，但 `http://localhost:3000/`（或对应域名）仍能打开登录页，
+甚至“看起来还能登录”。
 
 ### 判定（按顺序执行，任一步命中即止）
 
@@ -65,10 +65,10 @@ nc -z -w 3 127.0.0.1 3000 && echo "端口开放" || echo "端口关闭"
 
 1. 在**原本的浏览器 profile**中打开 DevTools → Application → Service Workers；
 2. 若显示 `activated`，即命中了 SW 离线兜底（无痕窗口没有 SW，恒通过，不能用于验证）；
-3. Cache Storage 中若有 `p5-1-*-shell`，即存在可被离线使用的页面外壳。
+3. Cache Storage 中若有 `p5-1-*-shell`，即存在可离线使用的页面外壳。
 
-> 注意：`/api/*` 是 network-only，**真·离线登录不可能成功**。所谓"能登录"通常是
-> "登录页能打开"或"已有会话直接呈现已登录态"。不要据此判定为入侵或数据泄露。
+> 注意：`/api/*` 是 network-only，**真·离线登录不可能成功**。所谓“能登录”通常是
+> “登录页能打开”或“已有会话直接呈现已登录态”。不要据此判定为入侵或数据泄露。
 
 ### 处置
 
@@ -81,7 +81,7 @@ nc -z -w 3 127.0.0.1 3000 && echo "端口开放" || echo "端口关闭"
    ```
 
 2. **注销客户端 Service Worker**（用户侧，非破坏性）：DevTools → Application →
-   Service Workers → Unregister；随后 Clear storage（Cache Storage + localStorage + cookie）。
+   Service Workers → Unregister；随后 Clear storage(Cache Storage + localStorage + cookie)。
    硬刷新（Cmd+Shift+R）后页面应**无法访问**。
 
 3. **远程批量注销**（E3 kill switch，面向已安装 SW 的全体客户端）：把
@@ -109,9 +109,9 @@ curl --noproxy '*' http://127.0.0.1:3000/   # 应连接被拒（rc=7）
 
 - SW 预缓存**只含未鉴权路由**（`/`、`/login`、manifest、图标）；已鉴权页面不再
   预缓存，也不会被离线提供给未登录浏览器（E4）。
-- 导航失败返回**显式离线页（HTTP 503）**，不再静默回退缓存页面，避免"关掉了却
-  看起来还活着"（E4）。
-- 登录页在 `navigator.onLine === false` 时禁用提交并给出提示，消除"能填不能登"（E4）。
+- 导航失败返回**显式离线页（HTTP 503）**，不再静默回退缓存页面，避免“关掉了却
+  看起来还活着”（E4）。
+- 登录页在 `navigator.onLine === false` 时禁用提交并给出提示，消除“能填不能登”（E4）。
 - CI 的 `smoke-infra` job 末尾新增 teardown step，回收脚本自建的 `next start`
   实例，并在残留时让 job 失败（E5）。
 
@@ -208,8 +208,8 @@ curl -s http://127.0.0.1:3000/api/health | jq .          # liveness 应恒 200
 3. 内存无界增长时临时提高 `limits.memory` 或降低 `QUEUE_*_CONCURRENCY`，并保留现场
    用于定位；
 4. **`queueBackpressured: true` 的处置**：队列已有深度背压（`QUEUE_MAX_DEPTH`，默认
-   500/队列，含 waiting + delayed）——积压达上限后新任务会被拒绝（调用方收到"队列
-   繁忙"类可重试提示），它只**阻止继续恶化、不消费存量**。定位方向仍与第 1–3 步一致：
+   500/队列，含 waiting + delayed）——积压达上限后新任务会被拒绝（调用方收到“队列
+   繁忙”类可重试提示），它只**阻止继续恶化、不消费存量**。定位方向仍与第 1～3 步一致：
    恢复 worker 消费能力 / 恢复 Redis / 按配额调整并发与内存。
 
 ### 验收

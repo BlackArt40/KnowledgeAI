@@ -31,6 +31,7 @@ applies_to: ">=1.2.0"
 | 我要部署或排查故障 | [部署指南](ops/deployment-guide.md) · [故障排查](faq/faq.md#troubleshooting) |
 | 我要写文档或评审文档 | [文档规范与模板](standards/README.md) |
 | 我要理解系统设计 | [总体架构](architecture/overview.md) |
+| 我要看架构图与数据流 | [系统架构图与设计说明](architecture/system-design.md) · [数据流与契约](architecture/system-design-runtime.md) |
 | 我要把单体拆成业务 + Python AI | [服务拆分实施手册](architecture/service-split.md) |
 
 ## 六大文档类别
@@ -40,7 +41,7 @@ applies_to: ">=1.2.0"
 | 类别 | 目录 | 内容 | 状态 |
 |------|------|------|------|
 | 入门指南 | `getting-started/` | 快速开始（含演示账号）/ 新成员 / 贡献 / 账号安全 / 产品概述 / 项目结构 | ✅ 已就绪 |
-| 架构设计 | `architecture/` | 总体架构 / 服务拆分手册 / RAG / Agent / UI 设计体系 / ADR | ✅ 已就绪 |
+| 架构设计 | `architecture/` | 总体架构 / 系统架构图与设计说明（上下两篇）/ 服务拆分手册 / RAG / Agent / UI 设计体系 / ADR | ✅ 已就绪 |
 | API 参考 | `api/` | 指南 / 参考（OpenAPI 生成）/ 三语言 SDK / Webhook / 错误码 | ✅ 已就绪 |
 | 文档规范 | `standards/` | 编写规范 / 评审 Checklist / 术语表 / 模板已就绪；代码 / Git / 测试规范待建 | 部分完成 |
 | 部署运维 | `ops/` | 部署手册 / 环境变量全表 / 监控告警 | ✅ 已就绪 |

@@ -23,13 +23,13 @@ related:
 
 ---
 
-> 本文档定义 KnowledgeAI 的 UI 体系：技术栈、设计令牌与组件库；完整页面清单见[产品概述](../getting-started/product-overview.md)。
+> 本文档定义 KnowledgeAI 的 UI 体系：技术栈、设计令牌与组件库；页面与路由清单见[产品概述](../getting-started/product-overview.md)。
 
 ---
 
 ## 一、技术栈
 
-- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/`，28/28 页面全量承载；首页构建期 SEO 预渲染）
+- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/`，30 个页面全量承载；首页构建期 SEO 预渲染）
 - **后端**：Next.js 16 纯 API（Route Handlers + SSE 流式；页面层已退役）
 - **样式**：Element Plus 主题适配（`element-adapter.css` 映射 EP 变量）+ CSS 变量设计令牌单源（`frontend/src/styles/tokens.css`）+ 元素级基线（`base.css`）；五层加载顺序与各层职责见 [前端编码规范](../standards/frontend-coding-standards.md)
 - **图标**：`@element-plus/icons-vue` + 自绘 SVG
@@ -44,7 +44,7 @@ related:
 - 语义色 `success` / `warning` / `destructive`（随主题翻转，供正文与表单态使用）
 - 固定状态色（不随主题翻转，只在 `:root` 定义）：`--positive` / `--positive-text` / `--positive-strong`（状态点、徽章、进度、diff 新增）、`--negative` / `--negative-strong`（diff 删除）、`--warning-bright` / `--warning-text`（琥珀状态点与 warn 徽章）。这组原先以 `hsl(142 …)` / `#16a34a` / `#f59e0b` / `#b45309` 等字面量散落在组件里
 - 圆角阶梯：`--radius 0.75rem` 为 EP 控件基线（`element-adapter.css` 把它映射成 `--el-border-radius-base/small`，改它会让按钮/输入/下拉/弹窗一起变圆）；`--radius-card 0.875rem` 给 `.card`；`--radius-lg 1rem` / `--radius-xl 1.25rem` / `--radius-2xl 1.5rem` 给内容容器（分区块 / 大卡 / 全宽面板），另有 `--radius-sm 0.5rem` 用于卡内小件
-- 胶囊 `--radius-full`（9999px）统一掉原字面量写法；**登记例外**（可写字面量，但不得新增集合外的值）：卡内小件 `4 / 6 / 7 / 9 / 10 / 11 / 13px`、大件装饰 `28px`（演示台外壳）/ `40px`（hero 光晕）。三分法规则见[前端编码规范](../standards/frontend-coding-standards.md)第 3 节
+- 胶囊 `--radius-full`(9999px)统一掉原字面量写法；**登记例外**（可写字面量，但不得新增集合外的值）：卡内小件 `4 / 6 / 7 / 9 / 10 / 11 / 13px`、大件装饰 `28px`（演示台外壳）/ `40px`（hero 光晕）。三分法规则见[前端编码规范](../standards/frontend-coding-standards.md)第 3 节
 - 反面色面 `--surface-inverse` / `--surface-inverse-deep`：营销 CTA、定价主推卡、认证页品牌面板共用，两套主题下都是深底（故只在 `:root` 定义）；该面上的前景色成组定义为 `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse`
 - 阴影四档 `--shadow-xs/sm/md/lg`（暗色单独一套更重的不透明度）；缓动 `--ease-out`（进入动画）与 `--ease-out-quad`（状态点 ping）
 - 顶栏高度令牌 `--topbar-h 72px`：`.topbar` / `.side-head` 与 `chat-view.css` 的视口高度计算共用
@@ -52,20 +52,20 @@ related:
 
 ### 装饰色板（分类色，2026-10-30 定型）
 
-用来回答「这类资源是什么」——图标 tint、图表、知识图谱实体类型。与状态色**严格分工**：状态色表达好 / 坏 / 警告（`--positive*` / `--negative*` / `--warning-*`），分类色只表达类别，不带褒贬。
+用来回答“这类资源是什么”——图标 tint、图表、知识图谱实体类型。与状态色**严格分工**：状态色表达好 / 坏 / 警告（`--positive*` / `--negative*` / `--warning-*`），分类色只表达类别，不带褒贬。
 
 | 令牌 | 值（Tailwind 档） | 语义 | 典型使用 |
 |------|------------------|------|----------|
-| `--tint-indigo` | `239 84% 67%`（indigo-500） | 知识库默认 / 人物实体 | KB 头像、图谱节点 |
-| `--tint-sky` | `199 89% 48%`（sky-500） | 组织实体 / 外部网页来源 / 共享 / RAG | 来源图标、共享标记、`.k-rag` |
-| `--tint-sky-text` | `200 98% 39%`（sky-600） | 天蓝系文字 | 分享态文字（白底 AA） |
-| `--tint-emerald` | `160 84% 39%`（emerald-500） | API / 文档 / 概念实体 | 用量指标、`.k-doc` |
-| `--tint-violet` | `258 90% 66%`（violet-500） | Agent / LLM | Agent 指标、`.k-llm` |
-| `--tint-teal` | `173 80% 40%`（teal-500） | 团队 / 协作 | 管理端 tint |
-| `--tint-orange` | `25 95% 53%`（orange-500） | 用量 / 计费 | 管理端 tint |
-| `--tint-pink` | `330 81% 60%`（pink-500） | 通知 / 消息 | 管理端 tint |
-| `--tint-rose` | `350 89% 60%`（rose-500） | 风险 / 告警类别 | KB 头像色板 |
-| `--tint-fuchsia` | `292 84% 61%`（fuchsia-500） | 头像选色（无语义） | KB 头像色板 |
+| `--tint-indigo` | `239 84% 67%`(indigo-500) | 知识库默认 / 人物实体 | KB 头像、图谱节点 |
+| `--tint-sky` | `199 89% 48%`(sky-500) | 组织实体 / 外部网页来源 / 共享 / RAG | 来源图标、共享标记、`.k-rag` |
+| `--tint-sky-text` | `200 98% 39%`(sky-600) | 天蓝系文字 | 分享态文字（白底 AA） |
+| `--tint-emerald` | `160 84% 39%`(emerald-500) | API / 文档 / 概念实体 | 用量指标、`.k-doc` |
+| `--tint-violet` | `258 90% 66%`(violet-500) | Agent / LLM | Agent 指标、`.k-llm` |
+| `--tint-teal` | `173 80% 40%`(teal-500) | 团队 / 协作 | 管理端 tint |
+| `--tint-orange` | `25 95% 53%`(orange-500) | 用量 / 计费 | 管理端 tint |
+| `--tint-pink` | `330 81% 60%`(pink-500) | 通知 / 消息 | 管理端 tint |
+| `--tint-rose` | `350 89% 60%`(rose-500) | 风险 / 告警类别 | KB 头像色板 |
+| `--tint-fuchsia` | `292 84% 61%`(fuchsia-500) | 头像选色（无语义） | KB 头像色板 |
 
 规则：
 
@@ -78,7 +78,7 @@ related:
 
 ## 相关文档
 
-- [产品概述](../getting-started/product-overview.md) — 完整页面清单与产品定位
+- [产品概述](../getting-started/product-overview.md) — 产品定位与页面路由清单
 - [总体架构](overview.md) — 系统架构与核心决策
 - [项目结构](../getting-started/project-structure.md) — 组件目录与代码导览
 - [前端编码规范](../standards/frontend-coding-standards.md) — 共享资产单源、样式分层、令牌纪律、i18n 与验证命令
@@ -97,5 +97,5 @@ related:
 | 1.3.0 | 2026-10-27 | 设计令牌细化：圆角拆成 `--radius`（EP 控件基线）/`--radius-card`（卡片），新增 `--shadow-xs/sm/md/lg`、`--ease-out`、`--topbar-h`；全局焦点环与 `prefers-reduced-motion` 兜底 |
 | 1.3.1 | 2026-10-28 | 圆角补齐 `--radius-sm/lg/xl/2xl` 阶梯并替换营销页字面量；新增 `--surface-inverse`（暗面共用）；页脚与正文同宽、顶栏与内容左右对齐；字重中间值（550/650）确认依赖可变量字，写入令牌注释 |
 | 1.2.0 | 2026-10-19 | 前端绞杀重写收官（V0-V8）：技术栈改为 Vue 3 + Element Plus + Vite，令牌单源迁至 frontend/src/styles/tokens.css，高对比度覆盖规则随迁（WCAG AA 断言恢复） |
-| 1.1.0 | 2026-09-23 | 删除已完成的「后续开发计划」与重复的页面清单；组件数校正为 17 |
+| 1.1.0 | 2026-09-23 | 删除已完成的“后续开发计划”与重复的页面清单；组件数校正为 17 |
 | 1.0.0 | 2026-08-20 | 初版（原《设计说明.md》第一部分） |

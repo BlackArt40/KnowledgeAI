@@ -35,7 +35,7 @@ related:
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `VITE_API_BASE` | 否 | 空（同源 `/api`） | frontend/（Vue 3 + Vite）构建期变量：API 请求前缀。留空 = 同源 `/api`（经网关反代，推荐）；跨域部署填网关完整地址，并配合 `CORS_ALLOWED_ORIGINS`。注意：这是**构建期**变量（`import.meta.env`），改后需重新 `pnpm -C frontend build` |
+| `VITE_API_BASE` | 否 | 空（同源 `/api`） | frontend/(Vue 3 + Vite)构建期变量：API 请求前缀。留空 = 同源 `/api`（经网关反代，推荐）；跨域部署填网关完整地址，并配合 `CORS_ALLOWED_ORIGINS`。注意：这是**构建期**变量（`import.meta.env`），改后需重新 `pnpm -C frontend build` |
 
 ## 数据库
 
@@ -113,15 +113,15 @@ related:
 | `AI_INTERNAL_TOKEN` | 条件 | 空 | BFF → AI 服务的内部令牌（`X-Internal-Token`，两端必须一致）；AI 服务侧未配置该令牌时拒绝所有 `/internal/*` 调用（fail-closed） |
 | `AI_ALLOW_PRIVATE_FETCH` | 否 | `false` | AI 服务拉取 http(s) 源时是否允许私网/回环地址。默认 fail-closed；内部 MinIO 由 `S3_ENDPOINT` 主机白名单单独放行，无需打开此开关 |
 
-> 阶段 2 起 AI 服务经预签名 URL（或 `S3_*` 凭据）从对象存储拉取文件，不读共享上传卷；AI 服务模式下解析二进制格式必须配置 `S3_*`（见「对象存储」，凭据与业务侧一致）。
+> 阶段 2 起 AI 服务经预签名 URL（或 `S3_*` 凭据）从对象存储拉取文件，不读共享上传卷；AI 服务模式下解析二进制格式必须配置 `S3_*`（见“对象存储”，凭据与业务侧一致）。
 
-## 业务服务 / AI 服务拆分运行时（阶段 4-5，`services/`）
+## 业务服务 / AI 服务拆分运行时（阶段 4～5，`services/`）
 
-以下变量仅在拆分部署（`services/business` + `services/ai`）中生效，不属于 Next 单体进程；`.env.example` 以注释示例同步（「服务拆分部署」块），本机拆分部署用 `deploy/env.split.example`：
+以下变量仅在拆分部署（`services/business` + `services/ai`）中生效，不属于 Next 单体进程；`.env.example` 以注释示例同步（“服务拆分部署”块），本机拆分部署用 `deploy/env.split.example`：
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `QUEUE_MAX_DEPTH` | 否 | `100`（Python 侧） | Agent 任务队列（Redis List `agent:queue`）深度上限：`/internal/agent/run` 入队前检查 Redis List 长度，超限返回 429 `queue_busy`（ADR-0007/0008 背压语义）。与上方任务队列的 `QUEUE_MAX_DEPTH`（Next BullMQ）同名但独立生效 |
+| `QUEUE_MAX_DEPTH` | 否 | `100`（Python 侧） | Agent 任务队列（Redis List `agent:queue`）深度上限：`/internal/agent/run` 入队前检查 Redis List 长度，超限返回 429 `queue_busy`（ADR-0007/0008 背压语义）。与上方任务队列的 `QUEUE_MAX_DEPTH`(Next BullMQ)同名但独立生效 |
 | `REDIS_HOST` / `REDIS_PORT` | 否 | `localhost` / `6379` | `services/ai` 的 Redis 连接（队列 + 心跳 + 进度 Pub/Sub；`services/business` 同名变量见其 `application-pg.yml`） |
 | `COOKIE_SECURE` | 否 | `false` | 业务服务登录 Cookie（`kai-token`）的 `Secure` 标志（手册 6.1）：生产 https 部署必须 `true`；本地 http 部署保持 `false`（否则浏览器拒存 Cookie）。`HttpOnly`/`SameSite=Lax` 恒定 |
 | `GATEWAY_PORT` | 否 | `8088` | 拆分部署网关（nginx，`docker-compose.split.yml`）的宿主端口；`/api` → 业务服务多副本，其余 → 前端 |
@@ -151,10 +151,10 @@ related:
 | `QUEUE_CONSUMER` | 否 | 自动（内存队列 `web` / Redis `worker`） | 队列消费者角色：`worker` = 独立 worker 进程消费（web 只入队，避免双消费）；`web` = 当前进程消费（单容器 + Redis 或无独立 worker 时使用） |
 | `QUEUE_CONCURRENCY` | 否 | `3` | 快速任务并发：`doc-process` / `index-cleanup` / `webhook-deliver` / `email-send`（仅 BullMQ 生效） |
 | `QUEUE_AGENT_CONCURRENCY` | 否 | `1` | Agent 调研并发：`agent-run` 单独一条队列，避免长耗时 LLM 任务占满并发后阻塞文档处理（仅 BullMQ 生效） |
-| `QUEUE_MAX_DEPTH` | 否 | `500` | 队列积压背压上限（waiting + delayed，按队列计）：达到上限后新任务入队被拒（`QueueBackpressureError`，调用方返回"队列繁忙"类可重试提示），`/api/health/ready` 的 `queueBackpressured` 同步置位（X5/X6） |
+| `QUEUE_MAX_DEPTH` | 否 | `500` | 队列积压背压上限（waiting + delayed，按队列计）：达到上限后新任务入队被拒（`QueueBackpressureError`，调用方返回“队列繁忙”类可重试提示），`/api/health/ready` 的 `queueBackpressured` 同步置位（X5/X6） |
 
-> 单独的 Agent 队列是为了解决「慢模型下文档处理排队数分钟」：实测单个 agent-run 耗时
-> 64–105s，若与 doc-process 共用同一 concurrency=3 的队列，三张并发就把槽位占满。
+> 单独的 Agent 队列是为了解决“慢模型下文档处理排队数分钟”：实测单个 agent-run 耗时
+> 64 s～105 s，若与 doc-process 共用同一 concurrency=3 的队列，三张并发就把槽位占满。
 > 提高并发会增加同时进行的 LLM 调用数（成本/限流），请按 provider 配额调整。
 
 ## 限流（分级维度）

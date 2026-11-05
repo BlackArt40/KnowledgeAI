@@ -21,7 +21,7 @@ related:
 
 # 三语言 SDK 使用指南
 
-> KnowledgeAI 官方提供 **JavaScript / Python / Go** 三套零依赖 SDK，接口语义一致：JavaScript 使用全局 `fetch` + `ReadableStream`（Node 18+ 与现代浏览器），Python 仅用标准库（Python 3.8+），Go 仅用标准库并支持 `context.Context` 取消传播。
+> KnowledgeAI 官方提供 **JavaScript / Python / Go** 三套零依赖 SDK，接口语义一致。JavaScript 使用全局 `fetch` + `ReadableStream`（Node 18+ 与现代浏览器）；Python 仅用标准库（Python 3.8+）；Go 仅用标准库，并支持 `context.Context` 取消传播。
 
 ## 引入与初始化
 

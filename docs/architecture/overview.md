@@ -4,7 +4,7 @@ description: KnowledgeAI 系统架构总览：三服务生产形态（网关/业
 type: explanation
 category: architecture
 level: L1
-version: 1.3.0
+version: 1.3.1
 authors:
   - technical-writer
 owner: 技术负责人
@@ -22,13 +22,13 @@ related:
 
 # KnowledgeAI 总体架构
 
-> 本文解释 KnowledgeAI「为什么这样设计」。阅读后你应能回答：请求如何流动、数据存在哪里、何时用真实服务、何时回退演示模式。
+> 本文解释 KnowledgeAI“为什么这样设计”。阅读后你应能回答：请求如何流动、数据存在哪里、何时用真实服务、何时回退演示模式。
 >
 > 相关：RAG 引擎见 [rag-engine.md](rag-engine.md)，Agent 编排见 [agent-orchestration.md](agent-orchestration.md)，对外 API 见 [../api/guide.md](../api/guide.md)。
 
 ## 架构总览
 
-KnowledgeAI 是单仓库的全栈应用：**Vue 3 前端（`frontend/`）承载全部页面，Next.js 16 纯 API** 承载 `/api/**` 与业务库，PostgreSQL（Prisma）负责持久化，Redis 可选（限流 / 队列 / 事件总线），各外部服务通过 Provider 适配层接入。
+KnowledgeAI 是单仓库的全栈应用。**Vue 3 前端（`frontend/`）承载全部页面**，**Next.js 16 纯 API** 承载 `/api/**` 与业务库。数据侧由 PostgreSQL(Prisma) 持久化，Redis 可选（限流 / 队列 / 事件总线）。各外部服务统一经 Provider 适配层接入。
 
 ```mermaid
 flowchart LR
@@ -38,7 +38,7 @@ flowchart LR
     Bot["群机器人 / 扩展"]
   end
   subgraph FE["Vue 3 前端（frontend/）"]
-    VUE["28 页面 / PWA<br/>首页 SEO 预渲染"]
+    VUE["30 页面 / PWA<br/>首页 SEO 预渲染"]
   end
   subgraph Next["Next.js 16 纯 API"]
     V1["/api/v1 版本化 API"]
@@ -88,7 +88,7 @@ flowchart LR
 
 ## 生产形态：三服务拆分（>=1.3.0）
 
-自 [服务拆分](./service-split.md) 阶段 1-6 完成后，**生产部署形态为三服务**（本文其余章节描述的进程内 RAG / Agent / 队列实现仍适用于单体形态与开发模式，见下方「适用版本」）：
+[服务拆分](./service-split.md) 阶段 1～6 完成后，**生产部署形态为三服务**（适用版本见下文）。注意：本文其余章节描述的进程内 RAG / Agent / 队列实现，仍适用于单体形态与开发模式。
 
 ```mermaid
 flowchart LR
@@ -112,11 +112,11 @@ flowchart LR
 
 - **浏览器永不直连 Python**（契约 #1）：AI 服务仅经业务服务的 `/internal/*`（内网令牌）可达；
 - **业务读路径 = PostgreSQL 唯一事实源**（ADR-0009 红线），Java 侧无内存事实源；
-- **跨语言兼容字节级锁定**：密码哈希（PBKDF2/legacy SHA-256）、JWT（HS256 claims）、API Key（AES-256-GCM + HKDF）、TOTP（RFC 6238）、Webhook 签名（HMAC-SHA256 `sha256=` hex）均有双向向量测试；
-- **Agent 队列**：Redis List `agent:queue`（Java LPUSH / Python BLPOP），进度经 Pub/Sub `agent:<taskId>` 由业务服务转 SSE；
+- **跨语言兼容字节级锁定**：密码哈希（PBKDF2/legacy SHA-256）、JWT(HS256 claims)、API Key(AES-256-GCM + HKDF)、TOTP(RFC 6238)、Webhook 签名（HMAC-SHA256 `sha256=` hex）均有双向向量测试；
+- **Agent 队列**：Redis List `agent:queue`(Java LPUSH / Python BLPOP)，进度经 Pub/Sub `agent:<taskId>` 由业务服务转 SSE；
 - **部署产物**：[docker-compose.split.yml](../../docker-compose.split.yml)（一键起全栈，`--scale business=N` 多副本）与 [k8s/split.yaml](../../k8s/split.yaml)（三服务 + 网关，探针见 6.4）。
 
-**适用版本标注（A6.7）**：本页「内存 Store + 写穿 DB」「进程内 Agent/队列」等章节描述的是**单体形态（<=1.2.x，演示 / 开发模式默认）**；三服务形态（>=1.3.0）下业务读路径由 Java + PostgreSQL 承接，进程内实现仅作为绞杀式迁移的回退开关保留（`AI_SERVICE_URL` 置空即回退单体）。
+**适用版本标注（A6.7）**：本页“内存 Store + 写穿 DB”“进程内 Agent/队列”等章节描述的是**单体形态**（<=1.2.x，演示 / 开发模式默认）。三服务形态（>=1.3.0）下，业务读路径由 Java + PostgreSQL 承接；进程内实现仅作为绞杀式迁移的回退开关保留，`AI_SERVICE_URL` 置空即回退单体。
 
 ## 核心架构决策
 
@@ -127,21 +127,21 @@ flowchart LR
 - **水合（hydrate）**：首个 API 请求时，将 DB 行懒加载进内存 Store（`src/lib/db/hydrate.ts`，一次性）；
 - **写穿（persist）**：每次变更先写内存，再异步写穿到 PostgreSQL（`src/lib/db/persist.ts`，错误仅记录不抛出）。
 
-为什么这样做：读路径零 DB 往返（内存 Map 查找 < 1ms），写路径对请求线程零阻塞。代价是**内存与 DB 存在短暂最终一致窗口**，且多实例部署时读仍落在各自实例内存——这是有意的取舍，详见 [ADR-0001](adr/adr-0001-in-memory-store-write-through-db.md)。
+为什么这样做：读路径零 DB 往返（内存 Map 查找 < 1ms），写路径对请求线程零阻塞。代价是**内存与 DB 存在短暂最终一致窗口**；多实例部署时，读仍落在各自实例内存。这是有意的取舍，详见 [ADR-0001](adr/adr-0001-in-memory-store-write-through-db.md)。
 
 > ⚠️ **修改约束**：新增持久化实体必须同时改动 4 处：`store.ts`（内存形态）→ `persist.ts`（写穿函数）→ `hydrate.ts`（加载函数）→ `prisma/schema.prisma`（+ 新迁移）。漏掉任何一处都会造成内存与 DB 失步。
 
-> **鉴权读路径例外（F5，2026-10-08）**：apiKey 校验与 JWT jti 撤销已改为「内存快路径 + DB/Redis 回源」的共享读路径——apiKey 未命中时回源 DB（节流），jti 黑名单经共享 Redis 跨实例生效。因此**多副本部署不再需要为这两项而保持单实例**（但需要 `REDIS_URL`）；其余业务读路径仍为单实例内存模型。详见 [ADR-0006](adr/adr-0006-read-path-storage-evolution.md)。
+> **鉴权读路径例外（F5，2026-10-08）**：apiKey 校验与 JWT jti 撤销已改为“内存快路径 + DB/Redis 回源”的共享读路径。apiKey 未命中时回源 DB（节流），jti 黑名单经共享 Redis 跨实例生效。因此**多副本部署不再需要为这两项而保持单实例**（但需要 `REDIS_URL`）；其余业务读路径仍为单实例内存模型。详见 [ADR-0006](adr/adr-0006-read-path-storage-evolution.md)。
 
 ### 2. Provider 适配层：配置即切换
 
-每个外部依赖都有「真实实现 + 演示回退」双实现（`src/lib/*/provider.ts` + `src/lib/config.ts` 聚合状态）：
+每个外部依赖都有“真实实现 + 演示回退”双实现（`src/lib/*/provider.ts` + `src/lib/config.ts` 聚合状态）：
 
 | 模块 | 环境变量（示例） | 真实服务 | 未配置时回退 |
 |------|------|------|------|
 | LLM | `OPENAI_API_KEY` `CHAT_MODEL` | OpenAI / DeepSeek / Moonshot / 硅基流动 / Ollama | 本地抽取式生成 |
 | 嵌入 | `OPENAI_API_KEY` `EMBEDDING_MODEL` | text-embedding-3-small | 本地哈希嵌入 2048 维 |
-| 数据库 | `DATABASE_URL` | PostgreSQL（Prisma） | 内存模式 |
+| 数据库 | `DATABASE_URL` | PostgreSQL(Prisma) | 内存模式 |
 | 文件存储 | `S3_ENDPOINT` `S3_BUCKET` | S3 / MinIO / R2 | 本地文件系统 |
 | 向量库 | `VECTOR_STORE` | pgvector / Chroma / Pinecone | 内存向量索引 |
 | 支付 | `STRIPE_SECRET_KEY` | Stripe Checkout | 模拟支付 |
@@ -156,7 +156,7 @@ flowchart LR
 - **内存队列**（默认）：进程内，重试 3 次指数退避；
 - **BullMQ + Redis**：多实例、死信队列（DLQ）、独立 worker 进程（Docker `worker` 服务）。
 
-任务类型：`doc-process`（解析→切片→索引）、`agent-run`（runTask + 事件发布）、`index-cleanup`、`webhook-deliver`。详见 [ADR-0002](adr/adr-0002-background-job-queue.md)。
+任务类型：`doc-process`（解析→切片→索引）、`agent-run`（runTask + 事件发布）、`index-cleanup`、`webhook-deliver`、`email-send`（邮件类通知）。详见 [ADR-0002](adr/adr-0002-background-job-queue.md)。
 
 **队列背压（X5/X6）**：积压（waiting + delayed，按队列计）达到 `QUEUE_MAX_DEPTH`（默认 500）即拒绝新任务（`QueueBackpressureError`，调用方返回可重试提示；webhook 等尽力而为路径跳过并记录），就绪探针暴露 `queueBackpressured`。详见 [ADR-0007](adr/adr-0007-queue-backpressure.md)。
 
@@ -179,7 +179,7 @@ flowchart LR
 
 ### 6. 可观测性
 
-- **分布式追踪**：自研 ALS（AsyncLocalStorage）span 树，覆盖 API → RAG → LLM 全链路（`X-Trace-Id` 串联）；
+- **分布式追踪**：自研 ALS(AsyncLocalStorage)span 树，覆盖 API → RAG → LLM 全链路（`X-Trace-Id` 串联）；
 - **结构化日志**：pino JSON 日志，敏感字段自动脱敏，可接入 Loki；
 - **健康检查**：存活探针 `/api/health` 与依赖解耦；就绪探针校验 DB / Redis / LLM 连通性，失败返回 503 并触发站内告警；
 - **错误上报**：Sentry（`SENTRY_DSN` 门控）。
@@ -193,22 +193,22 @@ flowchart LR
 | `User.role`（账号级） | `owner` / `admin` / `editor` / `viewer` | **平台级（跨全部工作区）** | `requireRole` / `requireRoleJwt`（`src/lib/auth/guard.ts`） |
 | Team 成员角色 + KB 级 `access` | `admin` / `editor` / `viewer`；KB `view/edit/private` | **单个工作区 / 单个知识库** | `canViewKb/canEditKb`、`canViewDoc/canEditDoc`（`src/lib/team/store.ts`） |
 
-- **`admin` 是平台级角色**（自托管部署的运维管理员）：`/api/admin/*` 下的用户列表、封禁、知识库监控、限流看板、审计查询都是**跨租户**的全局视图，`GET /api/admin/users` 会返回所有工作区的用户。这是设计意图，不是越权——本仓库面向「单企业自托管」，没有「某个工作区的管理员」这一层。
-- **工作区内的权限**走 Team 角色与 KB `access`：邀请成员、调整成员角色、给知识库配置 `viewer/editor` 都在租户内闭环。Team 角色变更会按邮箱镜像到对应账号的 `User.role`（`setUserRole`），移除成员则降级为 `viewer`——否则管理动作只改展示行，实际接口权限不变。
+- **`admin` 是平台级角色**（自托管部署的运维管理员）：`/api/admin/*` 下的用户列表、封禁、知识库监控、限流看板、审计查询都是**跨租户**的全局视图。`GET /api/admin/users` 会返回所有工作区的用户。这是设计意图，不是越权：本仓库面向“单企业自托管”，没有“某个工作区的管理员”这一层。
+- **工作区内的权限**走 Team 角色与 KB `access`：邀请成员、调整成员角色、给知识库配置 `viewer/editor` 都在租户内闭环。Team 角色变更会按邮箱镜像到对应账号的 `User.role`（`setUserRole`），移除成员则降级为 `viewer`。否则管理动作只改展示行，实际接口权限不变。
 - **相对权限**：只有严格高于目标角色的成员才能改角色/移除（Admin 不能管理同级 Admin，任何人不能动 Owner）；邀请/授予的角色必须低于自己（Owner 才能任命 Admin）。KB 共享权限由 Team 管理者或该 KB 的所有者调整，成员级授权仅 KB 所有者可操作。
 - **鉴权取实时账号**：`getRequestUser` 不再信任 JWT 里的 role/status 声明，而是按 token 的 userId 读当前账号；降级/封禁对已签发 token 立即生效（封禁同时拒绝新登录）。
 - **删号仅 `owner`**（不可逆，权限级别高于可逆的封禁），且不能删自己、不能删 Owner；自助删号 `DELETE /api/auth/me` 同样拒绝 Owner。
-- 若将来要做 SaaS 多租户运营（每租户自带管理员），需要把 `admin` 拆成 `platform_admin` 与 `workspace_admin` 两级——这会同时改动管理端路由、导航角色矩阵与前端按钮可见性，属独立演进项，不在当前模型内。
+- 若将来要做 SaaS 多租户运营（每租户自带管理员），需要把 `admin` 拆成 `platform_admin` 与 `workspace_admin` 两级。这会同时改动管理端路由、导航角色矩阵与前端按钮可见性，属独立演进项，不在当前模型内。
 
 ## 演进纪要（2026-09 ～ 10）
 
-在上述框架不变的前提下，2026 年 9–10 月完成了多轮加固（对应工程保障审计与上线体检，审计结论见仓库 `deliverables/` 索引）：
+框架不变的前提下，2026 年 9～10 月完成了多轮加固（对应工程保障审计与上线体检，审计结论见仓库 `deliverables/` 索引）：
 
-- **多租户边界落地**：`KnowledgeBase.workspaceId` 与 `Workspace.members` 落库（迁移 `20260930120000_tenant_persistence`），重启/部署不再归并 `ws_default`；权限函数（`canViewKb/canEditKb`、`canViewDoc/canEditDoc`）的 workspace 参数已**必填**（漏传即编译失败），全仓 30+ 调用点显式传租户。公开 KB 语义（"同租户可读"）记录于 [ADR-0003](adr/adr-0003-multi-tenant-isolation.md)。
-- **安全加固**：模型自定义 `baseUrl` 统一接入 SSRF 校验（fail-closed；`LLM_ALLOW_PRIVATE_BASE_URL` 放行自托管端点，云元数据地址永久封禁）；CORS（F17）收紧——无白名单的生产实例不再反射 Origin（`CORS_ALLOWED_ORIGINS` 需显式配置，详见 env-vars）；会话/密钥比较恒定时间化；限流降级可观测（`getRateLimitHealth` 并入就绪探针）。
+- **多租户边界落地**：`KnowledgeBase.workspaceId` 与 `Workspace.members` 落库（迁移 `20260930120000_tenant_persistence`），重启/部署不再归并 `ws_default`；权限函数（`canViewKb/canEditKb`、`canViewDoc/canEditDoc`）的 workspace 参数已**必填**（漏传即编译失败），全仓 30+ 调用点显式传租户。公开 KB 语义（“同租户可读”）记录于 [ADR-0003](adr/adr-0003-multi-tenant-isolation.md)。
+- **安全加固**：模型自定义 `baseUrl` 统一接入 SSRF 校验（fail-closed；`LLM_ALLOW_PRIVATE_BASE_URL` 放行自托管端点，云元数据地址永久封禁）；CORS(F17)收紧——无白名单的生产实例不再反射 Origin（`CORS_ALLOWED_ORIGINS` 需显式配置，详见 env-vars）；会话/密钥比较恒定时间化；限流降级可观测（`getRateLimitHealth` 并入就绪探针）。
 - **扩容就绪（D 组）**：鉴权读路径共享化（apiKey 校验回源 DB + jti 黑名单共享 Redis，[ADR-0006](adr/adr-0006-read-path-storage-evolution.md)）；队列深度背压与告警位（[ADR-0007](adr/adr-0007-queue-backpressure.md)）；就绪探针新增 `revocationDegraded` / `queueBackpressured` 附加降级位；k8s 清单刷新扩容前置条件状态（uploads 卷需 RWX 或对象存储，且多副本必须配置 `REDIS_URL`）。
 - **前端 / 离线**：PWA 预缓存收窄为公共壳（`/`、`/login`、manifest、icons），导航失败返回 503 离线页，并新增远程 kill switch（`public/sw-config.json`）；账号删除/OAuth 失败回跳改用 `location.replace`（无历史条目、彻底清客户端状态）。
-- **CI 门禁**：九个 job（quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs）与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
+- **CI 门禁**：九个 job(quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs)与依赖漏洞审计（`pnpm audit --audit-level=critical`）纳入流水线。
 
 ## 模块地图
 
@@ -255,5 +255,5 @@ flowchart LR
 | 1.1.0 | 2026-10-08 | 补记 2026-09～10 架构演进（多租户持久化、安全加固、PWA、CI 门禁） |
 | 1.2.1 | 2026-10-12 | 相关文档增加服务拆分实施手册 |
 | 1.2.0 | 2026-10-08 | 扩容就绪（D 组）：鉴权读路径共享化（ADR-0006）、队列背压（ADR-0007）、就绪探针附加降级位、k8s 前置条件刷新 |
-| 1.3.0 | 2026-10-13 | 服务拆分阶段 6：新增「生产形态：三服务拆分」章节（网关/业务/前端/AI 拓扑、部署产物、适用版本标注——单体章节适用于 <=1.2.x 与开发模式） |
-| 1.3.1 | 2026-10-22 | 新增核心决策 7「角色模型：平台管理员 vs 工作区成员」——明确 `User.role` 为平台级跨租户语义、工作区内权限走 Team 角色与 KB access、删号仅 Owner |
+| 1.3.0 | 2026-10-13 | 服务拆分阶段 6：新增“生产形态：三服务拆分”章节（网关/业务/前端/AI 拓扑、部署产物、适用版本标注——单体章节适用于 <=1.2.x 与开发模式） |
+| 1.3.1 | 2026-10-22 | 新增核心决策 7“角色模型：平台管理员 vs 工作区成员”——明确 `User.role` 为平台级跨租户语义、工作区内权限走 Team 角色与 KB access、删号仅 Owner |
