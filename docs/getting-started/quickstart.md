@@ -24,7 +24,7 @@ related:
 
 ## 你会得到什么
 
-一个运行在 `http://localhost:5173` 的 KnowledgeAI 前端（后端 API 在 `:3000`），包含：演示账号登录、一个可检索的知识库、一次带引用的智能问答、一份 Agent 生成的调研报告。
+一个运行在 `http://localhost:5173` 的 KnowledgeAI 前端（后端 API 在 `:3000`）。它会提供：演示账号登录、一个可检索的知识库、一次带引用的智能问答、一份 Agent 生成的调研报告。
 
 ## 前置条件
 
@@ -63,27 +63,27 @@ pnpm -C frontend dev    # 前端页面 :5173（/api 经 vite 代理到 :3000）
 | `editor@knowledgeai.dev` | Editor | KB 编辑 + 问答 + Agent |
 | `viewer@knowledgeai.dev` | Viewer | KB 只读 + 问答 |
 
-也可自行注册（默认 Editor 角色）。OAuth（Google / GitHub）按钮在未配置 `GOOGLE_CLIENT_ID` / `GITHUB_CLIENT_ID` 时自动隐藏（见[环境变量全表](../ops/env-vars.md)）。
+也可自行注册（默认 Editor 角色）。OAuth(Google / GitHub)按钮在未配置 `GOOGLE_CLIENT_ID` / `GITHUB_CLIENT_ID` 时自动隐藏（见[环境变量全表](../ops/env-vars.md)）。
 
 ### 演示数据与注意事项
 
-配置了 `DATABASE_URL` 时可通过 `npx prisma db seed` 预置演示数据：**5 个知识库**（含示例文档）、**1 个团队**（含跨角色成员）、若干示例会话与 Agent 任务历史；纯内存演示模式启动时会自动加载，重启即重置。
+配置了 `DATABASE_URL` 时，可用 `npx prisma db seed` 预置演示数据。预置内容：**5 个知识库**（含示例文档）、**1 个团队**（含跨角色成员），以及若干示例会话与 Agent 任务历史。纯内存演示模式启动时会自动加载，重启即重置。
 
 1. **密码弱**：演示密码为固定值，仅限本地开发，生产环境不要保留演示账号；
-2. **角色即测试用例**：RBAC 四角色覆盖「Owner / Admin / Editor / Viewer」权限矩阵，测试权限时按角色登录对比即可；
+2. **角色即测试用例**：RBAC 四角色覆盖“Owner / Admin / Editor / Viewer”权限矩阵，测试权限时按角色登录对比即可；
 3. **不要改种子账号**：`tests/` 与 `scripts/smoke/` 依赖这些账号，改动会导致集成测试失败。
 
 ## Step 4：创建知识库并上传文档
 
-1. 进入「知识库」页 → 点击「新建」，命名如「我的文档」；
+1. 进入“知识库”页 → 点击“新建”，命名如“我的文档”；
 2. 上传一份文档（支持 PDF / Word / Excel / PPT / Markdown / 图片 / 视频字幕等 8+ 格式）；
-3. 等待处理完成（状态徽标从「处理中」变为就绪，内部触发 `kb.ready` 事件）。
+3. 等待处理完成（状态徽标从“处理中”变为就绪，内部触发 `kb.ready` 事件）。
 
 > **验证**：知识库详情页应显示文档已解析、切片并索引（处理进度条走完）。
 
 ## Step 5：智能问答（带引用溯源）
 
-进入「问答」页，选择刚建的知识库，输入问题（如「这份文档主要讲了什么？」）。
+进入“问答”页，选择刚建的知识库，输入问题（如“这份文档主要讲了什么？”）。
 
 你会看到：
 - **流式输出**（SSE 逐字返回，非等待式）；
@@ -92,7 +92,7 @@ pnpm -C frontend dev    # 前端页面 :5173（/api 经 vite 代理到 :3000）
 
 ## Step 6：Agent 调研（可选，体验多 Agent 编排）
 
-进入「Agent 调研」页，输入主题（如「RAG 技术原理」），观察四阶段时间线：
+进入“Agent 调研”页，输入主题（如“RAG 技术原理”），观察四阶段时间线：
 
 ```
 规划 Agent → 检索 Agent → 分析 Agent → 写作 Agent

@@ -18,7 +18,7 @@ applies_to: ">=1.2.0"
 
 > **使用方式**：复制本文件到 `docs/architecture/adr/`，命名为 `adr-00XX-<kebab-case>.md`，编号在仓库内顺序递增、不重复。
 >
-> **注意**：frontmatter 的 `status` 是**文档状态**（须用统一枚举 `draft|review|published|archived|deprecated`）；**决策状态**（proposed / accepted / superseded）写在正文「状态」章节，不要混淆。
+> **注意**：frontmatter 的 `status` 是**文档状态**（须用统一枚举 `draft|review|published|archived|deprecated`）；**决策状态**(proposed / accepted / superseded)写在正文“状态”章节，不要混淆。
 
 ```markdown
 ---

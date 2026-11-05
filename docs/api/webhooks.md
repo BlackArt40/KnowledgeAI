@@ -59,7 +59,7 @@ Content-Type: application/json
 
 **签名算法**：以 `secret` 为密钥，对请求体（原始字节）做 HMAC-SHA256，输出 `sha256=<hex>`。
 
-**验证示例**（Node.js）：
+**验证示例**(Node.js)：
 
 ```javascript
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -72,7 +72,7 @@ function verifySignature(rawBody, header, secret) {
 }
 ```
 
-**验证示例**（Python）：
+**验证示例**(Python)：
 
 ```python
 import hashlib, hmac
@@ -82,7 +82,7 @@ def verify(raw_body: bytes, header: str, secret: str) -> bool:
     return hmac.compare_digest(header, expected)
 ```
 
-**验证示例**（Go）：
+**验证示例**(Go)：
 
 ```go
 import "crypto/hmac"

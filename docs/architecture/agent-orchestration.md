@@ -19,7 +19,7 @@ related:
 
 # Agent 编排架构
 
-> 本文解释 KnowledgeAI 的 Agent 调研能力：一次「研究一个主题并生成报告」的任务如何被拆解、并行执行与流式汇报。
+> 本文解释 KnowledgeAI 的 Agent 调研能力。内容包括：系统如何拆解一次“研究一个主题并生成报告”的任务，如何并行执行与流式汇报。
 
 ## 定位
 
@@ -36,8 +36,8 @@ related:
 
 编排基于 `src/lib/agent/graph.ts` 的轻量状态图引擎（LangGraph 思路的零依赖实现）：
 
-- **节点**（NodeFn）：接收共享 `State`，返回部分状态更新（浅合并）；
-- **边**（Edge）：可带条件（`when`）决定下一步；
+- **节点**(NodeFn)：接收共享 `State`，返回部分状态更新（浅合并）；
+- **边**(Edge)：可带条件（`when`）决定下一步；
 - **执行器**：`run()` 支持拓扑排序、**并行执行**（无依赖节点并发）、`enabledNodes` 裁剪与 `maxSteps`（默认 50）防环保护。
 
 ```mermaid
@@ -76,8 +76,8 @@ SSE 事件协议（v1 与内部一致）：
 | 事件 | 载荷 | 说明 |
 |------|------|------|
 | `init` | `{ taskId }` | 任务已入队 |
-| `step` | `{ step }`（AgentStep） | 角色进度：role / status / progress / detail / result |
-| `done` | `{ task }`（AgentTask） | 任务完成，含报告内容。多进程（独立 worker）下取 worker 发布的终态快照，Web 进程的内存副本不作准 |
+| `step` | `{ step }`(AgentStep) | 角色进度：role / status / progress / detail / result |
+| `done` | `{ task }`(AgentTask) | 任务完成，含报告内容。多进程（独立 worker）下取 worker 发布的终态快照，Web 进程的内存副本不作准 |
 | `error` | `{ code?, message }` | 任务失败；`code` 为稳定枚举（`queue_busy` 队列积压可重试 / `queue_failed` 入队或执行失败），worker 侧失败（如 LLM 报错）不带 `code`，客户端按 `message` 原样展示 |
 
 任务状态机：`queued → running → done | failed`；步骤状态：`pending → running → done | skipped`。

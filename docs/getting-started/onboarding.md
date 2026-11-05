@@ -21,7 +21,7 @@ related:
 
 # 新成员入门指南
 
-> 目标：**一天内**完成环境搭建、跑通全链路、读懂代码导航，并提交第一个符合门禁的 PR。文中的「你」= 新加入 KnowledgeAI 团队的开发者。
+> 目标：**一天内**完成环境搭建、跑通全链路、读懂代码导航，并提交第一个符合门禁的 PR。文中的“你”= 新加入 KnowledgeAI 团队的开发者。
 
 ## 上午：环境搭建与全链路体验（约 3 小时）
 
@@ -40,11 +40,11 @@ pnpm dev                     # 后端 API :3000（Next 已是纯 API，无页面
 pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :3000）
 ```
 
-> 页面全部由 `frontend/`（Vue 3 + Element Plus + Vite）承载，:3000 只剩 `/api/**`。浏览器请看 **:5173**（生产/预览形态是 :4173）。
+> 页面全部由 `frontend/`(Vue 3 + Element Plus + Vite)承载，:3000 只剩 `/api/**`。浏览器请看 **:5173**（生产/预览形态是 :4173）。
 
 ### 2. 全链路体验（1 小时）
 
-按 [快速开始](quickstart.md) Step 3-6 用演示账号走一遍：登录 → 建知识库 → 上传文档 → 智能问答 → Agent 调研。**重点观察**：
+按 [快速开始](quickstart.md) Step 3～6 用演示账号走一遍：登录 → 建知识库 → 上传文档 → 智能问答 → Agent 调研。**重点观察**：
 
 - 问答的流式输出与引用溯源（`[n]` 角标联动来源面板）；
 - Agent 的四阶段时间线（规划 → 检索 → 分析 → 写作）；
@@ -81,13 +81,13 @@ pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :300
    npx tsc --noEmit     # 类型检查（CI 跑的就是这个）
    ```
 
-3. **提交 PR**：按 PR 模板填写，勾选「文档影响」（改了 `src/lib/` 模块或 API → 必须同步更新对应文档，见 [文档编写规范](../standards/doc-writing-standards.md)）；
+3. **提交 PR**：按 PR 模板填写，勾选“文档影响”（改了 `src/lib/` 模块或 API → 必须同步更新对应文档，见 [文档编写规范](../standards/doc-writing-standards.md)）；
 4. **等待 CI**：九项检查全绿（quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs）才能合并。改动 `prisma/schema.prisma` 必须先生成迁移（`npx prisma migrate dev --name <描述>`）。
 
 ### 6. 第一个 PR 建议（45 分钟）
 
-- 从「小而真」入手：修复一个 bug、补一个测试、优化一处文档；
-- 在 PR 描述里写清「改了什么 / 为什么 / 如何验证」；
+- 从“小而真”入手：修复一个 bug、补一个测试、优化一处文档；
+- 在 PR 描述里写清“改了什么 / 为什么 / 如何验证”；
 - 主动 @ 模块 Owner 评审，评审清单见 [文档评审 Checklist](../standards/doc-review-checklist.md)。
 
 ## 常见卡点速查
@@ -95,7 +95,7 @@ pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :300
 | 现象 | 处理 |
 |------|------|
 | `pnpm dev` 启动报错 | 检查 Node 22+ 与 pnpm 版本（`pnpm -v` 应为 11.7.0） |
-| `pnpm` 报 `ERR_PNPM_PNPM_ENGINE_NO_NATIVE_BINARY` | PATH 里 `$PNPM_HOME/bin/pnpm` 先于 nvm 的 shim 命中，处理方式见「[pnpm 与 Node 版本对齐](#pnpm-与-node-版本对齐)」 |
+| `pnpm` 报 `ERR_PNPM_PNPM_ENGINE_NO_NATIVE_BINARY` | PATH 里 `$PNPM_HOME/bin/pnpm` 先于 nvm 的 shim 命中，处理方式见“[pnpm 与 Node 版本对齐](#pnpm-与-node-版本对齐)” |
 | `node -v` 不是 22.x | `nvm alias default 22` 后重开终端（nvm 只在 shell 初始化时选版本） |
 | 问答答非所问 | 确认文档已处理完成（`kb.ready`）；未配置真实 LLM 时是演示模式生成 |
 | 上传 EACCES | 见 [故障排查](../faq/faq.md#troubleshooting) 第 4 条 |
@@ -134,7 +134,7 @@ pnpm -v   # 预期输出 11.7.0
 ## 今日产出清单
 
 - [ ] 环境搭建完成，`pnpm dev` 可运行
-- [ ] 跑通「上传 → 问答 → Agent」全链路
+- [ ] 跑通“上传 → 问答 → Agent”全链路
 - [ ] 读完项目结构与架构文档
 - [ ] 提交 1 个 PR 并通过 CI
 

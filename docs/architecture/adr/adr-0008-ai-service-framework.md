@@ -31,7 +31,7 @@ related:
 约束来自三处：
 
 - 对外契约不可变：检索返回结构必须对齐现有 `RetrievedChunk`，SSE 事件名必须是 `sources` / `token` / `done`（Agent 为 `init` / `step` / `done` / `error` / `end`）；
-- 租户契约：所有检索/索引入参强制携带 `workspaceId`（ADR-0003），框架不得把鉴权语义藏进抽象层；
+- 租户契约：所有检索/索引入参强制携带 `workspaceId`(ADR-0003)，框架不得把鉴权语义藏进抽象层；
 - 单人维护预算：引入的每个框架都要付出学习、版本跟进与调试成本。
 
 国内同类系统的常见路线：平台化低代码（Dify / FastGPT / Coze）、LangChain 全家桶、LlamaIndex、国产框架（Qwen-Agent / AgentScope）、完全裸写。
@@ -68,7 +68,7 @@ related:
 
 **负面 / 约束**
 
-- 「裸写 + LangGraph」双心智并存，code review 需守住「LangGraph 不进 RAG 路径」的边界；
+- “裸写 + LangGraph”双心智并存，code review 需守住“LangGraph 不进 RAG 路径”的边界；
 - LangGraph 版本迭代快，锁版本后有升级维护成本；
 - arq 生态小于 Celery，复杂调度需求出现时可能迁移（切换点已封装）。
 
@@ -89,4 +89,4 @@ related:
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | 1.0.0 | 2026-10-12 | 初版：FastAPI + 裸写 RAG + LangGraph（仅 agent）+ arq |
-| 1.1.0 | 2026-10-13 | 阶段 5 实施修订：任务队列由 arq 调整为语言中立 Redis List（`agent:queue`，Java 业务服务 LPUSH / Python worker BLPOP）。原因：手册 5.1 确定生产者在 Java 侧，arq 的入队 wire format 为私有协议（msgpack + 自有元数据），Java 直写会与 arq 内部版本强耦合。`QUEUE_MAX_DEPTH` 入队前深度检查、超限拒绝（429 `queue_busy`）的 ADR-0007 背压语义保持不变；切换点封装在 `services/ai/app/agentqueue.py`（enqueue/queue_depth），后续若引入 Celery 等仍在该模块内替换。LangGraph 仅限 agent 模块的边界在实施中由 import 管辖（`app/agent.py` 唯一 import 方） |
+| 1.1.0 | 2026-10-13 | 阶段 5 实施修订：任务队列由 arq 调整为语言中立 Redis List（`agent:queue`，Java 业务服务 LPUSH / Python worker BLPOP）。原因：手册 5.1 确定生产者在 Java 侧，arq 的入队 wire format 为私有协议（msgpack + 自有元数据），Java 直写会与 arq 内部版本强耦合。`QUEUE_MAX_DEPTH` 入队前深度检查、超限拒绝（429 `queue_busy`）的 ADR-0007 背压语义保持不变；切换点封装在 `services/ai/app/agentqueue.py`(enqueue/queue_depth)，后续若引入 Celery 等仍在该模块内替换。LangGraph 仅限 agent 模块的边界在实施中由 import 管辖（`app/agent.py` 唯一 import 方） |

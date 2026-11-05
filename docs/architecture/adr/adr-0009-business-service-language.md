@@ -28,13 +28,13 @@ related:
 
 ## 背景
 
-[服务拆分实施手册](../service-split.md)阶段 4 将鉴权、租户、KB 元数据、会话、计费、限流、Webhook 从 Next 进程拆出为独立业务服务。手册要求语言选择「开工前写进 ADR」，并给出两个候选与一条红线（禁止内存 map 作读事实源）。
+[服务拆分实施手册](../service-split.md)阶段 4 将鉴权、租户、KB 元数据、会话、计费、限流、Webhook 从 Next 进程拆出为独立业务服务。手册要求语言选择“开工前写进 ADR”，并给出两个候选与一条红线（禁止内存 map 作读事实源）。
 
 决策输入：
 
-- **目标轨道**：本仓库阶段 4～6 走「生产 / Java 岗」轨道（手册两条实施轨道之二），简历需对齐国内 ToB / 多实例 / Java 后端岗位——用户已在架构讨论中确认业务服务采用 Java 17+ Spring Boot、前端保持 React（**注**：该前提已于 2026-10-16 变更——前端改为 Vue 3 绞杀重写并已收官，业务服务的语言决策不受影响，见 [service-split.md](../service-split.md)「前端替换」节）、AI 服务用 Python（ADR-0008）。
-- **国内现实**：业务 CRUD 后端的事实标准是 Java + Spring Boot；Spring Boot 3.x 强制 Java 17+，新项目默认即「Java 17 + Spring Boot 3」。
-- **兼容硬约束**：业务服务必须登录**同一批用户数据**——密码哈希与 API Key 哈希格式必须与现网 TS 实现逐字节兼容（见决策 3）。
+- **目标轨道**：本仓库阶段 4～6 走“生产 / Java 岗”轨道（手册两条实施轨道之二），简历需对齐国内 ToB / 多实例 / Java 后端岗位。用户已在架构讨论中确认：业务服务采用 Java 17+ Spring Boot，前端保持 React，AI 服务用 Python(ADR-0008)。**注**：前端前提已于 2026-10-16 变更——改为 Vue 3 绞杀重写并已收官，业务服务的语言决策不受影响，见 [service-split.md](../service-split.md)“前端替换”节。
+- **国内现实**：业务 CRUD 后端的事实标准是 Java + Spring Boot；Spring Boot 3.x 强制 Java 17+，新项目默认即“Java 17 + Spring Boot 3”。
+- **兼容硬约束**：业务服务必须登录**同一批用户数据**。密码哈希与 API Key 哈希格式必须与现网 TS 实现逐字节兼容（见决策 3）。
 - **单人维护预算**：三服务（TS 前端/BFF、Java 业务、Python AI）已是上限，不再引入第四种运行时。
 
 ## 决策
@@ -62,10 +62,10 @@ related:
 
 | 方案 | 被否原因 |
 |------|----------|
-| Go + 标准库/chi | 与现有 TS 心智接近、单二进制运维简单；但与「生产 / Java 岗」轨道目标错位，Spring Security 级别的安全生态（OAuth/2FA/会话）需大量自建，国内业务 CRUD 岗位匹配度低 |
+| Go + 标准库/chi | 与现有 TS 心智接近、单二进制运维简单；但与“生产 / Java 岗”轨道目标错位，Spring Security 级别的安全生态（OAuth/2FA/会话）需大量自建，国内业务 CRUD 岗位匹配度低 |
 | Node + NestJS（不拆语言） | 与现有 TS 同语言心智最平；但拆分的核心价值之一（对齐 Java 岗、证明跨栈能力）落空，且 NestJS 生态对 2FA/OAuth/限流的现成度并不优于 Spring |
 | 维持 TS 单体不拆 | 简历轨道（阶段 0～3）已交付；生产轨道的多实例、DB 读事实源、Java 岗目标无法达成——非候选 |
-| Kotlin + Spring Boot | 语言层面优于 Java，但国内 ToB 招聘与简历关键词匹配度低于 Java，且叠加「新语言 + 新框架」双学习成本 |
+| Kotlin + Spring Boot | 语言层面优于 Java，但国内 ToB 招聘与简历关键词匹配度低于 Java，且叠加“新语言 + 新框架”双学习成本 |
 
 ## 后果
 
@@ -73,14 +73,14 @@ related:
 
 - 直接对齐手册阶段 4～6 的验收标准与目标岗位；
 - Spring Security 6 的 JWT 资源服务器 + 现成过滤器链覆盖 4.1/4.6 大部分需求；
-- Flyway baseline 承接 17 个 Prisma 迁移，迁移治理从「双工具」收敛为「单工具」；
+- Flyway baseline 承接 17 个 Prisma 迁移，迁移治理从“双工具”收敛为“单工具”；
 - 与 Python AI 服务（ADR-0008）、TS 前端形成手册规划的国内三层形态。
 
 **负面 / 约束**
 
 - 运维从两个运行时变三个（JVM 内存/启动/镜像体积显著大于 Node 与 Python 服务）；
-- 密码/JWT/列名兼容的逐字节对齐是隐性地雷：任何 Prisma 列名 camelCase 与 Java 驼峰映射不一致都会在切换窗口爆炸——4.9 的影子读流量是必须步骤；
-- 跨语言契约测试面扩大：`ai-contract`（Python）之外，业务服务的兼容性测试（同一份用户数据 Java 能登录、同一 JWT 两端可验）需新增 CI 步骤；
+- 密码 / JWT / 列名兼容的逐字节对齐是隐性地雷：Prisma 列名 camelCase 与 Java 驼峰映射只要不一致，就会在切换窗口爆炸。因此 4.9 的影子读流量是必须步骤；
+- 跨语言契约测试面扩大：除 `ai-contract`(Python) 之外，业务服务还需新增 CI 步骤。该步骤验证同一份用户数据 Java 能登录、同一 JWT 两端可验；
 - 单人串行：阶段 4 预估 4～12 周，必须按里程碑推进（M0 骨架 → M1 身份/RBAC → M2 KB/会话/计费 → M3 限流/切换窗口）。
 
 **回滚方式**
@@ -92,7 +92,7 @@ related:
 ## 相关 ADR
 
 - [ADR-0001：内存存储 + 写穿 DB](adr-0001-in-memory-store-write-through-db.md)（本 ADR 的 4.7 即终结其生产读路径）
-- [ADR-0003：多租户隔离契约](adr-0003-multi-tenant-isolation.md)（`canViewKb` 签名「workspace 必填」在 Java 侧保持）
+- [ADR-0003：多租户隔离契约](adr-0003-multi-tenant-isolation.md)（`canViewKb` 签名“workspace 必填”在 Java 侧保持）
 - [ADR-0006：读路径存储演进](adr-0006-read-path-storage-evolution.md)（`revocationDegraded` 语义由业务服务继承）
 - [ADR-0008：AI 服务框架选型](adr-0008-ai-service-framework.md)（`/internal/*` 契约不变）
 - [服务拆分实施手册](../service-split.md)

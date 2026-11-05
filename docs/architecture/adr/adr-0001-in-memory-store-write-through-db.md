@@ -24,14 +24,14 @@ related:
 
 ## 背景
 
-早期版本（TD-01）所有领域数据挂在 `globalThis` 内存对象（`__KAI_*_STORE__`），重启即失、无法多实例。生产化要求数据持久化，但不能牺牲读路径性能与「纯内存演示模式」的零配置体验。
+早期版本（TD-01）所有领域数据挂在 `globalThis` 内存对象（`__KAI_*_STORE__`），重启即失、无法多实例。生产化要求数据持久化，但不能牺牲读路径性能与“纯内存演示模式”的零配置体验。
 
 约束条件：
 
 - 保留无 `DATABASE_URL` 时的完整演示模式（内存运行，重启重置）；
 - 读请求需要极低延迟（前端会话、KB 列表等高频读取）；
 - 写入不能阻塞请求线程；
-- 现有 11 个领域 store（auth / kb / chat / billing / agent / apikeys / models / notifications / security / team / admin）结构稳定，不希望大规模重写。
+- 现有 11 个领域 store(auth / kb / chat / billing / agent / apikeys / models / notifications / security / team / admin)结构稳定，不希望大规模重写。
 
 ## 决策
 
@@ -41,7 +41,7 @@ related:
 2. **水合（hydrate）**：首个 API 请求时把 DB 行懒加载进内存（`src/lib/db/hydrate.ts`，一次性）；
 3. **写穿（persist）**：每次变更先更新内存，再异步写穿 DB（`src/lib/db/persist.ts`，失败仅记录日志、不抛出，不阻塞请求）；
 4. **DB 访问**：Prisma 客户端由 `src/lib/db/client.ts` 懒加载单例提供，持久化统一经 `persist.ts` / `hydrate.ts` 适配，store 不直接依赖 Prisma；
-5. **健康检查**：`src/lib/health/readiness.ts` 的 `checkDb()`（SELECT 1）接入就绪探针。
+5. **健康检查**：`src/lib/health/readiness.ts` 的 `checkDb()`(SELECT 1)接入就绪探针。
 
 （更正 2026-09-05：初稿第 4/5 点描述的 `src/lib/db/repository.ts` 统一仓储层最终未被采用——store 直接通过 persist/hydrate 写穿，repository 层已移除。）
 
@@ -66,7 +66,7 @@ related:
 **负面 / 约束**
 
 - 内存与 DB 存在**最终一致窗口**（写穿是异步的，崩溃可能丢失未落库变更）；
-- 多实例部署时读仍落在各自实例内存（**不共享**），仅写穿保证落库 —— 面向多实例强一致读的场景（如负载均衡部署）需要演进（见回滚方式）；
+- 多实例部署时读仍落在各自实例内存（**不共享**），仅写穿保证落库。面向多实例强一致读的场景（如负载均衡部署）需要另行演进（见回滚方式）；
 - 内存占用随数据量线性增长，需关注大租户场景。
 
 **回滚方式**

@@ -22,7 +22,7 @@ related:
 
 # 常见问题与故障排查
 
-> 本文分两部分：**上半部分**是高频问答（按模块分类），**下半部分**是[四段式故障排查手册](#troubleshooting)（症状 → 原因 → 处理 → 预防）。新问题先在问答区登记，确认根因后补入排障手册。带 ⚠️ 的是新手最容易踩的坑。
+> 本文分两部分。**上半部分**是高频问答（按模块分类），**下半部分**是[四段式故障排查手册](#troubleshooting)（症状 → 原因 → 处理 → 预防）。新问题先在问答区登记，确认根因后补入排障手册。带 ⚠️ 的是新手最容易踩的坑。
 
 ## 环境与运行模式
 
@@ -46,11 +46,11 @@ worker 消费后台队列（文档处理 / Agent 调研 / 索引清理）。**�
 
 ### app 与 worker 为什么必须共享上传目录？
 
-文档处理在 worker 里执行，需要读取 app 写入的上传文件。compose 用命名卷 `uploads` 挂到两边的 `/app/.uploads`；K8s 用 PVC。不共享会出现「文档找不到 / 处理失败」。
+文档处理在 worker 里执行，需要读取 app 写入的上传文件。compose 用命名卷 `uploads` 挂到两边的 `/app/.uploads`；K8s 用 PVC。不共享会出现“文档找不到 / 处理失败”。
 
 ### 部署后上传报 EACCES 权限错误？
 
-镜像以非 root 用户 `nextjs`（uid 1001）运行，上传目录需可写：
+镜像以非 root 用户 `nextjs`(uid 1001)运行，上传目录需可写：
 - compose：命名卷首次挂载自动继承目录属主（Dockerfile 已 `chown`）；
 - K8s：`securityContext.fsGroup: 1001` 让 PVC 可写。
 
@@ -76,9 +76,9 @@ worker 消费后台队列（文档处理 / Agent 调研 / 索引清理）。**�
 
 ### API Key 在哪里创建？创建后丢了怎么办？
 
-「设置 → API 密钥」创建，格式 `kai_sk_...`，创建时选择 scope。**密钥仅创建时展示一次**，丢失只能删除重建。JWT 会话调用 v1 不受 scope 限制（走 RBAC）。
+“设置 → API 密钥”创建，格式 `kai_sk_...`，创建时选择 scope。**密钥仅创建时展示一次**，丢失只能删除重建。JWT 会话调用 v1 不受 scope 限制（走 RBAC）。
 
-### 调用 v1 API 报 403「缺少 scope」？
+### 调用 v1 API 报 403“缺少 scope”？
 
 API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](../api/reference.md)检查：`kb:read` / `kb:write` / `chat:read` / `agent:run`。JWT 会话不受限。
 
@@ -90,7 +90,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 ### 收到 429 怎么办？
 
-读取响应体的 `retryAfter`（秒）与 `dimension`（限流维度），按指数退避重试（上限 60s）。档位对应环境变量：匿名 `RATE_LIMIT_ANON_PER_MIN`（20）、用户 `RATE_LIMIT_PER_MIN`（200）、API Key `RATE_LIMIT_KEY_PER_MIN`（500）、KB `RATE_LIMIT_KB_PER_MIN`（60）、第三方集成 `RATE_LIMIT_INTEGRATION_PER_MIN`（120）、Agent `RATE_LIMIT_AGENT_PER_MIN`（10）、认证邮件 `RATE_LIMIT_AUTH_EMAIL_PER_MIN`（3）。SSE 流式端点已豁免。
+读取响应体的 `retryAfter`（秒）与 `dimension`（限流维度），按指数退避重试（上限 60s）。档位对应环境变量：匿名 `RATE_LIMIT_ANON_PER_MIN`(20)、用户 `RATE_LIMIT_PER_MIN`(200)、API Key `RATE_LIMIT_KEY_PER_MIN`(500)、KB `RATE_LIMIT_KB_PER_MIN`(60)、第三方集成 `RATE_LIMIT_INTEGRATION_PER_MIN`(120)、Agent `RATE_LIMIT_AGENT_PER_MIN`(10)、认证邮件 `RATE_LIMIT_AUTH_EMAIL_PER_MIN`(3)。SSE 流式端点已豁免。
 
 ### 为什么答非所问 / 检索质量差？
 
@@ -102,7 +102,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 默认开启（`OCR_ENABLED=true`）。扫描 PDF（无文本层）与图片上传会自动走 tesseract.js OCR；`OCR_LANG` 默认 `eng+chi_sim`；`OCR_MAX_PAGES` 限制单份扫描 PDF 的 OCR 页数（20），超长文档建议拆分。
 
-### 聊天「联网搜索」需要什么配置？
+### 聊天“联网搜索”需要什么配置？
 
 配置任一搜索服务 Key（`TAVILY_API_KEY` / `SERPAPI_KEY` / `BRAVE_SEARCH_KEY`）即可；未配置时返回模拟结果（演示）。Agent 调研还可选配 `GITHUB_TOKEN`（ArXiv 免费）。
 
@@ -114,15 +114,15 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 ### 本地提交前必须过哪些检查？
 
-`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 九 job：quality（tsc + lint + build + prisma drift + audit）、unit、frontend（vue-tsc + eslint + vitest + vite build）、ai-contract（pytest）、integration（三套件）、smoke、smoke-infra、e2e（根套件 + frontend 套件）、docs（文档构建死链检查 + Frontmatter 校验 + API 参考漂移 + 环境变量一致性）。
+`pnpm lint`（零告警）+ `pnpm test:unit`（覆盖率门槛：lines/functions/statements 70%、branches 60%）。CI 九 job：quality(tsc + lint + build + prisma drift + audit)、unit、frontend(vue-tsc + eslint + vitest + vite build)、ai-contract(pytest)、integration（三套件）、smoke、smoke-infra、e2e（根套件 + frontend 套件）、docs（文档构建死链检查 + Frontmatter 校验 + API 参考漂移 + 环境变量一致性）。
 
 ### 改了 src/lib/ 下代码，文档要同步吗？
 
-要。文档体系约定：**文档随代码走同一 PR**（docs-as-code）。改 `src/lib/` 模块、导出 API 或 schema 时，同步更新 `docs/architecture/`、`docs/api/` 对应文档；CI 的 `docs` job 会校验 API 漂移、死链、Frontmatter 与环境变量文档一致性。
+要。文档体系约定：**文档随代码走同一 PR**(docs-as-code)。改 `src/lib/` 模块、导出 API 或 schema 时，同步更新 `docs/architecture/`、`docs/api/` 对应文档；CI 的 `docs` job 会校验 API 漂移、死链、Frontmatter 与环境变量文档一致性。
 
 ## 故障排查手册 {#troubleshooting}
 
-> 按「症状 → 原因 → 处理 → 预防」四段式组织。**新增条目规范**：先确认根因与可复现步骤，再按本格式补充，防止条目失真。
+> 按“症状 → 原因 → 处理 → 预防”四段式组织。**新增条目规范**：先确认根因与可复现步骤，再按本格式补充，防止条目失真。
 
 ### 1. 就绪探针 503 degraded
 
@@ -150,7 +150,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **预防**：环境变量模板按 compose 服务名填写；生产环境由 `.env` 注入。
 
-### 3. 文档一直「处理中」/ Agent 任务永不完成
+### 3. 文档一直“处理中”/ Agent 任务永不完成
 
 **症状**：上传文档后状态长时间不更新；`/api/agent/run` 入队后无进度事件。
 
@@ -161,13 +161,13 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 2. 内存模式下 worker 与 app 同进程（`instrumentation-node.ts` 启动），确认未误禁用；
 3. 检查队列积压：Redis 模式下 `LLEN bull:*:wait` 等队列键。
 
-**预防**：部署自检清单勾选「worker 已部署」（见[部署指南](../ops/deployment-guide.md)）。
+**预防**：部署自检清单勾选“worker 已部署”（见[部署指南](../ops/deployment-guide.md)）。
 
 ### 4. 上传/写入 EACCES 权限错误
 
 **症状**：上传文档失败，日志报 `EACCES: permission denied` 写入 `/app/.uploads`。
 
-**原因**：镜像以非 root `nextjs`（uid 1001）运行，上传卷不可写（卷首次挂载属主不匹配，或 K8s PVC 无 fsGroup）。
+**原因**：镜像以非 root `nextjs`(uid 1001)运行，上传卷不可写（卷首次挂载属主不匹配，或 K8s PVC 无 fsGroup）。
 
 **处理**：
 - Docker：确认使用命名卷（Dockerfile 已对 `/app/.uploads` `chown nextjs:nodejs`）；
@@ -189,7 +189,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **预防**：生产监控 429 比例；SSE 端点已豁免无需处理。
 
-### 6. v1 API 返回 403「缺少 scope」
+### 6. v1 API 返回 403“缺少 scope”
 
 **症状**：`/api/v1/*` 调用返回 403。
 
@@ -207,7 +207,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **处理**：
 1. 确认服务端装有 pgvector（`select * from pg_available_extensions where name='vector';`）；应用会自动 `CREATE EXTENSION IF NOT EXISTS vector`，失败时由 DBA 手动执行一次；
-2. 故障期间入库的文档（正文在、向量缺失）：知识库详情页点「重建索引」（单篇或整库），或 `POST /api/knowledge-base/[id]/reindex`；种子文档以 `queued` 状态入库，应用启动（DB 水合）后会自动重投处理，无需手工触发；
+2. 故障期间入库的文档（正文在、向量缺失）：知识库详情页点“重建索引”（单篇或整库），或 `POST /api/knowledge-base/[id]/reindex`；种子文档以 `queued` 状态入库，应用启动（DB 水合）后会自动重投处理，无需手工触发；
 3. 内存索引迁到新后端：`npx tsx scripts/migrate-vector-store.ts`；
 4. 确认 `VECTOR_STORE` 与索引实际所在后端一致。
 
@@ -231,7 +231,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **处理**：`npx prisma migrate dev --name <描述>` 生成迁移并提交；不要手工改库。
 
-**预防**：schema 变更流程见[开发规范](../standards/README.md)；PR 模板勾选「DB 迁移」项。
+**预防**：schema 变更流程见[开发规范](../standards/README.md)；PR 模板勾选“DB 迁移”项。
 
 ### 10. 问答质量差 / 答非所问
 
@@ -239,7 +239,7 @@ API Key 创建时分配的 scope 与端点不匹配。对照[端点 Scope 表](.
 
 **原因**：演示模式（本地抽取式生成）；`topK` 过小；文档未处理完成；重排/改写未开启。
 
-**处理**：配置真实 LLM；检查 `kb.ready`；调大 `topK`；开启 `RERANK_ENABLED` / `QUERY_REWRITE_ENABLED`；对已上线文档使用「点赞/点踩」反馈降权纠偏。
+**处理**：配置真实 LLM；检查 `kb.ready`；调大 `topK`；开启 `RERANK_ENABLED` / `QUERY_REWRITE_ENABLED`；对已上线文档使用“点赞/点踩”反馈降权纠偏。
 
 **预防**：上线前用真实 Provider 验证检索质量（`RERANK_CANDIDATES` 默认 20 候选池）。
 

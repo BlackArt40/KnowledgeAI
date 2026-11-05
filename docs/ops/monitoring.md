@@ -20,7 +20,7 @@ related:
 
 # 监控与告警
 
-> 本文介绍 KnowledgeAI 的可观测性体系：探针与告警、SLI 指标、链路追踪、结构化日志与错误上报。运维值班请先读本节「告警响应」。
+> 本文介绍 KnowledgeAI 的可观测性体系：探针与告警、SLI 指标、链路追踪、结构化日志与错误上报。运维值班请先读本节“告警响应”。
 
 ## 健康检查探针
 
@@ -56,7 +56,7 @@ related:
 **告警响应流程**（值班）：
 
 1. 查看 `GET /api/health/ready` 的 `degraded` 列表，定位故障依赖；
-2. 检查依赖连通性：`SELECT 1`（DB）/ `redis-cli ping` / `GET /models`（LLM）；
+2. 检查依赖连通性：`SELECT 1`(DB)/ `redis-cli ping` / `GET /models`(LLM)；
 3. 确认是依赖故障还是网络/配置问题（见[故障排查手册](../faq/faq.md#troubleshooting)）；
 4. 修复后探针自动恢复，无需人工重置。
 
@@ -84,7 +84,7 @@ related:
 
 - **pino JSON**（`LOG_LEVEL` 控制级别，默认 `info`）；
 - **敏感字段自动脱敏**：内置键表（`apiKey` / `password` / `token` / `secret` / `authorization` / `cookie` 及一二级嵌套通配），可用 `LOG_REDACT_KEYS` 追加；
-- **聚合**：设置 `LOG_LOKI_URL` 后批量推送 Loki（JSON Push API）；未设置 = stdout JSON 行；
+- **聚合**：设置 `LOG_LOKI_URL` 后批量推送 Loki(JSON Push API)；未设置 = stdout JSON 行；
 - 管理端 `/api/admin/logs` 提供日志查询。
 
 ## 错误上报（Sentry）
@@ -97,10 +97,10 @@ related:
 | 症状 | 第一步 | 详见 |
 |------|--------|------|
 | 探针 503 degraded | 看 `degraded` 列表 → 检查依赖连通 | [故障排查手册](../faq/faq.md#troubleshooting) |
-| 探针附加降级位置位（rateLimit/revocation/queueBackpressured） | 对应降级对象的恢复动作（Redis 连通 / worker 消费能力） | 本节「健康检查探针」 |
+| 探针附加降级位置位（rateLimit/revocation/queueBackpressured） | 对应降级对象的恢复动作（Redis 连通 / worker 消费能力） | 本节“健康检查探针” |
 | 请求 429 | 读 `Retry-After` / `dimension` → 检查限流档位 | [错误码表](../api/errors.md) |
-| 错误率上升 | 用 `X-Trace-Id` 串联日志定位链路 | 本节「链路追踪」 |
-| worker 积压 / 任务被拒（"队列繁忙"） | 检查 worker 进程与 Redis 队列，必要时降并发/扩容 | [运维 Runbook](runbook.md) RB-03 |
+| 错误率上升 | 用 `X-Trace-Id` 串联日志定位链路 | 本节“链路追踪” |
+| worker 积压 / 任务被拒（“队列繁忙”） | 检查 worker 进程与 Redis 队列，必要时降并发/扩容 | [运维 Runbook](runbook.md) RB-03 |
 
 ## 相关文档
 

@@ -25,7 +25,7 @@ related:
 
 ## 快速开始（3 步）
 
-1. **获取 API Key**：登录后进入「设置 → API 密钥」，创建密钥（格式 `kai_sk_xxxxxxxx…`，创建时选择 scope）。密钥仅创建时展示一次，请妥善保存。
+1. **获取 API Key**：登录后进入“设置 → API 密钥”，创建密钥（格式 `kai_sk_xxxxxxxx…`，创建时选择 scope）。密钥仅创建时展示一次，请妥善保存。
 2. **验证凭据**：
 
    ```bash
@@ -75,7 +75,7 @@ related:
 | `POST` | `/api/v1/webhooks/{id}/test` | 发送测试事件 |
 | `GET` | `/api/v1/me` | 当前用户信息 |
 
-> 文档上传等管理操作通过 Web 端 `/api/knowledge-base/[id]` 完成（内部 API），公开 v1 面聚焦「问答 / 调研 / 集成」三类场景。完整字段见 [API 参考](reference.md) 或 `/docs` Swagger UI。
+> 文档上传等管理操作通过 Web 端 `/api/knowledge-base/[id]` 完成（内部 API），公开 v1 面聚焦“问答 / 调研 / 集成”三类场景。完整字段见 [API 参考](reference.md) 或 `/docs` Swagger UI。
 
 ## 流式事件协议（SSE）
 

@@ -36,7 +36,7 @@ applies_to: ">=1.4.0"
 | 营销就绪态归一 | `src/lib/marketing/readiness.ts` | `@shared/marketing/readiness` |
 | 分类色板（数据侧 hex） | `frontend/src/lib/palette.ts` | `@/lib/palette`（`TINTS` / `KB_COLORS` / `ENTITY_COLORS`） |
 
-在 `frontend/src` 里复制一份同类实现（哪怕是「先用着」的临时版）视为违规；缺能力时先看 `src/lib` 是否已有，没有再新增到 `src/lib` 并由前端引用。
+在 `frontend/src` 里复制一份同类实现（哪怕是“先用着”的临时版）视为违规；缺能力时先看 `src/lib` 是否已有，没有再新增到 `src/lib` 并由前端引用。
 
 ## 2. 样式分层（五层，顺序固定）
 
@@ -58,12 +58,12 @@ applies_to: ">=1.4.0"
 
 ## 3. 令牌纪律
 
-- **颜色分三类**（2026-10-29 校准，此前写成「一律不得写字面量」，与 `#fff` 结构性用法冲突）：
+- **颜色分三类**（2026-10-29 校准，此前写成“一律不得写字面量”，与 `#fff` 结构性用法冲突）：
   1. **语义色必须走令牌**。注意分两组：随主题翻转的（`--background` / `--foreground` / `--primary` / `--success` / `--warning` / `--destructive` 等在 `.dark` 有覆盖），和不随主题翻转的固定状态色（`--positive` / `--positive-text` / `--positive-strong` / `--negative` / `--negative-strong` / `--warning-bright` / `--warning-text`，以及 `--surface-inverse*` / `*-on-inverse` 组，只在 `:root` 定义）。**不要把固定状态色映射到会翻转的令牌上**，那会在暗色主题下变色。
   2. **结构性中性值允许字面量**：`#fff`、`#000`、`rgb(255 255 255 / α)` 这类纯白/纯黑叠加，以及 `element-adapter.css` 里 `color-mix(… , #fff)` 的混合锚点。
   3. **数据侧色值豁免**：SVG `fill` 属性、组件 `color` prop 的数据源（`KbGraphView` 的 `TYPE_COLORS`、`KbListView` 的 `COLORS` 选色板）是**数据**而非 CSS，保留 hex。
-- **装饰（分类）色板同样必须走令牌**（2026-10-30 定型）：`--tint-indigo` / `-sky` / `-sky-text` / `-emerald` / `-violet` / `-teal` / `-orange` / `-pink` / `-rose` / `-fuchsia`。语义分工见 `design-system.md`「装饰色板」：分类色只回答「这是什么类别」，褒贬一律交给状态色。数据侧（SVG `fill`、落库的头像色）用 `frontend/src/lib/palette.ts` 的 `TINTS` / `KB_COLORS` / `ENTITY_COLORS`，与令牌一一对应、改色必须同步。新增分类场景先复用现有档位，确需新 hue 时按 500 档补档并写明语义。
-- **圆角三分法**（2026-10-29 校准：此前「圆角一律不得写字面量」的写法与仓库现状冲突——现存 299 处字面量，其中 68 处是本条要豁免的小件——故作废重写）：
+- **装饰（分类）色板同样必须走令牌**（2026-10-30 定型）：`--tint-indigo` / `-sky` / `-sky-text` / `-emerald` / `-violet` / `-teal` / `-orange` / `-pink` / `-rose` / `-fuchsia`。语义分工见 `design-system.md`“装饰色板”：分类色只回答“这是什么类别”，褒贬一律交给状态色。数据侧（SVG `fill`、落库的头像色）用 `frontend/src/lib/palette.ts` 的 `TINTS` / `KB_COLORS` / `ENTITY_COLORS`，与令牌一一对应、改色必须同步。新增分类场景先复用现有档位，确需新 hue 时按 500 档补档并写明语义。
+- **圆角三分法**（2026-10-29 校准）：此前“圆角一律不得写字面量”的写法与仓库现状冲突。现存 299 处字面量，其中 68 处是本条要豁免的小件，故作废重写。
   1. **阶梯值必须走令牌**：8 / 12 / 14 / 16 / 20 / 24px 对应 `--radius-sm` / `--radius` / `--radius-card` / `--radius-lg` / `--radius-xl` / `--radius-2xl`。新代码写字面量即违规。
   2. **胶囊用 `--radius-full`**（9999px 的语义名），不再写字面量。
   3. **登记例外可以写字面量**，但**不得新增集合以外的值**，确需新值先改登记表。当前登记值：
@@ -71,8 +71,8 @@ applies_to: ">=1.4.0"
      - 大件装饰：`28px`（演示台外壳 `.console`）、`40px`（hero 光晕 `.demo-glow`）——不属阶梯、也非胶囊，改动需同步 `design-system.md`
 - 阶梯语义：`--radius` 0.75rem 是 EP 控件基线（`element-adapter.css` 依赖它，改它会让按钮 / 输入 / 下拉 / 弹窗一起变圆）；`--radius-card` 0.875rem 只给 `.card`；`--radius-lg` / `--radius-xl` / `--radius-2xl` 给内容容器。
 - 存量已于 2026-10-29 清零：阶梯值 152 处、胶囊 63 处全部令牌化，`frontend/src` 内不再有阶梯/胶囊字面量。此后新代码写字面量即违规，评审可直接打回。
-- 反面色面（营销 CTA、定价主推卡、认证页品牌面板）两套主题下都是深底，因此 `--surface-inverse` / `--surface-inverse-deep` / `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse` **只在 `:root` 定义**，不要在 `.dark` 里再覆盖一次。
-- **阴影**：阶梯阴影必须走令牌（`--shadow-xs/sm/md/lg`，暗色另有更重的一套）。两类例外可写字面量：① 品牌光晕——`box-shadow: 0 8px 20px hsl(var(--primary) / 0.22)` 这类随组件尺寸调半径与透明度的发光（当前 18 处，集中在 hero / 侧栏 / 图表）；② `0 0 0 1px hsl(var(--primary) / α)` 这类焦点或描边环。新代码优先复用阶梯阴影，不要为一次性发光新增令牌。
+- 反面色面（营销 CTA、定价主推卡、认证页品牌面板）两套主题下都是深底，因此 `--surface-inverse` / `--surface-inverse-deep` / `--primary-on-inverse` / `--success-on-inverse` / `--border-on-inverse` **只在 `:root` 定义**。不要在 `.dark` 里再覆盖一次。
+- **阴影**：阶梯阴影必须走令牌（`--shadow-xs/sm/md/lg`，暗色另有更重的一套）。两类例外可写字面量：① 品牌光晕，即 `box-shadow: 0 8px 20px hsl(var(--primary) / 0.22)` 这类随组件尺寸调半径与透明度的发光（当前 18 处，集中在 hero / 侧栏 / 图表）；② `0 0 0 1px hsl(var(--primary) / α)` 这类焦点或描边环。新代码优先复用阶梯阴影，不要为一次性发光新增令牌。
 - **缓动**：CSS 关键字（`ease` / `ease-out` / `linear`）允许直接用；**自定义 `cubic-bezier` 必须走 `--ease-*`**——现只有 `--ease-out`（进入动画）与 `--ease-out-quad`（状态点 ping）。
 - 顶栏高度只能读 `--topbar-h`（`.topbar`、`.side-head`、`chat-view.css` 的视口计算共用）。滚动锚点、导航栏高度同理，不要手抄像素值。
 
@@ -94,10 +94,10 @@ applies_to: ">=1.4.0"
 - `:deep()` 只允许两类场景，且必须在注释里写明原因：
   1. **第三方组件**（Element Plus 等）内部结构无法修改；
   2. **`v-html` 渲染出的内容**——这类 DOM 不在 Vue 组件作用域内，scoped 样式天然覆盖不到。`components/chat/MessageBubble.vue` 的 `.md :deep(h1)` 等规则属此列，是规范允许的形态。
-- **单消费方组件的专属外观直接写进组件自身**，不要由父组件穿透覆盖。先例：`MktHero` 对 `KnowledgeConsole` / `LiveStatus` 的 8 条 `:deep()` 已收敛进两个组件（2026-10-29），组件注释里注明了「唯一消费方是 MktHero」。
+- **单消费方组件的专属外观直接写进组件自身**，不要由父组件穿透覆盖。先例：`MktHero` 对 `KnowledgeConsole` / `LiveStatus` 的 8 条 `:deep()` 已收敛进两个组件（2026-10-29），组件注释里注明了“唯一消费方是 MktHero”。
 - 若某处 `:deep()` 确实暂时无法收敛，评审时判为待收敛项并记录到 PR 描述；不要在一次改动里顺手重写子组件。
 
-**渲染回归安全网**：改动组件的可见形态时，`frontend/e2e/home.spec.ts` 用 `toHaveCSS` 锁定了首页 hero 演示台与状态条的计算样式（圆角 / 阴影 / 内边距 / 尺寸 / 字号 / 布局）。纯样式重构应在改动前后各跑一次该用例——CI 没有视觉回归测试，它是唯一的「外观没变」证据。
+**渲染回归安全网**：改动组件的可见形态时，`frontend/e2e/home.spec.ts` 用 `toHaveCSS` 锁定了首页 hero 演示台与状态条的计算样式（圆角 / 阴影 / 内边距 / 尺寸 / 字号 / 布局）。纯样式重构应在改动前后各跑一次该用例：CI 没有视觉回归测试，它是唯一的“外观没变”证据。
 
 ## 7. 生成文件与手改边界
 

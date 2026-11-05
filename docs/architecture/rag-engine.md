@@ -81,9 +81,9 @@ flowchart LR
 | `generateAsync()` | 非流式 LLM 生成 |
 | `generateStream()` | **流式生成**（生产路径）：按 token 输出，组装 `RetrievedChunk` 为 `Citation` |
 
-`GenerationResult` 结构：`text`（含 `[n]` 内联标记）+ `citations`（`n` / `docId` / `docName` / `chunkIndex` / `snippet` / `score`）。前端据此渲染「答案 + 引用面板」。
+`GenerationResult` 结构：`text`（含 `[n]` 内联标记）+ `citations`（`n` / `docId` / `docName` / `chunkIndex` / `snippet` / `score`）。前端据此渲染“答案 + 引用面板”。
 
-**反馈降权闭环**：用户对回答点赞/点踩并备注 → 负反馈的 chunk 在后续检索中降权 → 检索质量随使用持续改善。
+**反馈降权闭环**：用户对回答点赞 / 点踩并备注，负反馈的 chunk 会在后续检索中降权。检索质量随使用持续改善。
 
 ## 向量库后端（可扩展点）
 
@@ -98,7 +98,7 @@ flowchart LR
 
 ## 关键取舍
 
-- **混合检索优于纯向量**：BM25 补足实体/术语精确匹配，重排提升语义相关性，GraphRAG 实体扩展进一步提升精度（知识图谱模块）；
+- **混合检索优于纯向量**：BM25 补足实体与术语的精确匹配，重排提升语义相关性；GraphRAG 实体扩展进一步提升精度（知识图谱模块）。
 - **候选池放大**：检索先取大候选再重排，避免早期 topK 截断丢失相关片段；
 - **本地哈希嵌入兜底**：无外部 Key 时仍可体验完整链路（精度有限，仅演示）。
 
