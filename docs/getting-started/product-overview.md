@@ -1,14 +1,14 @@
 ---
 title: 产品概述
-description: KnowledgeAI 产品概述：产品定位、核心技术栈、页面与技术栈对应关系，以及后续迭代新增的页面路由与现状架构图
+description: KnowledgeAI 产品概述：产品定位、核心技术栈、页面模块与关键实现对照，以及后续迭代新增的页面路由
 type: explanation
 category: getting-started
 level: L1
-version: 1.2.0
+version: 1.3.0
 authors:
   - product-team
 owner: 产品负责人
-reviewed_at: 2026-11-04
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -43,58 +43,30 @@ related:
 
 ## 页面与技术栈对应关系总览
 
-| 页面               | 核心技术                        | 难度  |
-| ------------------ | ------------------------------- | :---: |
-| 落地页/定价页/博客 | Vue 3 + 构建期预渲染 + SEO      |  ⭐⭐   |
-| 登录/注册/验证     | NextAuth + OAuth + JWT          |  ⭐⭐   |
-| 仪表盘             | 数据聚合 + 手绘 SVG 图表        |  ⭐⭐⭐  |
-| 知识库管理         | 文件上传 + 异步处理 + 状态管理  |  ⭐⭐⭐  |
-| **智能问答**       | **RAG 全流程 + 流式输出**        | ⭐⭐⭐⭐  |
-| **Agent 调研**      | **多 Agent StateGraph + 任务队列** | ⭐⭐⭐⭐⭐ |
-| 团队管理           | RBAC + 多租户隔离               | ⭐⭐⭐⭐  |
-| 订阅计费           | Stripe/微信支付 + 状态机        | ⭐⭐⭐⭐  |
-| 用量统计           | 计量系统 + 数据可视化           |  ⭐⭐⭐  |
-| API 密钥            | API 网关 + 限流 + 日志           |  ⭐⭐⭐  |
-| 安全设置           | 2FA + 会话管理 + GDPR           |  ⭐⭐⭐  |
-| 管理后台           | 权限校验 + 数据看板             |  ⭐⭐⭐  |
-| 隐私/条款          | 合规文档 + 法律文本             |   ⭐   |
+| 页面（路由） | 关键实现 | 代码位置 |
+|------|----------|----------|
+| `/` 首页 | Vue 3 + Element Plus；构建期 SSR 预渲染出 `dist/home.html`（SEO 首帧）；PWA | `frontend/src/views/HomeView.vue`、`frontend/scripts/prerender-home.mjs` |
+| 认证 6 页：`/login` `/register` `/verify-email` `/forgot-password` `/reset-password` `/2fa-enroll` | 自建 JWT 会话（`kai-token` cookie）+ PBKDF2 口令 + TOTP 两步验证 + 邮件验证；OAuth 由 Auth.js v5 仅作引擎、会话契约不变 | `src/lib/auth/`、`frontend/src/views/auth/` |
+| `/dashboard` 工作台 | 聚合当前用户、知识库、任务与用量数据 | `DashboardView.vue` |
+| `/knowledge-base`、`/knowledge-base/:id` | 分片上传 + 队列异步解析（`doc-process`）+ 正文 OCC 编辑 + Yjs 实时协同 | `KbListView.vue`、`KbDetailView.vue`、`src/lib/kb/`、`src/lib/collab/` |
+| `/knowledge-base/:id/graph` | 实体 / 关系抽取 + SVG 力导向图（布局经 `@shared/kg/layout`） | `KbGraphView.vue`、`src/lib/kg/` |
+| `/chat` 智能问答 | RAG 混合检索 + SSE 流式（`sources` → `token` → `done`）+ 语音输入 / 朗读 | `ChatView.vue`、`src/lib/chat/`、`src/lib/rag/` |
+| `/agent` Agent 调研 | StateGraph 编排 + 任务队列 + SSE（`init` → `step` → `done`） | `AgentView.vue`、`src/lib/agent/` |
+| `/team` 团队 | RBAC（owner / admin / editor / viewer）+ 邀请令牌 + 审计 + 评论 @提及 | `TeamView.vue`、`src/lib/team/` |
+| `/billing`、`/checkout`、`/usage` | Stripe Checkout 真实收款；支付宝 / 微信为枚举内的演示通道（`payOrder` 直接置为已付）；用量按日聚合 | `src/lib/billing/`、`BillingView.vue`、`UsageView.vue` |
+| `/api-keys` | API Key（`kai_sk_` 前缀、scope 校验、有效期） | `ApiKeysView.vue`、`src/lib/apikeys/` |
+| `/settings` 设置 | 个人资料、安全（2FA / 会话 / OAuth 绑定）、外观主题、语言 | `SettingsView.vue` |
+| `/admin`、`/admin/monitoring` | 管理端聚合看板；可观测性（trace / 日志 / 限流 / 队列，仅 Owner·Admin） | `AdminView.vue`、`MonitoringView.vue`、`src/lib/obs/` |
+| `/developer`、`/docs` | 开发者门户（SDK / Webhook / 用量）+ Swagger UI（读 `/api/openapi.json`） | `DeveloperView.vue`、`DocsView.vue`、`src/lib/openapi/` |
+| `/invite` 邀请落地 | 签名令牌的接受 / 拒绝加入工作区（需登录） | `InviteAcceptView.vue` |
+| `/share-doc/:token`、`/share-kb/:token`、`/r/:id` 公开分享 | 令牌即凭据的只读公开页（单文档 / 整库 / Agent 报告） | `frontend/src/views/share/` |
+| `/privacy`、`/terms`、`/maintenance` | 静态合规与维护页 | `frontend/src/views/static/` |
 
 ---
 
-## 系统架构图
+## 系统架构
 
-```
-                          ┌─────────────┐
-                          │   用户浏览器   │
-                          └──────┬──────┘
-                                 │
-                          ┌──────▼──────┐
-                          │   Vercel     │  ← 前端部署
-                          │  (Next.js)   │
-                          └──────┬──────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │      API Gateway         │  ← 限流/认证
-                    │   (Next.js API Routes)   │
-                    └────────────┬────────────┘
-                                 │
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-   ┌──────▼──────┐      ┌───────▼──────┐      ┌───────▼──────┐
-   │  Auth 服务   │      │  RAG 服务     │      │ Agent 服务   │
-   │ (NextAuth)  │      │ (LangChain)  │      │(LangGraph)  │
-   └──────┬──────┘      └───────┬──────┘      └───────┬──────┘
-          │                     │                     │
-          │             ┌───────▼──────┐      ┌───────▼──────┐
-          │             │  向量数据库    │      │  任务队列     │
-          │             │ (ChromaDB)   │      │(BullMQ+Redis)│
-          │             └──────────────┘      └──────────────┘
-          │
-   ┌──────▼──────┐      ┌──────────────┐     ┌──────────────┐
-   │ PostgreSQL  │      │    Redis      │     │  对象存储     │
-   │ (主数据库)   │      │   (缓存)      │     │ (文档存储)    │
-   └─────────────┘      └──────────────┘     └──────────────┘
-```
+架构图与数据流不在本文重复：[系统架构图与设计说明](../architecture/system-design.md) 给出上下文、部署拓扑、分层规则、模块地图与数据模型；[系统架构：数据流与契约](../architecture/system-design-runtime.md) 给出问答、文档入库、Agent 调研、鉴权限流四条链路与不可变契约；设计取舍见[总体架构](../architecture/overview.md)。
 
 ---
 
@@ -130,6 +102,7 @@ related:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.3.0 | 2026-11-05 | 删除过时的“系统架构图”ASCII（Vercel/Next.js 前端、NextAuth、LangChain/LangGraph、ChromaDB），改为指向架构上下两篇；「页面与技术栈对应关系总览」按 30 条实际路由重写为“页面模块与关键实现对照”（补代码位置，删除不存在的定价页/博客行、“难度”列与无真实通道的微信支付表述） |
 | 1.2.0 | 2026-11-04 | 删除“完整页面清单”中等宽字符画的 P1～P25 原始规划草图（技术栈与页面细节已过时）；页面口径校正为 **30 个页面路由**（以 `frontend/src/router/index.ts` 为准），新增 `/invite` 邀请落地页；路由参数改用 Vue Router 的 `:id` / `:token` 写法；“新增 9 / 10 个路由 / 共 29 个”的算术矛盾改为按实际路由表表述 |
 | 1.1.0 | 2026-09-23 | 删除过时的 8～12 周开发顺序与 2026-07-10 实现状态附录；页面口径更新为原始规划 25 项 / 当前 28 个路由 |
 | 1.0.0 | 2026-08-20 | 初版（原《产品文档》） |
