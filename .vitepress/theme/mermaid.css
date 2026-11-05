@@ -1,0 +1,14 @@
+/* Mermaid 标签高度兼容。
+ *
+ * VitePress 正文的 <p> 行高是 1.75（16px → 28px），而 Mermaid 11 在测量节点时
+ * 按 1.5 倍行高（16px → 24px）预留 foreignObject 高度。标签一旦换到 2 行以上，
+ * 实际文本就会比预留高度高出 4px/行，最后一行被裁掉（中文文档尤其明显）。
+ *
+ * 把标签段落固定回 Mermaid 的假设值即可；只作用于图和连线标签，不影响正文。
+ * 这里不要改成 1.75 或删除，否则所有多行流程图会再次被裁。
+ */
+[id^='mermaid'] .nodeLabel p,
+[id^='mermaid'] .edgeLabel p {
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
