@@ -23,7 +23,7 @@ applies_to: ">=1.3.0"
 
 ```
 KnowledgeAI/
-├── frontend/             # Vue 3 前端（pnpm workspace 包 kai-frontend，28/28 页面）
+├── frontend/             # Vue 3 前端（pnpm workspace 包 kai-frontend，30 个页面）
 ├── src/                  # Next 纯 API（/api/** Route Handlers + 业务库 src/lib）
 ├── deploy/               # 部署资产（nginx 网关配置 + 前端切流路由表）
 ├── prisma/               # 数据库 schema + 迁移 + 种子数据
@@ -154,7 +154,7 @@ deploy/
     └── frontend-switch.conf      # switch-frontend.sh 生成的 switch conf（随切流提交留审计轨迹）
 ```
 
-> 切流唯一入口：`scripts/deploy/switch-frontend.sh`（list/apply/rollback/revert-all），见 [部署指南](../ops/deployment-guide.md)。
+> 切流唯一入口：`scripts/deploy/switch-frontend.sh`(list/apply/rollback/revert-all)，见 [部署指南](../ops/deployment-guide.md)。
 
 ## 根目录关键文件
 
@@ -169,7 +169,7 @@ deploy/
 | `instrumentation.ts` + `instrumentation-node.ts` | 服务器启动钩子（启动队列 worker） |
 | `worker.ts` | 独立 Worker 进程入口（Docker worker 服务） |
 | `Dockerfile` | 多阶段构建（deps → build → minimal runner；standalone 剥离清单） |
-| `docker-compose.yml` | 单体编排：app + worker + Redis + PostgreSQL（pgvector） |
+| `docker-compose.yml` | 单体编排：app + worker + Redis + PostgreSQL(pgvector) |
 | `docker-compose.split.yml` | 三服务拆分编排（网关 + business + ai + 基础设施） |
 | `.env.example` | 环境变量参考（含 demo fallback 文档；与 env-vars.md parity 门禁） |
 

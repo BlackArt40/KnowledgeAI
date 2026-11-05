@@ -47,7 +47,7 @@ related:
 3. **BullMQ + Redis**（`REDIS_URL` 已配置）：多实例、独立重试与死信队列（DLQ）、独立 worker 进程（`worker.ts` + Docker `worker` 服务），Agent 事件经 Redis Pub/Sub 跨进程转发（`agent-bus-redis.ts`）；
 4. **任务注册**：`handlers.ts` 的 `registerAllHandlers()` 统一注册；新增任务类型 = `JobType` 联合类型 + handler + 注册 + 路由入队。
 
-任务类型：`doc-process`、`agent-run`、`index-cleanup`、`webhook-deliver`。
+任务类型：`doc-process`、`agent-run`、`index-cleanup`、`webhook-deliver`、`email-send`（邮件类通知）。
 
 **Agent SSE 流**：`/api/agent/run` 入队 `agent-run` 后打开 SSE 订阅事件总线；worker 执行 `runTask` 并发布 `step` / `done` / `error` / `end` 事件，route handler 转发。事件名被测试断言，**禁止改名**。
 
@@ -65,7 +65,7 @@ related:
 **正面**
 
 - 请求线程零阻塞，长任务异步完成；
-- 内存 / Redis 双后端覆盖「演示 → 生产」全谱系，配置即切换；
+- 内存 / Redis 双后端覆盖“演示 → 生产”全谱系，配置即切换；
 - 多实例与独立 worker 成为可能（事件总线跨进程）；
 - 重试 + DLQ 保障任务可靠性，失败有据可查。
 

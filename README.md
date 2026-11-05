@@ -20,7 +20,7 @@
 | 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
 | CI/CD | GitHub Actions 九 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / AI 服务契约 / 集成三套件 / Playwright E2E + 前端 E2E / 文档门禁 / 验收 smoke / smoke-infra / 前端四门禁）/ 依赖漏洞审计（critical 阻断）/ Docker 镜像 GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 80%+）+ Playwright（双套件）+ pnpm audit + buildx/GHCR + 蓝绿脚本（secrets 门控） |
 | 健康检查 | 存活探针（/api/health，与依赖解耦）/ 就绪探针（DB·Redis·LLM 连通性，不可用返回 503）/ 数据库检查 / 就绪失败自动告警（站内通知 admin + 日志 + Sentry）/ Docker·K8s 三探针配置 | 真实连通性探测（SELECT 1 / Redis connect / /models）+ 转移告警状态机（10 分钟重报去重） |
-| 开放 API | OpenAPI 3.0 规范 + `/docs` Swagger UI 交互式文档 / `/api/v1` 版本化表面（KB·流式问答·Agent·Webhook，API Key scope 强制）/ Webhook 事件推送（kb.ready·agent.completed·usage.alert，HMAC 签名 + 队列重试 + 死信）/ 三语言官方 SDK（JavaScript / Python / Go）/ 开发者门户（用量统计 + Webhook 管理 + 集成市场） | 手写 OpenAPI + swagger-ui-dist + scope 校验 + webhook-deliver 队列 + 零依赖 SDK |
+| 开放 API | OpenAPI 3.0 规范 + `/docs` Swagger UI 交互式文档 / `/api/v1` 版本化表面（KB·流式问答·Agent·Webhook，API Key scope 强制）/ Webhook 事件推送（kb.ready·agent.completed·usage.alert，HMAC 签名 + 队列重试 + 死信）/ 三语言官方 SDK(JavaScript / Python / Go)/ 开发者门户（用量统计 + Webhook 管理 + 集成市场） | 手写 OpenAPI + swagger-ui-dist + scope 校验 + webhook-deliver 队列 + 零依赖 SDK |
 | 集成市场 | Embeddable Widget（单文件独立部署）/ Slack·飞书·钉钉群机器人（token 哈希鉴权 + 独立限流）/ Chrome 扩展（右键选中即问答）/ n8n·Zapier（API + Webhook 工作流） | 自包含 JS 组件 + 平台消息适配器 + MV3 扩展 + CORS 放行 |
 | 知识图谱 | 文档 NER 自动抽取（人物·组织·概念·事件）+ 同句共现关系图 / 交互式图谱可视化（拖拽·缩放·邻居高亮）/ GraphRAG 混合检索（实体扩展重排，精度优于纯向量） | 模式 NER + 内存图谱（DB 落库）+ SVG 力导向图 + 邻居加权 |
 | 多模态 | 图片文档索引（Vision 描述 / OCR 回退）/ 图片 + 文本混合提问 / 语音输入（Web Speech API → 自动发送）/ 语音输出（朗读回答）/ 视频字幕（srt/vtt）提取索引 | Vision content-parts + tesseract + STT/TTS 零依赖封装 |
@@ -32,7 +32,7 @@
 
 ## 🛠 技术栈
 
-- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/` 单仓目录，pnpm workspace 包 `kai-frontend`，28/28 页面全量承载 + 首页 SEO 预渲染 + PWA）
+- **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/` 单仓目录，pnpm workspace 包 `kai-frontend`，30 个页面全量承载 + 首页 SEO 预渲染 + PWA）
 - **后端/API**：Next.js 16 纯 API（Route Handlers + SSE 流式 + proxy 中间件限流）
 - **共享单源**：i18next 语言包 / SSE 解析 / 主题引擎 / 格式化经 `@shared` 别名前后端复用（禁止拷贝）
 - **样式**：Element Plus 主题适配 + CSS 变量设计令牌（`frontend/src/styles/tokens.css` 单源：系统 / 亮 / 暗 + 高对比度 + 品牌色）
@@ -52,7 +52,7 @@ pnpm dev
 pnpm -C frontend dev        # → http://localhost:5173
 
 # 本地开发不需要 Docker：上面两条命令即完整环境（演示模式，数据不持久化）。
-# Dockerfile / docker-compose*.yml 仅用于部署，见下方「Docker 部署」。
+# Dockerfile / docker-compose*.yml 仅用于部署，见下方“Docker 部署”。
 
 # 生产构建（后端 standalone + 前端 dist 含 SEO 预渲染首页）
 pnpm build
@@ -100,7 +100,7 @@ docker run -p 3000:3000 --env-file .env.local -e QUEUE_CONSUMER=web knowledgeai
 ## 📁 项目结构
 
 ```
-frontend/               # Vue 3 前端（28/28 页面全量承载）
+frontend/               # Vue 3 前端（30 个页面全量承载）
 ├── src/
 │   ├── views/          # 页面（工作台 / 知识库 / 聊天 / Agent / 账务 / 管理端 / 门户）
 │   ├── components/     # 业务组件（AppShell / 聊天气泡 / 营销区等）
@@ -154,7 +154,7 @@ deliverables/           # 工程保障与评审交付物（历史归档，非运
 
 ## ⚙️ 生产化接入（配置即切换）
 
-所有核心模块通过 Provider 适配层实现「配置即切换」。设置环境变量即启用真实服务，未配置则自动回退到本地演示模式。
+所有核心模块通过 Provider 适配层实现“配置即切换”。设置环境变量即启用真实服务，未配置则自动回退到本地演示模式。
 
 | 模块 | 环境变量 | 真实服务 | 演示回退 |
 | --- | --- | --- | --- |
@@ -190,9 +190,9 @@ pnpm dev
 
 ## 📄 文档
 
-- [产品概述](docs/getting-started/product-overview.md) — 产品定位与页面清单（原始规划 25 项 / 当前 28 个路由）
+- [产品概述](docs/getting-started/product-overview.md) — 产品定位与页面路由（原始规划 25 项 / 当前 30 个路由）
 - [UI 设计体系](docs/architecture/design-system.md) — 设计令牌 / 组件 / 主题
-- [开发路线图（归档）](docs/archive/ROADMAP.md) — 12 周计划与实现记录
+- [开发路线图（归档）](docs/archive/roadmap.md) — 12 周计划与实现记录
 
 ## 📜 许可
 
