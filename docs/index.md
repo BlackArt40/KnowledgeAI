@@ -4,11 +4,11 @@ description: KnowledgeAI 技术文档门户，按分类索引检索入门指南�
 type: reference
 category: getting-started
 level: L1
-version: 1.5.0
+version: 1.5.1
 authors:
   - technical-writer
 owner: 技术文档负责人
-reviewed_at: 2026-10-12
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -43,7 +43,7 @@ applies_to: ">=1.2.0"
 | 入门指南 | `getting-started/` | 快速开始（含演示账号）/ 新成员 / 贡献 / 账号安全 / 产品概述 / 项目结构 | ✅ 已就绪 |
 | 架构设计 | `architecture/` | 总体架构 / 系统架构图与设计说明（上下两篇）/ 服务拆分手册 / RAG / Agent / UI 设计体系 / ADR | ✅ 已就绪 |
 | API 参考 | `api/` | 指南 / 参考（OpenAPI 生成）/ 三语言 SDK / Webhook / 错误码 | ✅ 已就绪 |
-| 文档规范 | `standards/` | 编写规范 / 评审 Checklist / 术语表 / 模板已就绪；代码 / Git / 测试规范待建 | 部分完成 |
+| 文档规范 | `standards/` | 编写规范 / 评审 Checklist / 术语表 / 模板 / 前端编码规范已就绪；后端代码 / Git / 测试规范待建 | 部分完成 |
 | 部署运维 | `ops/` | 部署手册 / 环境变量全表 / 监控告警 | ✅ 已就绪 |
 | FAQ 与排障 | `faq/` | 高频问答 / 故障排查（四段式） | ✅ 已就绪 |
 
@@ -66,6 +66,7 @@ applies_to: ">=1.2.0"
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.5.1 | 2026-11-05 | 补登入口：《系统架构：数据流与契约》《服务拆分阶段细则》；架构类别标注“系统架构图与设计说明（上下两篇）”；文档规范类别改为“前端编码规范已就绪、Git / 测试规范待建” |
 | 1.5.0 | 2026-10-12 | 门户增加服务拆分实施手册入口 |
 | 1.4.0 | 2026-09-23 | 移除与侧边栏重复的逐文件清单；合并 FAQ 与排障、演示账号与快速开始、三语言 SDK；技术文档体系方案归档 |
 | 1.3.0 | 2026-09-05 | 清单补充账号安全指南；docs 门禁描述与 CI 对齐；移除 GitHub 占位链接 |

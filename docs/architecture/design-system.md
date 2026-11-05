@@ -4,11 +4,11 @@ description: KnowledgeAI UI 设计体系：技术栈、设计令牌、主题与�
 type: explanation
 category: architecture
 level: L1
-version: 1.4.0
+version: 1.4.1
 authors:
   - product-team
 owner: 产品负责人
-reviewed_at: 2026-10-29
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -88,6 +88,7 @@ related:
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.4.1 | 2026-11-05 | 口径校正：前端页面数 28/28 → **30 个页面**（`frontend/src/router/index.ts`）；页面清单的指引改指产品概述的“页面模块与关键实现对照” |
 | 1.4.0 | 2026-10-30 | 装饰（分类）色板定型：`--tint-*` 十档按 Tailwind 500 档取值并分配语义（知识库/人物、组织/来源、API/文档/概念、Agent/LLM、团队、用量、通知、风险、头像选色），20 处 CSS 字面量改为令牌；数据侧（SVG `fill` / 落库头像色）统一走 `frontend/src/lib/palette.ts`；状态色与分类色正式分工 |
 | 1.3.6 | 2026-10-29 | 新增 `--ease-out-quad`（状态点 ping 曲线），替换 3 处 `cubic-bezier(0, 0, 0.2, 1)` 字面量；规范补齐阴影与缓动条款（阶梯阴影走令牌、品牌光晕与描边环允许字面量、自定义曲线必须走 `--ease-*`） |
 | 1.3.5 | 2026-10-29 | 新增固定状态色组（`--positive*` / `--negative*` / `--warning-bright` / `--warning-text`）与 `--primary-soft`，替换 52 处状态色字面量（hsl 142 绿族 24 处、`#f59e0b`/`#b45309` 琥珀 17 处、diff 红绿 6 处、`rgb(… / α)` 4 处）；同色不同亮的正向文字统一到 `--positive-text`（38/40/35→35，差 ≤5 个明度点）；装饰色板仍待设计定色 |

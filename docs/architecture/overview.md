@@ -4,11 +4,11 @@ description: KnowledgeAI 系统架构总览：三服务生产形态（网关/业
 type: explanation
 category: architecture
 level: L1
-version: 1.3.1
+version: 1.3.2
 authors:
   - technical-writer
 owner: 技术负责人
-reviewed_at: 2026-10-12
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -257,3 +257,4 @@ flowchart LR
 | 1.2.0 | 2026-10-08 | 扩容就绪（D 组）：鉴权读路径共享化（ADR-0006）、队列背压（ADR-0007）、就绪探针附加降级位、k8s 前置条件刷新 |
 | 1.3.0 | 2026-10-13 | 服务拆分阶段 6：新增“生产形态：三服务拆分”章节（网关/业务/前端/AI 拓扑、部署产物、适用版本标注——单体章节适用于 <=1.2.x 与开发模式） |
 | 1.3.1 | 2026-10-22 | 新增核心决策 7“角色模型：平台管理员 vs 工作区成员”——明确 `User.role` 为平台级跨租户语义、工作区内权限走 Team 角色与 KB access、删号仅 Owner |
+| 1.3.2 | 2026-11-05 | 口径校正：容器图前端页面数 28 → 30（`frontend/src/router/index.ts`）；后台队列任务类型补 `email-send`，与 `src/lib/queue/interface.ts` 的 5 种对齐 |

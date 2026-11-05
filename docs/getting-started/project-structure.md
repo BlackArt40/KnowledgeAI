@@ -4,11 +4,11 @@ description: KnowledgeAI 目录组织与代码导览，帮助新成员快速定�
 type: explanation
 category: getting-started
 level: L1
-version: 1.1.2
+version: 1.1.3
 authors:
   - product-team
 owner: 技术负责人
-reviewed_at: 2026-11-02
+reviewed_at: 2026-11-05
 review_interval: 180
 status: published
 applies_to: ">=1.3.0"

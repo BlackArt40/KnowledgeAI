@@ -4,7 +4,7 @@ description: KnowledgeAI 5 分钟起步：环境要求、启动服务、演示�
 type: tutorial
 category: getting-started
 level: L2
-version: 1.1.0
+version: 1.2.0
 authors:
   - technical-writer
 owner: 技术文档负责人
