@@ -32,8 +32,8 @@ function log(msg: string): void {
   console.log(`[verify-migrations] ${msg}`);
 }
 
-function run(cmd: string, args: string[]): void {
-  execFileSync(cmd, args, { cwd: ROOT, stdio: "inherit", env: process.env });
+function run(cmd: string, args: string[], env: NodeJS.ProcessEnv = process.env): void {
+  execFileSync(cmd, args, { cwd: ROOT, stdio: "inherit", env });
 }
 
 function migrationDirs(): string[] {
@@ -62,13 +62,24 @@ function findDestructive(): { migration: string; statements: string[] }[] {
 }
 
 function main(): void {
-  if (!process.env.DATABASE_URL) {
-    log("SKIP: DATABASE_URL 未配置（CI quality job 提供 postgres service 时会执行）");
+  // Prefer a dedicated schema: the CI drift check already replays every table
+  // into `public` (without _prisma_migrations), which makes `migrate deploy`
+  // abort with P3005. REPLAY_DATABASE_URL points at an empty sibling schema
+  // that nothing else touches, and the real-DB tests run against it too.
+  const target = process.env.REPLAY_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!target) {
+    log("SKIP: DATABASE_URL / REPLAY_DATABASE_URL 未配置（CI quality job 会提供）");
     return;
   }
+  log(`target schema: ${target.replace(/\/\/[^@]+@/, "//***@")}`);
 
   log(`1/3 replay ${migrationDirs().length} migrations onto the target database`);
-  run("npx", ["prisma", "migrate", "deploy", "--schema", SCHEMA]);
+  // `migrate deploy` reads DATABASE_URL from the environment - point it at the
+  // replay schema, not at the (already populated) public one.
+  run("npx", ["prisma", "migrate", "deploy", "--schema", SCHEMA], {
+    ...process.env,
+    DATABASE_URL: target,
+  });
 
   log("2/3 compare replayed database against schema.prisma");
   run("npx", [
@@ -76,7 +87,7 @@ function main(): void {
     "migrate",
     "diff",
     "--from-url",
-    process.env.DATABASE_URL,
+    target,
     "--to-schema-datamodel",
     SCHEMA,
     "--exit-code",

@@ -33,11 +33,12 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
-      # Shadow schema used by `prisma migrate diff` to replay migrations.
-      # MUST differ from the app schema: the drift check materialises the whole
-      # migration history there, and `prisma migrate deploy` aborts with P3005
-      # ("database schema is not empty") if it finds those tables.
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=shadow
+      # Shadow DB used by `prisma migrate diff` to replay migrations.
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
+      # Isolated schema for the full replay + real-DB tests: the drift check
+      # above already materialises every table in `public` (without
+      # `_prisma_migrations`), so `migrate deploy` there aborts with P3005.
+      REPLAY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=replay
 
     steps:
       - uses: actions/checkout@v7
@@ -81,6 +82,8 @@ jobs:
       # 本地无 DATABASE_URL 时整体 SKIP，不会失败。
       - name: Real-database tests
         run: pnpm test:db
+        env:
+          DATABASE_URL: ${{ env.REPLAY_DATABASE_URL }}
 
       - name: Lint
         run: pnpm lint
@@ -190,7 +193,7 @@ jobs:
         run: npx prisma generate
       - name: Start dev server (demo mode)
         run: |
-          RATE_LIMIT_PER_MIN=2000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=1000 \
+          RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=20000 \
           pnpm dev > /tmp/dev.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3000/api/health > /dev/null && break
