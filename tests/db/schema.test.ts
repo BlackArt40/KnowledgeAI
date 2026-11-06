@@ -117,7 +117,10 @@ suite("real PostgreSQL semantics", () => {
 
     const row = await prisma.user.findUnique({ where: { id } });
     expect(row).toMatchObject({ email: `${id}@example.test`, name: "持久化用户", role: "EDITOR" });
-    expect(row?.createdAt.getTime()).toBe(now);
+    // Millisecond-exact equality is not guaranteed: `createdAt` may come from
+    // the column default (`now()`) instead of the value passed in, and the two
+    // clocks differ by a few ms. A 1s window still proves "not reset to epoch".
+    expect(Math.abs((row?.createdAt.getTime() ?? 0) - now)).toBeLessThan(1_000);
 
     const kb = kbId("persist");
     await persistKb({
