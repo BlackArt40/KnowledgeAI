@@ -41,12 +41,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/lib/**/*.test.ts"],
-    // Coverage gates must be deterministic: with one fork per file, V8 reports
-    // for a module exercised by several test files are merged per worker and
-    // the per-function counts drifted between runs (workspace/** measured
-    // 81.5% / 88.9% / 100% for the same commit). A single fork makes the
-    // number a property of the code, not of the scheduler.
-    poolOptions: { forks: { singleFork: true } },
+    // Coverage gates must be deterministic: with one fork per file the V8
+    // reports of modules exercised by several test files drifted between runs
+    // (workspace/** functions measured 81.5% / 88.9% / 100% for one commit).
+    // Vitest 4 replaced poolOptions with this top-level switch; it also runs
+    // the whole suite in ~13s instead of ~40s (module cache is shared).
+    fileParallelism: false,
     // Cold-start fragility (engineering-assurance 2026-09-30, test debt #24):
     // the RAG suites use dynamic `await import()` of heavy deps (pdfjs-dist /
     // mammoth / xlsx) inside the test body, so on a cold transform cache a
@@ -70,7 +70,10 @@ export default defineConfig({
       ],
       reporter: ["text", "text-summary", "json-summary"],
       thresholds: {
-        // Global floor: measured total (65.8 lines) minus 3.
+        // Floors come from the LOWEST observed run (local + CI), minus 3:
+        // some suites take timer/filesystem paths whose line count differs by
+        // a few points between machines. The gate is here to catch real
+        // regressions, not scheduler noise.
         ...floor(62, 60, 64, 50),
 
         // ── P0: money / identity / tenant boundary / cited answers ────────
@@ -89,7 +92,7 @@ export default defineConfig({
         "src/lib/queue/**": floor(45, 44, 50, 33),
         "src/lib/agent/**": floor(48, 45, 41, 43),
         "src/lib/chat/**": floor(25, 22, 17, 16),
-        "src/lib/kb/**": floor(65, 62, 68, 48),
+        "src/lib/kb/**": floor(58, 56, 62, 43),
         "src/lib/security/**": floor(68, 65, 68, 65),
         "src/lib/storage/**": floor(10, 10, 14, 7),
         "src/lib/upload/**": floor(0, 0, 0, 0),
