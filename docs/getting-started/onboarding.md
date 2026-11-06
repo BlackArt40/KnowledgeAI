@@ -64,11 +64,11 @@ pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :300
 
 | 套件 | 命令 | 说明 |
 |------|------|------|
-| 单元测试 | `pnpm test:unit` | vitest + 覆盖率门槛（lines 70% / branches 60%，覆盖 `src/lib/{rag,auth,billing,team}`） |
+| 单元测试 | `pnpm test:unit` | vitest + 覆盖率门槛（覆盖 `src/lib/**` 全量，按目录 ratchet：P0 ≥85 / P1 ≥70 / P2 仅统计） |
 | 集成测试 | `node tests/<suite>/<suite>-test.mjs` | 需先启动 `pnpm dev`，用演示账号打真实 API |
 | E2E | `pnpm test:e2e` | Playwright，自动启动 Next dev :3000 + vite preview :4173（前端套件另跑 `pnpm -C frontend test:e2e`） |
 
-> 新增 `src/lib/{rag,auth,billing,team}` 代码**必须配测试**，否则 CI 覆盖率门槛会挂。
+> 新增 `src/lib/**` 代码**必须配测试**：阈值按目录记账在 `vitest.config.ts`（P0 目录 85、P1 目录 70、P2 仅统计），跌破即红；改阈值只允许向上。
 
 ### 5. 提交流程（1.5 小时）
 

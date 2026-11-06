@@ -36,7 +36,7 @@ related:
 
 ```bash
 pnpm lint            # ESLint，零告警
-pnpm test:unit       # vitest，覆盖率门槛：lines/functions/statements 70%、branches 60%
+pnpm test:unit       # vitest，覆盖率门槛按目录 ratchet（P0 目录 ≥85/P1 ≥70/P2 仅统计）
 pnpm test:smoke      # 验收 smoke lib 组（无需 server，~10s）
 npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 ```
@@ -60,7 +60,7 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 | Job | 检查内容 | 常挂原因 |
 |-----|----------|----------|
 | quality | tsc + lint + build + prisma 迁移漂移 | schema 改了没生成迁移 |
-| unit | vitest 覆盖率门槛 | `src/lib/{rag,auth,billing,team}` 新代码没配测试 |
+| unit | vitest 覆盖率门槛（`src/lib/**` 全量，按目录 ratchet） | 新代码没配测试，或某目录覆盖率跌破 `vitest.config.ts` 里记账的基线 |
 | integration | 功能/API/性能套件（需 dev server） | 破坏既有 API 契约 |
 | smoke | `scripts/smoke/` 验收套件 lib/limits/http/ui 四组（runner: `scripts/smoke/run-all.ts`） | 验收断言过期、脚本相互污染、限流窗口被抬高 |
 | smoke-infra | 验收套件 infra 组（各自 spawn 生产实例，需先 build） | 生产构建坏、OAuth/同步/VS Code 集成回归 |
