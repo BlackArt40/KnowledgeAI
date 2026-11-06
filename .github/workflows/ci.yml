@@ -33,8 +33,11 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
-      # Shadow DB used by `prisma migrate diff` to replay migrations.
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
+      # Shadow schema used by `prisma migrate diff` to replay migrations.
+      # MUST differ from the app schema: the drift check materialises the whole
+      # migration history there, and `prisma migrate deploy` aborts with P3005
+      # ("database schema is not empty") if it finds those tables.
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=shadow
 
     steps:
       - uses: actions/checkout@v7
@@ -208,12 +211,13 @@ jobs:
         run: node tests/functional/functional-test.mjs
       - name: API tests
         run: node tests/api/api-test.mjs
-      - name: Performance tests
-        run: node tests/performance/performance-test.mjs
       # 批 3：带阈值的负载哨兵（旧的 performance 脚本只打印，不判失败）。
-      # 时长压到 5s、10 并发，控制 integration job 增量在 ~30s 内。
+      # 必须排在 performance 套件之前：后者会故意打满限流窗口并等它重置，
+      # 跑在其后本脚本会直接 429。
       - name: Load + SSE soak (thresholds)
         run: node scripts/perf/load.mjs --duration 5 --connections 10 --sse 5
+      - name: Performance tests
+        run: node tests/performance/performance-test.mjs
 
   # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
   # 顺序有讲究：limits 组断言文档默认限流档位（anon 20 < kb 60 < user 200 <
