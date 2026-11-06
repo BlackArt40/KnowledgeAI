@@ -59,12 +59,25 @@ async function firstKbId(cookie) {
 function measure(label, result, p95Budget) {
   const p95 = result.latency.p97_5 ?? result.latency.p99 ?? 0;
   const total = result.requests.total || 1;
-  const errorRate = (result.errors + result.timeouts + result.non2xx) / total;
+  const byStatus = result.statusCodeStats ?? {};
+  const count = (code) => byStatus[code]?.count ?? 0;
+  const ok2xx = Object.entries(byStatus)
+    .filter(([code]) => code.startsWith("2"))
+    .reduce((sum, [, v]) => sum + v.count, 0);
+  // 429 is the limiter doing its job, not a regression: the documented tiers are
+  // asserted by the smoke `limits` group. Everything else (5xx, 401, 404, ...)
+  // is a real error.
+  const limited = count("429");
+  const realErrors = result.errors + result.timeouts + (total - ok2xx - limited);
+  const errorRate = realErrors / total;
+  const distribution = Object.entries(byStatus)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([code, v]) => `${code}:${v.count}`)
+    .join(" ");
 
   console.log(
-    `${label}: ${result.requests.average}/s avg, p50 ${result.latency.p50}ms, p97.5 ${p95}ms, errors ${(
-      errorRate * 100
-    ).toFixed(2)}%`
+    `${label}: ${result.requests.average}/s avg, p50 ${result.latency.p50}ms, p97.5 ${p95}ms, ` +
+      `errors ${(errorRate * 100).toFixed(2)}%, 429 ${limited} (${distribution})`
   );
   check(`${label} p97.5 ≤ ${p95Budget}ms`, p95 <= p95Budget, `${p95}ms`);
   check(`${label} error rate ≤ ${(MAX_ERROR_RATE * 100).toFixed(0)}%`, errorRate <= MAX_ERROR_RATE);

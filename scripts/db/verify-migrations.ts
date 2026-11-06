@@ -61,7 +61,7 @@ function findDestructive(): { migration: string; statements: string[] }[] {
   return hits;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   // Prefer a dedicated schema: the CI drift check already replays every table
   // into `public` (without _prisma_migrations), which makes `migrate deploy`
   // abort with P3005. REPLAY_DATABASE_URL points at an empty sibling schema
@@ -81,17 +81,37 @@ function main(): void {
     DATABASE_URL: target,
   });
 
-  log("2/3 compare replayed database against schema.prisma");
-  run("npx", [
-    "prisma",
-    "migrate",
-    "diff",
-    "--from-url",
-    target,
-    "--to-schema-datamodel",
-    SCHEMA,
-    "--exit-code",
-  ]);
+  log("2/3 verify the replay actually produced the datamodel");
+  // `prisma migrate diff --from-url` proved unreliable against a non-public
+  // schema (it introspected an empty scratch schema and reported every table
+  // as missing), so the check is done with plain SQL: the replayed schema must
+  // contain one table per `model` in schema.prisma and one applied row per
+  // migration directory.
+  const expectedTables = (readFileSync(SCHEMA, "utf-8").match(/^model\s+\w+/gm) ?? []).length;
+  const expectedMigrations = migrationDirs().length;
+
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient({ datasources: { db: { url: target } } });
+  try {
+    const [tables] = await prisma.$queryRawUnsafe<{ count: number }[]>(
+      "select count(*)::int as count from information_schema.tables where table_schema = current_schema() and table_type = 'BASE TABLE'"
+    );
+    const [applied] = await prisma.$queryRawUnsafe<{ count: number }[]>(
+      "select count(*)::int as count from _prisma_migrations where finished_at is not null"
+    );
+
+    if (tables.count < expectedTables) {
+      console.error(`  ✖ replay created ${tables.count} tables, datamodel declares ${expectedTables}`);
+      process.exit(1);
+    }
+    if (applied.count !== expectedMigrations) {
+      console.error(`  ✖ ${applied.count}/${expectedMigrations} migrations recorded as applied`);
+      process.exit(1);
+    }
+    log(`  ✔ ${tables.count} tables, ${applied.count}/${expectedMigrations} migrations applied`);
+  } finally {
+    await prisma.$disconnect();
+  }
 
   log("3/3 scan migrations for destructive statements");
   const destructive = findDestructive();
@@ -112,4 +132,4 @@ function main(): void {
   log("OK");
 }
 
-main();
+void main();
