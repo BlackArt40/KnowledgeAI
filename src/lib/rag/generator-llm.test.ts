@@ -55,6 +55,24 @@ describe("generateAsync with LLM", () => {
     const out = await generateAsync("q", []);
     expect(out.text).toContain("未在当前知识库中检索到相关内容");
   });
+
+  it("ignores out-of-range and duplicate citation markers", async () => {
+    vi.mocked(chatComplete).mockResolvedValue("见 [0] 与 [9] 与 [1][1] 与 [2]");
+    const out = await generateAsync("问题", [chunk("d1", "来源一"), chunk("d2", "来源二")]);
+
+    expect(out.citations.map((c) => c.n)).toEqual([1, 2]);
+    expect(out.citations.map((c) => c.docId)).toEqual(["d1", "d2"]);
+  });
+
+  it("attaches uploaded images to the last user message", async () => {
+    const images = [{ mime: "image/png", data: "AAAA" }];
+    await generateAsync("这张图讲了什么", [chunk("d1", "来源")], undefined, 0.3, images);
+
+    const messages = vi.mocked(chatComplete).mock.calls[0][0];
+    const lastUser = messages[messages.length - 1];
+    expect(lastUser.role).toBe("user");
+    expect(lastUser.images).toEqual(images);
+  });
 });
 
 describe("generateStream with LLM", () => {
