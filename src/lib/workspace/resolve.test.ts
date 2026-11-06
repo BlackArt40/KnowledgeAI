@@ -8,7 +8,9 @@ import {
   createWorkspace,
   deleteWorkspacesOwnedBy,
   effectiveWorkspacePlan,
+  ensurePersonalWorkspace,
   getDefaultWorkspace,
+  listAllWorkspaces,
   listOwnedWorkspaces,
   listWorkspaces,
   removeMemberEverywhere,
@@ -16,7 +18,7 @@ import {
   setWorkspacePlan,
   updateWorkspace,
   workspaceOf,
-} from "./store";
+} from "@/lib/workspace/store";
 
 const STORE_KEY = "__KAI_WORKSPACE_STORE__";
 
@@ -140,6 +142,41 @@ describe("workspace queries", () => {
     expect(updateWorkspace(DEFAULT_WORKSPACE_ID, { brandColor: "#123456" })?.brandColor).toBe("#123456");
     expect(setWorkspacePlan("ws_missing", "pro")).toBeUndefined();
     expect(updateWorkspace("ws_missing", { brandColor: "#000000" })).toBeUndefined();
+  });
+
+  it("lists every workspace for the admin console", () => {
+    createWorkspace({
+      name: "统计用空间",
+      ownerId: "usr_solo",
+      ownerEmail: "solo@example.com",
+      ownerName: "Solo",
+    });
+
+    const all = listAllWorkspaces();
+    expect(all.length).toBe(2);
+    expect(all.map((w) => w.name)).toEqual(
+      expect.arrayContaining([getDefaultWorkspace().name, "统计用空间"])
+    );
+  });
+
+  it("creates a personal workspace once and reuses it afterwards", () => {
+    const first = ensurePersonalWorkspace({
+      ownerId: "usr_new",
+      ownerEmail: "new@example.com",
+      ownerName: "新用户",
+    });
+    const second = ensurePersonalWorkspace({
+      ownerId: "usr_new",
+      ownerEmail: "new@example.com",
+      ownerName: "新用户",
+    });
+
+    expect(first).not.toBeNull();
+    expect(second?.id).toBe(first!.id);
+    expect(first!.name).toBe("新用户 的工作区");
+    expect(first!.members).toEqual(["new@example.com"]);
+    // Without an email there is nothing to key membership on.
+    expect(ensurePersonalWorkspace({ ownerId: "usr_x", ownerEmail: "  " })).toBeNull();
   });
 
   it("resolves the plan from the kai-workspace cookie", () => {
