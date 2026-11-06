@@ -74,7 +74,7 @@ export default defineConfig({
         // some suites take timer/filesystem paths whose line count differs by
         // a few points between machines. The gate is here to catch real
         // regressions, not scheduler noise.
-        ...floor(62, 60, 64, 50),
+        ...floor(64, 61, 66, 52),
 
         // ── P0: money / identity / tenant boundary / cited answers ────────
         "src/lib/auth/**": floor(93, 90, 94, 86),
@@ -91,11 +91,11 @@ export default defineConfig({
         "src/lib/db/**": floor(33, 32, 43, 21),
         "src/lib/queue/**": floor(45, 44, 50, 33),
         "src/lib/agent/**": floor(48, 45, 41, 43),
-        "src/lib/chat/**": floor(25, 22, 17, 16),
+        "src/lib/chat/**": floor(55, 53, 61, 38),
         "src/lib/kb/**": floor(58, 56, 62, 43),
         "src/lib/security/**": floor(68, 65, 68, 65),
-        "src/lib/storage/**": floor(10, 10, 14, 7),
-        "src/lib/upload/**": floor(0, 0, 0, 0),
+        "src/lib/storage/**": floor(20, 19, 35, 14),
+        "src/lib/upload/**": floor(97, 97, 97, 92),
         "src/lib/collab/**": floor(86, 82, 81, 73),
         "src/lib/webhooks/**": floor(91, 86, 87, 81),
         "src/lib/realtime/**": floor(89, 88, 90, 74),
