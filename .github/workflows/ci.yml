@@ -69,6 +69,16 @@ jobs:
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --exit-code
 
+      # 批 3：迁移必须能在空库上全量重放（drift check 只比 schema 与迁移，
+      # 不验证可执行性），破坏性语句须登记在 scripts/db/verify-migrations.ts。
+      - name: Migration replay + destructive scan
+        run: pnpm verify:migrations
+
+      # 真实 PostgreSQL 语义（唯一约束 / 级联 / 事务回滚 / persist 回读）。
+      # 本地无 DATABASE_URL 时整体 SKIP，不会失败。
+      - name: Real-database tests
+        run: pnpm test:db
+
       - name: Lint
         run: pnpm lint
 
@@ -200,6 +210,10 @@ jobs:
         run: node tests/api/api-test.mjs
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
+      # 批 3：带阈值的负载哨兵（旧的 performance 脚本只打印，不判失败）。
+      # 时长压到 5s、10 并发，控制 integration job 增量在 ~30s 内。
+      - name: Load + SSE soak (thresholds)
+        run: node scripts/perf/load.mjs --duration 5 --connections 10 --sse 5
 
   # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
   # 顺序有讲究：limits 组断言文档默认限流档位（anon 20 < kb 60 < user 200 <

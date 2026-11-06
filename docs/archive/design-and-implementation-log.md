@@ -1362,3 +1362,25 @@ docker run -p 3000:3000 --env-file .env.local knowledgeai
 | `wk10-11/` | `checkout-light/dark.png` | 收银台支付流程 |
 
 > 第 1～10 周的早期截图（落地页/仪表盘/知识库/问答/Agent/团队）在开发过程中拍摄，可按需重新生成。
+
+---
+
+## 2026-11-06 测试体系三批补齐（批 1-3）
+
+**背景**：覆盖率缺口在"从 4 个目录扩到全量"后才可见（`src/lib` 实测 60.5% lines），且 CI 只有 drift 检查、没有任何"测试手段"层面的缺口（无契约、无属性、无组件、无 a11y、无视觉、无真实 DB、无带阈值的负载）。
+
+**已落地**：
+
+| 批次 | 内容 |
+| --- | --- |
+| 批 1（#96） | 覆盖率口径扩到 `src/lib/**` + 按目录 ratchet 阈值（P0 85 / P1 基线 / P2 仅统计）；P0 缺口补测（authjs/oauth-signin/redact/apikeys/workspace/rag remote+retriever+generator）；越权负向矩阵（10 路由 × 5 身份）；依赖降级矩阵（AI 服务 503 + Retry-After、DB 读失败不 5xx） |
+| 批 2（#97） | chat/upload/storage 存储层补测；OpenAPI 契约双向校验（v1 路由 ↔ spec，未文档化清单为 ratchet）；fast-check 属性测试（chunker/bm25/ssrf）；Vue 组件测试（vitest + jsdom，按文件切环境）；axe a11y（critical 必须为 0）；Playwright 视觉回归（默认跳过，基线须在目标 runner 生成） |
+| 批 3 | 真实 PostgreSQL 语义测试（唯一约束 / 级联 / 事务回滚 / persist 回读）；迁移空库全量重放 + 破坏性语句 allowlist；autocannon 负载与 5-10 路 SSE 浸泡（带 p97.5 与错误率阈值） |
+
+**关键取舍**：
+
+1. **覆盖率阈值取"多次运行最小值 -3"**：同一模块被多个测试文件执行时 V8 报告会随调度漂移（`workspace/** functions` 观察到 81.5% / 88.9% / 100%）。用 `fileParallelism: false` + 去掉 `skipFull` 后仍有两个稳定态，故阈值按最低观测值记账，宁可少卡一点也不要假红。
+2. **P1 的 db/queue/agent 未一次补到 70**：这些目录是"每函数一张 Prisma 表"的机械代码，mock 驱动的用例对真实故障没有解释力。批 3 改为真实 postgres 集成（`tests/db`），比堆 mock 更有价值；覆盖率缺口以 ratchet 现状记录，不假造数字。
+3. **视觉回归默认关闭**：像素基线随平台渲染差异变化，提交 macOS 基线会让 Linux CI 永远红。基线必须在目标 runner 上生成后再打开开关（`VISUAL_REGRESSION=1`）。
+4. **a11y 只拦 critical**：现有 UI 有对比度/标签存量，直接拦 serious 会让 CI 长期红；serious 结果写入 Playwright 注解，待存量清空后把 `SERIOUS_AS_ERROR` 打开。
+5. **变异测试（Stryker）暂缓**：用户选择的依赖方案只含轻量三件套。触发条件：当 `auth`/`billing` 的用例数继续增长但缺陷仍漏出时，再引入 Stryker 只跑这两个目录（预计 CI +10 分钟），否则属于为覆盖率数字服务的额外开销。
