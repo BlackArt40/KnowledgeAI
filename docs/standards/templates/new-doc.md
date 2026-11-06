@@ -21,7 +21,7 @@ applies_to: ">=1.2.0"
 ```markdown
 ---
 title: <文档标题>
-description: <一句话描述，含 2-3 个检索词>
+description: <一句话描述，含 2～3 个检索词>
 type: <tutorial | how-to | reference | explanation>
 category: <getting-started | architecture | api | standards | ops | faq>
 level: L1

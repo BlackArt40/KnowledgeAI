@@ -4,11 +4,11 @@ description: KnowledgeAI 文档与代码中的统一术语定义，首次出现�
 type: reference
 category: standards
 level: L1
-version: 1.0.0
+version: 1.1.0
 authors:
   - technical-writer
 owner: 技术文档负责人
-reviewed_at: 2026-08-20
+reviewed_at: 2026-11-06
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -33,6 +33,7 @@ related:
 | Provider | 外部服务适配层（LLM / DB / 存储等） | 沿用代码术语 |
 | 演示模式 | 未配置真实服务时自动回退的内存模式 | 配置即切换 |
 | 写穿（write-through） | 变更先写内存、异步持久化到 DB 的模式 | 架构核心 |
+| 群机器人（Bot 集成） | Slack / 飞书 / 钉钉等 IM 平台里的机器人入口，走 `POST /api/v1/integrations/bot/m/<token>`（令牌哈希鉴权） | **不是 Agent**：只做消息收发，问答仍由 `/api/chat` 管线作答 |
 
 ## 技术术语（保留英文）
 
@@ -52,7 +53,7 @@ related:
 | 统一写法 | 禁止写法 |
 |----------|----------|
 | 知识库（KB） | 资料库、文档库 |
-| Agent | 机器人、Bot、智能体引擎 |
+| Agent | 机器人、Bot、智能体引擎（指代 Agent 时；IM 平台集成请写“群机器人”） |
 | 文档处理管线 | 解析流程、切片流程 |
 | 演示模式 | demo 模式、本地模式 |
 | 智能问答 | 对话机器人、问答引擎 |
