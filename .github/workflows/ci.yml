@@ -35,6 +35,10 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
       # Shadow DB used by `prisma migrate diff` to replay migrations.
       SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=public
+      # Isolated schema for the full replay + real-DB tests: the drift check
+      # above already materialises every table in `public` (without
+      # `_prisma_migrations`), so `migrate deploy` there aborts with P3005.
+      REPLAY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kai_shadow?schema=replay
 
     steps:
       - uses: actions/checkout@v7
@@ -68,6 +72,18 @@ jobs:
             --to-schema-datamodel ./prisma/schema.prisma \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --exit-code
+
+      # 批 3：迁移必须能在空库上全量重放（drift check 只比 schema 与迁移，
+      # 不验证可执行性），破坏性语句须登记在 scripts/db/verify-migrations.ts。
+      - name: Migration replay + destructive scan
+        run: pnpm verify:migrations
+
+      # 真实 PostgreSQL 语义（唯一约束 / 级联 / 事务回滚 / persist 回读）。
+      # 本地无 DATABASE_URL 时整体 SKIP，不会失败。
+      - name: Real-database tests
+        run: pnpm test:db
+        env:
+          DATABASE_URL: ${{ env.REPLAY_DATABASE_URL }}
 
       - name: Lint
         run: pnpm lint
@@ -177,7 +193,7 @@ jobs:
         run: npx prisma generate
       - name: Start dev server (demo mode)
         run: |
-          RATE_LIMIT_PER_MIN=2000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=1000 \
+          RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_ANON_PER_MIN=500 RATE_LIMIT_KEY_PER_MIN=5000 RATE_LIMIT_KB_PER_MIN=20000 \
           pnpm dev > /tmp/dev.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3000/api/health > /dev/null && break
@@ -198,6 +214,11 @@ jobs:
         run: node tests/functional/functional-test.mjs
       - name: API tests
         run: node tests/api/api-test.mjs
+      # 批 3：带阈值的负载哨兵（旧的 performance 脚本只打印，不判失败）。
+      # 必须排在 performance 套件之前：后者会故意打满限流窗口并等它重置，
+      # 跑在其后本脚本会直接 429。
+      - name: Load + SSE soak (thresholds)
+        run: node scripts/perf/load.mjs --duration 5 --connections 10 --sse 5
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
 

@@ -39,6 +39,7 @@ pnpm lint            # ESLint，零告警
 pnpm test:unit       # vitest，覆盖率门槛按目录 ratchet（P0 目录 ≥85/P1 ≥70/P2 仅统计）
 pnpm test:smoke      # 验收 smoke lib 组（无需 server，~10s）
 npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
+pnpm test:db         # 真实 PostgreSQL 语义（无 DATABASE_URL 时自动 SKIP）
 ```
 
 > 改了 `prisma/schema.prisma`？**先** `npx prisma migrate dev --name <描述>` 生成迁移，否则 CI 的 `prisma migrate diff --exit-code` 会挂。
@@ -59,9 +60,9 @@ npx tsc --noEmit     # 类型检查（CI quality job 实际执行项）
 
 | Job | 检查内容 | 常挂原因 |
 |-----|----------|----------|
-| quality | tsc + lint + build + prisma 迁移漂移 | schema 改了没生成迁移 |
+| quality | tsc + lint + build + prisma 迁移漂移 + **迁移空库重放** + **真实 DB 语义测试** | schema 改了没生成迁移；迁移无法重放；破坏性 SQL 未登记 allowlist |
 | unit | vitest 覆盖率门槛（`src/lib/**` 全量，按目录 ratchet） | 新代码没配测试，或某目录覆盖率跌破 `vitest.config.ts` 里记账的基线 |
-| integration | 功能/API/性能套件（需 dev server） | 破坏既有 API 契约 |
+| integration | 功能/API/性能套件 + **负载与 SSE 浸泡（带阈值）**（需 dev server） | 破坏既有 API 契约；P97.5 或错误率超阈值 |
 | smoke | `scripts/smoke/` 验收套件 lib/limits/http/ui 四组（runner: `scripts/smoke/run-all.ts`） | 验收断言过期、脚本相互污染、限流窗口被抬高 |
 | smoke-infra | 验收套件 infra 组（各自 spawn 生产实例，需先 build） | 生产构建坏、OAuth/同步/VS Code 集成回归 |
 | e2e | Playwright 主流程 | 前端行为回归 |

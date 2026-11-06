@@ -16,7 +16,10 @@
     "test:smoke:all": "tsx scripts/smoke/run-all.ts --group all",
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview",
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "verify:migrations": "tsx scripts/db/verify-migrations.ts",
+    "test:perf": "node scripts/perf/load.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.40",
@@ -52,6 +55,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.12",
+    "autocannon": "^8.0.0",
     "esbuild": "0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",

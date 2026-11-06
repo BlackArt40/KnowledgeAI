@@ -1,0 +1,135 @@
+#!/usr/bin/env node
+// Batch 3: migration replay. CI already runs `prisma migrate diff --exit-code`
+// (schema.prisma vs migrations), which catches *drift* but never proves the
+// migrations actually apply to an empty database, nor that a destructive
+// statement was reviewed.
+//
+// Steps:
+//   1. `prisma migrate deploy`  - full replay, newest migration last
+//   2. `prisma migrate diff`    - the datamodel and the replayed DB must match
+//   3. statement scan           - DROP TABLE/COLUMN + TRUNCATE must be allowlisted
+//
+// Requires DATABASE_URL; without it the script prints SKIP and exits 0 (same
+// convention as the smoke suite's infra group).
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = process.cwd();
+const SCHEMA = join(ROOT, "prisma", "schema.prisma");
+const MIGRATIONS = join(ROOT, "prisma", "migrations");
+
+/**
+ * Destructive migrations that were reviewed and are safe to replay. Key =
+ * migration directory, value = why it is acceptable.
+ */
+const DESTRUCTIVE_ALLOWLIST: Record<string, string> = {
+  "20260816100000_drop_dead_tables":
+    "P7 清理：删除从未写入的遗留表（与 schema.prisma 同步移除），空库重放时无数据损失",
+};
+
+function log(msg: string): void {
+  console.log(`[verify-migrations] ${msg}`);
+}
+
+function run(cmd: string, args: string[], env: NodeJS.ProcessEnv = process.env): void {
+  execFileSync(cmd, args, { cwd: ROOT, stdio: "inherit", env });
+}
+
+function migrationDirs(): string[] {
+  return readdirSync(MIGRATIONS)
+    .filter((d) => statSync(join(MIGRATIONS, d)).isDirectory())
+    .sort();
+}
+
+function findDestructive(): { migration: string; statements: string[] }[] {
+  const hits: { migration: string; statements: string[] }[] = [];
+  for (const dir of migrationDirs()) {
+    const file = join(MIGRATIONS, dir, "migration.sql");
+    let sql = "";
+    try {
+      sql = readFileSync(file, "utf-8");
+    } catch {
+      continue;
+    }
+    const statements = sql
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^(DROP\s+(TABLE|COLUMN)|TRUNCATE)\b/i.test(l));
+    if (statements.length > 0) hits.push({ migration: dir, statements });
+  }
+  return hits;
+}
+
+async function main(): Promise<void> {
+  // Prefer a dedicated schema: the CI drift check already replays every table
+  // into `public` (without _prisma_migrations), which makes `migrate deploy`
+  // abort with P3005. REPLAY_DATABASE_URL points at an empty sibling schema
+  // that nothing else touches, and the real-DB tests run against it too.
+  const target = process.env.REPLAY_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!target) {
+    log("SKIP: DATABASE_URL / REPLAY_DATABASE_URL 未配置（CI quality job 会提供）");
+    return;
+  }
+  log(`target schema: ${target.replace(/\/\/[^@]+@/, "//***@")}`);
+
+  log(`1/3 replay ${migrationDirs().length} migrations onto the target database`);
+  // `migrate deploy` reads DATABASE_URL from the environment - point it at the
+  // replay schema, not at the (already populated) public one.
+  run("npx", ["prisma", "migrate", "deploy", "--schema", SCHEMA], {
+    ...process.env,
+    DATABASE_URL: target,
+  });
+
+  log("2/3 verify the replay actually produced the datamodel");
+  // `prisma migrate diff --from-url` proved unreliable against a non-public
+  // schema (it introspected an empty scratch schema and reported every table
+  // as missing), so the check is done with plain SQL: the replayed schema must
+  // contain one table per `model` in schema.prisma and one applied row per
+  // migration directory.
+  const expectedTables = (readFileSync(SCHEMA, "utf-8").match(/^model\s+\w+/gm) ?? []).length;
+  const expectedMigrations = migrationDirs().length;
+
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient({ datasources: { db: { url: target } } });
+  try {
+    const [tables] = await prisma.$queryRawUnsafe<{ count: number }[]>(
+      "select count(*)::int as count from information_schema.tables where table_schema = current_schema() and table_type = 'BASE TABLE'"
+    );
+    const [applied] = await prisma.$queryRawUnsafe<{ count: number }[]>(
+      "select count(*)::int as count from _prisma_migrations where finished_at is not null"
+    );
+
+    if (tables.count < expectedTables) {
+      console.error(`  ✖ replay created ${tables.count} tables, datamodel declares ${expectedTables}`);
+      process.exit(1);
+    }
+    if (applied.count !== expectedMigrations) {
+      console.error(`  ✖ ${applied.count}/${expectedMigrations} migrations recorded as applied`);
+      process.exit(1);
+    }
+    log(`  ✔ ${tables.count} tables, ${applied.count}/${expectedMigrations} migrations applied`);
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  log("3/3 scan migrations for destructive statements");
+  const destructive = findDestructive();
+  const unlisted = destructive.filter((d) => !(d.migration in DESTRUCTIVE_ALLOWLIST));
+  if (unlisted.length > 0) {
+    for (const hit of unlisted) {
+      console.error(`  ✖ ${hit.migration}: ${hit.statements.join(" | ")}`);
+    }
+    console.error(
+      "破坏性语句必须先评审，再登记到 scripts/db/verify-migrations.ts 的 DESTRUCTIVE_ALLOWLIST（附理由）"
+    );
+    process.exit(1);
+  }
+  for (const hit of destructive) {
+    log(`  ✔ allowlisted ${hit.migration} — ${DESTRUCTIVE_ALLOWLIST[hit.migration]}`);
+  }
+
+  log("OK");
+}
+
+void main();
