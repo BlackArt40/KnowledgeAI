@@ -654,7 +654,7 @@ describe("cross-tenant probes", () => {
       req("owner", cookie, `/api/knowledge-base/${foreignKbId}/documents/${foreignDocId}`, json("PATCH", { access: "view" })),
       { params: Promise.resolve({ id: foreignKbId, docId: foreignDocId }) }
     );
-    expect(res.status).toBe(403);
+    expect(res?.status).toBe(403);
   });
 
   it("scopes agent tasks to the caller", async () => {
