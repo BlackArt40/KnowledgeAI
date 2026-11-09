@@ -6,6 +6,12 @@
 //   node scripts/perf/load.mjs                       # defaults: 20 conns, 10s
 //   node scripts/perf/load.mjs --duration 5 --sse 5
 //
+// Measured against `next dev` on a 4-core runner, so the budgets are deliberately
+// loose: dev mode compiles on demand and a 10-connection autocannon saturates
+// that single process (health p97.5 observed 294ms hot vs 86ms on an idle box).
+// This is a gross-regression sentinel, not a capacity number — a real latency
+// gate would need a production build (`pnpm build && pnpm start`).
+//
 // Requires a running dev server (integration job provides one). Thresholds are
 // CLI flags on purpose — adding PERF_* env vars would drag .env.example and
 // docs/ops/env-vars.md into parity checks for a CI-only knob.
@@ -20,8 +26,8 @@ const BASE = args.get("base") ?? process.env.PERF_BASE_URL ?? "http://localhost:
 const CONNECTIONS = Number(args.get("connections") ?? 20);
 const DURATION = Number(args.get("duration") ?? 10);
 const SSE_STREAMS = Number(args.get("sse") ?? 10);
-const P95_HEALTH = Number(args.get("p95-health") ?? 200);
-const P95_API = Number(args.get("p95-api") ?? 1_000);
+const P95_HEALTH = Number(args.get("p95-health") ?? 500);
+const P95_API = Number(args.get("p95-api") ?? 1_500);
 const MAX_ERROR_RATE = Number(args.get("max-error-rate") ?? 0.01);
 const SSE_DEADLINE_MS = Number(args.get("sse-deadline") ?? 60_000);
 
