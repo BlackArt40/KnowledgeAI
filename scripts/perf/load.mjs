@@ -126,6 +126,16 @@ async function main() {
   const cookie = await login();
   const kbId = await firstKbId(cookie);
 
+  // Next dev compiles a route on its first request; without a warm-up the very
+  // first autocannon sample measures the compiler, not the route (main run on
+  // 2026-11-06: health p97.5 584ms cold vs 86ms warm).
+  for (let i = 0; i < 3; i += 1) {
+    const res = await fetch(`${BASE}/api/health`);
+    await res.text();
+    const kbRes = await fetch(`${BASE}/api/knowledge-base`, { headers: { cookie } });
+    await kbRes.text();
+  }
+
   measure("GET /api/health", await autocannon({ url: `${BASE}/api/health`, connections: CONNECTIONS, duration: DURATION }), P95_HEALTH);
   measure(
     "GET /api/knowledge-base",
