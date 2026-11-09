@@ -458,6 +458,11 @@ jobs:
       # 根 e2e 结束时已释放端口，无冲突
       - name: Frontend E2E tests (Vue suite)
         run: pnpm --filter kai-frontend test:e2e
+        # 视觉回归基线（frontend/e2e/visual.spec.ts-snapshots/*-linux.png）在
+        # ubuntu 上生成，因此比对也必须在 ubuntu 跑；基线刷新走
+        # .github/workflows/visual-baselines.yml（workflow_dispatch）。
+        env:
+          VISUAL_REGRESSION: "1"
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

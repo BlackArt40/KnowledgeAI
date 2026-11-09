@@ -1,0 +1,49 @@
+name: Visual baselines
+
+# Manual helper: pixel baselines are platform-dependent (font rendering), so
+# they must be produced on the same image that later compares them. Run this
+# workflow on a branch, download the artifact and commit the PNGs under
+# frontend/e2e/visual.spec.ts-snapshots/. After that the `e2e` job runs the
+# comparison unconditionally (VISUAL_REGRESSION=1).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  baselines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Install Playwright chromium
+        run: pnpm --filter kai-frontend exec playwright install --with-deps chromium
+
+      # playwright.config's webServer boots Next (API :3000) + vite (:5173).
+      - name: Generate snapshots
+        run: pnpm --filter kai-frontend exec playwright test e2e/visual.spec.ts --update-snapshots
+        env:
+          VISUAL_REGRESSION: "1"
+
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: frontend/e2e/visual.spec.ts-snapshots/
+          if-no-files-found: error

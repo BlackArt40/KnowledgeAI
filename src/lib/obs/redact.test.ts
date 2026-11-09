@@ -85,12 +85,32 @@ describe("redactText", () => {
     expect(typeof redactText({ nested: { password: "hunter2hunter2" } })).toBe("string");
   });
 
-  // KNOWN GAP (registered in batch 1, not fixed here): the assignment regex
-  // stops at a quote (`[^\s"']{6,}`), so secrets inside the JSON bodies this
-  // helper is meant to sanitize (`{"password":"..."}`) pass through. `fails`
-  // keeps the gap visible without changing product behaviour; flip this to a
-  // normal `it` once the regex is fixed.
-  it.fails("masks secrets inside JSON bodies (known gap)", () => {
-    expect(redactText({ password: "hunter2hunter2" })).toContain("***");
+  // Provider error bodies are JSON, which is the main reason this helper
+  // exists: the unquoted rule stops at the quote, so quoted values need their
+  // own pass. Redaction must keep the payload parseable.
+  it("masks secrets inside JSON bodies and keeps them valid JSON", () => {
+    const out = redactText({ password: "hunter2hunter2" });
+    expect(out).toContain("***");
+    expect(out).not.toContain("hunter2hunter2");
+    expect(JSON.parse(out)).toEqual({ password: "***" });
+  });
+
+  it("masks nested JSON keys and comma-containing values", () => {
+    const out = redactText({
+      error: { client_secret: "abcd1234,efgh5678", api_key: "sk_live_value_1234567890" },
+    });
+    expect(out).not.toContain("abcd1234");
+    expect(out).not.toContain("sk_live_value_1234567890");
+    const parsed = JSON.parse(out) as { error: { client_secret: string; api_key: string } };
+    expect(parsed.error.client_secret).toBe("***");
+    expect(parsed.error.api_key).toBe("***");
+  });
+
+  it("leaves short JSON values readable (below the 6-char minimum)", () => {
+    expect(redactText({ token: "abc" })).toBe('{"token":"abc"}');
+  });
+
+  it("keeps already-redacted bearer tokens inside JSON untouched", () => {
+    expect(redactText({ authorization: "Bearer abc.def.ghi" })).toContain("Bearer ***");
   });
 });

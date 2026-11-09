@@ -138,11 +138,12 @@ describe("getChunkSize", () => {
     expect(getChunkSize()).toBe(1024 * 1024);
   });
 
-  // KNOWN GAP (batch 2): parseInt("garbage") -> NaN, Math.max(1, NaN) -> NaN,
-  // so a typo'd CHUNK_SIZE_MB yields NaN bytes instead of the 5 MB default.
-  // `fails` keeps it visible; the fix flips this to a normal assertion.
-  it.fails("falls back to the default for an unparseable CHUNK_SIZE_MB", () => {
-    process.env.CHUNK_SIZE_MB = "not-a-number";
-    expect(getChunkSize()).toBe(DEFAULT_CHUNK_SIZE);
-  });
+  // A typo'd env var must not turn every chunk size into NaN.
+  it.each(["not-a-number", "", " ", "5mb-typo"])(
+    "falls back to the default for an unparseable CHUNK_SIZE_MB (%s)",
+    (value) => {
+      process.env.CHUNK_SIZE_MB = value;
+      expect(getChunkSize()).toBe(DEFAULT_CHUNK_SIZE);
+    }
+  );
 });

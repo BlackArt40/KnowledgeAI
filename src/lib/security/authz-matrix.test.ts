@@ -9,12 +9,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { GET as kbGET, PATCH as kbPATCH, DELETE as kbDELETE } from "@/app/api/knowledge-base/[id]/route";
+import { POST as kbCreatePOST } from "@/app/api/knowledge-base/route";
+import { POST as kbSharePOST } from "@/app/api/knowledge-base/[id]/share/route";
 import { GET as docShareGET } from "@/app/api/knowledge-base/[id]/documents/[docId]/share/route";
+import { PATCH as docPATCH, DELETE as docDELETE } from "@/app/api/knowledge-base/[id]/documents/[docId]/route";
 import { GET as apiKeysGET, POST as apiKeysPOST } from "@/app/api/api-keys/route";
+import { DELETE as apiKeyDELETE } from "@/app/api/api-keys/[id]/route";
 import { GET as adminUsersGET } from "@/app/api/admin/users/route";
+import { PATCH as adminUserPATCH, DELETE as adminUserDELETE } from "@/app/api/admin/users/[id]/route";
 import { GET as teamAuditGET } from "@/app/api/team/audit/route";
+import { PATCH as kbAccessPATCH } from "@/app/api/team/kb-access/route";
 import { GET as agentTasksGET } from "@/app/api/agent/tasks/route";
 import { POST as wsMembersPOST } from "@/app/api/workspaces/members/route";
+import { PATCH as wsPATCH } from "@/app/api/workspaces/route";
+import { POST as convPOST } from "@/app/api/chat/conversations/route";
+import { PATCH as notifReadPATCH } from "@/app/api/notifications/[id]/read/route";
 
 import { createToken } from "@/lib/auth/session";
 import { findUserByEmail, seed as seedUsers } from "@/lib/auth/store";
@@ -24,6 +33,7 @@ import { createWorkspace } from "@/lib/workspace/store";
 type Actor = "anon" | "viewer" | "editor" | "owner" | "otherTenant";
 
 const STORE_KEYS = [
+  "__KAI_CHAT_STORE__",
   "__KAI_KB_STORE__",
   "__KAI_USER_STORE__",
   "__KAI_TEAM_STORE__",
@@ -43,6 +53,8 @@ let kbId = "";
 let docId = "";
 let foreignKbId = "";
 let foreignWorkspaceId = "";
+let viewerUserId = "";
+let ownerUserId = "";
 
 function resetStores(): void {
   for (const k of STORE_KEYS) delete (globalThis as Record<string, unknown>)[k];
@@ -55,6 +67,8 @@ beforeEach(() => {
   const kb = createKb({ name: "授权矩阵知识库", desc: "" }, "usr_owner");
   kbId = kb.id;
   docId = addDocument({ kbId, name: "a.md", size: 4, content: "正文", skipEnqueue: true }).id;
+  viewerUserId = findUserByEmail("viewer@knowledgeai.dev")?.id ?? "";
+  ownerUserId = findUserByEmail("owner@knowledgeai.dev")?.id ?? "";
 
   // A workspace the default-workspace users are NOT members of.
   const foreign = createWorkspace({
@@ -92,6 +106,129 @@ interface Row {
   actor: Actor;
   expected: number;
   run: (cookie: string, req_: (a: Actor, p: string, i?: RequestInit) => Request) => Promise<Response | undefined>;
+}
+
+/** JSON init shorthand for the mutating rows. */
+function json(method: "POST" | "PUT" | "PATCH", body: unknown): RequestInit {
+  return { method, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } };
+}
+
+const ACTORS: Actor[] = ["anon", "viewer", "editor", "owner", "otherTenant"];
+
+/** One route × the five actors, with the expected status per actor. */
+function perActor(
+  label: string,
+  expected: Record<Actor, number>,
+  run: (actor: Actor, r: (a: Actor, p: string, i?: RequestInit) => Request) => Promise<Response | undefined>
+): Row[] {
+  return ACTORS.map((actor) => ({
+    label,
+    actor,
+    expected: expected[actor],
+    run: (_cookie, r) => run(actor, r),
+  }));
+}
+
+/**
+ * Batch 4: every write endpoint that can run against the in-memory stores
+ * (no LLM / Stripe / S3), each with the same five actors. Expectations are the
+ * current contract; a surprising status is documented in a comment rather than
+ * "fixed" here.
+ */
+function mutatingRows(): Row[] {
+  const kb = { name: "矩阵新建知识库" };
+
+  return [
+    // Creating a KB requires EDITOR+ (viewer is read-only by design).
+    ...perActor(
+      "POST kb (create)",
+      { anon: 401, viewer: 403, editor: 201, owner: 201, otherTenant: 201 },
+      (a, r) => kbCreatePOST(r(a, "/api/knowledge-base", json("POST", kb)))
+    ),
+
+    // Share config is an edit-level action (canEditKb), not owner-only.
+    ...perActor(
+      "POST kb share",
+      { anon: 401, viewer: 403, editor: 403, owner: 201, otherTenant: 403 },
+      (a, r) => kbSharePOST(r(a, `/api/knowledge-base/${kbId}/share`, json("POST", {})), kbParams())
+    ),
+
+    // The fixture KB is shared view-only, so only the owner holds edit rights on
+    // its documents (canEditDoc falls back to canEditKb for non-owners).
+    ...perActor(
+      "PATCH doc access",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 403 },
+      (a, r) =>
+        docPATCH(r(a, `/api/knowledge-base/${kbId}/documents/${docId}`, json("PATCH", { access: "view" })), docParams())
+    ),
+
+    ...perActor(
+      "DELETE doc",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 403 },
+      (a, r) => docDELETE(r(a, `/api/knowledge-base/${kbId}/documents/${docId}`, { method: "DELETE" }), docParams())
+    ),
+
+    // KB member permissions: only owner/admin (or the KB owner) may adjust.
+    ...perActor(
+      "PATCH team kb-access",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 403 },
+      (a, r) => kbAccessPATCH(r(a, "/api/team/kb-access", json("PATCH", { kbId, access: "view" })))
+    ),
+
+    // Conversations are per-user; no KB membership gate on create.
+    ...perActor(
+      "POST chat conversation",
+      { anon: 401, viewer: 201, editor: 201, owner: 201, otherTenant: 201 },
+      (a, r) => convPOST(r(a, "/api/chat/conversations", json("POST", { kbId })))
+    ),
+
+    // Marking a notification read is scoped to the caller and idempotent.
+    ...perActor(
+      "PATCH notification read",
+      { anon: 401, viewer: 200, editor: 200, owner: 200, otherTenant: 200 },
+      (a, r) =>
+        notifReadPATCH(r(a, "/api/notifications/notif_x/read", { method: "PATCH" }), {
+          params: Promise.resolve({ id: "notif_x" }),
+        })
+    ),
+
+    // Workspace theme: only the workspace owner (otherTenant owns theirs).
+    ...perActor(
+      "PATCH workspace",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 200 },
+      (a, r) => wsPATCH(r(a, "/api/workspaces", json("PATCH", { brandColor: "emerald" })))
+    ),
+
+    // Account status: owner/admin only (role gate, not tenant gate).
+    ...perActor(
+      "PATCH admin user status",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 200 },
+      (a, r) =>
+        adminUserPATCH(r(a, `/api/admin/users/${viewerUserId}`, json("PATCH", { status: "banned" })), {
+          params: Promise.resolve({ id: viewerUserId }),
+        })
+    ),
+
+    // Hard delete: owner only (otherTenant is merely an admin).
+    ...perActor(
+      "DELETE admin user",
+      { anon: 401, viewer: 403, editor: 403, owner: 200, otherTenant: 403 },
+      (a, r) =>
+        adminUserDELETE(r(a, `/api/admin/users/${viewerUserId}`, { method: "DELETE" }), {
+          params: Promise.resolve({ id: viewerUserId }),
+        })
+    ),
+
+    // Revoking an API key never reveals whether another user's key exists.
+    ...perActor(
+      "DELETE api-key (foreign id)",
+      { anon: 401, viewer: 404, editor: 404, owner: 404, otherTenant: 404 },
+      (a, r) =>
+        apiKeyDELETE(r(a, "/api/api-keys/key_missing", { method: "DELETE" }), {
+          params: Promise.resolve({ id: "key_missing" }),
+        })
+    ),
+  ];
 }
 
 const rows: Row[] = [
@@ -439,6 +576,9 @@ const rows: Row[] = [
         r("otherTenant", "/api/workspaces/members", { method: "POST", body: JSON.stringify({ email: "x@y.z" }) })
       ),
   },
+
+  // ── mutating routes (batch 4): every write path with the same five actors ──
+  ...mutatingRows(),
 ];
 
 describe("authorization matrix", () => {
@@ -472,6 +612,49 @@ describe("cross-tenant probes", () => {
     const res = await apiKeysGET(req("owner", ownerCookie, "/api/api-keys"));
     const body = (await res.json()) as { keys: Array<{ name: string }> };
     expect(body.keys).toEqual([]);
+  });
+
+  it("never deletes another user's API key (404, and the key survives)", async () => {
+    const viewerCookie = await cookieFor("viewer");
+    await apiKeysPOST(
+      req("viewer", viewerCookie, "/api/api-keys", {
+        method: "POST",
+        body: JSON.stringify({ name: "viewer-key-2", scopes: [] }),
+      })
+    );
+    const listed = (await (await apiKeysGET(req("viewer", viewerCookie, "/api/api-keys"))).json()) as {
+      keys: Array<{ id: string }>;
+    };
+    const keyId = listed.keys[0]?.id;
+    expect(keyId).toBeTruthy();
+
+    const ownerCookie = await cookieFor("owner");
+    const del = await apiKeyDELETE(req("owner", ownerCookie, `/api/api-keys/${keyId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: keyId }),
+    });
+    expect(del.status).toBe(404);
+
+    const after = (await (await apiKeysGET(req("viewer", viewerCookie, "/api/api-keys"))).json()) as {
+      keys: Array<{ id: string }>;
+    };
+    expect(after.keys.map((k) => k.id)).toContain(keyId);
+  });
+
+  it("refuses to change document access in another workspace's KB", async () => {
+    const foreignDocId = addDocument({
+      kbId: foreignKbId,
+      name: "b.md",
+      size: 2,
+      content: "x",
+      skipEnqueue: true,
+    }).id;
+    const cookie = await cookieFor("owner");
+
+    const res = await docPATCH(
+      req("owner", cookie, `/api/knowledge-base/${foreignKbId}/documents/${foreignDocId}`, json("PATCH", { access: "view" })),
+      { params: Promise.resolve({ id: foreignKbId, docId: foreignDocId }) }
+    );
+    expect(res?.status).toBe(403);
   });
 
   it("scopes agent tasks to the caller", async () => {
