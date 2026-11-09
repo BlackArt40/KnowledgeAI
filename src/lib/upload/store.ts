@@ -132,8 +132,10 @@ export function getActiveUploadIds(): Set<string> {
 /** Default chunk size in bytes (5 MB - S3 minimum part size). */
 export const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
 
-/** Get configured chunk size from env. */
+/** Get configured chunk size from env. Unparseable values fall back to 5 MB
+ *  (a typo'd env var must not turn every chunk size into NaN). */
 export function getChunkSize(): number {
-  const mb = parseInt(process.env.CHUNK_SIZE_MB || "5", 10);
-  return Math.max(1, mb) * 1024 * 1024;
+  const parsed = parseInt(process.env.CHUNK_SIZE_MB ?? "", 10);
+  const mb = Number.isFinite(parsed) ? Math.max(1, parsed) : 5;
+  return mb * 1024 * 1024;
 }

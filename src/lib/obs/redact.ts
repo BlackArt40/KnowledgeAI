@@ -35,6 +35,14 @@ export function redactText(input: unknown, maxLen = REDACT_TEXT_MAX): string {
   const masked = s
     .replace(/\b(sk|pk|rk)-[A-Za-z0-9_-]{12,}\b/g, "$1-***")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b/gi, "Bearer ***")
+    // JSON bodies (provider error payloads are the main caller): the value is a
+    // quoted string, so the unquoted rule below — which deliberately stops at a
+    // quote — cannot see it. Match the quoted form first and keep the quotes so
+    // the redacted body stays valid JSON.
+    .replace(
+      /("(?:api[_-]?key|password|passwd|secret|token|authorization|private[_-]?key|client[_-]?secret)"\s*:\s*")(?!Bearer\b)([^"]{6,})(")/gi,
+      "$1***$3"
+    )
     .replace(
       /\b(api[_-]?key|password|passwd|secret|token|authorization|private[_-]?key|client[_-]?secret)\b(\s*[:=]\s*)(?!Bearer\b)([^\s"']{6,})/gi,
       "$1$2***"
