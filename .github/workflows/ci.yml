@@ -458,18 +458,11 @@ jobs:
       # 根 e2e 结束时已释放端口，无冲突
       - name: Frontend E2E tests (Vue suite)
         run: pnpm --filter kai-frontend test:e2e
-      # TEMP (this PR only): produce Linux pixel baselines, then commit them and
-      # flip VISUAL_REGRESSION=1 on the step above.
-      - name: Generate visual baselines (temporary)
-        run: pnpm --filter kai-frontend exec playwright test e2e/visual.spec.ts --update-snapshots
+        # 视觉回归基线（frontend/e2e/visual.spec.ts-snapshots/*-linux.png）在
+        # ubuntu 上生成，因此比对也必须在 ubuntu 跑；基线刷新走
+        # .github/workflows/visual-baselines.yml（workflow_dispatch）。
         env:
           VISUAL_REGRESSION: "1"
-      - name: Upload visual baselines (temporary)
-        uses: actions/upload-artifact@v4
-        with:
-          name: visual-baselines
-          path: frontend/e2e/visual.spec.ts-snapshots/
-          if-no-files-found: ignore
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
