@@ -6,11 +6,18 @@
 //   node scripts/perf/load.mjs                       # defaults: 20 conns, 10s
 //   node scripts/perf/load.mjs --duration 5 --sse 5
 //
-// Measured against `next dev` on a 4-core runner, so the budgets are deliberately
-// loose: dev mode compiles on demand and a 10-connection autocannon saturates
-// that single process (health p97.5 observed 294ms hot vs 86ms on an idle box).
-// This is a gross-regression sentinel, not a capacity number — a real latency
-// gate would need a production build (`pnpm build && pnpm start`).
+// Two modes, deliberately separated:
+//
+// * dev (默认阈值 500/1500ms) — `next dev` compiles on demand and a
+//   10-connection autocannon saturates that single process (health p97.5 294ms
+//   under load vs 86ms idle), so it can only catch gross regressions.
+// * production build (CI 用 150/500ms) — `pnpm build && PORT=3100 pnpm start`
+//   serves the same routes without the compiler in the path; that is the mode
+//   the real latency gate runs in.
+//
+// Remember to raise the rate-limit window when pointing at a server with the
+// documented tiers, otherwise every sample after the first 200 becomes a 429
+// and the percentiles measure the limiter instead of the route.
 //
 // Requires a running dev server (integration job provides one). Thresholds are
 // CLI flags on purpose — adding PERF_* env vars would drag .env.example and

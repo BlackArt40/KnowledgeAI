@@ -214,13 +214,43 @@ jobs:
         run: node tests/functional/functional-test.mjs
       - name: API tests
         run: node tests/api/api-test.mjs
-      # 批 3：带阈值的负载哨兵（旧的 performance 脚本只打印，不判失败）。
-      # 必须排在 performance 套件之前：后者会故意打满限流窗口并等它重置，
-      # 跑在其后本脚本会直接 429。
-      - name: Load + SSE soak (thresholds)
-        run: node scripts/perf/load.mjs --duration 5 --connections 10 --sse 5
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
+      # 批 4：真实延迟门禁 —— 生产构建承载。dev 模式 P97.5 混入按需编译且
+      # 98% 样本会被限流器吃掉，只能做粗筛；next start 下同机实测
+      # health 21ms / list 22ms（4 核 runner，10 并发），阈值取 150/400 留 7×/18×
+      # 余量。若持续远低于阈值，可按实测再收紧；工具链成本 +~1min（构建）。
+      - name: Build for latency gate
+        run: |
+          # dev server 与构建共用 .next；先停掉再构建，避免两边互相覆盖。
+          pkill -f "next dev" || true
+          sleep 2
+          pnpm build > /tmp/prod-build.log 2>&1
+      - name: Latency gate on production build (:3100)
+        run: |
+          # 抬高限流窗口：10 并发 × 10s ≈ 800 次，默认 200/min 会把样本全变成 429，
+          # 那样分位数测的是限流器而不是路由。
+          # NODE_ENV=production 下 instrumentation 会拒绝在缺少 AUTH_SECRET 时启动
+          # （防止用硬编码回退密钥跑生产）。CI 用一次性哑值，仅本步骤有效。
+          PORT=3100 \
+            AUTH_SECRET=ci-latency-gate-only-not-a-real-secret-0123456789 \
+            RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_KB_PER_MIN=20000 \
+            pnpm start > /tmp/prod-server.log 2>&1 &
+          ready=""
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3100/api/health > /dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ -z "$ready" ]; then
+            echo "::error::production server did not become ready on :3100"
+            echo "--- prod-build.log (tail 40) ---"; tail -40 /tmp/prod-build.log || true
+            echo "--- prod-server.log (tail 60) ---"; tail -60 /tmp/prod-server.log || true
+            exit 1
+          fi
+          node scripts/perf/load.mjs \
+            --base http://localhost:3100 \
+            --p95-health 150 --p95-api 400 \
+            --duration 10 --connections 10 --sse 5
 
   # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
   # 顺序有讲究：limits 组断言文档默认限流档位（anon 20 < kb 60 < user 200 <
