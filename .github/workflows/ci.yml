@@ -216,9 +216,10 @@ jobs:
         run: node tests/api/api-test.mjs
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
-      # 批 4：真实延迟门禁 —— 生产构建承载。dev 模式的 P97.5 混入按需编译，
-      # 阈值只能放到 500ms；这里按 next start 的实测值卡（工具链成本 +~2min：
-      # 构建复用 quality job 已缓存不了 .next，但 115 条 route 构建约 60-90s）。
+      # 批 4：真实延迟门禁 —— 生产构建承载。dev 模式 P97.5 混入按需编译且
+      # 98% 样本会被限流器吃掉，只能做粗筛；next start 下同机实测
+      # health 21ms / list 22ms（4 核 runner，10 并发），阈值取 150/400 留 7×/18×
+      # 余量。若持续远低于阈值，可按实测再收紧；工具链成本 +~1min（构建）。
       - name: Build for latency gate
         run: |
           # dev server 与构建共用 .next；先停掉再构建，避免两边互相覆盖。
@@ -248,7 +249,7 @@ jobs:
           fi
           node scripts/perf/load.mjs \
             --base http://localhost:3100 \
-            --p95-health 300 --p95-api 1000 \
+            --p95-health 150 --p95-api 400 \
             --duration 10 --connections 10 --sse 5
 
   # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
