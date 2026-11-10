@@ -214,13 +214,35 @@ jobs:
         run: node tests/functional/functional-test.mjs
       - name: API tests
         run: node tests/api/api-test.mjs
-      # 批 3：带阈值的负载哨兵（旧的 performance 脚本只打印，不判失败）。
-      # 必须排在 performance 套件之前：后者会故意打满限流窗口并等它重置，
-      # 跑在其后本脚本会直接 429。
-      - name: Load + SSE soak (thresholds)
+      # 批 3：必须排在 performance 套件之前：后者会故意打满限流窗口并等它
+      # 重置，跑在其后本脚本会直接 429。dev 模式只做粗筛（按需编译 + 单进程）。
+      - name: Load + SSE soak (dev sentinel)
         run: node scripts/perf/load.mjs --duration 5 --connections 10 --sse 5
       - name: Performance tests
         run: node tests/performance/performance-test.mjs
+      # 批 4：真实延迟门禁 —— 生产构建承载。dev 模式的 P97.5 混入按需编译，
+      # 阈值只能放到 500ms；这里按 next start 的实测值卡（工具链成本 +~2min：
+      # 构建复用 quality job 已缓存不了 .next，但 115 条 route 构建约 60-90s）。
+      - name: Build for latency gate
+        run: |
+          # dev server 与构建共用 .next；先停掉再构建，避免两边互相覆盖。
+          pkill -f "next dev" || true
+          sleep 2
+          pnpm build > /tmp/prod-build.log 2>&1
+      - name: Latency gate on production build (:3100)
+        run: |
+          # 抬高限流窗口：10 并发 × 10s ≈ 800 次，默认 200/min 会把样本全变成 429，
+          # 那样分位数测的是限流器而不是路由。
+          PORT=3100 RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_KB_PER_MIN=20000 pnpm start > /tmp/prod-server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3100/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3100/api/health > /dev/null
+          node scripts/perf/load.mjs \
+            --base http://localhost:3100 \
+            --p95-health 150 --p95-api 500 \
+            --duration 10 --connections 10 --sse 5
 
   # ── 验收 smoke：scripts/smoke/ 下的验收套件（scripts/smoke/run-all.ts） ──
   # 顺序有讲究：limits 组断言文档默认限流档位（anon 20 < kb 60 < user 200 <
