@@ -234,11 +234,17 @@ jobs:
           # 抬高限流窗口：10 并发 × 10s ≈ 800 次，默认 200/min 会把样本全变成 429，
           # 那样分位数测的是限流器而不是路由。
           PORT=3100 RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_KB_PER_MIN=20000 pnpm start > /tmp/prod-server.log 2>&1 &
+          ready=""
           for i in $(seq 1 60); do
-            curl -sf http://localhost:3100/api/health > /dev/null && break
+            if curl -sf http://localhost:3100/api/health > /dev/null; then ready=1; break; fi
             sleep 2
           done
-          curl -sf http://localhost:3100/api/health > /dev/null
+          if [ -z "$ready" ]; then
+            echo "::error::production server did not become ready on :3100"
+            echo "--- prod-build.log (tail 40) ---"; tail -40 /tmp/prod-build.log || true
+            echo "--- prod-server.log (tail 60) ---"; tail -60 /tmp/prod-server.log || true
+            exit 1
+          fi
           node scripts/perf/load.mjs \
             --base http://localhost:3100 \
             --p95-health 150 --p95-api 500 \
