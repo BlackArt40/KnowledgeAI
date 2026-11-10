@@ -233,7 +233,12 @@ jobs:
         run: |
           # 抬高限流窗口：10 并发 × 10s ≈ 800 次，默认 200/min 会把样本全变成 429，
           # 那样分位数测的是限流器而不是路由。
-          PORT=3100 RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_KB_PER_MIN=20000 pnpm start > /tmp/prod-server.log 2>&1 &
+          # NODE_ENV=production 下 instrumentation 会拒绝在缺少 AUTH_SECRET 时启动
+          # （防止用硬编码回退密钥跑生产）。CI 用一次性哑值，仅本步骤有效。
+          PORT=3100 \
+            AUTH_SECRET=ci-latency-gate-only-not-a-real-secret-0123456789 \
+            RATE_LIMIT_PER_MIN=20000 RATE_LIMIT_KB_PER_MIN=20000 \
+            pnpm start > /tmp/prod-server.log 2>&1 &
           ready=""
           for i in $(seq 1 60); do
             if curl -sf http://localhost:3100/api/health > /dev/null; then ready=1; break; fi
