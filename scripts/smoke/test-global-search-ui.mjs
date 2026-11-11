@@ -138,7 +138,7 @@ async function main() {
     await send("Page.navigate", { url: `${BASE}/dashboard` });
     await sleep(2500);
     const kOpen = await evalJs(
-      `(() => { const b = [...document.querySelectorAll("button")].find((x) => x.getAttribute("aria-label") === "全局搜索"); return !!b && b.getBoundingClientRect().width > 0; })()`
+      `(() => { const b = [...document.querySelectorAll("button")].find((x) => x.getAttribute("data-testid") === "search-entry"); return !!b && b.getBoundingClientRect().width > 0; })()`
     );
     check("header: global search trigger visible", kOpen === true);
 
@@ -260,7 +260,7 @@ async function main() {
     await send("Page.navigate", { url: `${BASE}/dashboard` });
     await sleep(2500);
     const mobileBtn = await evalJs(`(() => {
-      const bs = [...document.querySelectorAll("button")].filter((x) => x.getAttribute("aria-label") === "全局搜索");
+      const bs = [...document.querySelectorAll("button")].filter((x) => x.getAttribute("data-testid") === "search-entry");
       const visible = bs.filter((b) => {
         const r = b.getBoundingClientRect();
         const cs = getComputedStyle(b);
@@ -270,7 +270,7 @@ async function main() {
     })()`);
     check("mobile: search icon button visible @375px", mobileBtn.total >= 2 && mobileBtn.visible >= 1, JSON.stringify(mobileBtn));
     await evalJs(`(() => {
-      const bs = [...document.querySelectorAll("button")].filter((x) => x.getAttribute("aria-label") === "全局搜索");
+      const bs = [...document.querySelectorAll("button")].filter((x) => x.getAttribute("data-testid") === "search-entry");
       const visible = bs.find((b) => { const r = b.getBoundingClientRect(); return getComputedStyle(b).display !== "none" && r.width > 0; });
       if (visible) visible.click();
     })()`);

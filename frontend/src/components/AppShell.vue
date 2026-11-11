@@ -570,6 +570,7 @@ const visibleGroups = computed(() =>
         <div class="topbar-right">
           <button
             class="search-btn hidden sm:inline-flex"
+            data-testid="search-entry"
             @click="searchOpen = true"
           >
             <el-icon :size="14">
@@ -584,6 +585,7 @@ const visibleGroups = computed(() =>
           </button>
           <button
             class="icon-btn sm:hidden"
+            data-testid="search-entry"
             :aria-label="t('page.app-shell.s23')"
             @click="searchOpen = true"
           >
