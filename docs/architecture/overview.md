@@ -232,7 +232,7 @@ flowchart LR
 2. `proxy.ts` 按用户/API Key 限流；v1 路由校验 API Key scope（`chat:read`）；
 3. 路由读取知识库可见性 → 组装 `RagSettings`；
 4. RAG 引擎检索：查询改写 → 混合检索（向量 + BM25）→ 重排 → 父文本扩展；
-5. LLM Provider 流式生成（SSE：`sources` → `token*` → `done`）；
+5. LLM Provider 流式生成（SSE：`sources` → `token*` → `done`；失败时以 `error` 帧收尾并带 `code`：`upstream_quota` / `upstream_auth` / `upstream_timeout` / `empty_response` / `internal`，上游故障不得落成空回答）；
 6. 会话与消息写穿 DB；引用溯源随 `done` 事件返回。
 
 ## 相关文档

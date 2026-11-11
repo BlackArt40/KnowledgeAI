@@ -42,7 +42,7 @@ related:
 | ID | 工作包 | 产出 | 对应现有代码 |
 |----|--------|------|----------------|
 | 0.1 | 导出 `/api/v1` 合同 | 将 `src/lib/openapi/spec.ts` 冻结为 `docs/architecture/assets/v1-freeze-openapi.json`（目录需新建；或 CI 已有 OpenAPI 漂移检查的基线 tag） | `src/lib/openapi/spec.ts` |
-| 0.2 | SSE 黄金事件 | 固定问答帧序 `sources → token* → done`；Agent `init → step* → done → end` | `src/lib/chat/ask.ts`、`src/app/api/chat`、`src/app/api/agent/run` |
+| 0.2 | SSE 黄金事件 | 固定问答帧序 `sources → token* → done`（失败为 `error`，含 `code`）；Agent `init → step* → done → end` | `src/lib/chat/ask.ts`、`src/app/api/chat`、`src/app/api/agent/run` |
 | 0.3 | 主路径基线 | 跑 `e2e/main-flow.spec.ts` + `scripts/smoke` 的 http/lib 组，把报告存档 | `e2e/`、`scripts/smoke/` |
 | 0.4 | 特性开关 | 增加 `AI_SERVICE_URL`、`AI_INTERNAL_TOKEN`（未设置 = 旧路径） | `src/lib/config.ts`、`.env.example`、[环境变量文档](../ops/env-vars.md) |
 | 0.5 | 跨租户负例基线 | 用两个 workspace 的用户交叉读 KB / 检索，记录当前必须 403/空结果 | `canViewKb` / ADR-0003 |
