@@ -302,7 +302,7 @@ watch([scene, runId, inView, reduced], () => playScene());
             {{ t(item.labelKey) }}
             <span
               v-if="item.id === 'agent'"
-              aria-hidden
+              aria-hidden="true"
               class="nav-new"
             >{{ t("page.app-shell.s26") }}</span>
           </button>

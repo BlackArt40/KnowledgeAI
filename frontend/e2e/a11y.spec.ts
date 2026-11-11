@@ -40,6 +40,8 @@ async function scan(page: Page, name: string) {
   });
 
   // Inventory first, gate second: this log goes quiet as the backlog shrinks.
+  // Rule + first nodes + contrast numbers are enough to locate a regression
+  // without re-running axe by hand.
   if (serious.length > 0) {
     console.log(`\n[a11y:${name}] serious violations:`);
     for (const v of serious) {

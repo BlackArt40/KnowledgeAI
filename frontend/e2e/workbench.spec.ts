@@ -25,7 +25,7 @@ test("dashboard：Vue 壳 + 统计卡 + 欢迎语（含用户名）", async ({ p
 
 test("AppShell：通知铃铛面板可开合，语言/主题控件存在", async ({ page }) => {
   await login(page);
-  await page.locator("button[aria-label='通知']").click();
+  await page.locator("[data-testid='notif-bell']").click();
   await expect(page.locator(".notif-panel")).toBeVisible();
   // 回归守卫：曾因 el-popover 的 trigger="click" 与引用元素上的手动 @click 双翻转，
   // 弹层「点开即关」。单次 toBeVisible 会命中那 ~600ms 的短暂打开窗口，所以这里

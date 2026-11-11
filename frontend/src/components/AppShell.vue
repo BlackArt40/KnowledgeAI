@@ -568,8 +568,6 @@ const visibleGroups = computed(() =>
         </h1>
 
         <div class="topbar-right">
-          <!-- 可见文案（搜索 + ⌘K）就是可访问名；再加 aria-label 会触发
-               label-content-name-mismatch（axe serious）。快捷键由 kbd 读屏读出。 -->
           <button
             class="search-btn hidden sm:inline-flex"
             @click="searchOpen = true"
@@ -578,7 +576,11 @@ const visibleGroups = computed(() =>
               <Search />
             </el-icon>
             <span class="search-label">{{ t("page.app-shell.s2") }}</span>
-            <kbd class="kbd">⌘K</kbd>
+            <!-- 可见文本必须包含在可访问名里；快捷键对名字没有信息量，排除掉。 -->
+            <kbd
+              class="kbd"
+              aria-hidden="true"
+            >⌘K</kbd>
           </button>
           <button
             class="icon-btn sm:hidden"
@@ -637,14 +639,17 @@ const visibleGroups = computed(() =>
             <template #reference>
               <!-- 不要在这里再写 @click 手动 toggle：el-popover 的 trigger="click"
                    已经会翻 v-model:visible，两边同时翻转 = 点开即关（2026-10-24 修） -->
-              <button class="icon-btn">
+              <button
+                class="icon-btn"
+                data-testid="notif-bell"
+              >
                 <el-icon
                   :size="14"
                   aria-hidden="true"
                 >
                   <BellFilled />
                 </el-icon>
-                <span class="sr-only">{{ t("page.app-shell.s3") }}{{ unread > 0 ? `，${unread} 条未读` : "" }}</span>
+                <span class="sr-only">{{ t("page.app-shell.s3") }}</span>
                 <span
                   v-if="unread > 0"
                   class="unread-badge"
