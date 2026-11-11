@@ -294,7 +294,6 @@ watch([scene, runId, inView, reduced], () => playScene());
             class="nav-item"
             :class="{ active: scene === item.id }"
             :aria-pressed="scene === item.id"
-            :aria-label="t(item.labelKey)"
             @click="scene = item.id"
           >
             <el-icon :size="13">
@@ -303,7 +302,7 @@ watch([scene, runId, inView, reduced], () => playScene());
             {{ t(item.labelKey) }}
             <span
               v-if="item.id === 'agent'"
-              aria-hidden
+              aria-hidden="true"
               class="nav-new"
             >{{ t("page.app-shell.s26") }}</span>
           </button>

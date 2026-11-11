@@ -1,14 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// Batch 2: accessibility smoke. Scans the five entry surfaces every logged-in
-// user starts from. Gate = no `critical` violations (blocked AT: unlabeled
-// form controls, empty buttons, missing lang). `serious` findings are attached
-// to the report instead of failing the build, because the current UI has a
-// backlog of contrast/label polish that would otherwise keep CI red — flip
-// SERIOUS_AS_ERROR to true once that backlog is empty.
+// Accessibility smoke over the five surfaces every logged-in user starts from.
+// Gate = zero `critical` AND zero `serious` violations. The serious backlog
+// (contrast on muted/tinted text, label-content-name-mismatch on icon buttons)
+// was cleared in #104; keep it at zero — new UI must pass before merge.
 
-const SERIOUS_AS_ERROR = false;
+const SERIOUS_AS_ERROR = true;
 
 const EMAIL = "owner@knowledgeai.dev";
 const PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString();
@@ -40,6 +38,27 @@ async function scan(page: Page, name: string) {
       serious.length ? ` [${serious.map((v) => v.id).join(", ")}]` : ""
     }`,
   });
+
+  // Inventory first, gate second: this log goes quiet as the backlog shrinks.
+  // Rule + first nodes + contrast numbers are enough to locate a regression
+  // without re-running axe by hand.
+  if (serious.length > 0) {
+    console.log(`\n[a11y:${name}] serious violations:`);
+    for (const v of serious) {
+      console.log(`  ${v.id} (${v.nodes.length} node(s)) — ${v.help}`);
+      for (const n of v.nodes.slice(0, 8)) {
+        const d = n.any[0]?.data as
+          | { fgColor?: string; bgColor?: string; contrastRatio?: number; fontSize?: string; fontWeight?: string }
+          | undefined;
+        const detail = d?.contrastRatio !== undefined
+          ? ` ratio=${d.contrastRatio} fg=${d.fgColor} bg=${d.bgColor} size=${d.fontSize}/${d.fontWeight}`
+          : ` msg=${n.any[0]?.message ?? n.failureSummary?.split("\n")[0] ?? ""}`;
+        const data = n.any[0]?.data ? ` data=${JSON.stringify(n.any[0].data).slice(0, 220)}` : "";
+        const html = ` html=${n.html.slice(0, 160).replace(/\s+/g, " ")}`;
+        console.log(`    ${n.target.join(" ")}${detail}${data}${html}`);
+      }
+    }
+  }
 
   expect(critical.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })), `critical a11y violations on ${name}`).toEqual([]);
 

@@ -38,21 +38,48 @@
   border-radius: var(--radius-full);
   font-size: 11px;
 }
-/* 变体统一用 `.badge[class].xxx` 提高权重：页面里残留的 `.badge { background/color }`
-   被 scoped 编译成 `.badge[data-v-x]`，与 `.badge.warn` 同为 (0,2,0)，而组件样式
-   后注入 —— 不加权会出现「状态徽章变成中性灰」的回归（TeamView「已邀请」实测踩到）。
-   `[class]` 恒真，不影响匹配。 */
-.badge[class].ok {
+/* 变体统一用 `.badge[class][class].xxx` 提权：页面里 `.badge.success` 被 scoped 编译
+   成 `.badge.success[data-v-x]` = (0,3,0)，只写一个 `[class]` 仍然同分且组件样式后
+   注入会赢（TeamView「已邀请」、Dashboard「近 14 天」都踩过）。`[class]` 恒真，双写
+   只为把权重抬到 (0,4,0)，不影响匹配。 */
+.badge[class][class].ok {
   background: hsl(var(--success) / 0.12);
-  color: hsl(var(--success));
+  /* 令牌色直接落在 12% 底色上只有 4.04:1 —— 压暗一档过 AA（axe serious）。 */
+  color: color-mix(in srgb, hsl(var(--success)) 86%, #000);
 }
-.badge[class].warn {
+.badge[class][class].warn {
   background: hsl(var(--warning) / 0.12);
-  color: hsl(var(--warning));
+  color: color-mix(in srgb, hsl(var(--warning)) 86%, #000);
 }
-.badge[class].err {
+.badge[class][class].err {
   background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
+  color: color-mix(in srgb, hsl(var(--destructive)) 86%, #000);
+}
+/* 页面里还用过 .success / .failed / .bad 这些别名（同一个 12% 底 + 令牌色，
+   同样是 4.0x:1）。权重与上面一致，保证压过 scoped 规则。 */
+.badge[class][class].success {
+  background: hsl(var(--success) / 0.12);
+  color: color-mix(in srgb, hsl(var(--success)) 86%, #000);
+}
+.badge[class][class].err,
+.badge[class][class].bad,
+.badge[class][class].failed {
+  background: hsl(var(--destructive) / 0.12);
+  color: color-mix(in srgb, hsl(var(--destructive)) 86%, #000);
+}
+
+/* 暗色底上要提亮而不是压暗，否则红/绿反而掉到 3.x。 */
+html.dark .badge[class][class].ok,
+html.dark .badge[class][class].success {
+  color: color-mix(in srgb, hsl(var(--success)) 88%, #fff);
+}
+html.dark .badge[class][class].warn {
+  color: color-mix(in srgb, hsl(var(--warning)) 88%, #fff);
+}
+html.dark .badge[class][class].err,
+html.dark .badge[class][class].bad,
+html.dark .badge[class][class].failed {
+  color: color-mix(in srgb, hsl(var(--destructive)) 70%, #fff);
 }
 
 /* ── 次要文案 ─────────────────────────────────────────────────────────── */
@@ -134,4 +161,17 @@
     transform: scale(2.2);
     opacity: 0;
   }
+}
+
+/* 仅供读屏的文本：给只有图标/数字的控件补可访问名，不占布局。 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

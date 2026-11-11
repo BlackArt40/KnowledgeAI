@@ -570,17 +570,22 @@ const visibleGroups = computed(() =>
         <div class="topbar-right">
           <button
             class="search-btn hidden sm:inline-flex"
-            :aria-label="t('page.app-shell.s23')"
+            data-testid="search-entry"
             @click="searchOpen = true"
           >
             <el-icon :size="14">
               <Search />
             </el-icon>
             <span class="search-label">{{ t("page.app-shell.s2") }}</span>
-            <kbd class="kbd">⌘K</kbd>
+            <!-- 可见文本必须包含在可访问名里；快捷键对名字没有信息量，排除掉。 -->
+            <kbd
+              class="kbd"
+              aria-hidden="true"
+            >⌘K</kbd>
           </button>
           <button
             class="icon-btn sm:hidden"
+            data-testid="search-entry"
             :aria-label="t('page.app-shell.s23')"
             @click="searchOpen = true"
           >
@@ -638,14 +643,19 @@ const visibleGroups = computed(() =>
                    已经会翻 v-model:visible，两边同时翻转 = 点开即关（2026-10-24 修） -->
               <button
                 class="icon-btn"
-                :aria-label="t('page.app-shell.s3')"
+                data-testid="notif-bell"
               >
-                <el-icon :size="14">
+                <el-icon
+                  :size="14"
+                  aria-hidden="true"
+                >
                   <BellFilled />
                 </el-icon>
+                <span class="sr-only">{{ t("page.app-shell.s3") }}</span>
                 <span
                   v-if="unread > 0"
                   class="unread-badge"
+                  aria-hidden="true"
                 >{{ unread > 9 ? "9+" : unread }}</span>
               </button>
             </template>
@@ -935,7 +945,7 @@ const visibleGroups = computed(() =>
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
 }
 .nav-item {
   position: relative;
@@ -1108,6 +1118,8 @@ const visibleGroups = computed(() =>
   border: 1px solid hsl(var(--border));
   border-radius: 4px;
   background: hsl(var(--muted));
+  /* 4.39:1 when inheriting the muted colour - one notch darker clears AA. */
+  color: hsl(var(--foreground) / 0.72);
   font-size: 10px;
 }
 .icon-btn {

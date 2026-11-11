@@ -578,7 +578,8 @@ onMounted(async () => {
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 400;
-  color: hsl(var(--muted-foreground) / 0.7);
+  /* No alpha on text: /0.7 dropped this to 2.7:1 (axe serious). */
+  color: hsl(var(--muted-foreground));
 }
 .file-stack {
   display: grid;
@@ -722,7 +723,7 @@ onMounted(async () => {
 .flow-num {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
 }
 .flow-title {
   font-size: 15px;

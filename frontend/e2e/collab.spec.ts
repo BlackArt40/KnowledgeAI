@@ -87,7 +87,7 @@ test("通知：角色变更经 SSE 实时到达铃铛面板", async ({ browser }
   expect(member).toBeTruthy();
 
   try {
-    await editor.locator("button[aria-label='通知']").click();
+    await editor.locator("[data-testid='notif-bell']").click();
     await expect(editor.locator(".notif-item").first()).toBeVisible();
 
     const resp = await owner.request.patch(`/api/team/members/${member.id}`, {
