@@ -37,6 +37,9 @@ const P95_HEALTH = Number(args.get("p95-health") ?? 500);
 const P95_API = Number(args.get("p95-api") ?? 1_500);
 const MAX_ERROR_RATE = Number(args.get("max-error-rate") ?? 0.01);
 const SSE_DEADLINE_MS = Number(args.get("sse-deadline") ?? 60_000);
+// 演示模式（CI）没有上游模型，出现 error 帧就是回归；指向真实 provider 的环境
+// 可以用 --allow-error 把「额度/鉴权失败」当作合法的终止帧，只要求流能收尾。
+const ALLOW_ERROR = args.has("allow-error");
 
 const DEMO_EMAIL = "owner@knowledgeai.dev";
 const DEMO_PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString();
@@ -118,8 +121,18 @@ async function soakSse(cookie, kbId) {
         await reader.cancel().catch(() => {});
         return { i, ok: true, ms: Date.now() - startedAt };
       }
+      if (buffer.includes('"type":"error"')) {
+        await reader.cancel().catch(() => {});
+        const code = /"code":"([a-z_]+)"/.exec(buffer)?.[1] ?? "unknown";
+        return {
+          i,
+          ok: ALLOW_ERROR,
+          ms: Date.now() - startedAt,
+          reason: `terminal error frame (code=${code})`,
+        };
+      }
     }
-    return { i, ok: false, ms: Date.now() - startedAt, reason: "stream ended without done" };
+    return { i, ok: false, ms: Date.now() - startedAt, reason: "stream ended without done/error frame" };
   });
 
   const results = await Promise.all(tasks);
@@ -129,7 +142,11 @@ async function soakSse(cookie, kbId) {
   for (const bad of results.filter((r) => !r.ok)) {
     console.log(`  stream ${bad.i} failed after ${bad.ms}ms: ${bad.reason}`);
   }
-  check(`${SSE_STREAMS} 路 SSE 全部收到 done`, ok.length === SSE_STREAMS, `${ok.length}/${SSE_STREAMS}`);
+  check(
+    `${SSE_STREAMS} 路 SSE 全部正常收尾（done${ALLOW_ERROR ? " 或 error" : ""}）`,
+    ok.length === SSE_STREAMS,
+    `${ok.length}/${SSE_STREAMS}`
+  );
   check(`最慢一路 < ${SSE_DEADLINE_MS}ms`, slowest < SSE_DEADLINE_MS, `${slowest}ms`);
   console.log(`SSE soak wall clock: ${elapsed}ms`);
 }

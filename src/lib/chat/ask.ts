@@ -8,6 +8,9 @@
 //
 // SSE events (asserted by tests - do not rename):
 //   sources / token / done / error
+// `error` also carries a machine-readable `code` (upstream_quota / upstream_auth
+// / upstream_timeout / empty_response / internal) so the client can tell "retry"
+// apart from "the provider key is dead"; see lib/chat/errors.ts.
 // ---------------------------------------------------------------------------
 
 import { getKb, getDocument } from "@/lib/kb/store";
@@ -28,6 +31,7 @@ import {
 import { deleteMessageFromDb } from "@/lib/db/persist";
 import { recordQa } from "@/lib/billing/store";
 import { canViewKb } from "@/lib/team/store";
+import { classifyChatError } from "@/lib/chat/errors";
 import { getRequestUser, type RequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
 import { validateApiKey, logCall } from "@/lib/apikeys/store";
@@ -315,6 +319,14 @@ export async function handleChatRequest(
           }
           if (result) citations = result.citations;
 
+          // An empty stream is a failure, not an answer: persisting it would
+          // create a blank assistant bubble in history and count the question
+          // against the billing meter. (Client aborts land here too and are
+          // deliberately kept: the partial text the user saw must survive.)
+          if (!fullText.trim() && !req.signal.aborted) {
+            throw new Error("模型未返回内容（empty_response）");
+          }
+
           const assistant = addMessage(conv!.id, { role: "assistant", content: fullText, citations });
           // Count this answered question against the current user's + workspace's meters.
           recordQa(authUser.id, authUser.workspaceId);
@@ -322,11 +334,15 @@ export async function handleChatRequest(
           const followUps = await suggestFollowUps(query, fullText, chunks);
           send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });
         } catch (err) {
-          log.error({ err }, "[chat] stream error");
-          // P6-1: error reporting + trace finalization (status 500).
-          reportError(err, { source: opts.endpoint, context: `conv ${conv!.id}` });
+          // Failures are classified before reaching the client: a quota/auth
+          // problem must not read as "please retry" (see lib/chat/errors.ts).
+          const failure = classifyChatError(err);
+          log.error({ err, code: failure.code, status: failure.status }, "[chat] stream error");
+          // P6-1: error reporting + trace finalization (status 500). `end` is
+          // idempotent, so the finally below cannot overwrite this status.
+          reportError(err, { source: opts.endpoint, context: `conv ${conv!.id} code ${failure.code}` });
           trace.end(500, err);
-          send({ type: "error", message: "生成回答时出错，请重试。" });
+          send({ type: "error", code: failure.code, message: failure.message });
         } finally {
           // P6-1: the trace covers the full SSE lifetime - finalize here.
           trace.end(200);
