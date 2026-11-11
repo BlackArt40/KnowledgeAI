@@ -294,7 +294,6 @@ watch([scene, runId, inView, reduced], () => playScene());
             class="nav-item"
             :class="{ active: scene === item.id }"
             :aria-pressed="scene === item.id"
-            :aria-label="t(item.labelKey)"
             @click="scene = item.id"
           >
             <el-icon :size="13">

@@ -568,9 +568,10 @@ const visibleGroups = computed(() =>
         </h1>
 
         <div class="topbar-right">
+          <!-- 可见文案（搜索 + ⌘K）就是可访问名；再加 aria-label 会触发
+               label-content-name-mismatch（axe serious）。快捷键由 kbd 读屏读出。 -->
           <button
             class="search-btn hidden sm:inline-flex"
-            :aria-label="t('page.app-shell.s23')"
             @click="searchOpen = true"
           >
             <el-icon :size="14">
@@ -636,16 +637,18 @@ const visibleGroups = computed(() =>
             <template #reference>
               <!-- 不要在这里再写 @click 手动 toggle：el-popover 的 trigger="click"
                    已经会翻 v-model:visible，两边同时翻转 = 点开即关（2026-10-24 修） -->
-              <button
-                class="icon-btn"
-                :aria-label="t('page.app-shell.s3')"
-              >
-                <el-icon :size="14">
+              <button class="icon-btn">
+                <el-icon
+                  :size="14"
+                  aria-hidden="true"
+                >
                   <BellFilled />
                 </el-icon>
+                <span class="sr-only">{{ t("page.app-shell.s3") }}{{ unread > 0 ? `，${unread} 条未读` : "" }}</span>
                 <span
                   v-if="unread > 0"
                   class="unread-badge"
+                  aria-hidden="true"
                 >{{ unread > 9 ? "9+" : unread }}</span>
               </button>
             </template>
@@ -935,7 +938,7 @@ const visibleGroups = computed(() =>
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
 }
 .nav-item {
   position: relative;
@@ -1108,6 +1111,8 @@ const visibleGroups = computed(() =>
   border: 1px solid hsl(var(--border));
   border-radius: 4px;
   background: hsl(var(--muted));
+  /* 4.39:1 when inheriting the muted colour - one notch darker clears AA. */
+  color: hsl(var(--foreground) / 0.72);
   font-size: 10px;
 }
 .icon-btn {

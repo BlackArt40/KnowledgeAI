@@ -39,6 +39,13 @@
 }
 
 html.dark {
+  /* EP 的 html.dark 自带 --el-color-primary: #409eff（比 :root 特异性高），
+     不重写就会在暗色下退回 EP 蓝：既丢品牌色，也让白字落在 #409eff 上只有
+     2.78:1。这里显式指回令牌。 */
+  --el-color-primary: hsl(var(--primary));
+
+  /* 暗色品牌主色是「浅底 + 深字」（tokens.css 的约定），EP 默认白字不变通
+     就是 2.78:1；只改主按钮，不动自定义/plain 按钮的文字色。 */
   /* 暗色下 EP 的 light-N 梯度混入深底色而非白色 */
   --el-color-primary-light-3: color-mix(in srgb, hsl(var(--primary)) 70%, #0f0f12);
   --el-color-primary-light-5: color-mix(in srgb, hsl(var(--primary)) 50%, #0f0f12);
@@ -70,4 +77,18 @@ html.dark {
   --el-border-radius-base: var(--radius);
   --el-border-radius-small: calc(var(--radius) - 4px);
   --el-font-family: var(--font-sans);
+}
+
+/* 主按钮：暗色品牌色偏亮，文字改用 --primary-foreground（深色）。 */
+html.dark .el-button--primary {
+  --el-button-text-color: hsl(var(--primary-foreground));
+  --el-button-hover-text-color: hsl(var(--primary-foreground));
+  --el-button-active-text-color: hsl(var(--primary-foreground));
+}
+
+/* 文字型危险按钮（如 KB 列表删除）：暗色 --destructive 是 #cf3030，落在
+   近黑卡片上 3.77:1；提亮文字不改填充。 */
+html.dark .el-button.is-text.el-button--danger {
+  --el-button-text-color: color-mix(in srgb, hsl(var(--destructive)) 55%, #fff);
+  --el-button-hover-text-color: color-mix(in srgb, hsl(var(--destructive)) 45%, #fff);
 }

@@ -343,6 +343,10 @@ async function remove(kb: KbListItem) {
   color: hsl(var(--primary));
   text-decoration: none;
 }
+/* 暗色下品牌 --primary 落在 4.47:1（差 0.03）——链接态再提亮一档。 */
+html.dark .graph-link {
+  color: color-mix(in srgb, hsl(var(--primary)) 78%, #fff);
+}
 .empty { display: grid; gap: 12px; justify-items: center; padding: 60px 0; font-size: 14px; }
 
 .form {
