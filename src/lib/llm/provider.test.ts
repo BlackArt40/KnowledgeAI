@@ -133,13 +133,47 @@ describe("chatStream (streamText)", () => {
     expect(llm.promptTokens).toBe(3);
   });
 
-  it("yields nothing on HTTP errors (graceful)", async () => {
+  it("propagates HTTP errors instead of pretending the stream finished", async () => {
+    // Swallowing here made ask.ts treat a quota failure as a completed answer:
+    // empty assistant message persisted + the question counted on the meter.
     vi.mocked(streamText).mockImplementation(() => {
       throw Object.assign(new Error("429"), { statusCode: 429 });
     });
     const deltas: string[] = [];
-    for await (const d of chatStream([msg({ content: "q" })])) deltas.push(d);
+    await expect(
+      (async () => {
+        for await (const d of chatStream([msg({ content: "q" })])) deltas.push(d);
+      })()
+    ).rejects.toThrow("429");
     expect(deltas).toEqual([]);
+    expect(getMetricsSnapshot().llm.errors).toBe(1);
+  });
+
+  it("prefers the error reported via onError over the generic wrapper", async () => {
+    // await result.usage throws AI_NoOutputGeneratedError, which hides the
+    // provider's status/body; onError still has the real APICallError.
+    const providerError = Object.assign(new Error("402 Payment Required"), {
+      statusCode: 402,
+      responseBody: '{"code":30001,"message":"insufficient balance"}',
+    });
+    vi.mocked(streamText).mockImplementation((opts: { onError?: (a: { error: unknown }) => void }) => {
+      opts.onError?.({ error: providerError });
+      return {
+        textStream: (async function* () {
+          /* provider failed before the first token */
+        })(),
+        usage: Promise.reject(new Error("No output generated")),
+      } as unknown as MockStreamResult;
+    });
+
+    await expect(
+      (async () => {
+        for await (const _ of chatStream([msg({ content: "q" })])) {
+          void _;
+        }
+      })()
+    ).rejects.toMatchObject({ statusCode: 402 });
+    expect(getMetricsSnapshot().llm.errors).toBe(1);
   });
 
   it("demo mode yields nothing", async () => {

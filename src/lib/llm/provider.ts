@@ -283,6 +283,13 @@ export async function* chatStream(
       allowSystemInMessages: true,
       // M-10: abort the upstream fetch when the client disconnects (SSE).
       abortSignal: opts?.signal,
+      // The SDK reports provider failures (APICallError with statusCode /
+      // responseBody) through onError and then closes the text stream; keeping
+      // the original error lets the caller classify quota vs auth instead of
+      // guessing from a generic "No output generated" wrapper.
+      onError: ({ error }: { error: unknown }) => {
+        span.ctx.error = error;
+      },
     });
 
     // textStream is an async iterable of deltas; usage resolves when the
@@ -297,12 +304,22 @@ export async function* chatStream(
       completion_tokens: u?.outputTokens,
     };
   } catch (err) {
-    span.ctx.error = err;
-    if (isHttpError(err)) {
-      log.error({ status: err.statusCode, detail: redactText((err as { responseBody?: string }).responseBody ?? "") }, "[llm] chat stream failed");
-      return;
+    // Prefer the error the SDK reported via onError: awaiting `usage` throws a
+    // generic AI_NoOutputGeneratedError that hides the provider's status/body.
+    const failure = span.ctx.error ?? err;
+    span.ctx.error = failure;
+    if (isHttpError(failure)) {
+      log.error(
+        { status: failure.statusCode, detail: redactText((failure as { responseBody?: string }).responseBody ?? "") },
+        "[llm] chat stream failed"
+      );
     }
-    throw err;
+    // Streaming cannot "gracefully" swallow a provider error: the caller would
+    // see a normal completion with zero tokens, persist an empty assistant
+    // message and count the question against the billing meter. Rethrow so
+    // ask.ts can classify it and close the SSE with an error frame.
+    // (chatComplete keeps the graceful "" return; it has no token stream.)
+    throw failure;
   } finally {
     span.finish();
   }
