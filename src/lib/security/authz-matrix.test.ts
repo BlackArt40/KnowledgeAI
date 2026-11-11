@@ -54,7 +54,6 @@ let docId = "";
 let foreignKbId = "";
 let foreignWorkspaceId = "";
 let viewerUserId = "";
-let ownerUserId = "";
 
 function resetStores(): void {
   for (const k of STORE_KEYS) delete (globalThis as Record<string, unknown>)[k];
@@ -68,7 +67,6 @@ beforeEach(() => {
   kbId = kb.id;
   docId = addDocument({ kbId, name: "a.md", size: 4, content: "正文", skipEnqueue: true }).id;
   viewerUserId = findUserByEmail("viewer@knowledgeai.dev")?.id ?? "";
-  ownerUserId = findUserByEmail("owner@knowledgeai.dev")?.id ?? "";
 
   // A workspace the default-workspace users are NOT members of.
   const foreign = createWorkspace({
