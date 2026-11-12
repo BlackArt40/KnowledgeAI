@@ -498,7 +498,11 @@ const planLabel = computed(() => {
             <div class="card-head">
               <h3>{{ t("page.settings.s6") }}</h3>
             </div>
-            <div class="card-body history kai-scroll">
+            <!-- 可滚动列表需要键盘可达（axe: scrollable-region-focusable） -->
+            <div
+              class="card-body history kai-scroll"
+              tabindex="0"
+            >
               <div
                 v-for="e in data.loginHistory"
                 :key="e.id"
