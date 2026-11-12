@@ -246,7 +246,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 
       <!-- 收入趋势 -->
       <div class="card">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <el-icon
             :size="14"
             class="title-ico"
@@ -254,7 +254,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
             <Coin />
           </el-icon>
           {{ t("page.admin.s0") }}
-        </h3>
+        </h2>
         <div class="rev-chart">
           <p
             v-if="noRevenue"
@@ -283,7 +283,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
         <!-- 用户列表 -->
         <div class="card wide">
           <div class="card-head">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <el-icon
                 :size="14"
                 class="title-ico"
@@ -291,7 +291,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                 <User />
               </el-icon>
               {{ t("page.admin.s1") }}
-            </h3>
+            </h2>
             <div class="search-box">
               <el-icon
                 :size="12"
@@ -391,7 +391,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 
         <!-- 系统配置 -->
         <div class="card">
-          <h3 class="card-title">
+          <h2 class="card-title">
             <el-icon
               :size="14"
               class="title-ico"
@@ -399,7 +399,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               <Setting />
             </el-icon>
             {{ t("page.admin.s2") }}
-          </h3>
+          </h2>
           <div class="cfg">
             <label class="cfg-label">{{ t("page.admin.s11") }}</label>
             <el-input
@@ -503,7 +503,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 
       <!-- KB 监控 -->
       <div class="card">
-        <h3 class="card-title">
+        <h2 class="card-title">
           <el-icon
             :size="14"
             class="title-ico"
@@ -511,7 +511,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
             <Odometer />
           </el-icon>
           {{ t("page.admin.s3") }}
-        </h3>
+        </h2>
         <table class="tbl">
           <thead>
             <tr>
@@ -562,7 +562,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
         <!-- 速率限制 -->
         <div class="card">
           <div class="card-head">
-            <h3 class="card-title">
+            <h2 class="card-title">
               <el-icon
                 :size="14"
                 class="title-ico"
@@ -570,7 +570,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                 <CreditCard />
               </el-icon>
               {{ t("page.admin.s4") }}
-            </h3>
+            </h2>
             <span
               class="badge"
               :class="ratelimit?.mode === 'redis' ? 'ok' : 'muted'"
@@ -683,7 +683,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
 
         <!-- Provider 状态 -->
         <div class="card">
-          <h3 class="card-title">
+          <h2 class="card-title">
             <el-icon
               :size="14"
               class="title-ico"
@@ -691,7 +691,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               <WarningFilled />
             </el-icon>
             {{ t("page.admin.s5") }}
-          </h3>
+          </h2>
           <div class="providers">
             <div
               v-for="p in providers"
@@ -721,7 +721,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
       <!-- 安全审计 -->
       <div class="card">
         <div class="card-head">
-          <h3 class="card-title">
+          <h2 class="card-title">
             <el-icon
               :size="14"
               class="title-ico"
@@ -729,7 +729,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
               <Document />
             </el-icon>
             {{ t("page.admin.s6") }}
-          </h3>
+          </h2>
           <div class="audit-badges">
             <span
               class="badge"

@@ -39,7 +39,10 @@
       "search": "检索",
       "analyze": "分析",
       "write": "撰写"
-    }
+    },
+    "navMain": "主导航",
+    "navMobile": "移动端导航",
+    "navFooter": "页脚导航"
   },
   "page": {
     "api-keys": {

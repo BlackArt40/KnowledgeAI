@@ -31,6 +31,18 @@ async function scan(page: Page, name: string) {
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
 
+  // best-practice 标签不在 WCAG 里（region / landmark-one-main / heading-order /
+  // landmark-unique 等结构性偏好）。存量已清零，因此一并纳入门禁。
+  const bestPractice = await new AxeBuilder({ page })
+    .exclude(".el-popper")
+    .exclude(".el-message")
+    .withTags(["best-practice"])
+    .analyze();
+  if (bestPractice.violations.length > 0) {
+    const summary = bestPractice.violations.map((v) => `${v.id}×${v.nodes.length}`).join(", ");
+    console.log(`  [a11y:${name}] best-practice: ${summary}`);
+  }
+
   const critical = results.violations.filter((v) => v.impact === "critical");
   const serious = results.violations.filter((v) => v.impact === "serious");
   const moderate = results.violations.filter((v) => v.impact === "moderate");
@@ -72,6 +84,10 @@ async function scan(page: Page, name: string) {
   if (MODERATE_AS_ERROR) {
     expect(moderate.map((v) => v.id), `moderate a11y violations on ${name}`).toEqual([]);
   }
+  expect(
+    bestPractice.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
+    `best-practice a11y violations on ${name}`
+  ).toEqual([]);
 }
 
 test.describe("可访问性扫描", () => {
@@ -117,6 +133,9 @@ test.describe("可访问性扫描", () => {
     ["/team", "team"],
     ["/usage", "usage"],
     ["/admin", "admin"],
+    ["/billing", "billing"],
+    ["/developer", "developer"],
+    ["/checkout?plan=pro", "checkout"],
   ] as const) {
     test(`${name}（${path}）`, async ({ page }) => {
       await login(page);

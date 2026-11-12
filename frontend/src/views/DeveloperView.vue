@@ -144,9 +144,9 @@ const byEndpoint = computed(() => {
 
         <!-- 快速开始 -->
         <div class="card">
-          <h3 class="card-title">
+          <h2 class="card-title">
             {{ t("page.developer.s4") }}
-          </h3>
+          </h2>
           <p class="card-desc">
             {{ t("page.developer.s5") }}
             <a
@@ -205,9 +205,9 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
         <div class="card">
           <div class="card-head">
             <div>
-              <h3 class="card-title">
+              <h2 class="card-title">
                 {{ t("page.developer.s7") }}
-              </h3>
+              </h2>
               <p class="card-desc">
                 {{ t("page.developer.s8") }}
               </p>
@@ -399,9 +399,9 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
           </div>
         </div>
         <div class="card">
-          <h3 class="card-title">
+          <h2 class="card-title">
             {{ t("page.developer.s38") }}
-          </h3>
+          </h2>
           <p class="card-desc">
             {{ t("page.developer.s39") }}
           </p>
@@ -411,9 +411,9 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
           />
         </div>
         <div class="card">
-          <h3 class="card-title">
+          <h2 class="card-title">
             {{ t("page.developer.s40") }}
-          </h3>
+          </h2>
           <table class="tbl">
             <thead>
               <tr>
@@ -560,7 +560,8 @@ done, _ := client.Ask(ctx, "kb_xxx", "${t("page.developer.s71")}", nil)`
 .docs-link {
   margin-left: 4px;
   color: hsl(var(--primary));
-  text-decoration: none;
+  /* 行内链接必须不依赖颜色可辨认（axe link-in-text-block：与周围文字对比 1.27:1）。 */
+  text-decoration: underline;
 }
 .docs-link:hover {
   text-decoration: underline;

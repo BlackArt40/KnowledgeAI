@@ -315,7 +315,10 @@ onMounted(async () => {
     <footer class="footer">
       <div class="footer-inner">
         <AppLogo />
-        <nav class="footer-links">
+        <nav
+          class="footer-links"
+          :aria-label="t('common.navFooter')"
+        >
           <a
             href="/#features"
             class="flink"

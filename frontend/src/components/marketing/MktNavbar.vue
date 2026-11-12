@@ -30,7 +30,10 @@ function navLinks(): { label: string; href: string }[] {
     <div class="inner">
       <AppLogo />
 
-      <nav class="links">
+      <nav
+        class="links"
+        :aria-label="t('common.navMain')"
+      >
         <template
           v-for="link in navLinks()"
           :key="link.href"
@@ -95,7 +98,10 @@ function navLinks(): { label: string; href: string }[] {
       v-if="open"
       class="mobile-menu"
     >
-      <nav class="mobile-links">
+      <nav
+        class="mobile-links"
+        :aria-label="t('common.navMobile')"
+      >
         <template
           v-for="link in navLinks()"
           :key="link.href"
