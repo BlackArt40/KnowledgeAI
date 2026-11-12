@@ -570,6 +570,7 @@ async function changeMemberRole(email: string, value: string) {
           <div
             v-else
             class="activity-list kai-scroll"
+            tabindex="0"
           >
             <div
               v-for="a in activity"
@@ -865,7 +866,7 @@ async function changeMemberRole(email: string, value: string) {
 }
 .activity-chip-count {
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
+  /* 之前用 opacity 0.7 做弱化：12px 主色数字落回 3.07:1（axe serious）。 */
 }
 .activity-search { width: 200px; margin-left: auto; }
 .activity-list {

@@ -151,6 +151,7 @@ function pct(m: Meter): number {
             :show-text="false"
             :stroke-width="6"
             :color="pct(m) > 80 ? 'hsl(var(--warning-bright))' : undefined"
+            :aria-label="m.label"
             class="meter-bar"
           />
         </div>
@@ -404,6 +405,7 @@ function pct(m: Meter): number {
   border-radius: var(--radius-full);
   background: hsl(var(--muted));
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  /* muted 文字落在 muted 底上 4.39:1 —— 压暗一档过 AA。 */
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 90%, #000);
 }
 </style>

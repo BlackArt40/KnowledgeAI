@@ -404,11 +404,13 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
             <label class="cfg-label">{{ t("page.admin.s11") }}</label>
             <el-input
               v-model="config!.defaultModel"
+              :aria-label="t('page.admin.s11')"
               size="small"
             />
             <label class="cfg-label">{{ t("page.admin.s12") }}</label>
             <el-input
               v-model="config!.embeddingModel"
+              :aria-label="t('page.admin.s12')"
               size="small"
             />
             <div class="cfg-grid">
@@ -416,6 +418,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                 <label class="cfg-label">{{ t("page.admin.s13") }}<span class="cfg-hint">{{ t("page.admin.s14") }}</span></label>
                 <el-input
                   :model-value="config!.rateLimitPerMin"
+                  :aria-label="t('page.admin.s13')"
                   size="small"
                   readonly
                   class="readonly"
@@ -425,6 +428,7 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
                 <label class="cfg-label">{{ t("page.admin.s15") }}</label>
                 <el-input
                   v-model.number="config!.maxUploadMb"
+                  :aria-label="t('page.admin.s15')"
                   type="number"
                   size="small"
                 />
@@ -738,12 +742,14 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
           <div class="audit-filters">
             <el-input
               v-model="auditAction"
+              :aria-label="t('page.admin.s65')"
               size="small"
               class="audit-input"
               :placeholder="t('page.admin.s65')"
             />
             <el-input
               v-model="auditActor"
+              :aria-label="t('page.admin.s66')"
               size="small"
               class="audit-input narrow"
               :placeholder="t('page.admin.s66')"
@@ -830,7 +836,11 @@ const noRevenue = computed(() => (overview.value?.revenueTrend ?? []).every((r) 
   background: hsl(var(--destructive) / 0.12);
   font-size: 10px;
   font-weight: 500;
-  color: hsl(var(--destructive));
+  /* 令牌色落同色 12% 底 3.91:1；暗色反向提亮。 */
+  color: color-mix(in srgb, hsl(var(--destructive)) 86%, #000);
+}
+:global(html.dark) .admin-badge {
+  color: color-mix(in srgb, hsl(var(--destructive)) 70%, #fff);
 }
 .head h1 {
   margin: 0;

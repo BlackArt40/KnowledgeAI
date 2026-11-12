@@ -38,6 +38,12 @@
   border-radius: var(--radius-full);
   font-size: 11px;
 }
+/* 中性徽章：muted 文字压在同色底上 4.39:1（差 0.11）。页面里 `.badge` 被 scoped
+   编译成 `.badge[data-v]` = (0,2,0)，(0,1,0) 的 `.badge` 压不住，故同样双写 [class]。 */
+.badge[class][class] {
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 90%, #000);
+}
+
 /* 变体统一用 `.badge[class][class].xxx` 提权：页面里 `.badge.success` 被 scoped 编译
    成 `.badge.success[data-v-x]` = (0,3,0)，只写一个 `[class]` 仍然同分且组件样式后
    注入会赢（TeamView「已邀请」、Dashboard「近 14 天」都踩过）。`[class]` 恒真，双写
@@ -174,4 +180,18 @@ html.dark .badge[class][class].failed {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* .muted / .outline 这几个变体在 3 个页面里重复定义（.badge.muted[data-v] = 0,3,0），
+   同样需要 [class][class] 才能压住。 */
+.badge[class][class].muted,
+.badge[class][class].outline {
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 90%, #000);
+}
+
+/* 暗色底上用亮一档的 muted，别跟着压黑。 */
+html.dark .badge[class][class],
+html.dark .badge[class][class].muted,
+html.dark .badge[class][class].outline {
+  color: hsl(var(--muted-foreground));
 }
