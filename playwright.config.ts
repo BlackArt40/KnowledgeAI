@@ -18,7 +18,14 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // 批 4：跨浏览器（第 12 类测试手段）。根套件只有 8 例、串行执行，
+  // 每加一个引擎增量约 1.2min；Vue 套件（51 例）仍只跑 chromium，避免翻三倍。
+  // webkit 暂缓：本机 Playwright WebKit 与 driver 不匹配（newPage 报
+  // "Unknown setting: PushAPIEnabled"），重装后仍复现，待单独排查。
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+  ],
   webServer: [
     {
       // Next dev：纯 API（V6 后无页面路由），沿用高限流 env（套件十几次

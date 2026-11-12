@@ -475,8 +475,8 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
 
-      - name: Install Playwright chromium
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright browsers (chromium + firefox)
+        run: pnpm exec playwright install --with-deps chromium firefox
       # V6：页面由 vite preview 承载——webServer[1] 的 command 内含构建；
       # 此处显式构建一次以便构建错误在独立步骤暴露（含 SEO 预渲染）
       - name: Build frontend (Vue dist + prerendered home)
