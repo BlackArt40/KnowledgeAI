@@ -1,12 +1,14 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// Accessibility smoke over the five surfaces every logged-in user starts from.
-// Gate = zero `critical` AND zero `serious` violations. The serious backlog
-// (contrast on muted/tinted text, label-content-name-mismatch on icon buttons)
-// was cleared in #104; keep it at zero — new UI must pass before merge.
+// Accessibility smoke over the surfaces every signed-in user lands on first:
+// marketing/login/register, workbench, KB list (light + dark), settings, team,
+// usage, admin. Gate = zero critical, serious AND moderate violations —
+// the serious backlog was cleared in #104, the moderate one in this change;
+// keep both at zero so new UI has to pass before merge.
 
 const SERIOUS_AS_ERROR = true;
+const MODERATE_AS_ERROR = true;
 
 const EMAIL = "owner@knowledgeai.dev";
 const PASSWORD = Buffer.from([112, 97, 115, 115, 119, 111, 114, 100, 49, 50, 51]).toString();
@@ -31,20 +33,22 @@ async function scan(page: Page, name: string) {
 
   const critical = results.violations.filter((v) => v.impact === "critical");
   const serious = results.violations.filter((v) => v.impact === "serious");
+  const moderate = results.violations.filter((v) => v.impact === "moderate");
 
   test.info().annotations.push({
     type: `a11y:${name}`,
-    description: `critical=${critical.length} serious=${serious.length}${
-      serious.length ? ` [${serious.map((v) => v.id).join(", ")}]` : ""
+    description: `critical=${critical.length} serious=${serious.length} moderate=${moderate.length}${
+      serious.length + moderate.length ? ` [${[...serious, ...moderate].map((v) => v.id).join(", ")}]` : ""
     }`,
   });
 
   // Inventory first, gate second: this log goes quiet as the backlog shrinks.
   // Rule + first nodes + contrast numbers are enough to locate a regression
   // without re-running axe by hand.
-  if (serious.length > 0) {
-    console.log(`\n[a11y:${name}] serious violations:`);
-    for (const v of serious) {
+  for (const [level, list] of [["critical", critical], ["serious", serious], ["moderate", moderate]] as const) {
+    if (list.length === 0) continue;
+    console.log(`\n[a11y:${name}] ${level} violations:`);
+    for (const v of list) {
       console.log(`  ${v.id} (${v.nodes.length} node(s)) — ${v.help}`);
       for (const n of v.nodes.slice(0, 8)) {
         const d = n.any[0]?.data as
@@ -64,6 +68,9 @@ async function scan(page: Page, name: string) {
 
   if (SERIOUS_AS_ERROR) {
     expect(serious.map((v) => v.id), `serious a11y violations on ${name}`).toEqual([]);
+  }
+  if (MODERATE_AS_ERROR) {
+    expect(moderate.map((v) => v.id), `moderate a11y violations on ${name}`).toEqual([]);
   }
 }
 
@@ -102,4 +109,22 @@ test.describe("可访问性扫描", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
     await scan(page, "kb-list-dark");
   });
+
+  // 批 5：把扫描面从 5 个入口扩到设置/团队/用量/管理端。这些页面同样是
+  // 登录后立刻会到的位置，且表单控件密度最高。
+  for (const [path, name] of [
+    ["/settings", "settings"],
+    ["/team", "team"],
+    ["/usage", "usage"],
+    ["/admin", "admin"],
+  ] as const) {
+    test(`${name}（${path}）`, async ({ page }) => {
+      await login(page);
+      await page.goto(path);
+      await expect(page.locator(".sidebar")).toBeVisible({ timeout: 20_000 });
+      // 等首屏请求落地（表格/卡片是异步渲染的）
+      await page.waitForTimeout(800);
+      await scan(page, name);
+    });
+  }
 });
