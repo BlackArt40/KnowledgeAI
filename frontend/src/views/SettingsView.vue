@@ -364,7 +364,7 @@ const planLabel = computed(() => {
         <div class="space">
           <div class="card">
             <div class="card-head between">
-              <h3>{{ t("page.settings.s4") }}</h3>
+              <h2>{{ t("page.settings.s4") }}</h2>
               <span
                 class="badge"
                 :class="data.twoFactor.enabled ? 'success' : 'warn'"
@@ -415,7 +415,7 @@ const planLabel = computed(() => {
           <!-- OAuth 绑定 -->
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s73") }}</h3>
+              <h2>{{ t("page.settings.s73") }}</h2>
             </div>
             <div class="card-body">
               <p class="hint">
@@ -455,7 +455,7 @@ const planLabel = computed(() => {
           <!-- 会话 -->
           <div class="card">
             <div class="card-head between">
-              <h3>{{ t("page.settings.s5") }}</h3>
+              <h2>{{ t("page.settings.s5") }}</h2>
               <el-button
                 size="small"
                 text
@@ -496,7 +496,7 @@ const planLabel = computed(() => {
           <!-- 登录历史 -->
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s6") }}</h3>
+              <h2>{{ t("page.settings.s6") }}</h2>
             </div>
             <!-- 可滚动列表需要键盘可达（axe: scrollable-region-focusable） -->
             <div
@@ -526,7 +526,7 @@ const planLabel = computed(() => {
         <div class="space">
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s99") }}</h3>
+              <h2>{{ t("page.settings.s99") }}</h2>
             </div>
             <div class="card-body">
               <div class="grid2">
@@ -624,7 +624,7 @@ const planLabel = computed(() => {
 
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s90") }}</h3>
+              <h2>{{ t("page.settings.s90") }}</h2>
             </div>
             <div class="card-body">
               <div
@@ -669,7 +669,7 @@ const planLabel = computed(() => {
         <div class="space">
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s8") }}</h3>
+              <h2>{{ t("page.settings.s8") }}</h2>
             </div>
             <div class="card-body">
               <div class="pref-row">
@@ -760,7 +760,7 @@ const planLabel = computed(() => {
 
           <div class="card">
             <div class="card-head">
-              <h3>{{ t("page.settings.s33") }}</h3>
+              <h2>{{ t("page.settings.s33") }}</h2>
             </div>
             <div class="card-body">
               <p class="hint">
@@ -1005,7 +1005,7 @@ const planLabel = computed(() => {
 .card-head {
   padding: 16px 20px 0;
 }
-.card-head h3 {
+.card-head h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;

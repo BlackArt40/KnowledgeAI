@@ -444,7 +444,8 @@ const processingLabel = () =>
 .m-hint {
   display: block;
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  /* 主色 12% 底上 4.49:1（差 0.01）—— 压暗一档。 */
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 92%, #000);
 }
 .m-radio {
   display: flex;
@@ -477,7 +478,8 @@ const processingLabel = () =>
 }
 .terms-link {
   color: hsl(var(--primary));
-  text-decoration: none;
+  /* 行内链接不依赖颜色可辨认（axe link-in-text-block）。 */
+  text-decoration: underline;
 }
 .terms-link:hover {
   text-decoration: underline;

@@ -39,7 +39,10 @@
       "search": "Search",
       "analyze": "Analysis",
       "write": "Writing"
-    }
+    },
+    "navMain": "Main navigation",
+    "navMobile": "Mobile navigation",
+    "navFooter": "Footer navigation"
   },
   "page": {
     "api-keys": {

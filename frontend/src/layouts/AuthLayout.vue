@@ -44,8 +44,9 @@ const year = computed(() => new Date().getFullYear());
       </div>
     </aside>
 
-    <!-- Form panel -->
-    <div class="form-panel">
+    <!-- Form panel：<main> 让认证页有 landmark-one-main，表单字段也就落在
+         landmark 里（axe region）。样式挂在 .form-panel 上，标签变化不影响布局。 -->
+    <main class="form-panel">
       <div class="panel-top">
         <a
           href="/"
@@ -59,7 +60,7 @@ const year = computed(() => new Date().getFullYear());
           <slot />
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
