@@ -13,6 +13,34 @@ async function login(page: Page): Promise<void> {
   await expect(page.locator(".stat-value").first()).toBeVisible({ timeout: 20_000 });
 }
 
+type DocStatus = "queued" | "parsing" | "chunking" | "vectorizing" | "ready" | "failed" | "no-doc";
+
+/**
+ * 轮询 KB 详情 API 直到首篇文档进入终态。
+ *
+ * 为什么不直接等 UI 文案：demo 队列在 CI 4 核 runner 上跑本地 embedding，
+ * 单篇文档可能要 60s+；固定等 `.doc-row` 出现「就绪」会把「慢」和「挂」混成
+ * 同一个 40s 假红（2026-11 实测）。走 API 轮询可以给出更长的预算，超时信息里
+ * 直接带最后状态，排障不用再翻截图。
+ */
+async function waitForFirstDoc(page: Page, opts: { until: DocStatus[]; timeoutMs: number }): Promise<DocStatus> {
+  const kbId = page.url().match(/kb_[A-Za-z0-9]+/)?.[0];
+  if (!kbId) throw new Error("当前 URL 里没有 kb id");
+  const deadline = Date.now() + opts.timeoutMs;
+  let last: DocStatus = "no-doc";
+  while (Date.now() < deadline) {
+    const res = await page.request.get(`/api/knowledge-base/${kbId}`);
+    if (res.ok()) {
+      const body = (await res.json()) as { docs?: Array<{ status?: string }> };
+      last = (body.docs?.[0]?.status as DocStatus) ?? "no-doc";
+      if (last === "failed") throw new Error("文档处理失败（status=failed）");
+      if (opts.until.includes(last)) return last;
+    }
+    await page.waitForTimeout(1_000);
+  }
+  throw new Error(`等待文档状态 ${opts.until.join("/")} 超时（最后状态：${last}）`);
+}
+
 test("KB 列表：渲染 + ?new=1 深链接打开新建对话框", async ({ page }) => {
   await login(page);
   await page.goto("/knowledge-base?new=1");
@@ -67,7 +95,9 @@ test("KB 详情：重建索引（行内按钮 → 排队 → 就绪）", async (
   const row = page.locator(".doc-row").first();
   if ((await row.count()) === 0) test.skip(true, "当前知识库没有文档可重建");
   await expect(row).toBeVisible({ timeout: 20_000 });
-  await expect(row).toContainText("就绪", { timeout: 40_000 });
+  // 首次索引可能还在跑：先让 API 侧确认就绪（预算 150s），UI 只需反映结果。
+  await waitForFirstDoc(page, { until: ["ready"], timeoutMs: 150_000 });
+  await expect(row).toContainText("就绪", { timeout: 20_000 });
 
   // 行内「重建索引」：断言按钮确实打通了接口（200），再等回到就绪且无失败态。
   // 不 assert 顶部提示文案——文档进入处理态后 card-head 会切成「N 个处理中…」，
@@ -78,7 +108,12 @@ test("KB 详情：重建索引（行内按钮 → 排队 → 就绪）", async (
   );
   await row.getByRole("button", { name: "重建索引" }).click();
   expect((await reindexResp).status()).toBe(200);
-  await expect(page.locator(".doc-row").first()).toContainText("就绪", { timeout: 60_000 });
+  // reindex 返回前已把状态置回 queued：先观察处理态，再等终态，避免读到上一次的 ready。
+  await waitForFirstDoc(page, { until: ["queued", "parsing", "chunking", "vectorizing"], timeoutMs: 15_000 }).catch(
+    () => undefined
+  );
+  await waitForFirstDoc(page, { until: ["ready"], timeoutMs: 150_000 });
+  await expect(page.locator(".doc-row").first()).toContainText("就绪", { timeout: 20_000 });
   await expect(page.locator(".doc-row").first().locator(".err")).toHaveCount(0);
 });
 
