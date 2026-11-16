@@ -9,10 +9,11 @@
 // message for everything else.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { bus, jobs, fail } = vi.hoisted(() => ({
+const { bus, jobs, fail, meter } = vi.hoisted(() => ({
   bus: { emit: null as null | ((event: unknown) => void) },
   jobs: [] as { type: string; payload: Record<string, unknown> }[],
   fail: { enqueue: null as null | Error },
+  meter: { calls: [] as string[] },
 }));
 
 vi.mock("@/lib/auth/guard", () => ({
@@ -47,7 +48,11 @@ vi.mock("@/lib/queue", () => ({
   },
 }));
 
-vi.mock("@/lib/billing/store", () => ({ recordAgentTask: () => {} }));
+vi.mock("@/lib/billing/store", () => ({
+  recordAgentTask: (workspaceId: string, userId?: string) => {
+    meter.calls.push(`${workspaceId}:${userId ?? "-"}`);
+  },
+}));
 
 // The store's write-through persistence is irrelevant here (and would need a
 // live database) - keep the in-memory store real, stub the DB side.
@@ -117,6 +122,7 @@ describe("agent run SSE 终态载荷（多进程）", () => {
     bus.emit = null;
     jobs.length = 0;
     fail.enqueue = null;
+    meter.calls.length = 0;
   });
 
   it("优先推送 worker 事件快照（本地副本仍是 queued 旧版）", async () => {
@@ -140,6 +146,8 @@ describe("agent run SSE 终态载荷（多进程）", () => {
     expect(payload.task?.report).toBe("# 报告正文");
     expect(payload.task?.status).toBe("done");
     expect(payload.task?.durationMs).toBe(1234);
+    // 入队成功的任务计一次配额
+    expect(meter.calls).toEqual(["ws_default:usr_owner"]);
   });
 
   it("事件缺少 task 时回退本地副本，不中断流", async () => {
@@ -166,6 +174,8 @@ describe("agent run SSE 终态载荷（多进程）", () => {
     // The task is marked failed so the UI/history reflect the refusal.
     const task = listTasks("usr_owner").find((t) => t.topic === "回归：队列繁忙");
     expect(task?.status).toBe("failed");
+    // 被背压拒绝 = 没进队列 = 不该扣配额
+    expect(meter.calls).toEqual([]);
   });
 
   it("非背压的入队失败使用 queue_failed", async () => {
@@ -176,5 +186,6 @@ describe("agent run SSE 终态载荷（多进程）", () => {
 
     expect(payload.code).toBe("queue_failed");
     expect(payload.message).toBe("排队或执行失败");
+    expect(meter.calls).toEqual([]);
   });
 });

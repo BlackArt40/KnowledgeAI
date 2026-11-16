@@ -77,9 +77,6 @@ export async function handleAgentRun(
     authUser.id,
     authUser.workspaceId
   );
-  // P4-3: meter the agent task against the workspace usage.
-  recordAgentTask(authUser.workspaceId, authUser.id);
-
   const enc = new TextEncoder();
 
   const streamResponse = () => {
@@ -110,6 +107,9 @@ export async function handleAgentRun(
           try { controller.close(); } catch { /* already closed */ }
         };
 
+        // P4-3: 只有真正进了队列的任务才计配额 —— 背压/入队失败时用户并没有
+        // 消耗算力，之前在建 task 后就 +1，等于让被拒绝的请求也扣一次额度。
+        let queued = false;
         try {
           unsubscribe = await subscribeAgentEvents(task.id, (event) => {
             if (streamClosed) return;
@@ -137,6 +137,7 @@ export async function handleAgentRun(
           // P6-1: forward the request's traceId so the queue stage continues
           // the same trace.
           await enqueue("agent-run", { taskId: task.id, userId: authUser.id, traceId: traceIdOf(req) });
+          queued = true;
         } catch (err) {
           log.error({ err }, "[agent/run] stream error");
           reportError(err, { source: "/api/agent/run", context: `task ${task.id}` });
@@ -157,6 +158,8 @@ export async function handleAgentRun(
           saveTask(task);
           closeStream();
         }
+
+        if (queued) recordAgentTask(authUser.workspaceId, authUser.id);
 
         // If the client disconnects, clean up the subscription.
         req.signal.addEventListener("abort", () => {
