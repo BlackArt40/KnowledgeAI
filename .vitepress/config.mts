@@ -66,7 +66,10 @@ export default withMermaid(defineConfig({
             { text: 'ADR-0002 后台任务队列', link: '/architecture/adr/adr-0002-background-job-queue' },
             { text: 'ADR-0003 多租户隔离契约', link: '/architecture/adr/adr-0003-multi-tenant-isolation' },
             { text: 'ADR-0006 读路径存储演进', link: '/architecture/adr/adr-0006-read-path-storage-evolution' },
-            { text: 'ADR-0007 队列背压', link: '/architecture/adr/adr-0007-queue-backpressure' }
+            { text: 'ADR-0007 队列背压', link: '/architecture/adr/adr-0007-queue-backpressure' },
+            { text: 'ADR-0008 AI 服务框架选型', link: '/architecture/adr/adr-0008-ai-service-framework' },
+            { text: 'ADR-0009 业务服务语言选型', link: '/architecture/adr/adr-0009-business-service-language' },
+            { text: 'ADR 索引', link: '/architecture/adr/README' }
           ]
         },
         {
