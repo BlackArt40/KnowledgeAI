@@ -176,9 +176,14 @@ model KnowledgeBase {
   settings    Json         @default("{}")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  owner       User         @relation("OwnedKBs", fields: [ownerId], references: [id])
+  // P1（2026-11-19 审查）：此前无 onDelete，Prisma 对必选关系默认 Restrict，
+  // 删除仍有 KB 的账号会在 DB 层失败；自助注销虽已先删 KB，但管理员路径没有
+  // 这层兜底。KB 随所有者走，显式级联。
+  owner       User         @relation("OwnedKBs", fields: [ownerId], references: [id], onDelete: Cascade)
   team        Team?        @relation(fields: [teamId], references: [id])
   documents   KbDocument[]
+
+  @@index([workspaceId])
 }
 
 model KbDocument {
@@ -220,6 +225,8 @@ model Conversation {
   workspaceId String    @default("ws_default")
   archived    Boolean   @default(false)
   tags        String[]  @default([])
+
+  @@index([workspaceId, userId])
 }
 
 model Message {
@@ -234,6 +241,8 @@ model Message {
   feedback       String?
   feedbackNote   String?
   feedbackAt     DateTime?
+
+  @@index([conversationId])
 }
 
 // ── Agent ─────────────────────────────────────────────────
@@ -262,6 +271,8 @@ model AgentTask {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([workspaceId, status])
 }
 
 // ── Billing ───────────────────────────────────────────────
