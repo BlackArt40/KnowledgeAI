@@ -46,6 +46,15 @@ location ^~ /assets/ {
     root /srv/vue;
     try_files $uri =404;
     add_header Cache-Control "public, max-age=31536000, immutable";
+    # 继承断点（P1，2026-11-19 审查）：本 location 一旦有 add_header，server
+    # 级的安全响应头就不再继承，必须在每个自带 add_header 的 location 里
+    # 重复一份，否则 JS/CSS 缺 nosniff 与 CSP。
+    add_header X-Frame-Options "DENY";
+    add_header X-Content-Type-Options "nosniff";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header Permissions-Policy "camera=(self), microphone=(), geolocation=()";
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
 }
 ASSETS
   echo ""

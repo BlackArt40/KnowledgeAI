@@ -85,6 +85,18 @@ export default defineConfig({
   // smoke ui 组、functional 页面检查统一打 :4173。
   preview: {
     port: 4173,
+    // P1（2026-11-19 审查）：本地与 CI 的页面检查打的是 :4173，安全响应头
+    // 必须与生产网关（deploy/nginx.conf）同口径，否则「页面有 CSP」这件事在
+    // 唯一可自动验证的承载面上无从断言。
+    headers: {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+      "Content-Security-Policy":
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+    },
     proxy: {
       "^/api/": "http://localhost:3000",
       "^/vendor/": "http://localhost:3000",
