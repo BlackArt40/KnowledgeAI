@@ -24,7 +24,7 @@ import { persistSystemConfig } from "@/lib/db/persist";
  * users.plan 只在支付时写给付款人，直接读会把其他已付费成员显示成 free。
  */
 function effectivePlan(u: { id: string; email: string }): WorkspacePlan {
-  return resolveWorkspace(u.id, u.email).plan;
+  return resolveWorkspace(u.id, u.email)?.plan ?? "free";
 }
 
 // ── System config (in-memory, the only piece that was already real) ──────
@@ -79,8 +79,8 @@ export function listUsers(): AdminUser[] {
   }).sort((a, b) => b.joinedAt - a.joinedAt);
 }
 
-export function setUserStatus(id: string, status: UserStatus): AdminUser | null {
-  const updated = authSetUserStatus(id, status);
+export async function setUserStatus(id: string, status: UserStatus): Promise<AdminUser | null> {
+  const updated = await authSetUserStatus(id, status);
   if (!updated) return null;
   // Re-derive the enriched record.
   const userKbs = listAllKbs().filter((kb) => kb.ownerId === updated.id);

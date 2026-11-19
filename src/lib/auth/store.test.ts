@@ -80,10 +80,10 @@ describe("createUser / updateUser", () => {
 });
 
 describe("admin ops", () => {
-  it("setUserStatus bans / unbans", () => {
-    expect(setUserStatus("usr_viewer", "banned")?.status).toBe("banned");
+  it("setUserStatus bans / unbans", async () => {
+    expect((await setUserStatus("usr_viewer", "banned"))?.status).toBe("banned");
     expect(getUserById("usr_viewer")?.status).toBe("banned");
-    expect(setUserStatus("missing", "banned")).toBeNull();
+    expect(await setUserStatus("missing", "banned")).toBeNull();
   });
 
   it("deleteUser removes and returns false for unknown", () => {

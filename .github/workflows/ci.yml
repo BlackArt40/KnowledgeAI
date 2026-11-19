@@ -125,7 +125,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
         run: npx prisma generate
-      # 覆盖率低于阈值（lines/functions/statements 70% / branches 60%）即失败
+      # 覆盖率硬门槛的唯一事实源是 vitest.config.ts：全局 floor（当前
+      # 64/61/66/52）+ 分目录 ratchet（P0 模块 ≥85，P1 模块在 baseline）
       - name: Unit tests with coverage
         run: pnpm test:unit
 

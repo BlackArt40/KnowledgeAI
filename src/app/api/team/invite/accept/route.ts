@@ -41,6 +41,6 @@ export async function POST(req: Request) {
   releaseInviteSeat(invite.workspaceId, invite.email);
   // Joining the workspace is what makes the team's KBs visible; a deleted
   // workspace just leaves the team membership in place.
-  addWorkspaceMember(invite.workspaceId, invite.email);
+  await addWorkspaceMember(invite.workspaceId, invite.email);
   return NextResponse.json({ ok: true, member });
 }

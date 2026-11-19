@@ -1,6 +1,7 @@
 import type { Team, Member, AuditEntry, Role, KbAccess, KbMemberRole } from "./types";
 import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFromDb } from "@/lib/db/persist";
 import { getUserById, setUserRole } from "@/lib/auth/store";
+import { getWorkspace } from "@/lib/workspace/store";
 import { uid } from "@/lib/ids";
 
 type Store = {
@@ -89,9 +90,24 @@ export function updateTeam(patch: Partial<Pick<Team, "name" | "logoInitial" | "p
   return s.team;
 }
 
-export function listMembers(): Member[] {
+/**
+ * Team members, newest first.
+ *
+ * `workspaceId` scopes the result to that tenant's member emails (P1, review
+ * 2026-11-19). The Prisma `Team` table is a single-tenant audit/role table,
+ * while `Workspace` is the real tenant boundary - an unscoped list handed every
+ * workspace's member emails + roles to any signed-in caller through
+ * `GET /api/team`. Omit the argument only for genuinely platform-level callers
+ * (notifications, seat accounting) that span tenants on purpose.
+ */
+export function listMembers(workspaceId?: string): Member[] {
   seed();
-  return Array.from(store().members.values()).sort((a, b) => b.joinedAt - a.joinedAt);
+  const all = Array.from(store().members.values()).sort((a, b) => b.joinedAt - a.joinedAt);
+  if (!workspaceId) return all;
+  const ws = getWorkspace(workspaceId);
+  if (!ws) return [];
+  const emails = new Set(ws.members.map((e) => e.toLowerCase()));
+  return all.filter((m) => emails.has(m.email.toLowerCase()));
 }
 
 export function getMember(id: string): Member | undefined {
@@ -135,11 +151,11 @@ export function inviteMember(input: { name: string; email: string; role: Role },
 
 /** Accept an invitation: the invited email's member row becomes active and the
  *  account role follows (authorization reads the live user, not the display row). */
-export function activateMemberByEmail(
+export async function activateMemberByEmail(
   email: string,
   role: Role,
   actor = "系统"
-): Member | undefined {
+): Promise<Member | undefined> {
   seed();
   const s = store();
   const target = findMemberByEmail(email);
@@ -147,7 +163,9 @@ export function activateMemberByEmail(
   target.status = "active";
   target.role = role;
   target.joinedAt = Date.now();
-  setUserRole(target.email, role);
+  // P1（2026-11-19 审查）：角色写盘必须完成后才返回，否则"已加入"但重启后
+  // 账号仍是旧角色。
+  await setUserRole(target.email, role);
   const entry: AuditEntry = {
     id: uid("m"),
     actor,
@@ -184,7 +202,11 @@ export function removeInvitedMemberByEmail(email: string, actor = "系统"): boo
   return true;
 }
 
-export function updateMemberRole(id: string, role: Role, actor = "系统"): Member | undefined {
+export async function updateMemberRole(
+  id: string,
+  role: Role,
+  actor = "系统"
+): Promise<Member | undefined> {
   seed();
   const s = store();
   const m = s.members.get(id);
@@ -192,8 +214,10 @@ export function updateMemberRole(id: string, role: Role, actor = "系统"): Memb
   const prev = m.role;
   m.role = role;
   // Keep the account role in sync: API authorization resolves the live user,
-  // so without this a role change only edited a display row.
-  setUserRole(m.email, role);
+  // so without this a role change only edited a display row. Awaited so the
+  // caller cannot report success before the new role is durable (P1, review
+  // 2026-11-19).
+  await setUserRole(m.email, role);
   const entry: AuditEntry = {
     id: uid("m"),
     actor,

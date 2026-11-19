@@ -173,12 +173,13 @@ export async function verifyCredentials(email: string, password: string): Promis
   // P3-4: migrate legacy SHA-256 hashes to PBKDF2 on successful login.
   if (!hash.startsWith("pbkdf2$")) {
     user.passwordHash = await hashPassword(password);
-    void persistUser(user);
   }
   // update last login (P1: it was memory-only, so hydrateUser had to reset it
   // to null after every restart)
   user.lastLoginAt = Date.now();
-  void persistUser(user);
+  // P1（2026-11-19 审查）：登录态写盘改为 await。此前 fire-and-forget 时，
+  // 一次密码哈希迁移 + lastLoginAt 可能都没落地，重启后回退且无任何痕迹。
+  await persistUser(user);
   return user;
 }
 
@@ -201,7 +202,8 @@ export async function createUser(name: string, email: string, password: string, 
   };
   s.users.set(user.id, user);
   s.emailIndex.set(email.toLowerCase(), user.id);
-  void persistUser(user);
+  // P1（2026-11-19 审查）：账号创建必须落盘后才返回，否则注册成功但重启即丢失。
+  await persistUser(user);
   return user;
 }
 
@@ -233,7 +235,8 @@ export async function createOAuthUser(
   };
   s.users.set(user.id, user);
   s.emailIndex.set(email.toLowerCase(), user.id);
-  void persistUser(user);
+  // P1（2026-11-19 审查）：同 createUser，OAuth 建号也要落盘后才算成功。
+  await persistUser(user);
   return user;
 }
 
@@ -288,7 +291,9 @@ export async function updateUser(
   }
 
   s.users.set(user.id, user);
-  void persistUser(user);
+  // P1（2026-11-19 审查）：改密 / 改名必须落盘后才返回，否则用户收到成功而
+  // 新密码在重启后消失（且旧密码无法再登录）。
+  await persistUser(user);
   return user;
 }
 
@@ -296,22 +301,26 @@ export async function updateUser(
  *  The JWT carries the role issued at login, so this only takes effect for
  *  requests after the next token check (the guard resolves the live account,
  *  see `getRequestUser`). Returns false when the user is unknown / unchanged. */
-export function setUserRole(email: string, role: Role): boolean {
+export async function setUserRole(email: string, role: Role): Promise<boolean> {
   const user = findUserByEmail(email);
   if (!user || user.role === role) return false;
   user.role = role;
-  void persistUser(user);
+  // P1（2026-11-19 审查）：角色变更直接决定权限，必须落盘。
+  await persistUser(user);
   return true;
 }
 
 /** Admin: set a user's status (active/banned). */
-export function setUserStatus(userId: string, status: "active" | "banned"): User | null {
+export async function setUserStatus(
+  userId: string,
+  status: "active" | "banned"
+): Promise<User | null> {
   seed();
   const s = store();
   const u = s.users.get(userId);
   if (!u) return null;
   u.status = status;
-  void persistUser(u);
+  await persistUser(u);
   return u;
 }
 

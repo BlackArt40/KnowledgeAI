@@ -76,7 +76,7 @@ export async function POST(req: Request, { params }: Params) {
   }
   // @mention notifications: matched by email or display name, deduped against
   // the task-owner/reply notifications above and against self.
-  for (const mentioned of extractMentionedMembers(text, listMembers())) {
+  for (const mentioned of extractMentionedMembers(text, listMembers(r.u.workspaceId))) {
     const account = findUserByEmail(mentioned.email);
     if (!account || notified.has(account.id)) continue;
     notifyUserId(

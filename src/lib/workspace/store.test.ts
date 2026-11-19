@@ -34,7 +34,7 @@ describe("workspace store bootstrap", () => {
 
 describe("resolveWorkspace (F4)", () => {
   it("keeps an explicit member workspace", () => {
-    const ws = resolveWorkspace("usr_owner", DEMO_EMAIL, DEFAULT_WORKSPACE_ID);
+    const ws = resolveWorkspace("usr_owner", DEMO_EMAIL, DEFAULT_WORKSPACE_ID)!;
     expect(ws.id).toBe(DEFAULT_WORKSPACE_ID);
   });
 
@@ -45,13 +45,13 @@ describe("resolveWorkspace (F4)", () => {
       ownerName: "别人",
     })!;
     // The demo owner is not a member of the other user's workspace.
-    const resolved = resolveWorkspace("usr_owner", DEMO_EMAIL, other.id);
+    const resolved = resolveWorkspace("usr_owner", DEMO_EMAIL, other.id)!;
     expect(resolved.id).not.toBe(other.id);
   });
 
   it("falls back to the default workspace for demo members", () => {
-    expect(resolveWorkspace("usr_owner", DEMO_EMAIL).id).toBe(DEFAULT_WORKSPACE_ID);
-    expect(resolveWorkspace("usr_viewer", "viewer@knowledgeai.dev").id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolveWorkspace("usr_owner", DEMO_EMAIL)!.id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolveWorkspace("usr_viewer", "viewer@knowledgeai.dev")!.id).toBe(DEFAULT_WORKSPACE_ID);
   });
 
   it("keeps the default workspace for a member who ALSO owns another one", () => {
@@ -65,10 +65,10 @@ describe("resolveWorkspace (F4)", () => {
       ownerEmail: DEMO_EMAIL,
       ownerName: "张明",
     });
-    expect(resolveWorkspace("usr_owner", DEMO_EMAIL).id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolveWorkspace("usr_owner", DEMO_EMAIL)!.id).toBe(DEFAULT_WORKSPACE_ID);
     // ...but an explicitly requested, joined workspace still wins.
     const extra = listOwnedWorkspaces("usr_owner").find((w) => w.id !== DEFAULT_WORKSPACE_ID)!;
-    expect(resolveWorkspace("usr_owner", DEMO_EMAIL, extra.id).id).toBe(extra.id);
+    expect(resolveWorkspace("usr_owner", DEMO_EMAIL, extra.id)!.id).toBe(extra.id);
   });
 
   it("prefers the user's OWN workspace over the shared default", () => {
@@ -77,7 +77,7 @@ describe("resolveWorkspace (F4)", () => {
       ownerEmail: NEW_EMAIL,
       ownerName: "新用户",
     })!;
-    const resolved = resolveWorkspace("usr_new", NEW_EMAIL);
+    const resolved = resolveWorkspace("usr_new", NEW_EMAIL)!;
     expect(resolved.id).toBe(personal.id);
     expect(resolved.id).not.toBe(DEFAULT_WORKSPACE_ID);
   });

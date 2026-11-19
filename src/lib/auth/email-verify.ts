@@ -21,7 +21,7 @@ export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60_000;
  * token (delivered by email / demo response) or null when the account does
  * not exist or is already verified.
  */
-export function issueEmailVerification(email: string): string | null {
+export async function issueEmailVerification(email: string): Promise<string | null> {
   const user = findUserByEmail(email);
   if (!user) return null;
   if (user.emailVerifiedAt) return null; // verified - nothing to verify
@@ -29,7 +29,8 @@ export function issueEmailVerification(email: string): string | null {
   const token = `${user.id}.${secret}`;
   user.verificationTokenHash = hashToken(token);
   user.verificationExpires = Date.now() + EMAIL_VERIFY_TTL_MS;
-  void persistUser(user);
+  // P1（2026-11-19 审查）：验证令牌落盘后再返回（否则邮件里的链接可能无效）。
+  await persistUser(user);
   return token;
 }
 
@@ -63,13 +64,14 @@ export function consumeEmailVerification(token: string): ConsumeResult {
 }
 
 /** Consume a valid token and mark the inbox verified (single-use). */
-export function verifyEmail(token: string): VerifyResult {
+export async function verifyEmail(token: string): Promise<VerifyResult> {
   const result = consumeEmailVerification(token);
   if ("error" in result) return result;
   const user = result.user;
   user.emailVerifiedAt = Date.now();
   user.verificationTokenHash = undefined;
   user.verificationExpires = undefined;
-  void persistUser(user);
+  // P1（2026-11-19 审查）：验证状态落盘后再返回成功。
+  await persistUser(user);
   return { ok: true, email: user.email, userId: user.id };
 }

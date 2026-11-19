@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "参数不完整" }, { status: 400 });
   }
 
-  const result = verifyEmail(token);
+  const result = await verifyEmail(token);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

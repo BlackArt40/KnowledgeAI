@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   }
 
   const info = clientInfoFromRequest(req);
-  const token = issuePasswordReset(email);
+  const token = await issuePasswordReset(email);
 
   if (token) {
     recordAudit({

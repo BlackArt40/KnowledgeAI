@@ -13,7 +13,7 @@ export async function PATCH(req: Request, { params }: Params) {
   let body: { status?: UserStatus };
   try { body = await req.json(); } catch { body = {}; }
   if (!body.status) return NextResponse.json({ error: "status 必填" }, { status: 400 });
-  const user = setUserStatus(id, body.status);
+  const user = await setUserStatus(id, body.status);
   if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 404 });
   recordAudit({
     actorId: guard.user.id,

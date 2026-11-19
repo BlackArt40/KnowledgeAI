@@ -1,15 +1,17 @@
 // Shared guard for /api/team/invite/accept|reject: auth + body + token signature
 // + invited-email ownership. Keeps the two routes from drifting apart.
 import { NextResponse } from "next/server";
-import { getRequestUser, type RequestUser } from "@/lib/auth/guard";
+import { getRequestIdentity, type RequestIdentity } from "@/lib/auth/guard";
 import { verifyInviteToken, type InvitePayload } from "./invite-token";
 
 export type InviteGuardResult =
-  | { u: RequestUser; invite: InvitePayload }
+  | { u: RequestIdentity; invite: InvitePayload }
   | { error: NextResponse };
 
 export async function readInviteRequest(req: Request): Promise<InviteGuardResult> {
-  const u = await getRequestUser(req);
+  // Identity only: the invitee does not belong to the workspace before accepting
+  // (and may belong to none at all), so tenant resolution must not gate this.
+  const u = await getRequestIdentity(req);
   if (!u) return { error: NextResponse.json({ error: "请先登录后再处理邀请" }, { status: 401 }) };
 
   let body: { token?: string };

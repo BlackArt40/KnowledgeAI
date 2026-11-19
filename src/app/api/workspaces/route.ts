@@ -5,7 +5,7 @@ import {
   createWorkspace,
   updateWorkspace,
 } from "@/lib/workspace/store";
-import { getRequestUser } from "@/lib/auth/guard";
+import { getRequestIdentity, getRequestUser } from "@/lib/auth/guard";
 import { isValidBrandColor, DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
 import { recordAudit } from "@/lib/security/audit";
 import { withApiTrace } from "@/lib/obs/trace";
@@ -16,7 +16,9 @@ export const dynamic = "force-dynamic";
 // Returns each workspace with its plan + member count, and flags which one
 // is currently active (the `kai-workspace` cookie).
 async function handleGET(req: Request) {
-  const u = await getRequestUser(req);
+  // Identity-only: an account removed from every workspace must still be able
+  // to see (and recover via POST) its own workspace list instead of a 401.
+  const u = await getRequestIdentity(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const workspaces = listWorkspaces(u.email).map((w) => ({
     id: w.id,
@@ -28,7 +30,7 @@ async function handleGET(req: Request) {
     // P5-5: theme brand color (drives the workspace-level CSS variables).
     brandColor: w.brandColor ?? DEFAULT_BRAND_COLOR,
   }));
-  const current = getWorkspace(u.workspaceId);
+  const current = u.workspaceId ? getWorkspace(u.workspaceId) : undefined;
   return NextResponse.json({
     workspaces,
     currentWorkspace: u.workspaceId,
@@ -40,7 +42,9 @@ async function handleGET(req: Request) {
 // POST /api/workspaces  { name, memberEmails? } - create a new workspace.
 // The creator becomes the owner; optional member emails join immediately.
 async function handlePOST(req: Request) {
-  const u = await getRequestUser(req);
+  // Identity-only: creating the FIRST workspace is exactly what an account
+  // with no tenant needs to do; requiring a resolved tenant would deadlock it.
+  const u = await getRequestIdentity(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   let body: { name?: string; memberEmails?: string[] };
   try { body = await req.json(); } catch {

@@ -56,7 +56,8 @@ export async function GET(req: Request) {
       ? EXPORT_LIMIT
       : 50;
 
-  const members = listMembers();
+  // P1（2026-11-19 审查）：活动流的成员过滤集同样按租户裁剪。
+  const members = listMembers(u.workspaceId);
   const memberIds = new Set<string>([u.id]);
   const memberNames = new Set<string>();
   for (const m of members) {

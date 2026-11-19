@@ -29,8 +29,8 @@ beforeEach(() => {
 });
 
 describe("issuePasswordReset", () => {
-  it("returns a userId.secret token and stores only its SHA-256 hash", () => {
-    const token = issuePasswordReset("owner@knowledgeai.dev")!;
+  it("returns a userId.secret token and stores only its SHA-256 hash", async () => {
+    const token = (await issuePasswordReset("owner@knowledgeai.dev"))!;
     expect(token.startsWith("usr_owner.")).toBe(true);
     const user = findUserByEmail("owner@knowledgeai.dev")!;
     // The store holds the hash, never the raw token.
@@ -40,23 +40,23 @@ describe("issuePasswordReset", () => {
   });
 
   it("re-issuing invalidates the previous token (single active reset)", async () => {
-    const first = issuePasswordReset("owner@knowledgeai.dev")!;
-    const second = issuePasswordReset("owner@knowledgeai.dev")!;
+    const first = (await issuePasswordReset("owner@knowledgeai.dev"))!;
+    const second = (await issuePasswordReset("owner@knowledgeai.dev"))!;
     expect(first).not.toBe(second);
     const user = findUserByEmail("owner@knowledgeai.dev")!;
     expect(user.passwordResetTokenHash).toBe(hashToken(second));
     expect(await consumePasswordReset(first)).toEqual({ error: RESET_ERROR_INVALID });
   });
 
-  it("returns null for unknown emails without writing anything", () => {
-    expect(issuePasswordReset("nobody@nowhere.dev")).toBeNull();
+  it("returns null for unknown emails without writing anything", async () => {
+    expect(await issuePasswordReset("nobody@nowhere.dev")).toBeNull();
     expect(findUserByEmail("nobody@nowhere.dev")).toBeNull();
   });
 });
 
 describe("consumePasswordReset", () => {
   it("accepts a valid token", async () => {
-    const token = issuePasswordReset("editor@knowledgeai.dev")!;
+    const token = (await issuePasswordReset("editor@knowledgeai.dev"))!;
     const r = await consumePasswordReset(token);
     expect("user" in r && r.user.email).toBe("editor@knowledgeai.dev");
   });
@@ -68,7 +68,7 @@ describe("consumePasswordReset", () => {
   });
 
   it("rejects expired tokens", async () => {
-    const token = issuePasswordReset("admin@knowledgeai.dev")!;
+    const token = (await issuePasswordReset("admin@knowledgeai.dev"))!;
     const user = findUserByEmail("admin@knowledgeai.dev")!;
     user.passwordResetExpires = Date.now() - 1000; // force expiry
     expect(await consumePasswordReset(token)).toEqual({ error: RESET_ERROR_EXPIRED });
@@ -77,7 +77,7 @@ describe("consumePasswordReset", () => {
 
 describe("resetPassword", () => {
   it("sets the new password, clears the token and revokes all sessions", async () => {
-    const token = issuePasswordReset("viewer@knowledgeai.dev")!;
+    const token = (await issuePasswordReset("viewer@knowledgeai.dev"))!;
     const user = findUserByEmail("viewer@knowledgeai.dev")!;
 
     // simulate an active session (jti = session id) so revocation is observable
@@ -102,14 +102,14 @@ describe("resetPassword", () => {
   });
 
   it("rejects passwords shorter than 8 chars without consuming the token", async () => {
-    const token = issuePasswordReset("editor@knowledgeai.dev")!;
+    const token = (await issuePasswordReset("editor@knowledgeai.dev"))!;
     const r = await resetPassword(token, "short");
     expect(r).toEqual({ error: "新密码至少 8 位" });
     expect(await consumePasswordReset(token)).not.toEqual({ error: RESET_ERROR_INVALID });
   });
 
   it("concurrent replays of the same token: exactly one reset succeeds", async () => {
-    const token = issuePasswordReset("editor@knowledgeai.dev")!;
+    const token = (await issuePasswordReset("editor@knowledgeai.dev"))!;
     // resetPassword clears the token synchronously before its first await,
     // so the second invocation must lose the hash check - no double-consume.
     const [a, b] = await Promise.all([
@@ -132,7 +132,7 @@ describe("resetPassword", () => {
     await verifyCredentials(email, "wrong5");
     expect(isAccountLocked(email)).toBe(true);
 
-    const token = issuePasswordReset(email)!;
+    const token = (await issuePasswordReset(email))!;
     await resetPassword(token, "freshpass1");
     expect(isAccountLocked(email)).toBe(false);
     expect(await verifyCredentials(email, "freshpass1")).not.toBeNull();
