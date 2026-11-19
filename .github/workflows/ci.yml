@@ -476,8 +476,21 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: playwright-${{ runner.os }}-
 
+      # 只下浏览器二进制，不走 --with-deps：ubuntu-latest 已预装 chromium/firefox
+      # 真正需要的运行库（libnss3 / libgbm1 / libatk / libgtk / libasound2 全部
+      # already installed），而 --with-deps 会连带安装 libavcodec62 / libx265 /
+      # libvpx / gstreamer 等约 100MB 多媒体库，实测在 ubuntu 26.04 runner 上
+      # 耗 9m40s，占 e2e job 总时长的 70%（PR #111 run 44456084217 日志）。
       - name: Install Playwright browsers (chromium + firefox)
-        run: pnpm exec playwright install --with-deps chromium firefox
+        run: pnpm exec playwright install chromium firefox
+      # 只补 Playwright 会装的字体集合（视觉回归基线依赖它们渲染中文/西文）。
+      # 字体包总下载约 30MB，与原来 --with-deps 后的字体完全相同，基线不变。
+      - name: Install fonts required by visual baselines
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            fonts-liberation fonts-ipafont-gothic fonts-tlwg-loma-otf \
+            fonts-unifont fonts-wqy-zenhei fonts-freefont-ttf
       # V6：页面由 vite preview 承载——webServer[1] 的 command 内含构建；
       # 此处显式构建一次以便构建错误在独立步骤暴露（含 SEO 预渲染）
       - name: Build frontend (Vue dist + prerendered home)
