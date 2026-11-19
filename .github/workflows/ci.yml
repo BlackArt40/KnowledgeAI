@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  # 手动跑全量（含 e2e / smoke）——main 上的 push 会跳过这两项，需要时用
+  # `gh workflow run ci.yml --ref main`
+  workflow_dispatch:
 
 # 同一分支的新推送取消上一轮（PR 迭代时能省掉一整轮 ~15 分钟）；
 # 不跨 ref 取消，main 的推送与 PR 的校验互不影响。
@@ -261,6 +264,10 @@ jobs:
   # 影响，不抬高会被同窗口内多脚本累积触发 429。
   smoke:
     runs-on: ubuntu-latest
+    # main 的 push 不跑：PR 已对 squash 前的同一棵代码树跑过全量（squash 不改
+    # 内容），重跑一遍只是把合并后的等待时间从 ~3.5 分钟拉到 ~8 分钟。
+    # 需要复验时 `gh workflow run ci.yml --ref main`（workflow_dispatch 会跑）。
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v7
       - name: Setup pnpm
@@ -452,6 +459,9 @@ jobs:
   # ── E2E：Playwright 关键用户流程（登录 → 上传 → 问答 → Agent） ──────
   e2e:
     runs-on: ubuntu-latest
+    # 与 smoke 同理：main 的 push 跳过，PR 阶段已全量验证；需要复验用
+    # workflow_dispatch。required check 只对 PR 生效，跳过不影响合并。
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v7
       - name: Setup pnpm
