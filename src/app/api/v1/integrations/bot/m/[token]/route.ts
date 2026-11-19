@@ -74,8 +74,14 @@ async function handlePOST(req: Request, ctx: { params: Promise<{ token: string }
   // owner's default - bot usage + conversations must meter the right tenant.
   const owner = getUserById(binding.userId);
   if (!owner) return NextResponse.json({ error: "机器人属主不存在" }, { status: 500 });
+  const botUser = requestUserFromUser(owner);
+  // The owner must still belong to a tenant: resolution now fails closed
+  // instead of adopting the shared default workspace (P1, review 2026-11-19).
+  if (!botUser) {
+    return NextResponse.json({ error: "机器人属主不属于任何工作区" }, { status: 500 });
+  }
   const user = {
-    ...requestUserFromUser(owner),
+    ...botUser,
     workspaceId: binding.workspaceId,
   };
 

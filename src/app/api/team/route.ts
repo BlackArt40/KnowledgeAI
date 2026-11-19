@@ -17,7 +17,10 @@ export async function GET(req: Request) {
 
   const canManage = can(u.role, "member.manage");
   const team = getTeam();
-  const members = listMembers();
+  // P1（2026-11-19 审查）：成员列表必须按租户裁剪，否则任何登录用户都能读到
+  // 全部工作区成员的邮箱与角色。sharedKbs 早在 M-12 已按工作区过滤，此处是对
+  // 同一端点的补齐。
+  const members = listMembers(u.workspaceId);
   const stats = {
     total: members.length,
     active: members.filter((m) => m.status === "active").length,

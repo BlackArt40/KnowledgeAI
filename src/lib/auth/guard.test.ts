@@ -80,10 +80,10 @@ describe("banned accounts", () => {
     const editor = { ...user, id: "usr_editor", email: "editor@knowledgeai.dev", role: "editor" as const };
     const token = await createToken(editor);
     try {
-      setUserStatus("usr_editor", "banned");
+      await setUserStatus("usr_editor", "banned");
       expect(await getRequestUser(reqWith({ cookie: `kai-token=${token}` }))).toBeNull();
     } finally {
-      setUserStatus("usr_editor", "active");
+      await setUserStatus("usr_editor", "active");
     }
     expect((await getRequestUser(reqWith({ cookie: `kai-token=${token}` })))?.id).toBe("usr_editor");
   });

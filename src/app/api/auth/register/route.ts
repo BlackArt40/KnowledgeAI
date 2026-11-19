@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   // owner, but the gate keeps the rule uniform).
   let needsVerification = false;
   let demoVerifyUrl: string | undefined;
-  const verifyToken = issueEmailVerification(result.email);
+  const verifyToken = await issueEmailVerification(result.email);
   if (verifyToken) {
     needsVerification = true;
     const verifyUrl = authLink(req, "/verify-email", verifyToken);

@@ -117,7 +117,7 @@ export function getDefaultWorkspace(): Workspace {
  *       behaviour and must stay intact (see below);
  *    3. a workspace the user OWNS (their personal workspace);
  *    4. any workspace they are a member of;
- *    5. the default workspace as a last resort.
+ *    5. **no tenant at all** (returns null) - never the shared default.
  *
  *  Why step 2 sits above step 3: the F4 problem is that a self-registered
  *  account is assigned no workspace at all, yet fell back to `ws_default` -
@@ -128,8 +128,20 @@ export function getDefaultWorkspace(): Workspace {
  *  workspace still resolves to `ws_default` when no cookie is present
  *  (otherwise every "default workspace" assertion in the acceptance suite
  *  starts looking at the wrong tenant).
+ *
+ *  Step 5 used to return the default workspace unconditionally (P1, review
+ *  2026-11-19): any account without a membership - a leftover row, or a user
+ *  removed from every workspace - silently became a member of the shared
+ *  tenant and could read all of its non-private KBs. Returning null makes the
+ *  caller reject (401) instead of granting a cross-tenant read. Registration
+ *  and OAuth paths already create a personal workspace (`ensurePersonalWorkspace`),
+ *  so this branch is only reachable by accounts that genuinely belong nowhere.
  */
-export function resolveWorkspace(userId: string, email: string, requestedId?: string | null): Workspace {
+export function resolveWorkspace(
+  userId: string,
+  email: string,
+  requestedId?: string | null
+): Workspace | null {
   const s = store();
   if (requestedId) {
     const ws = s.get(requestedId);
@@ -149,7 +161,9 @@ export function resolveWorkspace(userId: string, email: string, requestedId?: st
     .sort((a, b) => b.createdAt - a.createdAt)[0];
   if (memberOf) return memberOf;
 
-  return fallback;
+  // No membership and nothing owned: fail closed instead of adopting the
+  // shared tenant (see the doc comment above, step 5).
+  return null;
 }
 
 /**
@@ -163,7 +177,9 @@ export function effectiveWorkspacePlan(
 ): WorkspacePlan {
   const cookieId =
     /(?:^|;\s*)kai-workspace=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1] ?? null;
-  return resolveWorkspace(user.id, user.email, cookieId).plan;
+  // No resolvable tenant (see resolveWorkspace step 5): report the lowest plan
+  // rather than the shared default tenant's.
+  return resolveWorkspace(user.id, user.email, cookieId)?.plan ?? "free";
 }
 
 /** Workspaces the user OWNS (their personal tenant). Used by registration to
@@ -212,26 +228,33 @@ export function workspaceOf(id: string, email: string): boolean {
 
 /** Add a member (by email) to a workspace. Write-through persisted (D2) so
  *  the membership list survives a restart. Idempotent. */
-export function addWorkspaceMember(id: string, email: string): Workspace | undefined {
+export async function addWorkspaceMember(id: string, email: string): Promise<Workspace | undefined> {
   const ws = store().get(id);
   if (!ws) return undefined;
   if (!ws.members.includes(email)) {
     ws.members = [...ws.members, email];
-    void persistWorkspace(ws);
+    // P1（2026-11-19 审查）：成员关系决定能读到哪些 KB，必须落盘后才算加入
+    // （此前 fire-and-forget，重启后邀请"有效"但成员丢失）。
+    await persistWorkspace(ws);
   }
   return ws;
 }
 
 /** Remove a member (by email) from a workspace. Idempotent; the route guards
  *  ownership (the owner email must stay). Write-through persisted. */
-export function removeWorkspaceMember(id: string, email: string): Workspace | undefined {
+export async function removeWorkspaceMember(
+  id: string,
+  email: string
+): Promise<Workspace | undefined> {
   const ws = store().get(id);
   if (!ws) return undefined;
   const target = email.trim().toLowerCase();
   const next = ws.members.filter((m) => m !== target);
   if (next.length !== ws.members.length) {
     ws.members = next;
-    void persistWorkspace(ws);
+    // P1（2026-11-19 审查）：移除成员同样要落盘 —— 否则重启后被移除者仍是
+    // 工作区成员，可以继续读该租户的 KB。
+    await persistWorkspace(ws);
   }
   return ws;
 }

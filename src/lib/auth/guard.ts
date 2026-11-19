@@ -20,22 +20,34 @@ export interface RequestUser {
   workspaceId: string;
 }
 
+/** Identity of a signed-in account that may not belong to a tenant yet
+ *  (invitee accepting an invite, first-workspace creation). `workspaceId` is
+ *  null when nothing resolves - never fall back to the shared default tenant. */
+export interface RequestIdentity extends Omit<RequestUser, "workspaceId"> {
+  workspaceId: string | null;
+}
+
 /**
  * Shared RequestUser constructor (P7-2): builds a RequestUser from a store
  * User + optional workspace cookie. Used by the session path, the API-key
  * path AND the bot-integration path - one decision, three call sites, so
  * workspace resolution rules can't drift between them.
+ *
+ * Returns null when the account belongs to no tenant at all: a request must
+ * never be served on the shared default tenant's behalf (P1, review 2026-11-19).
  */
 export function requestUserFromUser(
   user: { id: string; email: string; name: string; role: Role },
   workspaceCookie: string | null = null
-): RequestUser {
+): RequestUser | null {
+  const workspace = resolveWorkspace(user.id, user.email, workspaceCookie);
+  if (!workspace) return null;
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
-    workspaceId: resolveWorkspace(user.id, user.email, workspaceCookie).id,
+    workspaceId: workspace.id,
   };
 }
 
@@ -53,7 +65,8 @@ function readCookie(req: Request, name: string): string | null {
 /** Extract + verify the authenticated user from a Request (cookie or Bearer).
  *  Returns the user (id/email/name/role/workspaceId) or null if not
  *  authenticated. The workspace comes from the `kai-workspace` cookie; an
- *  unknown / non-member workspace falls back to the default one.
+ *  unknown / non-member workspace is ignored, and an account that belongs to no
+ *  workspace at all is rejected (null) rather than served on the shared tenant.
  *  `opts.allowApiKey` (default false): only routes with an explicit API-key
  *  contract may opt in. Legacy/internal routes stay session-only, so a
  *  low-scope key cannot reach account, team, security or admin actions. */
@@ -91,6 +104,34 @@ export async function getRequestUser(
 /** JWT-session-only variant for internal routes (P1-6). */
 export function getRequestUserJwtOnly(req: Request): Promise<RequestUser | null> {
   return getRequestUser(req, { allowApiKey: false });
+}
+
+/** Identity without a tenant: verified session + live account, no workspace.
+ *
+ *  For routes that legitimately run BEFORE the caller belongs to a tenant -
+ *  accepting/rejecting an invite is the canonical case (the account is created
+ *  by registration and only joins the workspace through this very call). Since
+ *  `getRequestUser` now fails closed when no tenant resolves, those routes must
+ *  not use it. This variant is identity-only: never use it to read tenant data.
+ */
+export async function getRequestIdentity(req: Request): Promise<RequestIdentity | null> {
+  const cookieToken = readCookie(req, "kai-token");
+  const authHeader = req.headers.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const token = cookieToken || bearerToken;
+  if (!token) return null;
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+  const current = getUserById(payload.id);
+  if (!current || current.status !== "active") return null;
+  const ws = resolveWorkspace(current.id, current.email, readCookie(req, "kai-workspace"));
+  return {
+    id: current.id,
+    email: current.email,
+    name: current.name,
+    role: current.role,
+    workspaceId: ws?.id ?? null,
+  };
 }
 
 /** Require one of the given roles for an API route.

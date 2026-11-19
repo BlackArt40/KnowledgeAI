@@ -76,7 +76,7 @@ async function handlePOST(req: Request) {
   if (ws.members.includes(email)) {
     return NextResponse.json({ error: "该成员已在工作区中" }, { status: 409 });
   }
-  addWorkspaceMember(ws.id, email);
+  await addWorkspaceMember(ws.id, email);
   recordAudit({
     actorId: u.id,
     actor: u.name,
@@ -105,7 +105,7 @@ async function handleDELETE(req: Request) {
   if (!ws.members.includes(email)) {
     return NextResponse.json({ error: "该成员不在工作区中" }, { status: 404 });
   }
-  removeWorkspaceMember(ws.id, email);
+  await removeWorkspaceMember(ws.id, email);
   recordAudit({
     actorId: u.id,
     actor: u.name,

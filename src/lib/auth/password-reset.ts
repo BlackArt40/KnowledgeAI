@@ -31,7 +31,7 @@ export const PASSWORD_RESET_TTL_MS = 30 * 60_000;
  * (to deliver to the owner) or null when no such account exists - callers
  * must respond identically either way to avoid user enumeration.
  */
-export function issuePasswordReset(email: string): string | null {
+export async function issuePasswordReset(email: string): Promise<string | null> {
   const user = findUserByEmail(email);
   if (!user) return null;
   // Invalidate any previous reset token (single active reset per account).
@@ -39,7 +39,9 @@ export function issuePasswordReset(email: string): string | null {
   const token = `${user.id}.${secret}`;
   user.passwordResetTokenHash = hashToken(token);
   user.passwordResetExpires = Date.now() + PASSWORD_RESET_TTL_MS;
-  void persistUser(user);
+  // P1（2026-11-19 审查）：令牌必须落盘后再交给用户，否则用户拿到的重置链接
+  // 在进程重启 / 另一副本上无效。
+  await persistUser(user);
   return token;
 }
 
@@ -96,7 +98,8 @@ export async function resetPassword(
   user.passwordResetTokenHash = undefined;
   user.passwordResetExpires = undefined;
   user.passwordHash = await hashPassword(newPassword);
-  void persistUser(user);
+  // P1（2026-11-19 审查）：新密码落盘后才返回成功。
+  await persistUser(user);
 
   // Forced re-login: blacklist every existing session's jti (including the
   // current one - we can't tell which device is which, so all must go).

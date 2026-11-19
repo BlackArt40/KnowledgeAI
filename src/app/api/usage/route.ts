@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   // Per-member breakdown is a management view (member.manage). Everyone else
   // keeps the workspace aggregate + their own meters only.
   const members = can(user.role, "member.manage")
-    ? listMembers()
+    ? listMembers(user.workspaceId)
         .filter((m) => m.status === "active")
         .map((m) => {
           const account = findUserByEmail(m.email);

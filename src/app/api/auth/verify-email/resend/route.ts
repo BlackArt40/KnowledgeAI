@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const info = clientInfoFromRequest(req);
-  const token = issueEmailVerification(email);
+  const token = await issueEmailVerification(email);
 
   if (token) {
     recordAudit({

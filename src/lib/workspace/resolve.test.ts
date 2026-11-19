@@ -35,7 +35,7 @@ describe("resolveWorkspace", () => {
       ownerName: "张明",
     });
 
-    expect(resolveWorkspace("usr_owner", "owner@knowledgeai.dev", ws.id).id).toBe(ws.id);
+    expect(resolveWorkspace("usr_owner", "owner@knowledgeai.dev", ws.id)!.id).toBe(ws.id);
   });
 
   it("ignores a requested workspace the user is not a member of", () => {
@@ -47,7 +47,7 @@ describe("resolveWorkspace", () => {
     });
 
     const resolved = resolveWorkspace("usr_owner", "owner@knowledgeai.dev", foreign.id);
-    expect(resolved.id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolved!.id).toBe(DEFAULT_WORKSPACE_ID);
   });
 
   it("prefers the default workspace over a workspace the user owns", () => {
@@ -61,8 +61,8 @@ describe("resolveWorkspace", () => {
     });
 
     const resolved = resolveWorkspace("usr_owner", "owner@knowledgeai.dev");
-    expect(resolved.id).toBe(DEFAULT_WORKSPACE_ID);
-    expect(resolved.id).not.toBe(own.id);
+    expect(resolved!.id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolved!.id).not.toBe(own.id);
   });
 
   it("falls back to a workspace the user owns when they are outside the default", () => {
@@ -73,24 +73,25 @@ describe("resolveWorkspace", () => {
       ownerName: "Solo",
     });
 
-    expect(resolveWorkspace("usr_solo", "solo@example.com").id).toBe(mine.id);
+    expect(resolveWorkspace("usr_solo", "solo@example.com")!.id).toBe(mine.id);
   });
 
-  it("falls back to a workspace the user is a member of", () => {
+  it("falls back to a workspace the user is a member of", async () => {
     const team = createWorkspace({
       name: "客户团队",
       ownerId: "usr_admin",
       ownerEmail: "admin@knowledgeai.dev",
       ownerName: "李芳",
     });
-    addWorkspaceMember(team.id, "guest@example.com");
+    await addWorkspaceMember(team.id, "guest@example.com");
 
-    expect(resolveWorkspace("usr_guest", "guest@example.com").id).toBe(team.id);
+    expect(resolveWorkspace("usr_guest", "guest@example.com")!.id).toBe(team.id);
   });
 
-  it("falls back to the default workspace when the user belongs nowhere", () => {
-    // This is the last-resort branch: a brand-new account still gets a tenant.
-    expect(resolveWorkspace("usr_ghost", "ghost@example.com").id).toBe(DEFAULT_WORKSPACE_ID);
+  it("returns null when the user belongs nowhere (never the shared default)", () => {
+    // P1（2026-11-19 审查）：最后一级兜底曾无条件返回 ws_default，使"无成员关系"
+    // 的账号自动成为共享租户成员并可读其全部非 private KB。现在必须失败关闭。
+    expect(resolveWorkspace("usr_ghost", "ghost@example.com")).toBeNull();
   });
 });
 
@@ -209,7 +210,7 @@ describe("workspace housekeeping", () => {
 
     expect(removed).toBe(1);
     expect(getDefaultWorkspace().id).toBe(DEFAULT_WORKSPACE_ID);
-    expect(resolveWorkspace("usr_owner", "owner@knowledgeai.dev").id).toBe(DEFAULT_WORKSPACE_ID);
+    expect(resolveWorkspace("usr_owner", "owner@knowledgeai.dev")!.id).toBe(DEFAULT_WORKSPACE_ID);
     expect(own.id).not.toBe(DEFAULT_WORKSPACE_ID);
   });
 
@@ -226,7 +227,8 @@ describe("workspace housekeeping", () => {
 
     expect(touched).toBe(2); // ws_default + the new team
     expect(getDefaultWorkspace().members).not.toContain("viewer@knowledgeai.dev");
-    expect(resolveWorkspace("usr_viewer", "viewer@knowledgeai.dev").id).toBe(DEFAULT_WORKSPACE_ID);
+    // 移出全部工作区后不再"落回"默认租户（P1 失败关闭）。
+    expect(resolveWorkspace("usr_viewer", "viewer@knowledgeai.dev")).toBeNull();
     expect(team.members).not.toContain("viewer@knowledgeai.dev");
   });
 });

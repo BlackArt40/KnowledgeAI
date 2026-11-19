@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "权限不足：不能授予与自己相同或更高的角色" }, { status: 403 });
   }
 
-  const member = updateMemberRole(id, body.role, u.name);
+  const member = await updateMemberRole(id, body.role, u.name);
   if (!member) return NextResponse.json({ error: "成员不存在" }, { status: 404 });
   notifyMember(
     member.email,
