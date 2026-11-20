@@ -6,9 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>KnowledgeAI</title>
     <!--
-      首帧主题/语言预置脚本：与 Next 侧 src/app/layout.tsx 的 themeScript 逐字
-      同步（localStorage key: kai-theme / kai-hc / kai-locale）。两端必须一起改，
-      同步义务记录在 design log 十五·二十七。
+      首帧主题/语言预置脚本：单源在 frontend/index.html（Next 页面层已退役）。
+      同步 localStorage key: kai-theme / kai-hc / kai-locale 与 src/lib/theme。
     -->
     <script>
       (function () {

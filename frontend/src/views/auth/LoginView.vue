@@ -2,7 +2,7 @@
 // 登录页（复刻 src/app/(auth)/login/page.tsx，契约冻结）：
 // step1 {email,password} → {token} | {requires2FA} | {mustEnroll2FA,preAuthToken}
 // step2 追加 totpCode（6 位验证码或含 - 的恢复码）。会话由服务端 HttpOnly
-// Cookie 承载；成功后跳 /dashboard（Next 侧 V2 前用整页跳转）。
+// Cookie 承载；成功后跳 /dashboard（Vue 路由由 AppShell 工作台承载）。
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
@@ -32,7 +32,7 @@ const demoAccounts = [
 ];
 
 function goDashboard() {
-  // V2 前 /dashboard 仍由 Next 承载（网关未切），必须整页跳转
+  // 整页跳转：让 Set-Cookie 落地后由 SPA/网关直接进入 Vue 工作台
   window.location.href = "/dashboard";
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// 主题三模式切换（light/dark/system）：薄封装共享主题引擎，与 Next 侧
-// components/theme-toggle.tsx 同一份 localStorage（kai-theme）。
+// 主题三模式切换（light/dark/system）：薄封装共享主题引擎（@shared/theme），
+// localStorage key 统一为 kai-theme。
 import { Moon, Sunny, Monitor } from "@element-plus/icons-vue";
 import { useThemeStore, type ThemeMode } from "@/stores/theme";
 

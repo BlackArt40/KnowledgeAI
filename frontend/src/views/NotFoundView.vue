@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 404 兜底：V0 起前端全部路由都有归宿；网关切流后未迁移路径仍由 Next 兜底，
+// 404 兜底：前端全部路由都有归宿；网关切流后未迁移路径由 Next 兜底 404，
 // 这里只覆盖 Vue 已接管的未知路径。文案走 i18n（与 page.not-found 同名空间）。
 import { useTranslation } from "i18next-vue";
 import AppLogo from "@/components/AppLogo.vue";

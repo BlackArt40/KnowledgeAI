@@ -1,4 +1,4 @@
-// 认证 API（V1 契约与 Next 侧 /api/auth/* 冻结契约一致）：
+// 认证 API（冻结契约 /api/auth/*，由 Next API 提供）：
 //   login        POST /api/auth/login {email,password,totpCode?}
 //                → {token} | {requires2FA:true} | {mustEnroll2FA,preAuthToken}；服务端 Set-Cookie kai-token
 //   register     POST /api/auth/register {name,email,password} → {user,token,needsVerification,demoVerifyUrl?}

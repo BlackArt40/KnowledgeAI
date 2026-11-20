@@ -2,8 +2,10 @@
 
 零依赖、单文件、可独立部署到任意静态站点的 AI 问答组件（P7-2）。
 
-> **构件位置（本目录只有说明，没有副本）**：组件与演示页由 `public/` 单源托管
-> ——它是静态服务根，构建期由 frontend 的 copyPwaAssets 插件拷进 `frontend/dist`：
+> **构件位置（本目录只有说明，没有副本）**：组件与演示页由 `public/` 单源托管，
+> 构建期仅将 PWA 子集（sw.js/sw-config.json/manifest/icons）从根 `public/` 拷进
+> `frontend/dist`（见 `frontend/vite.config.ts` 的 `PWA_ASSETS`）；widget 与
+> swagger-ui 体积大，不拷进 dist，由网关 `location /` 兜底到 Next `public/`：
 >
 > - 组件：`public/widget/kai-widget.js`
 > - 演示页：`public/widget/demo.html`
