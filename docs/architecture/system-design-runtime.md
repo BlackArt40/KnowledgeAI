@@ -165,17 +165,13 @@ flowchart TD
 - `/api/**` 是**内部面**：JWT 会话为主，供 Web 端使用；
 - 新增 v1 端点必须同时更新 OpenAPI 规范（CI 有漂移检查）与 scope 表。
 
-### 7.3 内部服务契约（业务 ↔ AI）
+### 7.3 内部服务契约（已退役）
 
-1. **只内网**：`/internal/*` 必须携带 `X-Internal-Token`；未配置令牌 = 全部 401(fail-closed)；
-2. **身份由 BFF 注入**：Python 不解析用户 JWT、不做业务鉴权，只信任已校验的 `workspaceId`；
-3. **租户双匹配**：索引、检索、删除都强制 `workspaceId` + `kbId`；归属不一致 → 400 / 403；
-4. **线上帧格式一致**：`data: {"type": ...}\n\n`，业务侧可原样透传或重组 `done`；
-5. **队列通道**：`agent:queue`(List)+ `agent:<taskId>`(Pub/Sub)，结束哨兵 `{ "type": "end" }`。
+`/internal/*`（索引、检索、生成、Agent）与 `X-Internal-Token` 随 `services/ai` 删除；当前 Next 进程内直接调用 `src/lib/rag/**`。
 
-### 7.4 跨语言兼容（字节级）
+### 7.4 跨语言兼容（已退役）
 
-密码哈希（PBKDF2 / legacy SHA-256）、JWT(HS256 claims)、API Key(AES-256-GCM + HKDF)、TOTP(RFC 6238)、Webhook 签名（HMAC-SHA256，`sha256=` + hex）均有双向测试向量；任何一侧改算法都属于破坏性变更。
+Java/Python 与 TS 的双向向量测试随拆分线删除；Webhook 仍使用 `sha256=<hex>` HMAC 签名，改动须保持客户端兼容。
 
 ### 7.5 错误与降级语义
 
@@ -232,8 +228,8 @@ flowchart TD
 |------|------|------|------|
 | R1 | **拆分覆盖不完整（已关闭）**：Java 仅实现 27 个端点 | 拆分线已于 2026-11-20 退役，全部 API 由 Next 承载 | 见 ADR-0010 |
 | R2 | **双迁移工具（已关闭）**：Prisma 26 个迁移 + Flyway V1–V21 | 拆分线退役后 Flyway 已删除 | Prisma 是唯一迁移来源（ADR-0010） |
-| R3 | **双 RAG 实现**（TS 进程内 / Python 远端） | 行为漂移，同一问题两种质量 | 保持同一批夹具对比引用 id；明确 TS 路径为回退 |
-| R4 | **内存读路径与多副本** | 多副本读不一致 | 除鉴权外按 ADR-0009 迁移到 DB 读路径；过渡期强制单实例 |
+| R3 | **双 RAG 实现（已关闭）** | Python 实现已删除，仅保留 TS RAG | 见 ADR-0010 |
+| R4 | **内存读路径与多副本** | 多副本读不一致 | 鉴权等共享状态走 Redis/DB；其余按 ADR-0001 接受；扩容前评估单实例假设 |
 | R5 | **文档数字漂移**（迁移数 / 页面数） | 评审依据失真 | 本文附录 C 的命令纳入季度核对 |
 
 ## 10. 扩展指南：新增一个领域实体

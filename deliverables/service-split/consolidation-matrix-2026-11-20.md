@@ -68,3 +68,10 @@
 - 未连接真实生产库核对 `flyway_schema_history` 与 Prisma `_prisma_migrations` 的基线。
 - 未执行真实网关切流；删除部署入口前需确认生产入口已不指向 Java。
 - Java/Python 的运行时行为（限流、SSE、审计链字段）只做静态对照，未做流量对拍。
+
+## 7. 执行结果（2026-11-20）
+
+- 阶段 1/2：Agent SSE 25s 保活与 `AGENT_STREAM_TIMEOUT_SECONDS` 硬超时已收编到 `src/lib/agent/run-handler.ts`，PR #116。
+- 阶段 3：`services/business`、`services/ai`、Flyway、split compose、`k8s/split.yaml`、nginx 切流脚本与远程 AI 适配器已删除，PR #117。
+- 环境变量由 85 收敛到 76；`ai-contract` job 保留为退役守卫。
+- 部署形态改为 Vue 静态 + Next API；ADR-0010 记录决策，ADR-0008/0009 标记 superseded。

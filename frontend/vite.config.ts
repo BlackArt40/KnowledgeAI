@@ -34,8 +34,8 @@ export default defineConfig({
   plugins: [
     copyPwaAssets(),
     vue(),
-    // preview 服务器镜像生产网关的 location = / 行为（switch-frontend.sh：
-    // try_files /home.html /index.html）——根路径优先返回 SEO 预渲染首页
+    // preview 服务器镜像生产静态托管的根路径行为（/ 优先 home.html，
+    // 产物缺失回退 index.html）——根路径优先返回 SEO 预渲染首页
     {
       name: "preview-home-fallback",
       configurePreviewServer(server) {
@@ -86,8 +86,8 @@ export default defineConfig({
   preview: {
     port: 4173,
     // P1（2026-11-19 审查）：本地与 CI 的页面检查打的是 :4173，安全响应头
-    // 必须与生产网关（deploy/nginx.conf）同口径，否则「页面有 CSP」这件事在
-    // 唯一可自动验证的承载面上无从断言。
+    // 必须与生产静态托管同口径，否则「页面有 CSP」这件事在唯一可自动验证的
+    // 承载面上无从断言。
     headers: {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
