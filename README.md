@@ -135,9 +135,8 @@ src/
     ├── i18n/            # ⭐ 语言包单源（zh-CN / en，前后端共用）
     └── config.ts        # ⭐ Provider 状态聚合
 public/                 # 静态资产单源（PWA sw.js / manifest / icons、widget、swagger-ui vendor）
-deploy/                 # 部署辅助脚本（staging / 蓝绿）
 prisma/                 # 数据库 schema + 迁移 + 种子
-scripts/                # 运维脚本（清理 / 迁移 / CI 检查）
+scripts/                # 运维脚本（deploy / 清理 / 迁移 / CI 检查）
 ├── smoke/              # 验收 smoke 套件（run-all.ts 分组调度，CI 的 smoke / smoke-infra 两个 job）
 └── tools/              # 文档/契约门禁脚本（env parity、docs frontmatter、openapi、i18n 提取）
 tests/                  # 集成测试（需 dev server）
