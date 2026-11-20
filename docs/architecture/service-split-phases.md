@@ -249,7 +249,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 | 4.7 | 读路径 | 删除生产路径对 `globalThis.__KAI_*_STORE__` 的依赖 | Redis 仅缓存会话/限流，不作 KB 权限唯一来源 |
 | 4.8 | 适配 AI | 业务服务持有 `AI_INTERNAL_TOKEN` | 打开 chat 时先鉴权再 stream pipe |
 | 4.9 | 数据迁移 | Prisma schema → Flyway/Liquibase 或保持 Postgres 由业务服务 migrate | 一次切换窗口；先 `migrate deploy` 再切流量 |
-| 4.10 | 下线 Next API | `src/app/api/**` 变为 301 到业务服务或删除 | 前端 `NEXT_PUBLIC_API_BASE` 指向业务服务 |
+| 4.10 | 下线 Next API | `src/app/api/**` 变为 301 到业务服务或删除 | Vue 前端由网关同源反代；跨域部署时才设置 `VITE_API_BASE` |
 
 ### 切换步骤（生产窗口）
 
@@ -333,7 +333,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 | ID | 工作包 | 说明 |
 |----|--------|------|
-| 6.1 | 前端环境 | `NEXT_PUBLIC_API_BASE`；Cookie `Secure`/`SameSite`；登录跨域若拆域名则改 BFF 同域反代（推荐继续同域） |
+| 6.1 | 前端环境 | Vue 使用 `VITE_API_BASE`（同源部署留空）；Cookie `Secure`/`SameSite`；登录跨域若拆域名则改 BFF 同域反代（推荐继续同域） |
 | 6.2 | 网关 | Nginx/Caddy/Traefik：`/api` → 业务；静态 → 前端；超时对 SSE 关闭缓冲 |
 | 6.3 | 多副本 | 业务 2 副本 + Redis；AI worker 可水平扩；向量库与 OSS 为外部依赖 |
 | 6.4 | 探针 | 存活 `/api/health`；就绪 `/api/health/ready`(DB/Redis/AI/queue/revocation) |
@@ -356,7 +356,7 @@ Body：`workspaceId`、`kbId`、`conversationId`、`messages`、`settings`。响
 
 ### 前端替换（Vue 3 绞杀重写，2026-10-16 起）
 
-上表“可选：Vue3 重写”**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 30 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（28 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；本阶段 6.1 的 `NEXT_PUBLIC_API_BASE` 语义由 `VITE_API_BASE` 承接。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
+上表“可选：Vue3 重写”**已完成**（2026-10-16 启动，V6 收官）：`frontend/`（pnpm workspace 包 `kai-frontend`，Vite 7 + Vue 3.5 + Element Plus）全量承载 30 个页面，Next 页面层已删除（纯 API + `public/` 单源静态资产）。网关按 `deploy/nginx/routes.conf`（28 条）逐路径切流，`scripts/deploy/switch-frontend.sh` 是唯一切流入口（apply/rollback/revert-all，秒级回退）。共享资产单源复用（i18n 语言包/SSE 解析/主题引擎经 `@shared` 引用 `src/lib`），`/api/*` 契约冻结不动；阶段 6.1 的 API 基址由 Vue 的 `VITE_API_BASE` 承接，同源部署留空。分阶段验收见 `deliverables/service-split/frontend-v{1..6}-acceptance-*.md`，落地细节见 design log 十五·二十七。
 
 ---
 

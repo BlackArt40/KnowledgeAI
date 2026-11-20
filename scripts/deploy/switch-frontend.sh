@@ -3,13 +3,14 @@
 # 从 deploy/nginx/routes.conf 生成 nginx switch 配置写入宿主机
 # deploy/nginx/frontend-switch.conf（该文件以只读 bind mount 挂进网关容器，
 # 写宿主文件即容器内生效），然后 nginx -t 校验 + reload。
-# 回退 = 恢复上一版 routes.conf 再 apply（秒级、无状态）；全部回 Next = revert-all。
+# 回退 = 恢复上一版 routes.conf 再 apply（秒级、无状态）；revert-all 仅清空页面切流表。
+# V6 起 Next 已无页面，清空后未知页面路径返回 404，不再构成页面回退。
 #
 # 用法：
 #   scripts/deploy/switch-frontend.sh list        # 查看当前已切换路由
 #   scripts/deploy/switch-frontend.sh apply       # routes.conf → 网关（先备份到 routes.conf.bak）
 #   scripts/deploy/switch-frontend.sh rollback    # 恢复 routes.conf.bak → apply
-#   scripts/deploy/switch-frontend.sh revert-all  # 清空路由（全部流量回 Next）
+#   scripts/deploy/switch-frontend.sh revert-all  # 清空页面切流表（V6 起非 Next 页面回退）
 #
 # 前置条件（apply 前自检）：
 #   - docker compose -f docker-compose.split.yml 的 gateway 在跑
@@ -99,7 +100,7 @@ ASSETS
 cmd_list() {
   echo "[switch-frontend] 当前 routes.conf 声明的已切换路由："
   grep -v '^\s*#' "$ROUTES_FILE" | grep -v '^\s*$' || true
-  echo "[switch-frontend] （空 = 全部流量走 Next）"
+  echo "[switch-frontend] （空 = 无页面切流；V6 起未知页面路径返回 404）"
 }
 
 cmd_apply() {
@@ -126,7 +127,7 @@ cmd_apply() {
 
   # bind mount 只读：写宿主文件即容器内生效，nginx -t 直接校验新内容
   if ! $COMPOSE exec -T gateway nginx -t; then
-    echo "[switch-frontend] nginx -t 失败：回写占位空 conf 并 reload，保证网关仍全部指向 Next"
+    echo "[switch-frontend] nginx -t 失败：回写占位空 conf 并 reload，网关回落到 location / 兜底"
     echo "# switch-frontend: invalid generation reverted to placeholder" > "$SWITCH_CONF"
     $COMPOSE exec -T gateway nginx -s reload
     die "生成的 switch conf 未通过 nginx -t（检查 deploy/nginx/routes.conf 语法）"
@@ -147,7 +148,7 @@ cmd_revert_all() {
   # 清空【前】先备份（V1 演练踩坑：先清空再 apply 会把空表覆盖进 bak，
   # rollback 从此只能恢复到空表）
   cp "$ROUTES_FILE" "$BACKUP_FILE"
-  echo "# 已清空（switch-frontend.sh revert-all）——全部页面流量走 Next" > "$ROUTES_FILE"
+  echo "# 已清空（switch-frontend.sh revert-all）——页面切流表已清空（Next 无页面兜底）" > "$ROUTES_FILE"
   cmd_apply skip_backup
 }
 

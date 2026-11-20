@@ -213,8 +213,6 @@ spec:
           image: ghcr.io/knowledgeai/app:PLACEHOLDER
           ports: [{ containerPort: 3000 }]
           env:
-            - name: NEXT_PUBLIC_API_BASE
-              value: "" # 6.1：同域反代，浏览器走网关同源 /api
             - name: DATABASE_URL
               value: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
             - name: REDIS_URL
