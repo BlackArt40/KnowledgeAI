@@ -14,9 +14,6 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      # 阶段 1 服务拆分：非空 = 索引/检索/生成走下方 ai 服务（Python RAG）
-      AI_SERVICE_URL: ${AI_SERVICE_URL:-}
-      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
       # P1: 队列消费者在下面独立的 worker 服务；web 只入队，避免双消费。
       # 单容器跑 Redis 队列时改为 QUEUE_CONSUMER=web。
       QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
@@ -82,36 +79,6 @@ services:
     healthcheck:
       disable: true
     restart: unless-stopped
-
-  # AI 服务（阶段 1 拆分，services/ai/）：文档解析/切片/嵌入/检索/生成。
-  # 仅内网可达 —— 不映射宿主端口（service-split.md 契约 #1：Python 不对公网）。
-  # 阶段 2：不再挂载 uploads 共享卷 —— 文件经对象存储（presignedUrl/s3 源）获取。
-  ai:
-    build: ./services/ai
-    environment:
-      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
-      # compose 内网中的对象存储属于该部署的生产配置
-      # P2: fail-closed；预签名 URL 指向 compose 内 MinIO 时由 S3_ENDPOINT 主机白名单放行
-      AI_ALLOW_PRIVATE_FETCH: "${AI_ALLOW_PRIVATE_FETCH:-false}"
-      # source.type=s3 拉取对象用（与业务侧同凭据；presignedUrl 模式不需要）
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
-      S3_BUCKET: ${S3_BUCKET:-knowledgeai-uploads}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      # LLM / 嵌入透传（与 app 共用同一网关形态；留空 = 本地抽取式演示模式）
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      CHAT_MODEL: ${CHAT_MODEL:-gpt-4o}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
 
   # 对象存储（阶段 2）：MinIO（S3 兼容）。9000=S3 API，9001=控制台（本机验收
   # 「控制台可见对象」用；生产可去掉端口映射）。bucket 默认私有 —— 匿名 GET 403。

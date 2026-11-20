@@ -27,8 +27,9 @@ applies_to: ">=1.2.0"
 | [ADR-0003](adr-0003-multi-tenant-isolation.md) | 多租户隔离契约 | accepted |
 | [ADR-0006](adr-0006-read-path-storage-evolution.md) | 读路径存储演进（鉴权态共享化） | accepted |
 | [ADR-0007](adr-0007-queue-backpressure.md) | 队列背压 | accepted |
-| [ADR-0008](adr-0008-ai-service-framework.md) | AI 服务框架选型（FastAPI / 裸写 RAG / LangGraph / arq） | accepted |
-| [ADR-0009](adr-0009-business-service-language.md) | 业务服务语言选型（Java 17 + Spring Boot 3） | accepted |
+| [ADR-0008](adr-0008-ai-service-framework.md) | AI 服务框架选型（FastAPI / 裸写 RAG / LangGraph / arq） | superseded |
+| [ADR-0009](adr-0009-business-service-language.md) | 业务服务语言选型（Java 17 + Spring Boot 3） | superseded |
+| [ADR-0010](adr-0010-single-runtime-consolidation.md) | 单一运行时（Vue + Next API + TS worker + Prisma） | accepted |
 
 ## 编号规则
 

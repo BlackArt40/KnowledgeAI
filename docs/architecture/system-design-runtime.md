@@ -59,8 +59,8 @@ sequenceDiagram
 ```
 
 - **事件顺序固定**：`sources` → `token*` → `done`，异常为 `error`；改名会打挂前端与 e2e；
-- `AI_SERVICE_URL` 配置后，检索与生成改走 Python：BFF 先发 `sources`（用过滤后的 chunks），Python 的 `sources` 帧被跳过，事件名不变；
-- **降级策略固定**：AI 服务不可用 → `503 + Retry-After`，**不静默回退本地 RAG**（避免同一问题两种质量）。
+- 检索与生成均在 Next 进程内完成，失败由 `classifyChatError` 归类为 `error` 帧的 `code`；
+- **降级策略**：本地 RAG 或上游 LLM 失败继续返回可分类错误，不静默改写问题语义。
 
 ### 6.2 文档入库（上传 → 解析 → 索引）
 
@@ -81,52 +81,40 @@ sequenceDiagram
   U->>W: enqueue doc-process
   U-->>C: 201 { docs }（仅受理）
   W->>W: 消费（重试 3 次 → 死信）
-  alt AI_SERVICE_URL 已配置
-    W->>A: POST /internal/index
-    A->>A: 解析 → 切片 → 嵌入 → 建索引
-  else 单体模式
-    W->>W: parser → chunker → embeddings
-  end
+  W->>W: parser → chunker → embeddings → 索引
   W->>D: 文档 ready + 分块持久化
   W->>W: 触发 kb.ready 与状态事件
 ```
 
 关键点：**解析绝不占用请求线程**。上传接口只确认“已受理并入队”，就绪状态由文档状态 SSE / Webhook 通知；`QueueBackpressureError` 会把文档标记为失败并给出可重试提示，而不是 500。
 
-### 6.3 Agent 调研任务（拆分形态）
+### 6.3 Agent 调研任务
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant C as 客户端
-  participant B as business
-  participant R as Redis
-  participant A as ai 服务
+  participant N as Next API
+  participant Q as BullMQ / 内存队列
   participant W as agent worker
   participant P as PostgreSQL
 
-  C->>B: POST /api/v1/agent/run
-  B->>P: 写 AgentTask status=queued
-  B->>R: SUBSCRIBE agent:taskId
-  B-->>C: SSE init { taskId }
-  B->>A: POST /internal/agent/run
-  A->>A: 检查 QUEUE_MAX_DEPTH=500
-  A->>R: LPUSH agent:queue
-  A-->>B: 202 { queued, depth }
+  C->>N: POST /api/agent/run
+  N->>P: 写 AgentTask status=queued
+  N-->>C: SSE init { taskId }
+  N->>Q: enqueue agent-run
   loop planner → searcher → analyzer → writer
-    W->>R: BLPOP agent:queue
+    Q->>W: 消费任务
     W->>W: graph.run
-    W->>R: PUBLISH step
-    R-->>B: 事件
-    B-->>C: SSE step
+    W-->>N: publish step
+    N-->>C: SSE step
   end
   W->>P: 报告 + 版本 + status=done
-  W->>R: PUBLISH done → end 哨兵
-  R-->>B: 终态快照
-  B-->>C: SSE done { task } → end
+  W-->>N: publish done → end
+  N-->>C: SSE done { task } → end
 ```
 
-单体形态是同一套语义的进程内版本：`enqueue("agent-run")` → worker 内存队列 → `publishAgentEvent` → EventEmitter → `run-handler` 转发。**两种形态共用事件名与帧格式**，因此前端与测试无需区分。
+SSE 由 `run-handler` 直接转发：空闲 25s 发 `: ping`，超过 `AGENT_STREAM_TIMEOUT_SECONDS` 发 `error(stream_timeout)+end`。配置 `REDIS_URL` 时使用 BullMQ，否则使用进程内队列；事件名与帧格式不变。
 
 ### 6.4 鉴权与限流
 
@@ -242,8 +230,8 @@ flowchart TD
 
 | 编号 | 风险 | 影响 | 建议 |
 |------|------|------|------|
-| R1 | **拆分覆盖不完整**：Java 只实现 27 个端点，网关 `location /api/` 却全量指向 business | 拆分拓扑下未迁移路由（计费、管理端、通知、分片上传等）不可达 | 切流前按路由前缀分批，或让网关对未迁移前缀回落 `app` |
-| R2 | **双迁移工具**：Prisma 25 个迁移 + Flyway V1–V21 | schema 漂移无人察觉 | 以 `prisma/schema.prisma` 为唯一事实源，Flyway 只读校验并纳入 CI 漂移检查 |
+| R1 | **拆分覆盖不完整（已关闭）**：Java 仅实现 27 个端点 | 拆分线已于 2026-11-20 退役，全部 API 由 Next 承载 | 见 ADR-0010 |
+| R2 | **双迁移工具（已关闭）**：Prisma 26 个迁移 + Flyway V1–V21 | 拆分线退役后 Flyway 已删除 | Prisma 是唯一迁移来源（ADR-0010） |
 | R3 | **双 RAG 实现**（TS 进程内 / Python 远端） | 行为漂移，同一问题两种质量 | 保持同一批夹具对比引用 id；明确 TS 路径为回退 |
 | R4 | **内存读路径与多副本** | 多副本读不一致 | 除鉴权外按 ADR-0009 迁移到 DB 读路径；过渡期强制单实例 |
 | R5 | **文档数字漂移**（迁移数 / 页面数） | 评审依据失真 | 本文附录 C 的命令纳入季度核对 |

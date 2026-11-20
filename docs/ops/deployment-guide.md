@@ -141,125 +141,19 @@ kubectl apply -f k8s/deployment.yaml
   2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
      注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
-## 方式五：三服务拆分部署（>=1.3.0，已冻结）
+## 方式五：Vue 静态前端 + Next API（当前形态）
 
-> **2026-11-20 起拆分线冻结**：主线默认形态为 Vue 静态 + Next API + TS worker + Prisma。
-> 本节仅作历史部署参考，拆分栈将在后续版本删除；不要新切 Java/Python 流量。
+拆分线（Java/Python/nginx 切流）已于 2026-11-20 退役，仓库不再提供 split compose、K8s split 或切流脚本。
 
-服务拆分阶段 6 产物（[service-split.md](../architecture/service-split.md) 6.1～6.3）：**网关（nginx） → 业务服务（Java ×N 副本） + Vue 静态前端 + AI 服务（Python）**，AI 仅内网可达（浏览器永不直连 Python）。前端继续**同域反代**（手册 6.1 推荐）：Vue 的 `VITE_API_BASE` 留空，浏览器只见网关一个源，Cookie 不跨域。
+生产方式：
 
-### Docker Compose 一键起（A6.1）
+1. `pnpm -C frontend build` 产出 `frontend/dist`（含预渲染 `home.html`）。
+2. 由任意静态服务器/CDN 托管 `frontend/dist`：`/` 优先 `home.html`，其余 SPA fallback 到 `index.html`，`/assets/*` 长缓存。
+3. `/api/*` 反代到 Next（默认 `:3000`）；`/vendor/*`、`/widget/*`、`/sw.js` 等根 `public/` 资产由 Next 或静态层兜底。
+4. SSE 需关闭代理缓冲并放宽读超时；`AGENT_STREAM_TIMEOUT_SECONDS` 控制 Agent 流空闲硬超时。
+5. 数据库迁移只用 Prisma：`npx prisma migrate deploy`。
 
-```bash
-# 1. 准备环境变量（密钥只进运行时 env，不进构建产物）
-cp deploy/env.split.example deploy/.env.split
-# 编辑 deploy/.env.split：至少设置 AUTH_SECRET / AI_INTERNAL_TOKEN
-
-# 2. 一键起全栈（网关 + 前端 + 业务 + AI + worker + Postgres + Redis + MinIO）
-docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --build
-
-# 3. 业务多副本（6.3：业务 ≥2 副本，撤销/限流/Agent 队列经 Redis 共享）
-docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --scale business=2
-
-# 4. 验证（网关默认 :8088，GATEWAY_PORT 可改）
-curl http://localhost:8088/api/health/ready   # 业务就绪（db/redis/ai/agentQueue/worker）
-curl -X POST http://localhost:8088/api/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"...","password":"..."}'
-```
-
-> 本机无 MinIO 镜像时的演练替代：叠加 `-f docker-compose.split.drill.yml`（moto S3 兼容层，阶段 2 验收同口径）。生产定义保持 `minio` 不变。
-
-### 滚动发布（A6.2/A6.6：全程无空窗）
-
-```bash
-# 1. 先扩一个新副本并等健康
-docker compose -f docker-compose.split.yml --env-file deploy/.env.split up -d --scale business=3
-# 2. 网关优雅 reload（重新解析 upstream，不中断在途请求）
-docker compose -f docker-compose.split.yml --env-file deploy/.env.split exec gateway nginx -s reload
-# 3. 停一个旧副本（nginx proxy_next_upstream 对 error/502/503 自动换副本重试）
-# 4. 缩回目标副本数并再次 reload
-```
-
-### Kubernetes（A6.4 清单审计基线）
-
-`k8s/split.yaml`：三服务 + 网关清单，镜像占位符替换后 `kubectl apply -f k8s/split.yaml`（基础设施沿用 `k8s/deployment.yaml` 的 Postgres/Redis/MinIO 部分）。审计要点：
-
-- **AI 服务 = ClusterIP**：无 NodePort / 无 LoadBalancer / 无 Ingress（Python 不对公网）；
-- 前端 `app` 亦为 ClusterIP，**唯一公网入口是 gateway**(LoadBalancer)；
-- 探针：业务 startup/liveness `/actuator/health` + readiness `/api/health/ready`（DB/Redis/AI/Agent 队列降级即摘流量）；AI liveness/readiness `/health`；
-- 密钥经 Secret（`knowledgeai-runtime`）注入运行时环境变量，镜像构建不含密钥。
-
-### SSE 与网关（A6.3）
-
-网关配置（[deploy/nginx.conf](../../deploy/nginx.conf)）对 `/api/` 强制 `proxy_buffering off` + `proxy_read_timeout 3600s`，SSE(chat / agent-run)长流不缓冲、不掐断；业务侧 `spring.mvc.async.request-timeout=3600s` 对齐（Tomcat 默认 30s 异步超时会掐断长流——A6.3 演练实测暴露并已修复）。
-
-### 生产切换窗口（4.10：Next 业务 API 下线，部署时操作）
-
-服务拆分阶段 1～6 + 总检 G1-G10 全过后，生产入口仍指向单体（Next 承载业务 API）。本节是**上线窗口的执行手册**：把业务 API 正式切到业务服务，并下线 Next 内业务路由（手册 [4.7/4.10](../architecture/service-split.md)）。单次操作约一个观察日 + 一个代码日。
-
-**前置预检（全绿才开工）**：
-
-- [ ] 阶段 1～6 验收 + G1-G10 总检全过（评审记录：仓库 `deliverables/service-split/final-review-gmatrix-2026-10-13.md`）；
-- [ ] 拆分栈已在生产就位（方式五），`business ≥ 2` 副本、Redis 共享（撤销/限流/队列跨副本生效）；
-- [ ] 功能等价抽测通过：登录/2FA、KB CRUD、文档上传（同步 + binary 异步状态机）、chat/agent SSE、webhook 验签、分享链接语义码；
-- [ ] 数据库：Flyway 已迁移至最新（baseline 17 + 后续迁移），生产窗口内 Prisma 不再执行迁移；
-- [ ] 生产配置就位：`AUTH_SECRET`（与历史一致）、`AI_INTERNAL_TOKEN`、`CORS_ALLOWED_ORIGINS`（显式白名单）、`COOKIE_SECURE=true`；
-- [ ] 观测就位：`/api/health/ready` 告警、业务日志（Loki/结构化）、webhook 投递记录可查。
-
-**切换步骤**：
-
-1. **切流**：生产入口（DNS/LB/Ingress）指向拆分网关。切流即影子：网关把 `/api` 路由到业务服务，Next 内同名业务 handler 从此不接收生产流量。手册 4.10 的“停写内存、只写 DB”在此天然成立——DB 本就是写穿目标，业务服务直接读写同一库。Vue 前端同域：`VITE_API_BASE` 留空，浏览器只见网关一个源，Cookie 不跨域；
-2. **观察 24h**：`/api/health/ready` 无 P0（AI 降级 503 属预期内自愈，不算 P0）；抽样验证登录/2FA、chat/agent SSE 帧序、webhook 验签、限流 429 与 `Retry-After`、撤销 401 跨副本生效；
-3. **代码下线**（24h 无 P0 后执行）：
-   - 代码搜索门禁：`grep -rn "__KAI_.*_STORE__" src/` —— 生产路径读取必须清零（业务 handler 删除后自然清零；测试/脚本引用单独评估）；
-   - 删除 Next 内业务 handler（`src/app/api/**` 中已被网关接管的业务路由；手册允许“改为 301 到业务服务或删除”，推荐删除——入口已在网关，Next 内无需重定向层）；
-   - 保留 Vue 静态页面与 Next `public/` 静态/PWA 资产职责（均由网关 `/` 服务）；
-4. **收尾**：更新 [overview.md](../architecture/overview.md) 的适用版本标注（单体形态仅存于版本历史）；`AI_SERVICE_URL` 保持开启（前端内置的 chat 兜底逻辑不再有业务 API 可达，回退开关即网关注释切换）。
-
-**验证清单（切流后立即 + 24h 各跑一轮）**：登录/2FA 双分支、失败锁定、API Key scope 403、KB CRUD + 成员角色 PATCH + 审计链、文档索引状态机（ready/failed/轮询）、chat SSE(sources/token/done)、agent SSE(init/step/done/error/end)、webhook 三事件验签、分享链接 401/403/200/410、限流 429 + Retry-After——逐项对应各阶段验收文档的实测命令。
-
-**回滚预案（任一步可执行，无数据破坏）**：
-
-- 切回单体：生产入口 DNS/LB 指回 Next 单体入口即可。单体与业务服务读写同一 PostgreSQL（Flyway 只增不改历史表），内存 Store 水合即恢复原读路径；
-- 代码下线后回滚：`git revert` 恢复 Next 业务 handler（代码在版本库），重新部署单体；
-- `flyway_schema_history` 表仅记录基线，删除该表即回到 Prisma 单一治理（不推荐，仅数据层审计用）。
-
-## 前端切流与回退（V1 起，Vue 3 绞杀重写；V6 已全量接管）
-
-`frontend/`（Vue 3 + Element Plus + Vite，pnpm workspace 包 `kai-frontend`）已**全量接管 30 个页面**（V6 起 Next 页面层已删除，Next 仅服务 `/api/**` 与 `public/` 静态资产）。已迁移路由清单维护在 `deploy/nginx/routes.conf`（单一事实源，现 28 条），切换唯一入口是 `scripts/deploy/switch-frontend.sh`；switch conf 为空时没有页面切流，`location /` 只兜底 API 与静态资产，未知页面路径返回 404。`/api/*` 反代业务服务的配置不受前端切流影响。首页 `location = /` 优先返回构建期预渲染的 `dist/home.html`（SEO 静态首帧，产物缺失自动回退 SPA index.html）。
-
-### 前置
-
-```bash
-pnpm -C frontend build     # 产出 frontend/dist（compose 挂载为网关 /srv/vue，只读）
-```
-
-### 切流
-
-```bash
-# 1. 编辑 deploy/nginx/routes.conf：追加（或删除）已迁移路径；
-#    精确路由写 /path，动态段路由写 /prefix/*（如 /share-doc/*）
-# 2. 应用（自动备份当前 routes.conf 到 routes.conf.bak → 生成 switch conf
-#    → 网关内 nginx -t 校验 → reload；校验失败自动回写占位 conf 并 reload）
-scripts/deploy/switch-frontend.sh apply
-```
-
-### 回退（任一，秒级、无状态）
-
-```bash
-scripts/deploy/switch-frontend.sh rollback    # 恢复上一次 apply 前的 routes.conf
-scripts/deploy/switch-frontend.sh revert-all  # 清空页面切流表（非页面回退）
-```
-
-> V6 起 Next 已无页面层：revert-all 只用于演练/状态还原，清空后未知页面路径由
-> Next 404；需要页面回退请用 rollback，或回滚到 V5 之前代码。
-
-### 验证
-
-- 已切页面返回 Vue 首帧（HTML 含 `id="app"`，静态资源走 `/assets/`，与 `/_next/static` 不冲突）；
-- 未切页面路径由 Next 兜底 404（V6 起 `location /` 仅服务 `/api/**` 与 `public/` 静态资产——vendor/widget/PWA 单源）；
-- 登录会话有效：`kai-token` Cookie 由服务端 Set-Cookie 签发，Vue 页面与 `/api/**` 同域共享；
-- `clean-machine-drill.sh` 内置 5.5 切流演练段：apply → Vue 断言 → revert-all（路由表清空） → rollback 状态还原。
+回滚：静态产物与 Next 镜像分开发布，回滚任一层即可；不再有“回退到 Next 页面”的概念。
 
 ## 升级与回滚
 
