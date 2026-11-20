@@ -10,7 +10,7 @@ authors:
 owner: 技术负责人
 reviewed_at: 2026-10-13
 review_interval: 180
-status: published
+status: archived
 applies_to: ">=1.2.0"
 related:
   - ../service-split.md
@@ -24,7 +24,7 @@ related:
 
 ## 状态
 
-已接受（accepted）
+已被取代（superseded，2026-11-20 拆分线退役；见 [ADR-0010](adr-0010-single-runtime-consolidation.md)）
 
 ## 背景
 

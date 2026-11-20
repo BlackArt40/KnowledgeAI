@@ -9,7 +9,6 @@ import { isStorageEnabled } from "@/lib/storage";
 import { isDbEnabled } from "@/lib/db/client";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
 import { isEmailEnabled } from "@/lib/email";
-import { isAiServiceEnabled, aiServiceLabel } from "@/lib/rag/remote";
 import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/rate-limit";
 import { getLogLevel, isLokiEnabled, lokiUrl } from "@/lib/obs/log";
 
@@ -39,15 +38,6 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
       enabled: llmOn,
       detail: emb,
       envVars: ["OPENAI_API_KEY", "EMBEDDING_MODEL"],
-    },
-    {
-      id: "ai-service",
-      label: "AI 服务（阶段 1 拆分）",
-      enabled: isAiServiceEnabled(),
-      detail: isAiServiceEnabled()
-        ? `Python RAG @ ${aiServiceLabel()}（索引/检索/生成远端执行）`
-        : "进程内 TS RAG（单体模式）",
-      envVars: ["AI_SERVICE_URL", "AI_INTERNAL_TOKEN"],
     },
     {
       id: "database",

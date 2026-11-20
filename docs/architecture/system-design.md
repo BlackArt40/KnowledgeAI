@@ -29,21 +29,21 @@ related:
 
 ## 0. 本文定位与核对口径
 
-本文不是设计意图的复述，而是**对代码的一次快照核对**。所有数量、路径、事件名均可在仓库中复现（命令见 [附录 C](#附录-c-如何复核本文)），核对日期 **2026-11-04**。
+本文不是设计意图的复述，而是**对代码的一次快照核对**。所有数量、路径、事件名均可在仓库中复现（命令见 [附录 C](#附录-c-如何复核本文)），核对日期 **2026-11-20**。
 
 | 维度 | 核对结果 | 证据位置 |
 |------|----------|----------|
 | 前端 | Vue 3 + Vite，**30 个页面路由**（另 1 条 404 兜底） | `frontend/src/router/index.ts` |
 | 接口层 | Next.js 16 App Router，**115 个 `route.ts`** | `src/app/api/**/route.ts` |
 | 领域层 | `src/lib/` **33 个子目录** + 8 个顶层工具文件 | `src/lib/` |
-| 数据模型 | Prisma **29 个 model**，**25 个迁移目录** | `prisma/schema.prisma`、`prisma/migrations/` |
-| 拆分服务 | Java 17 业务服务（**10 个控制器 / 27 个映射**）+ Python FastAPI | `services/business`、`services/ai` |
-| 部署产物 | compose **9 个服务**；k8s 四组工作负载 | `docker-compose.split.yml`、`k8s/split.yaml` |
-| 契约测试 | Python pytest 约 **34 例**；Node 侧 `tests/` + `scripts/smoke/` | `services/ai/tests/`、`scripts/smoke/` |
+| 数据模型 | Prisma **29 个 model**，**26 个迁移目录** | `prisma/schema.prisma`、`prisma/migrations/` |
+| 运行形态 | 单一运行时：Vue 静态 + Next API + TS worker + Prisma | ADR-0010 |
+| 部署产物 | Next standalone + `frontend/dist`；单机 compose | `Dockerfile`、`docker-compose.yml` |
+| 契约测试 | Node 侧 `tests/` + `scripts/smoke/`；Vue Playwright | `tests/`、`scripts/smoke/`、`frontend/e2e/` |
 
 **与既有文档的两点口径**：
 
-1. 页面数、迁移数、切流条数已全站对齐——`AGENTS.md`、README、`overview.md`、`service-split.md` 均按 **30 个页面路由 / 25 个迁移目录 / 28 条切流规则**书写；再发现不一致时，以[附录 C](#附录-c-如何复核本文)的命令为准（复核日期见上）。
+1. 页面数与迁移数已全站对齐——`AGENTS.md`、README、`overview.md` 按 **30 个页面路由 / 26 个迁移目录**书写；再发现不一致时，以[附录 C](#附录-c-如何复核本文)的命令为准（复核日期见上）。
 2. 拆分形态的 Java 业务服务只覆盖 **27 个端点**，而 Next 侧有 115 个路由。因此**拆分拓扑只覆盖核心链路，不是全量 API**（见续篇 [§9 风险 R1](system-design-runtime.md#_9-演进现状与风险)）。
 
 ## 1. 系统上下文（C4-L1）
@@ -129,15 +129,11 @@ flowchart TB
 | 部署单元 | 技术栈 | 端口 | 对外暴露 | 副本 | 职责 |
 |----------|--------|------|----------|------|------|
 | `gateway` | nginx | `${GATEWAY_PORT:-8088}` → 80 | 是 | 1 | 路由、SSE 不缓冲、副本故障重试 |
-| `business` | Java 17 + Spring Boot | 8080 | 否 | ≥2(k8s) | 鉴权、租户、问答编排、Agent、审计、用量 |
-| `app` | Next.js 16（纯 API） | 3000 | 否 | 1 | 未迁移 API、`public/` 单源静态资产、前端兜底 |
-| `ai` | Python + FastAPI | 8000 | 否 | 1（可扩） | 解析、切片、嵌入、检索、生成、Agent worker |
+| `app` | Next.js 16（纯 API） | 3000 | 否 | 1 | 全部业务 API、`public/` 单源静态资产 |
 | `worker` | Node（esbuild 打包 `worker.ts`） | — | 否 | 1 | BullMQ 队列消费（`doc-process` 等） |
 | `redis` | Redis 7 | 6379 | 否 | 1 | 限流滑窗、jti 撤销、`agent:queue`、Pub/Sub |
 | `postgres` | pgvector/pg16 | 5432 | 否 | 1 | 唯一持久化事实源 |
 | `minio` + `minio-init` | MinIO | 9000 / 9001 | 9000 | 1 | 对象存储（初始化 bucket） |
-
-生产切流还有一层“前端绞杀”：`deploy/nginx/routes.conf` 的 **28 条规则**（23 个精确路径 + 5 个通配，含首页 `/`）由 `scripts/deploy/switch-frontend.sh` 生成 `frontend-switch.conf`。该文件决定某条页面路径走 Vue 静态还是回退 Next。回退是秒级的，因为只改 include 文件并 reload。
 
 ### 2.2 开发与 CI 形态（单体 + 双基址）
 
@@ -274,29 +270,9 @@ flowchart LR
 | 集成与出站 | `webhooks/`、`integrations/`、`external/`、`email/`、`voice/` | Webhook 签名投递、机器人、Confluence / Notion / Web / arXiv / GitHub、邮件、STT / TTS |
 | 平台能力 | `db/`、`storage/`、`upload/`、`obs/`、`health/`、`i18n/`、`theme/`、`openapi/` | 水合与写穿、对象存储、分片上传、追踪 / 日志 / 指标、就绪探针、服务端翻译、品牌色、OpenAPI 生成 |
 
-### 4.4 拆分服务
+### 4.4 拆分服务（已退役）
 
-**Java 业务服务**（`services/business`，`@Profile("pg")`）：
-
-| 包 | 内容 |
-|----|------|
-| `auth/` | `AuthController`、`JwtAuthFilter`、`KaiJwtService`、`ApiKeyService`、`TotpService`、`JtiRevocationService`、`LoginLockoutService`、`Pbkdf2PasswordService` |
-| `tenant/` | `KbController`、`TeamMemberController`（租户内 RBAC） |
-| `kb/` | `KbWriteController`（文档写入 / 删除 / 分享 / 状态） |
-| `chat/` | `ChatController`、`SseFrameParser`（透传 Python 流并补 `messageId` / `conversationId`） |
-| `agent/` | `AgentController`、`AgentEventBus`、`WebhookService` |
-| `audit/` `usage/` `ratelimit/` `share/` `health/` `ai/` | 审计、用量、限流过滤器、公开分享、探针、`AiClient` |
-
-**Python AI 服务**（`services/ai`）：
-
-| 模块 | 职责 |
-|------|------|
-| `main.py` | FastAPI 入口；`/health` + `/internal/{index, retrieve, chat/stream, agent/run, testing/reset}` |
-| `parser.py` `chunker.py` `embeddings.py` | 多格式解析、切片、嵌入（可回退本地哈希向量） |
-| `retrieval.py` `bm25.py` | 混合检索（向量 + BM25），**强制 `workspace_id` + `kb_id` 双匹配** |
-| `generation.py` | 流式生成与引用组装 |
-| `agent.py` `agentqueue.py` | Agent 图执行；Redis List `agent:queue` 消费 + Pub/Sub 进度发布 |
-| `store.py` `settings.py` `external.py` | 索引存储、配置、外部源抓取（含 SSRF 基线） |
+`services/business`（Java）与 `services/ai`（Python）已于 2026-11-20 删除，主线由 `src/` 统一承载；决策见 [ADR-0010](adr/adr-0010-single-runtime-consolidation.md)。
 
 ## 5. 数据架构
 
@@ -373,17 +349,13 @@ KnowledgeAI/
 
 | 端口 | 归属 |
 |------|------|
-| 8088 | 网关（宿主机映射到容器 80） |
 | 3000 | Next API（开发 / 单体） |
 | 5173 | Vite dev |
 | 4173 | Vite preview（页面验收） |
 | 9000 / 9001 | MinIO API / 控制台 |
-| 8000 / 8080 | AI 服务 / 业务服务（仅容器网络） |
 
 | 环境变量 | 作用 |
 |----------|------|
-| `AI_SERVICE_URL` | 空 = 进程内 RAG；非空 = 走 Python（失败返回 503） |
-| `AI_INTERNAL_TOKEN` | `/internal/*` 唯一凭据，未配 = 全部 401 |
 | `DATABASE_URL` | 空 = 纯内存模式 |
 | `REDIS_URL` | 空 = 内存限流 / 内存队列 |
 | `VECTOR_STORE` | `pgvector` / `chroma` / `pinecone` / 缺省内存 |
@@ -400,8 +372,6 @@ grep -c "^model " prisma/schema.prisma                   # 29
 ls -d prisma/migrations/*/ | wc -l                       # 25
 grep -rl "prisma" src/app/api --include=route.ts | wc -l  # 0（接口层不直连 ORM）
 grep -c "path:" frontend/src/router/index.ts              # 31（含 404 兜底）
-wc -l < deploy/nginx/routes.conf                          # 28
-grep -rhoE '@(Get|Post|Put|Delete|Patch)Mapping' services/business/src/main/java | wc -l  # 27
 ```
 
 ## 修订记录

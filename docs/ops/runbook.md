@@ -157,7 +157,7 @@ npx prisma migrate deploy
 
 ### 对象存储（阶段 2：bucket 与 Postgres 缺一不可）
 
-阶段 2 起上传文件以对象存储为唯一来源（`service-split.md` G4），**知识库的完整恢复
+配置对象存储后，上传文件以对象存储为唯一来源，**知识库的完整恢复
 = Postgres 备份 + bucket 备份，二者缺一不可**：只恢复 DB 会得到 `ready` 文档行但对象
 已失（重新索引拉取 404）；只恢复 bucket 则元数据/会话丢失。
 

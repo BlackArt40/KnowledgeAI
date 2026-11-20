@@ -7,23 +7,6 @@
 //   - vector store failure propagates  -> src/lib/rag/retriever-advanced.test.ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/rag/remote", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/rag/remote")>();
-  return {
-    ...actual,
-    isAiServiceEnabled: vi.fn(() => true),
-    remoteRetrieve: vi.fn(async () => {
-      throw new Error("AI service unreachable");
-    }),
-  };
-});
-
-vi.mock("@/lib/rag/retriever", () => ({
-  retrieve: vi.fn(async () => {
-    throw new Error("local RAG must not be used when AI_SERVICE_URL is set");
-  }),
-}));
-
 vi.mock("@/lib/db/hydrate", () => ({
   isHydrated: () => false,
   hydrateFromDb: vi.fn(async () => {}),
@@ -39,11 +22,8 @@ vi.mock("@/lib/db/hydrate", () => ({
   loadWebhookFromDb: vi.fn(async () => false),
 }));
 
-import { POST as chatPOST } from "@/app/api/chat/route";
 import { GET as kbGET } from "@/app/api/knowledge-base/[id]/route";
 import { GET as agentTasksGET } from "@/app/api/agent/tasks/route";
-import { remoteRetrieve } from "@/lib/rag/remote";
-import { retrieve } from "@/lib/rag/retriever";
 import { createToken } from "@/lib/auth/session";
 import { findUserByEmail, seed as seedUsers } from "@/lib/auth/store";
 import { addDocument, createKb, listDocuments } from "@/lib/kb/store";
@@ -70,8 +50,6 @@ let cookie = "";
 
 beforeEach(async () => {
   for (const k of STORE_KEYS) delete (globalThis as Record<string, unknown>)[k];
-  vi.mocked(remoteRetrieve).mockClear();
-  vi.mocked(retrieve).mockClear();
   seedUsers();
 
   const kb = createKb({ name: "降级矩阵知识库", desc: "" }, "usr_owner");
@@ -83,28 +61,6 @@ beforeEach(async () => {
     { id: user.id, email: user.email, name: user.name, role: user.role },
     60
   )}`;
-});
-
-function post(path: string, body: unknown): Request {
-  return new Request(`http://localhost${path}`, {
-    method: "POST",
-    headers: { cookie, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-describe("AI service unavailable (AI_SERVICE_URL set)", () => {
-  it("returns 503 + Retry-After instead of silently falling back to local RAG", async () => {
-    const res = await chatPOST(post("/api/chat", { kbId, query: "向量检索怎么做" }));
-
-    expect(res?.status).toBe(503);
-    expect(res?.headers.get("Retry-After")).toBe("30");
-    await expect(res?.json()).resolves.toMatchObject({ retryable: true });
-    expect(remoteRetrieve).toHaveBeenCalledTimes(1);
-    expect(retrieve).not.toHaveBeenCalled();
-    // No SSE body on the degradation path — clients must retry, not parse.
-    expect(res?.headers.get("content-type") ?? "").not.toContain("event-stream");
-  });
 });
 
 describe("database unavailable on read-back paths", () => {

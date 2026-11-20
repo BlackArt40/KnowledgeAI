@@ -86,37 +86,30 @@ flowchart LR
   VEC --> VDB
 ```
 
-## 生产形态：三服务拆分（>=1.3.0）
-
-[服务拆分](./service-split.md) 阶段 1～6 完成后，**生产部署形态为三服务**（适用版本见下文）。注意：本文其余章节描述的进程内 RAG / Agent / 队列实现，仍适用于单体形态与开发模式。
+## 生产形态：Vue + Next API（当前）
 
 ```mermaid
 flowchart LR
-  C["浏览器 / SDK"] --> GW["网关 nginx<br/>/api → 业务；/ → 前端<br/>SSE 不缓冲（A6.3）"]
-  subgraph Split["三服务"]
-    BIZ["业务服务（Java 17 + Spring Boot）<br/>鉴权 / 租户 / 任务 / Webhook<br/>多副本 + Redis 共享状态"]
-    FE["前端（Vue 3 静态 + Next API 兜底）<br/>页面 / 静态 / PWA<br/>单源资产 vendor/widget 经兜底可达"]
-    AI["AI 服务（Python FastAPI）<br/>RAG + LangGraph Agent worker<br/>仅内网（ClusterIP，无公网入口）"]
-  end
-  GW --> BIZ
-  GW --> FE
-  BIZ --> AI
-  BIZ --> PG2[("PostgreSQL")]
-  BIZ --> RD2[("Redis<br/>限流 · jti · agent:queue")]
-  AI --> RD2
-  AI --> VDB2[("pgvector / Chroma / Pinecone")]
-  BIZ --> S32[("S3 / MinIO")]
+  C["浏览器 / SDK"] --> FE["Vue 3 静态页面<br/>frontend/dist"]
+  C --> API["Next API<br/>/api/** + public 静态资产"]
+  FE --> API2["/api 反向代理"]
+  API2 --> API
+  API --> PG[("PostgreSQL / Prisma")]
+  API --> RD[("Redis（可选）<br/>限流 · jti · 队列")]
+  API --> S3[("S3 / MinIO（可选）")]
+  W["TS worker<br/>BullMQ"] --> PG
+  RD --> W
 ```
 
-拆分要点（详见 [service-split.md](./service-split.md) 与各阶段验收文档）：
+当前架构（2026-11-20 起）：
 
-- **浏览器永不直连 Python**（契约 #1）：AI 服务仅经业务服务的 `/internal/*`（内网令牌）可达；
-- **业务读路径 = PostgreSQL 唯一事实源**（ADR-0009 红线），Java 侧无内存事实源；
-- **跨语言兼容字节级锁定**：密码哈希（PBKDF2/legacy SHA-256）、JWT(HS256 claims)、API Key(AES-256-GCM + HKDF)、TOTP(RFC 6238)、Webhook 签名（HMAC-SHA256 `sha256=` hex）均有双向向量测试；
-- **Agent 队列**：Redis List `agent:queue`(Java LPUSH / Python BLPOP)，进度经 Pub/Sub `agent:<taskId>` 由业务服务转 SSE；
-- **部署产物**：[docker-compose.split.yml](../../docker-compose.split.yml)（一键起全栈，`--scale business=N` 多副本）与 [k8s/split.yaml](../../k8s/split.yaml)（三服务 + 网关，探针见 6.4）。
+- **唯一运行时**：Vue 静态前端 + Next API + TypeScript worker + Prisma/PostgreSQL（ADR-0010）；
+- **浏览器只访问 Vue 页面与 `/api/**`**：业务 API、认证、KB、Chat/Agent、Webhook、计费、限流、审计均由 `src/` 承载；
+- **数据读路径**：进程内 store + Prisma 写穿/水合（ADR-0001）；生产可配 PostgreSQL、Redis 与 S3；
+- **Agent 队列**：BullMQ（配置 `REDIS_URL`）或进程内队列；SSE 由 Next API 直接转发并带 25s 保活/硬超时；
+- **部署产物**：`frontend/dist` 静态页面 + Next standalone API；不再有 split compose、K8s split 或 nginx 切流脚本。
 
-**适用版本标注（A6.7）**：本页“内存 Store + 写穿 DB”“进程内 Agent/队列”等章节描述的是**单体形态**（<=1.2.x，演示 / 开发模式默认）。三服务形态（>=1.3.0）下，业务读路径由 Java + PostgreSQL 承接；进程内实现仅作为绞杀式迁移的回退开关保留，`AI_SERVICE_URL` 置空即回退单体。
+拆分线（Java/Python/Flyway）已于 2026-11-20 退役，历史方案见 [service-split.md](./service-split.md)。
 
 ## 核心架构决策
 

@@ -144,17 +144,10 @@ src/
 ## deploy/ — 部署资产
 
 ```
-deploy/
-├── nginx.conf                    # 网关主配置（/api → 业务；location / → Next 兜底）
-├── env.split.example             # 拆分形态（网关 + business + ai）环境变量模板
-├── moto.Dockerfile               # 本地演练用 AWS 服务替身镜像（S3 兼容端点）
-├── .env.drill                    # 干净机器演练的本地 env（gitignored，不入库）
-└── nginx/
-    ├── routes.conf               # 前端切流路由表（28 条，单一事实源）
-    └── frontend-switch.conf      # switch-frontend.sh 生成的 switch conf（随切流提交留审计轨迹）
+deploy/                            # 主线部署辅助资产（拆分线已退役）
 ```
 
-> 切流唯一入口：`scripts/deploy/switch-frontend.sh`(list/apply/rollback/revert-all)，见 [部署指南](../ops/deployment-guide.md)。
+> Vue 构建产物由静态服务器/CDN 托管，`/api/*` 反代 Next；不再有 nginx 切流脚本，见 [部署指南](../ops/deployment-guide.md)。
 
 ## 根目录关键文件
 
@@ -169,8 +162,7 @@ deploy/
 | `instrumentation.ts` + `instrumentation-node.ts` | 服务器启动钩子（启动队列 worker） |
 | `worker.ts` | 独立 Worker 进程入口（Docker worker 服务） |
 | `Dockerfile` | 多阶段构建（deps → build → minimal runner；standalone 剥离清单） |
-| `docker-compose.yml` | 单体编排：app + worker + Redis + PostgreSQL(pgvector) |
-| `docker-compose.split.yml` | 三服务拆分编排（网关 + business + ai + 基础设施） |
+| `docker-compose.yml` | 单机编排：app + worker + Redis + PostgreSQL(pgvector) |
 | `.env.example` | 环境变量参考（含 demo fallback 文档；与 env-vars.md parity 门禁） |
 
 > 本地 agent 上下文（`AGENTS.md`、`CLAUDE.md`、`docs/agents/`）由 `.gitignore` 排除，仅存于开发机，不随仓库分发。
@@ -180,8 +172,6 @@ deploy/
 ```
 scripts/
 ├── deploy/
-│   ├── switch-frontend.sh       # 前端切流唯一入口（apply/rollback/revert-all）
-│   ├── clean-machine-drill.sh   # 干净机器全栈演练（一键起 + 冒烟 + 切流段）
 │   ├── staging.sh               # staging 部署（CI 调用）
 │   └── blue-green.sh            # 生产蓝绿切换（健康检查门 + 自动回滚）
 ├── cleanup-temp-files.ts        # 临时文件清理（可配 cron）
