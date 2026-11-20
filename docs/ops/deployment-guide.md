@@ -141,7 +141,10 @@ kubectl apply -f k8s/deployment.yaml
   2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
      注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
-## 方式五：三服务拆分部署（>=1.3.0，生产形态）
+## 方式五：三服务拆分部署（>=1.3.0，已冻结）
+
+> **2026-11-20 起拆分线冻结**：主线默认形态为 Vue 静态 + Next API + TS worker + Prisma。
+> 本节仅作历史部署参考，拆分栈将在后续版本删除；不要新切 Java/Python 流量。
 
 服务拆分阶段 6 产物（[service-split.md](../architecture/service-split.md) 6.1～6.3）：**网关（nginx） → 业务服务（Java ×N 副本） + Vue 静态前端 + AI 服务（Python）**，AI 仅内网可达（浏览器永不直连 Python）。前端继续**同域反代**（手册 6.1 推荐）：Vue 的 `VITE_API_BASE` 留空，浏览器只见网关一个源，Cookie 不跨域。
 

@@ -188,4 +188,17 @@ describe("agent run SSE 终态载荷（多进程）", () => {
     expect(payload.message).toBe("排队或执行失败");
     expect(meter.calls).toEqual([]);
   });
+
+  it("SSE 空闲超过硬超时时下发 stream_timeout 并关流", async () => {
+    vi.stubEnv("AGENT_STREAM_TIMEOUT_SECONDS", "1");
+    try {
+      const res = await handleAgentRun(runRequest("回归：SSE 超时"));
+      const payload = await readJsonFrame<ErrorPayload>(res, "error");
+
+      expect(payload.code).toBe("stream_timeout");
+      expect(payload.message).toContain("等待超时");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  }, 10_000);
 });

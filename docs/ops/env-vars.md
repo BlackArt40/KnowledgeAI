@@ -127,7 +127,7 @@ related:
 | `GATEWAY_PORT` | 否 | `8088` | 拆分部署网关（nginx，`docker-compose.split.yml`）的宿主端口；`/api` → 业务服务多副本，其余 → 前端 |
 | `USAGE_ALERT_QA_LIMIT` | 否 | `0` | 业务服务 usage.alert webhook 的当日问答数阈值；`0` = 按 plan 判定（free 100，其余不限量） |
 | `AGENT_TASK_TIMEOUT_SECONDS` | 否 | `900` | 业务服务懒回收：queued/running 超过该秒数且无终态快照 → 标记 failed（worker 中途挂掉的可重试语义，A5.6） |
-| `AGENT_STREAM_TIMEOUT_SECONDS` | 否 | `300` | 业务服务 Agent SSE 转发硬超时（秒），超时关流 |
+| `AGENT_STREAM_TIMEOUT_SECONDS` | 否 | `300` | Agent SSE 空闲硬超时（秒）：Next 主线与拆分业务服务共用；超时下发 `error(stream_timeout)+end` 并关流 |
 | `TAVILY_API_KEY` / `SERPAPI_KEY` / `BRAVE_SEARCH_KEY` | 否 | 空 | AI 服务 Agent 外源搜索凭据（任一配置即启用 web 搜索；全空 = 演示回退）。与 Next 侧同名同义 |
 
 ## 对象存储
