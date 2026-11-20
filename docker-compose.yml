@@ -57,9 +57,6 @@ services:
       # P1: explicit role (default worker); overrides env_file so a stray
       # QUEUE_CONSUMER=web in .env.local can't disable the only consumer.
       QUEUE_CONSUMER: ${QUEUE_CONSUMER:-worker}
-      # 阶段 1 服务拆分：doc-process 队列任务在 worker 里转发到 ai 服务
-      AI_SERVICE_URL: ${AI_SERVICE_URL:-}
-      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
       # 限流档位可配置（性能测试等场景需调高，如 RATE_LIMIT_PER_MIN=2000）
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
       RATE_LIMIT_ANON_PER_MIN: ${RATE_LIMIT_ANON_PER_MIN:-20}
