@@ -20,6 +20,17 @@ import { agentRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/obs/errors";
 import { log } from "@/lib/obs/log";
 
+/** SSE keep-alive interval; matches the split business service's 25s ping. */
+const SSE_PING_INTERVAL_MS = 25_000;
+const DEFAULT_STREAM_TIMEOUT_SECONDS = 300;
+
+/** Server-side hard timeout for a run; blank/invalid falls back to 300s. */
+function streamTimeoutMs(): number {
+  const raw = Number(process.env.AGENT_STREAM_TIMEOUT_SECONDS);
+  const seconds = Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_STREAM_TIMEOUT_SECONDS;
+  return seconds * 1000;
+}
+
 /** POST /api/agent/run -> text/event-stream (shared by legacy + v1 routes). */
 export async function handleAgentRun(
   req: Request,
@@ -82,14 +93,20 @@ export async function handleAgentRun(
   const streamResponse = () => {
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (obj: unknown): boolean => {
+        let lastActivityAt = Date.now();
+        const sendRaw = (chunk: string): boolean => {
           if (req.signal.aborted) return false;
           try {
-            controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`));
+            controller.enqueue(enc.encode(chunk));
             return true;
           } catch {
             return false;
           }
+        };
+        const send = (obj: unknown): boolean => {
+          const ok = sendRaw(`data: ${JSON.stringify(obj)}\n\n`);
+          if (ok) lastActivityAt = Date.now();
+          return ok;
         };
 
         // Subscribe to the event bus BEFORE enqueuing so we never miss the
@@ -97,15 +114,45 @@ export async function handleAgentRun(
         // attach the listener).
         let unsubscribe: (() => void) | null = null;
         let streamClosed = false;
+        let watchdog: ReturnType<typeof setInterval> | null = null;
 
         const closeStream = () => {
           if (streamClosed) return;
           streamClosed = true;
+          if (watchdog) {
+            clearInterval(watchdog);
+            watchdog = null;
+          }
           if (unsubscribe) {
             try { unsubscribe(); } catch { /* already unsubscribed */ }
           }
           try { controller.close(); } catch { /* already closed */ }
         };
+
+        // 阶段 2 收编：拆分业务服务的 SSE watchdog —— worker 静默时不能把
+        // 连接永久挂住。空闲 25s 发 `: ping` 保活；超过硬超时发
+        // error(stream_timeout) + end 并关流（任务仍由 worker/队列恢复兜底）。
+        const timeoutMs = streamTimeoutMs();
+        const tickMs = Math.min(SSE_PING_INTERVAL_MS, Math.max(250, Math.floor(timeoutMs / 2)));
+        watchdog = setInterval(() => {
+          if (streamClosed) return;
+          const idleMs = Date.now() - lastActivityAt;
+          if (idleMs >= timeoutMs) {
+            log.warn({ taskId: task.id, idleMs }, "[agent/run] stream timeout");
+            send({
+              type: "error",
+              code: "stream_timeout",
+              message: "等待超时，请稍后在任务列表查看结果",
+            });
+            send({ type: "end" });
+            closeStream();
+            return;
+          }
+          if (idleMs >= SSE_PING_INTERVAL_MS && sendRaw(": ping\n\n")) {
+            lastActivityAt = Date.now();
+          }
+        }, tickMs);
+        (watchdog as unknown as { unref?: () => void }).unref?.();
 
         // P4-3: 只有真正进了队列的任务才计配额 —— 背压/入队失败时用户并没有
         // 消耗算力，之前在建 task 后就 +1，等于让被拒绝的请求也扣一次额度。
