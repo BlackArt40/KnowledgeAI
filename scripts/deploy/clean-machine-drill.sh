@@ -190,20 +190,17 @@ if [ -f frontend/dist/index.html ]; then
   echo "$LOGIN_HTML" | grep -q '/assets/' && ok "Vue 资源走 /assets/（与 /_next/static 不冲突）" \
     || bad "未发现 /assets/ 引用"
   SPLIT_ENV_FILE=deploy/.env.drill scripts/deploy/switch-frontend.sh revert-all >/dev/null 2>&1 \
-    && ok "switch revert-all（秒级回退开关：全部流量回 Next）" || bad "switch revert-all 失败"
-  AFTER_HTML=""
-  for _ in 1 2 3 4 5; do
-    AFTER_HTML=$(curl -s -m 10 "$GW/login")
-    echo "$AFTER_HTML" | grep -q '_next' && break
-    sleep 3
-  done
-  echo "$AFTER_HTML" | grep -q '_next' && ok "回退后登录页回到 Next" \
-    || bad "回退后仍非 Next 页面"
+    && ok "switch revert-all（清空页面切流表；V6 起不再回退到 Next 页面）" || bad "switch revert-all 失败"
+  if grep -v '^\s*#' deploy/nginx/routes.conf | grep -v '^\s*$' | grep -q .; then
+    bad "revert-all 后 routes.conf 仍含切流路由"
+  else
+    ok "revert-all 后 routes.conf 已清空（等待 rollback 恢复）"
+  fi
   # 演练结束恢复路由表：revert-all 已把清空【前】的路由备份进 routes.conf.bak，
   # rollback 恢复路由表并重新 apply（conf 与路由表保持一致，留下审计轨迹）
   SPLIT_ENV_FILE=deploy/.env.drill scripts/deploy/switch-frontend.sh rollback >/dev/null 2>&1 \
     && ok "switch rollback（路由表恢复至演练前 + conf 同步）" || bad "switch rollback 失败"
-  grep -q '^/login$' deploy/nginx/routes.conf && grep -q '^/usage$' deploy/nginx/routes.conf && ok "routes.conf 完整性（27 路由在位）" \
+  grep -q '^/login$' deploy/nginx/routes.conf && grep -q '^/usage$' deploy/nginx/routes.conf && ok "routes.conf 完整性（关键路由已恢复）" \
     || bad "routes.conf 恢复异常"
 fi
 

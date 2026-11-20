@@ -1,7 +1,7 @@
 // V1 前端 e2e：认证流 + 静态页 + 分享页（Vue 已接管的 11 个路由）。
 // 运行: pnpm -C frontend test:e2e（webServer 自动拉起 vite dev + Next dev）。
-// 断言风格与根 e2e 对齐：演示账号 + URL/可见性断言；/dashboard 内容属 Next
-// 壳（V2 才接管），这里只断 URL 与 Cookie 生效。
+// 断言风格与根 e2e 对齐：演示账号 + URL/可见性断言；/dashboard 由 Vue AppShell
+// 承载，这里断 URL 与 Cookie 生效。
 import { expect, test, type Page } from "@playwright/test";
 
 const OWNER = "owner@knowledgeai.dev";
@@ -13,7 +13,7 @@ async function login(page: Page): Promise<void> {
   await page.fill("#email", OWNER);
   await page.fill("#password", PASSWORD);
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  // 登录成功 = 整页跳 /dashboard（V2 前该路由由 Next 兜底，这里只断 URL）
+  // 登录成功 = 整页跳 /dashboard（Vue 路由，这里只断 URL）
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 }
 

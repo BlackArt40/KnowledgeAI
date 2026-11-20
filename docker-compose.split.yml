@@ -12,7 +12,7 @@
 #
 # 说明：
 #   - 前端继续同域（手册 6.1 推荐）：浏览器只见网关一个源，/api 由网关转业务，
-#     Cookie 不跨域；NEXT_PUBLIC_API_BASE 留空即同源。
+#     Cookie 不跨域；Vue 的 VITE_API_BASE 留空即同源。
 #   - AI 服务不映射宿主端口（契约 #1：Python 不对公网；A6.4 清单审计同口径）。
 #   - business 镜像由 services/business/Dockerfile 构建；Flyway 启动时自动迁移
 #     （baseline 17 + V18）。
@@ -28,7 +28,7 @@ services:
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
       # 前端绞杀切流（V1 起）：switch conf 由 scripts/deploy/switch-frontend.sh
-      # 维护（空占位 = 全部流量走 Next）；Vue 静态构建挂到 /srv/vue
+      # 维护（空占位 = 无页面切流，Next 仅兜底 API/静态资产）；Vue 构建挂到 /srv/vue
       - ./deploy/nginx/frontend-switch.conf:/etc/nginx/frontend-switch.conf:ro
       - ./frontend/dist:/srv/vue:ro
     depends_on:
@@ -46,8 +46,6 @@ services:
     environment:
       DATABASE_URL: postgresql://user:knowledgeai-dev@postgres:5432/knowledgeai
       REDIS_URL: redis://redis:6379/0
-      # 6.1：前端继续同域 —— API 基址留空（浏览器走网关同源 /api）
-      NEXT_PUBLIC_API_BASE: ""
       # 拆分形态：业务 API 在网关之后（Next 内同名路由被网关遮蔽）
       AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8000}
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}

@@ -1,8 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-// V1：认证 6 页 + 静态 3 页 + 分享 3 页已由 Vue 接管（网关 routes.conf 对齐）。
-// 布局约定：认证页用 AuthLayout 包裹（复刻 Next (auth) 组布局）；静态/分享页
-// 独立无壳（与 Next 顶级路由一致）。V2+ 逐阶段补齐其余页面。
+// 全量路由已由 Vue 接管（V6 收官；网关 routes.conf 对齐）。
+// 布局约定：认证页用 AuthLayout 包裹；静态/分享页独立无壳。
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
