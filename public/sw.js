@@ -33,7 +33,7 @@
  *      mask a dead origin behind a plausible-looking cached page.
  */
 
-const VERSION = "v6-vue-1";
+const VERSION = "v7-single-runtime-1";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 /** 本应用写过的 cache 命名空间：历史 p5-1-* + 现行 v<N>-*（由 VERSION 决定）。 */

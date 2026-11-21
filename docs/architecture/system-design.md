@@ -37,7 +37,7 @@ related:
 | 接口层 | Next.js 16 App Router，**115 个 `route.ts`** | `src/app/api/**/route.ts` |
 | 领域层 | `src/lib/` **33 个子目录** + 8 个顶层工具文件 | `src/lib/` |
 | 数据模型 | Prisma **29 个 model**，**26 个迁移目录** | `prisma/schema.prisma`、`prisma/migrations/` |
-| 运行形态 | 单一运行时：Vue 静态 + Next API + TS worker + Prisma | ADR-0010 |
+| 运行形态 | 单镜像：Vue 页面 + Next API + TS worker + Prisma | ADR-0010 |
 | 部署产物 | Next standalone + `frontend/dist`；单机 compose | `Dockerfile`、`docker-compose.yml` |
 | 契约测试 | Node 侧 `tests/` + `scripts/smoke/`；Vue Playwright | `tests/`、`scripts/smoke/`、`frontend/e2e/` |
 

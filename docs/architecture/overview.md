@@ -103,7 +103,7 @@ flowchart LR
 
 当前架构（2026-11-20 起）：
 
-- **唯一运行时**：Vue 静态前端 + Next API + TypeScript worker + Prisma/PostgreSQL（ADR-0010）；
+- **唯一运行时**：Vue 页面（由 Next 同镜像静态服务） + Next API + TypeScript worker + Prisma/PostgreSQL（ADR-0010）；
 - **浏览器只访问 Vue 页面与 `/api/**`**：业务 API、认证、KB、Chat/Agent、Webhook、计费、限流、审计均由 `src/` 承载；
 - **数据读路径**：进程内 store + Prisma 写穿/水合（ADR-0001）；生产可配 PostgreSQL、Redis 与 S3；
 - **Agent 队列**：BullMQ（配置 `REDIS_URL`）或进程内队列；SSE 由 Next API 直接转发并带 25s 保活/硬超时；

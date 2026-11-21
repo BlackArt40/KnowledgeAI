@@ -40,33 +40,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # 发布产物 1/2：Vue 静态站点（frontend/dist），由静态服务器/CDN 消费。
-      # Next 镜像只含 API 与 public 静态资产，不再把 Vue 页面打进镜像。
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11.7.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Vue frontend
-        run: pnpm -C frontend build
-
-      - name: Upload frontend dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist-prod
-          path: frontend/dist
-          retention-days: 30
-          if-no-files-found: error
-
+      # 单镜像：Dockerfile 内 pnpm build 会构建 Vue 并复制到 public/，
+      # 页面与 API 由同一个 Next 镜像提供。
       - name: Resolve image tag
         id: tag
         run: |

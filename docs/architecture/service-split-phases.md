@@ -24,6 +24,6 @@ related:
 阶段 0～6 的拆分实施、验收与切换步骤已于 2026-11-20 随拆分线一并退役。
 
 - Java 业务服务、Python AI 服务、Flyway、split compose、K8s split、nginx 切流脚本均已删除。
-- 主线唯一实现：Vue 静态前端 + Next API + TypeScript worker + Prisma。
+- 主线唯一实现：Vue 页面 + Next API + TypeScript worker + Prisma（同一镜像）。
 - 当前部署方式见 `docs/ops/deployment-guide.md`。
 - 历史阶段验收记录保留在 `deliverables/service-split/`，仅作归档。

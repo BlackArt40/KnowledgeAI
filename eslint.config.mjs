@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     // P7-1: vendored swagger-ui assets (minified third-party bundle copied
     // from node_modules by scripts/tools/copy-swagger-ui.mjs)
     "public/vendor/**",
+    // 单镜像部署：Vue 构建产物在 build 时复制到 public/assets（minified）。
+    "public/assets/**",
     // V0 (Vue 3 重写): frontend/ 有独立 eslint flat config + vue-tsc 门禁，
     // 根 ESLint（next 规则集）不适用，避免 Vue SFC 误报
     "frontend/**",

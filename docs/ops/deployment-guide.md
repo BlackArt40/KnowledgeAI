@@ -142,28 +142,28 @@ kubectl apply -f k8s/deployment.yaml
   2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
      注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
-## 方式五：Vue 静态前端 + Next API（当前形态）
+## 方式五：单镜像（Vue + Next API，当前形态）
 
 拆分线（Java/Python/nginx 切流）已于 2026-11-20 退役，仓库不再提供 split compose、K8s split 或切流脚本。
 
 生产方式：
 
-1. `pnpm -C frontend build` 产出 `frontend/dist`（含预渲染 `home.html`）。
-2. 由任意静态服务器/CDN 托管 `frontend/dist`：`/` 优先 `home.html`，其余 SPA fallback 到 `index.html`，`/assets/*` 长缓存。
-3. `/api/*` 反代到 Next（默认 `:3000`）；`/vendor/*`、`/widget/*`、`/sw.js` 等根 `public/` 资产由 Next 或静态层兜底。
-4. SSE 需关闭代理缓冲并放宽读超时；`AGENT_STREAM_TIMEOUT_SECONDS` 控制 Agent 流空闲硬超时。
+1. `pnpm build` 会执行 `frontend build` → `scripts/tools/copy-vue-dist.mjs` → `next build`，把 Vue 页面与 API 打进同一个镜像。
+2. 运行 `node server.js`：`/` 返回预渲染 `home.html`，其余页面 SPA fallback 到 `index.html`，`/api/*` 仍由 Next 路由处理。
+3. 页面与 API 同源，不需要静态服务器/CDN、CORS 或跨域 Cookie 配置；`next.config.ts` 的安全响应头同时覆盖页面与 API。
+4. SSE 由 Next 直接输出；若前面仍有反向代理，需关闭 buffering 并放宽读超时。
 5. 数据库迁移只用 Prisma：`npx prisma migrate deploy`。
 
 ### CI 发布产物
 
-`Deploy Staging` 与 `Deploy Production` 的 build job 现在产出两个独立产物：
+`Deploy Staging` / `Deploy Production` 只产出一个 Next 镜像：
 
-- Next API 镜像：`ghcr.io/<owner>/<repo>:staging-<sha>` / `prod-<tag>`（含 `public/` 静态资产）；
-- Vue 静态包：Actions artifact `frontend-dist-staging` / `frontend-dist-prod`（`frontend/dist`，含 `home.html`）。
+- `ghcr.io/<owner>/<repo>:staging-<sha>` / `prod-<tag>`；
+- 镜像内已包含 `public/` 下的 Vue 页面、`assets/`、PWA 资产与 API。
 
-现有 SSH 部署步骤只更新 app/worker 容器；**静态包仍需发布到静态服务器/CDN**（`STAGING_HOST` / `PROD_HOST` 不覆盖这一层）。两者版本应使用同一 commit/tag。
+SSH 部署更新 app/worker 即可，不再有独立的 `frontend-dist` artifact 或静态站发布步骤。
 
-回滚：静态产物与 Next 镜像分开发布，回滚任一层即可；不再有“回退到 Next 页面”的概念。
+回滚：回滚镜像 tag 即可；数据库仍单独按备份/迁移策略处理。
 
 ## 升级与回滚
 
