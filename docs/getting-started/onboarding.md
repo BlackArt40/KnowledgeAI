@@ -82,7 +82,7 @@ pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :300
    ```
 
 3. **提交 PR**：按 PR 模板填写，勾选“文档影响”（改了 `src/lib/` 模块或 API → 必须同步更新对应文档，见 [文档编写规范](../standards/doc-writing-standards.md)）；
-4. **等待 CI**：九项检查全绿（quality / unit / frontend / ai-contract / integration / smoke / smoke-infra / e2e / docs）才能合并。改动 `prisma/schema.prisma` 必须先生成迁移（`npx prisma migrate dev --name <描述>`）。
+4. **等待 CI**：八项检查全绿（quality / unit / frontend / integration / smoke / smoke-infra / e2e / docs）才能合并。改动 `prisma/schema.prisma` 必须先生成迁移（`npx prisma migrate dev --name <描述>`）。
 
 ### 6. 第一个 PR 建议（45 分钟）
 
@@ -104,7 +104,7 @@ pnpm -C frontend dev         # 前端页面 :5173（/api 经 vite 代理到 :300
 
 ### pnpm 与 Node 版本对齐
 
-项目要求 **Node 22**（CI 的九个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
+项目要求 **Node 22**（CI 的八个 job 全部使用 `node-version: 22`），包管理器版本由 `package.json` 的 `packageManager` 锁定为 **pnpm 11.7.0**。对齐步骤：
 
 ```bash
 nvm install 22

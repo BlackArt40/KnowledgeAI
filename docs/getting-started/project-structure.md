@@ -38,7 +38,7 @@ KnowledgeAI/
 ├── integrations/         # 集成产品（Chrome 扩展 / VS Code 扩展 / Embeddable Widget 说明）
 ├── k8s/                  # K8s 部署清单示例
 ├── deliverables/         # 工程保障与评审交付物（历史归档，非运行时依赖）
-├── .github/workflows/    # CI 流水线（九 job：quality / unit / ai-contract / integration / e2e / docs / smoke / smoke-infra / frontend）
+├── .github/workflows/    # CI 流水线（八 job：quality / unit / integration / e2e / docs / smoke / smoke-infra / frontend）
 ├── .tessdata/            # Tesseract OCR 语言包（首次 OCR 时下载，gitignored）
 └── .uploads/             # 本地上传文件存储（demo 模式，gitignored）
 ```

@@ -159,21 +159,6 @@ jobs:
       - name: Build
         run: pnpm --filter kai-frontend build
 
-  # ── 拆分线退役守卫 ─────────────────────────────────────────────────────
-  # job 名保留为 ai-contract：它是分支保护的必需检查，删 job 会让 PR 永远
-  # pending。这里改为断言拆分目录不再被引入，等分支保护更新后再移除本 job。
-  ai-contract:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Assert service-split is retired
-        run: |
-          if [ -d services/ai ] || [ -d services/business ]; then
-            echo "::error::services/ai 与 services/business 已退役，不应重新引入"
-            exit 1
-          fi
-          echo "service-split retired"
-
   # ── 集成测试：demo 模式起 dev server，跑 functional + api + performance ──
   # 提高限流阈值避免测试流量误触 429（默认 200/min 用户级）
   integration:
