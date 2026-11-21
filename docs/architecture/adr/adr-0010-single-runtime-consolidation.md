@@ -47,7 +47,7 @@ related:
 ## 后果
 
 - 删除 `services/`、拆分 compose、`k8s/split.yaml`、`deploy/nginx*`、切流/演练脚本与 `AI_*` 环境变量。
-- CI `ai-contract` job 名保留为退役守卫，避免分支保护 required check 悬空；待分支保护更新后移除。
+- `ai-contract` 退役守卫已在分支保护更新后移除；当前 CI 为 8 个 job。
 - 生产若仍把 `/api` 指向 Java，必须先切回 Next；本 ADR 不代替实际流量切换。
 - 数据库若已有 `flyway_schema_history`，先备份再删除 Flyway；Prisma 仍是唯一后续迁移来源。
 - 历史验收记录保留在 `deliverables/service-split/`，不作为可执行方案。
