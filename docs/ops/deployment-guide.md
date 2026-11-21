@@ -154,6 +154,15 @@ kubectl apply -f k8s/deployment.yaml
 4. SSE 需关闭代理缓冲并放宽读超时；`AGENT_STREAM_TIMEOUT_SECONDS` 控制 Agent 流空闲硬超时。
 5. 数据库迁移只用 Prisma：`npx prisma migrate deploy`。
 
+### CI 发布产物
+
+`Deploy Staging` 与 `Deploy Production` 的 build job 现在产出两个独立产物：
+
+- Next API 镜像：`ghcr.io/<owner>/<repo>:staging-<sha>` / `prod-<tag>`（含 `public/` 静态资产）；
+- Vue 静态包：Actions artifact `frontend-dist-staging` / `frontend-dist-prod`（`frontend/dist`，含 `home.html`）。
+
+现有 SSH 部署步骤只更新 app/worker 容器；**静态包仍需发布到静态服务器/CDN**（`STAGING_HOST` / `PROD_HOST` 不覆盖这一层）。两者版本应使用同一 commit/tag。
+
 回滚：静态产物与 Next 镜像分开发布，回滚任一层即可；不再有“回退到 Next 页面”的概念。
 
 ## 升级与回滚
