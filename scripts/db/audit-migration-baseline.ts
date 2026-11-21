@@ -75,7 +75,7 @@ interface Audit {
   flywayRows: FlywayRow[];
   missingMapped: string[];
   unknownFlywayVersions: string[];
-  drift: "none" | "history" | "drift" | "unknown";
+  drift: "none" | "ignored" | "drift" | "unknown";
   driftDetail?: string;
 }
 
@@ -103,16 +103,29 @@ function diffBody(sql: string): string {
 }
 
 /**
- * `migrate diff` 会把 flyway_schema_history 视为“多余表”。该表按规程保留，
- * 因此把“仅剩 DROP TABLE flyway_schema_history”归为 history，不算漂移。
+ * 运行期由应用管理的表，不属于 Prisma schema，但也不能删除：
+ * - flyway_schema_history：拆分线历史记录，按规程保留；
+ * - kb_chunks：pgvector 向量表，由 src/lib/rag/vector-store-pgvector.ts 创建。
+ */
+const RUNTIME_TABLES = ["flyway_schema_history", "kb_chunks"];
+
+function stripRuntimeTables(sql: string): string {
+  let body = diffBody(sql);
+  for (const table of RUNTIME_TABLES) {
+    const re = new RegExp(`DROP TABLE (IF EXISTS )?(?:"?[A-Za-z0-9_]+"?\\.)?"?${table}"?;`, "gi");
+    body = body.replace(re, "");
+  }
+  return body.trim();
+}
+
+/**
+ * `migrate diff` 会把运行期表视为“多余表”。只删除这些表的差异不算漂移，
+ * 但任何其他 DDL 仍必须报告。
  */
 function classifyDrift(status: number, stdout: string): Audit["drift"] {
   if (status === 0) return "none";
   if (status !== 2) return "unknown";
-  const body = diffBody(stdout)
-    .replace(/DROP TABLE (IF EXISTS )?(?:"?[A-Za-z0-9_]+"?\.)?"?flyway_schema_history"?;/gi, "")
-    .trim();
-  return body ? "drift" : "history";
+  return stripRuntimeTables(stdout) ? "drift" : "ignored";
 }
 
 function run(cmd: string, args: string[], env: NodeJS.ProcessEnv = process.env): number {
@@ -243,8 +256,8 @@ function printReport(a: Audit): void {
     if (failed.length) log(`  ✖ failed: ${failed.map((r) => r.version ?? "?").join(", ")}`);
     if (a.unknownFlywayVersions.length) log(`  ✖ unknown versions: ${a.unknownFlywayVersions.join(", ")}`);
   }
-  if (a.drift === "history") {
-    log("drift: none（仅保留 flyway_schema_history，按规程忽略）");
+  if (a.drift === "ignored") {
+    log(`drift: none（忽略运行期表：${RUNTIME_TABLES.join(" / ")}）`);
   } else {
     log(`drift: ${a.drift}${a.driftDetail ? ` (${a.driftDetail})` : ""}`);
   }
