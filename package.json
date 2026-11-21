@@ -19,6 +19,7 @@
     "docs:preview": "vitepress preview",
     "test:db": "vitest run --config vitest.db.config.ts",
     "verify:migrations": "tsx scripts/db/verify-migrations.ts",
+    "db:baseline": "tsx scripts/db/audit-migration-baseline.ts",
     "test:perf": "node scripts/perf/load.mjs"
   },
   "dependencies": {

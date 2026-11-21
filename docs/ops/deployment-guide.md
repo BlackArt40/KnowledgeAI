@@ -84,6 +84,7 @@ npx prisma db seed   # 写入演示数据（可选）
 - `KAI_ENV_FILE` 可指定其他环境文件（如服务器部署用 `.env`）；
 - `docker compose down` 停止；数据保留在命名卷（`redis-data` / `postgres-data` / `uploads`）；
 - `RATE_LIMIT_PER_MIN` 等档位可通过环境变量覆盖（性能测试需调高）。
+- 历史 Flyway 库升级前先按[数据库迁移基线核对](./migration-baseline.md)补齐 `_prisma_migrations`。
 
 ## 方式二：Staging 自动部署（CI）
 

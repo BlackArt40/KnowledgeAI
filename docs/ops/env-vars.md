@@ -42,6 +42,7 @@ related:
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
 | `DATABASE_URL` | 否 | 空（内存模式） | PostgreSQL 连接串。配置后：启动水合内存 + 写入持久化；留空 = 纯内存演示（重启即失） |
+| `BASELINE_DATABASE_URL` | 否 | 空 | `pnpm db:baseline` 的可选只读连接（默认复用 `DATABASE_URL`）；生产建议使用只读账号 |
 
 启用步骤：准备 PG → 填连接串 → `npx prisma migrate deploy` →（可选）`npx prisma db seed`。
 

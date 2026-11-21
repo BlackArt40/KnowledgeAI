@@ -87,6 +87,7 @@ export default withMermaid(defineConfig({
           text: '部署运维',
           items: [
             { text: '部署指南', link: '/ops/deployment-guide' },
+            { text: '数据库迁移基线', link: '/ops/migration-baseline' },
             { text: '环境变量全表', link: '/ops/env-vars' },
             { text: '监控与告警', link: '/ops/monitoring' },
             { text: '运维 Runbook', link: '/ops/runbook' }
