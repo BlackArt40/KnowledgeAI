@@ -51,10 +51,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // 图片优化允许的域名
-  images: {
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
-  },
 };
 
 export default nextConfig;
