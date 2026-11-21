@@ -25,7 +25,11 @@ related:
 
 > 本文回答“**系统由哪些部分构成**”（上下文、部署拓扑、分层规则、模块地图、数据架构）；“请求与数据怎样流动、哪些边界不能动”见续篇 [系统架构：数据流与契约](system-design-runtime.md)。
 >
-> 与 [总体架构](overview.md) 的分工：overview 讲“为什么这样设计”（决策与权衡），本文讲“当前代码长什么样”（可核对的现状）。RAG 算法细节见 [RAG 引擎架构](rag-engine.md)，Agent 图执行见 [Agent 编排架构](agent-orchestration.md)，拆分步骤见 [服务拆分实施手册](service-split.md)。
+> 与 [总体架构](overview.md) 的分工：overview 讲“为什么这样设计”（决策与权衡），本文讲“当前代码长什么样”（可核对的现状）。RAG 算法细节见 [RAG 引擎架构](rag-engine.md)，Agent 图执行见 [Agent 编排架构](agent-orchestration.md)。
+>
+> **当前形态（2026-11-21）**：单镜像（Vue 页面 + Next API + TS worker + Prisma），没有 nginx 网关、
+> Java/Python 服务或 Flyway。本文部分章节仍保留拆分线历史图/表，仅作演进记录；运行与部署以
+> [当前运行形态](current-state.md) 和 [部署指南](../ops/deployment-guide.md) 为准。
 
 ## 0. 本文定位与核对口径
 
@@ -38,7 +42,7 @@ related:
 | 领域层 | `src/lib/` **33 个子目录** + 8 个顶层工具文件 | `src/lib/` |
 | 数据模型 | Prisma **29 个 model**，**26 个迁移目录** | `prisma/schema.prisma`、`prisma/migrations/` |
 | 运行形态 | 单镜像：Vue 页面 + Next API + TS worker + Prisma | ADR-0010 |
-| 部署产物 | Next standalone + `frontend/dist`；单机 compose | `Dockerfile`、`docker-compose.yml` |
+| 部署产物 | 单个 Next 镜像（含 Vue `public/`）；单机 compose | `Dockerfile`、`docker-compose.yml` |
 | 契约测试 | Node 侧 `tests/` + `scripts/smoke/`；Vue Playwright | `tests/`、`scripts/smoke/`、`frontend/e2e/` |
 
 **与既有文档的两点口径**：
@@ -92,9 +96,9 @@ flowchart LR
 - **同域**：网关把页面与 API 放在同一域名下，Cookie 不跨域，CORS 只为“API + Widget / 扩展”这类跨源调用保留白名单；
 - **外部依赖全部可选**：未配置即回退演示实现，详见 §3.1 依赖规则第 4 条。回退映射：LLM → 抽取式生成，向量库 → 内存索引，S3 → 本地盘，Redis → 进程内。
 
-## 2. 部署拓扑（C4-L2）
+## 2. 部署拓扑（C4-L2，历史：拆分线）
 
-### 2.1 生产三服务形态（>=1.3.0）
+### 2.1 生产三服务形态（历史：拆分线，已退役）
 
 ```mermaid
 flowchart TB
@@ -298,7 +302,7 @@ flowchart LR
 | 安全与审计 | `SecurityAudit`、`LoginEvent`、`AuditLog` |
 | 集成与配置 | `Notification`、`NotificationPrefs`、`WebhookSubscription`、`BotIntegration`、`ModelConfig`、`SystemConfig` |
 
-迁移现状：Prisma **25 个目录**（`20260713022119_init` → `20261104120000_document_version`），Java 侧另有 **Flyway V1–V21**。两套迁移工具指向同一个 schema，是当前最需要关注的演进风险（续篇 [§9 R2](system-design-runtime.md#_9-演进现状与风险)）。
+迁移现状：Prisma **26 个目录**（`20260713022119_init` → `20261119120000_tenant_indexes_owner_cascade`），是唯一迁移来源。Java/Flyway 已随拆分线删除；历史库按 `docs/ops/migration-baseline.md` 做一次性基线。
 
 ### 5.3 读写路径与一致性
 
@@ -330,16 +334,13 @@ flowchart LR
 ```text
 KnowledgeAI/
 ├── src/
-│   ├── app/api/          # 115 个 route.ts（Next BFF）
+│   ├── app/api/          # 115 个 route.ts（Next API）
 │   ├── lib/              # 33 个领域 / 平台模块
 │   └── proxy.ts          # /api/* 中间件：水合 · CORS · 追踪 · 限流
-├── frontend/             # Vue 3 + Vite（30 页面路由 / PWA / 预渲染）
-├── services/
-│   ├── business/         # Java 17 业务服务（10 控制器 / Flyway V1–V21）
-│   └── ai/               # Python FastAPI（/internal/* + Agent worker）
-├── prisma/               # 29 model / 25 迁移
-├── deploy/               # nginx.conf · routes.conf（28 条切流规则）
-├── k8s/split.yaml        # 三服务 + 网关清单
+├── frontend/             # Vue 3 + Vite（30 页面 / PWA / 预渲染）
+├── public/               # 页面/API 同镜像静态资产（build 生成 index/home/assets）
+├── prisma/               # 29 model / 26 迁移
+├── k8s/deployment.yaml   # 单镜像 K8s 示例
 ├── scripts/smoke/        # 验收套件（lib / limits / http / ui / infra）
 ├── tests/                # functional / api / performance
 └── e2e/                  # Playwright 主流程
@@ -349,7 +350,7 @@ KnowledgeAI/
 
 | 端口 | 归属 |
 |------|------|
-| 3000 | Next API（开发 / 单体） |
+| 3000 | Next 单镜像（页面 + API） |
 | 5173 | Vite dev |
 | 4173 | Vite preview（页面验收） |
 | 9000 / 9001 | MinIO API / 控制台 |

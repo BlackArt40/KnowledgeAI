@@ -8,7 +8,7 @@ version: 1.2.0
 authors:
   - technical-writer
 owner: devops-owner
-reviewed_at: 2026-10-08
+reviewed_at: 2026-11-21
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -35,7 +35,7 @@ related:
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:----:|--------|------|
-| `VITE_API_BASE` | 否 | 空（同源 `/api`） | frontend/(Vue 3 + Vite)构建期变量：API 请求前缀。留空 = 同源 `/api`（经网关反代，推荐）；跨域部署填网关完整地址，并配合 `CORS_ALLOWED_ORIGINS`。注意：这是**构建期**变量（`import.meta.env`），改后需重新 `pnpm -C frontend build` |
+| `VITE_API_BASE` | 否 | 空（同源 `/api`） | frontend/(Vue 3 + Vite)构建期变量：API 请求前缀。留空 = 同源 `/api`（单镜像默认，推荐）；仅当页面与 API 跨域时才填 API 地址，并配合 `CORS_ALLOWED_ORIGINS`。注意：这是**构建期**变量（`import.meta.env`），改后需重新 `pnpm build` |
 
 ## 数据库
 

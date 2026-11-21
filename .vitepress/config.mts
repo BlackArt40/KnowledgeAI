@@ -54,11 +54,12 @@ export default withMermaid(defineConfig({
         {
           text: '架构设计',
           items: [
+            { text: '当前运行形态', link: '/architecture/current-state' },
             { text: '总体架构', link: '/architecture/overview' },
             { text: '系统架构图与设计说明', link: '/architecture/system-design' },
             { text: '系统架构：数据流与契约', link: '/architecture/system-design-runtime' },
-            { text: '服务拆分实施手册', link: '/architecture/service-split' },
-            { text: '服务拆分阶段细则', link: '/architecture/service-split-phases' },
+            { text: '服务拆分（已退役）', link: '/architecture/service-split' },
+            { text: '服务拆分阶段细则（已退役）', link: '/architecture/service-split-phases' },
             { text: 'RAG 引擎架构', link: '/architecture/rag-engine' },
             { text: 'Agent 编排架构', link: '/architecture/agent-orchestration' },
             { text: 'UI 设计体系', link: '/architecture/design-system' },
