@@ -75,7 +75,7 @@ interface Audit {
   flywayRows: FlywayRow[];
   missingMapped: string[];
   unknownFlywayVersions: string[];
-  drift: "none" | "drift" | "unknown";
+  drift: "none" | "history" | "drift" | "unknown";
   driftDetail?: string;
 }
 
@@ -91,6 +91,28 @@ function migrationDirs(): string[] {
 
 function sanitize(url: string): string {
   return url.replace(/\/\/[^@]+@/, "//***@");
+}
+
+/** 去掉 diff 的 `--` 注释与空行，便于判断是否只剩 flyway 历史表。 */
+function diffBody(sql: string): string {
+  return sql
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith("--"))
+    .join("\n");
+}
+
+/**
+ * `migrate diff` 会把 flyway_schema_history 视为“多余表”。该表按规程保留，
+ * 因此把“仅剩 DROP TABLE flyway_schema_history”归为 history，不算漂移。
+ */
+function classifyDrift(status: number, stdout: string): Audit["drift"] {
+  if (status === 0) return "none";
+  if (status !== 2) return "unknown";
+  const body = diffBody(stdout)
+    .replace(/DROP TABLE (IF EXISTS )?(?:"?[A-Za-z0-9_]+"?\.)?"?flyway_schema_history"?;/gi, "")
+    .trim();
+  return body ? "drift" : "history";
 }
 
 function run(cmd: string, args: string[], env: NodeJS.ProcessEnv = process.env): number {
@@ -178,12 +200,13 @@ async function audit(url: string): Promise<Audit> {
         SCHEMA,
         "--to-schema-datamodel",
         SCHEMA,
+        "--script",
         "--exit-code",
       ],
       { ...process.env, DATABASE_URL: url }
     );
-    drift = diff.status === 0 ? "none" : diff.status === 2 ? "drift" : "unknown";
-    if (drift !== "none") {
+    drift = classifyDrift(diff.status, diff.stdout);
+    if (drift === "drift" || drift === "unknown") {
       driftDetail = (diff.stdout || diff.stderr).trim().split("\n").slice(0, 5).join(" | ").slice(0, 600);
     }
 
@@ -220,7 +243,11 @@ function printReport(a: Audit): void {
     if (failed.length) log(`  ✖ failed: ${failed.map((r) => r.version ?? "?").join(", ")}`);
     if (a.unknownFlywayVersions.length) log(`  ✖ unknown versions: ${a.unknownFlywayVersions.join(", ")}`);
   }
-  log(`drift: ${a.drift}${a.driftDetail ? ` (${a.driftDetail})` : ""}`);
+  if (a.drift === "history") {
+    log("drift: none（仅保留 flyway_schema_history，按规程忽略）");
+  } else {
+    log(`drift: ${a.drift}${a.driftDetail ? ` (${a.driftDetail})` : ""}`);
+  }
 
   if (!a.hasPrismaHistory && a.hasFlywayHistory) {
     log("baseline needed: DB was created by Flyway; Prisma history is absent");

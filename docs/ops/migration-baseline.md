@@ -39,7 +39,7 @@ pnpm db:baseline --json
 - `_prisma_migrations` 是否存在，已应用/待应用/失败迁移；
 - `flyway_schema_history` 是否存在，版本与失败记录；
 - Flyway 版本到 Prisma 迁移目录的映射缺口；
-- `prisma migrate diff` 是否仍有 schema 漂移。
+- `prisma migrate diff` 是否仍有 schema 漂移。仅剩 `flyway_schema_history` 的差异会显示为 `drift: none（按规程忽略）`，不阻断基线完成。
 
 ## 2. 判定与处理
 
@@ -107,7 +107,13 @@ npx prisma migrate status
 - **不要删除 `flyway_schema_history`**：保留它作为审计记录，应用不再读取。
 - 若 `migrate deploy` 中途失败，先修 SQL 或用备份恢复，不要手工改 `_prisma_migrations` 的 checksum。
 
-## 5. 与 CI 的关系
+## 5. 已验证场景（2026-11-21）
+
+- 全新 Prisma 库重放 26 个迁移：`_prisma_migrations` 26 applied、`drift: none`。
+- 模拟 Flyway V1–V21 历史库（仅前 21 个迁移 + `flyway_schema_history`）：识别 21 条映射、拒绝直接 deploy；`--apply` 后补齐 5 个迁移，26 applied、`drift: none`（忽略历史表）。
+- 已有 `_prisma_migrations` 的库再执行 `--apply`：按预期拒绝，退出码 1。
+
+## 6. 与 CI 的关系
 
 CI `quality` job 已包含：
 
