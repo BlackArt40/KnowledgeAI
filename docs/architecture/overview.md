@@ -1,6 +1,6 @@
 ---
 title: KnowledgeAI 总体架构
-description: KnowledgeAI 系统架构总览：三服务生产形态（网关/业务/前端/AI）、内存存储与写穿数据库、Provider 适配层、后台队列、SSE 链路与可观测性
+description: KnowledgeAI 系统架构总览：单镜像生产形态（Vue 页面 + Next API + TS worker）、内存存储与写穿数据库、Provider 适配层、后台队列、SSE 链路与可观测性
 type: explanation
 category: architecture
 level: L1
@@ -90,15 +90,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  C["浏览器 / SDK"] --> FE["Vue 3 静态页面<br/>frontend/dist"]
-  C --> API["Next API<br/>/api/** + public 静态资产"]
-  FE --> API2["/api 反向代理"]
-  API2 --> API
-  API --> PG[("PostgreSQL / Prisma")]
-  API --> RD[("Redis（可选）<br/>限流 · jti · 队列")]
-  API --> S3[("S3 / MinIO（可选）")]
-  W["TS worker<br/>BullMQ"] --> PG
-  RD --> W
+  C["浏览器 / SDK"] --> APP["Next 单镜像<br/>Vue 页面 + /api + public 资产"]
+  APP --> PG[("PostgreSQL / Prisma")]
+  APP --> RD[("Redis（可选）<br/>限流 · jti · 队列")]
+  APP --> S3[("S3 / MinIO（可选）")]
+  APP --> W["TS worker<br/>BullMQ（同镜像）"]
 ```
 
 当前架构（2026-11-20 起）：
@@ -107,7 +103,7 @@ flowchart LR
 - **浏览器只访问 Vue 页面与 `/api/**`**：业务 API、认证、KB、Chat/Agent、Webhook、计费、限流、审计均由 `src/` 承载；
 - **数据读路径**：进程内 store + Prisma 写穿/水合（ADR-0001）；生产可配 PostgreSQL、Redis 与 S3；
 - **Agent 队列**：BullMQ（配置 `REDIS_URL`）或进程内队列；SSE 由 Next API 直接转发并带 25s 保活/硬超时；
-- **部署产物**：`frontend/dist` 静态页面 + Next standalone API；不再有 split compose、K8s split 或 nginx 切流脚本。
+- **部署产物**：单个 Next 镜像（Vue 页面在 `public/`，API 同源）；不再有 split compose、K8s split 或 nginx 切流脚本。
 
 拆分线（Java/Python/Flyway）已于 2026-11-20 退役，历史方案见 [service-split.md](./service-split.md)。
 
@@ -237,7 +233,7 @@ flowchart LR
 - [ADR-0003：多租户隔离契约](adr/adr-0003-multi-tenant-isolation.md)
 - [ADR-0006：读路径存储演进](adr/adr-0006-read-path-storage-evolution.md)
 - [ADR-0007：队列背压](adr/adr-0007-queue-backpressure.md)
-- [服务拆分实施手册（国内常见三层）](service-split.md)
+- [服务拆分（已退役）](service-split.md)
 - [术语表](../standards/glossary.md)
 
 ## 修订记录

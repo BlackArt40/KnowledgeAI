@@ -24,21 +24,19 @@ applies_to: ">=1.3.0"
 ```
 KnowledgeAI/
 ├── frontend/             # Vue 3 前端（pnpm workspace 包 kai-frontend，30 个页面）
-├── src/                  # Next 纯 API（/api/** Route Handlers + 业务库 src/lib）
-├── deploy/               # 部署资产（nginx 网关配置 + 前端切流路由表）
+├── src/                  # Next API + 业务库 src/lib
 ├── prisma/               # 数据库 schema + 迁移 + 种子数据
-├── scripts/              # 运维脚本（切流/演练/迁移/清理）
+├── scripts/              # 运维脚本（部署/迁移/清理/CI 检查）
 │   └── smoke/            # 验收 smoke 套件（run-all.ts + manifest 分组调度，CI 会跑）
 ├── tests/                # 集成测试（需启动 dev server，用 node 运行）
 ├── e2e/                  # 根 Playwright 主流程套件（双 webServer，打 :4173 Vue DOM）
 ├── docs/                 # VitePress 文档中心（入门/架构/API/运维/FAQ/规范，历史文档在 archive/）
-├── public/               # 静态资产单源（PWA sw.js/manifest、widget、swagger-ui vendor）
-├── services/             # 拆分形态服务（business Java / ai Python，见 service-split.md）
+├── public/               # 静态资产单源（PWA sw.js/manifest、widget、swagger-ui vendor；build 生成 index/home/assets）
 ├── sdk/                  # 三语言官方 SDK（JavaScript / Python / Go）
 ├── integrations/         # 集成产品（Chrome 扩展 / VS Code 扩展 / Embeddable Widget 说明）
 ├── k8s/                  # K8s 部署清单示例
 ├── deliverables/         # 工程保障与评审交付物（历史归档，非运行时依赖）
-├── .github/workflows/    # CI 流水线（八 job：quality / unit / integration / e2e / docs / smoke / smoke-infra / frontend）
+├── .github/workflows/    # CI 流水线（八 job：quality / unit / frontend / integration / smoke / smoke-infra / e2e / docs）
 ├── .tessdata/            # Tesseract OCR 语言包（首次 OCR 时下载，gitignored）
 └── .uploads/             # 本地上传文件存储（demo 模式，gitignored）
 ```
@@ -63,7 +61,7 @@ frontend/
 │   └── pwa/                  # Service Worker 注册（仅生产）
 ├── e2e/                      # 前端 Playwright 套件（41 用例：认证/工作台/知识库/聊天+Agent/管理端/在线状态/双人协作/只读回归）
 ├── scripts/prerender-home.mjs # 首页 SEO 预渲染（build 末步产出 dist/home.html）
-└── dist/                     # 构建产物（网关切流挂载 /srv/vue，gitignored）
+└── dist/                     # 构建产物（gitignored；由 pnpm build 复制到根 public/）
 ```
 
 > 共享资产**单源复用**：i18n 语言包（`src/lib/i18n/messages/`）、SSE 解析（`src/lib/sse.ts`）、主题引擎（`src/lib/theme/`）、格式化（`src/lib/format.ts`）经 `@shared` 别名引用，禁止拷贝到 frontend/。
@@ -141,13 +139,7 @@ src/
 └── proxy.ts                      # 中间件（分级限流 + DB 水合触发）
 ```
 
-## deploy/ — 部署资产
-
-```
-deploy/                            # 主线部署辅助资产（拆分线已退役）
-```
-
-> Vue 构建产物由静态服务器/CDN 托管，`/api/*` 反代 Next；不再有 nginx 切流脚本，见 [部署指南](../ops/deployment-guide.md)。
+> 生产为单镜像：`pnpm build` 先构建 `frontend/dist`，复制到根 `public/`，再由 Next 同时服务页面与 `/api`。不再有 `deploy/`、nginx 切流或独立静态站，见 [部署指南](../ops/deployment-guide.md)。
 
 ## 根目录关键文件
 
@@ -173,7 +165,7 @@ deploy/                            # 主线部署辅助资产（拆分线已退�
 scripts/
 ├── deploy/
 │   ├── staging.sh               # staging 部署（CI 调用）
-│   └── blue-green.sh            # 生产蓝绿切换（健康检查门 + 自动回滚）
+│   └── blue-green.sh            # 生产蓝绿切换（单镜像 + 健康门）
 ├── cleanup-temp-files.ts        # 临时文件清理（可配 cron）
 ├── cleanup-e2e-fixtures.ts      # 清理 e2e / 手工验证残留数据（对运行中的服务发 HTTP）
 ├── audit-auth-compat.ts         # 只读发布前检查（历史 AgentTask.shareConfig 兼容项）

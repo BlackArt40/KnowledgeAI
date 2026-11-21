@@ -18,7 +18,7 @@
 | 主题增强 | 系统 / 亮 / 暗三模式（跟随系统实时切换）/ 高对比度模式（WCAG AA）/ 主题切换动画 / Workspace 级品牌色（6 色板，owner 定制，DB 持久化） | 自研主题引擎 + CSS 变量令牌单源（frontend tokens.css）+ matchMedia 监听 + 客户端品牌注入 |
 | 应用监控 | 分布式追踪（API→RAG→LLM 全链路 span 树）/ QPS·错误率·延迟 P50/P95/P99 仪表盘 / LLM Token·成本·模型分布 / 前端+后端错误自动上报 Sentry | 自研 ALS 追踪 + 内存 SLI 存储 + Sentry Envelope 零依赖直投（SENTRY_DSN 门控） |
 | 结构化日志 | JSON 结构化日志 / requestId 全链路串联（X-Trace-Id）/ 分级过滤 / 敏感字段自动脱敏（含嵌套）/ Loki 聚合 / 管理端日志查询 | pino（LOG_LEVEL / LOG_REDACT_KEYS / LOG_LOKI_URL 门控）+ Edge/浏览器同构适配 + /api/admin/logs |
-| CI/CD | GitHub Actions 八 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E + 前端 E2E / 文档门禁 / 验收 smoke / smoke-infra / 前端四门禁）/ 依赖漏洞审计（critical 阻断）/ 单镜像（Vue 页面 + Next API）GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（核心模块覆盖率 80%+）+ Playwright（双套件）+ pnpm audit + buildx/GHCR + 蓝绿脚本（secrets 门控） |
+| CI/CD | GitHub Actions 八 job（typecheck·lint·构建 / 单元测试+覆盖率门槛 / 集成三套件 / Playwright E2E + 前端 E2E / 文档门禁 / 验收 smoke / smoke-infra / 前端四门禁）/ 依赖漏洞审计（critical 阻断）/ 单镜像（Vue 页面 + Next API）GHCR 推送 / SSH 部署 Staging / 生产手动审批蓝绿切换（健康检查门 + 自动回滚） | vitest（按目录 ratchet，明细见 `vitest.config.ts`）+ Playwright（双套件）+ pnpm audit + buildx/GHCR + 蓝绿脚本（secrets 门控） |
 | 健康检查 | 存活探针（/api/health，与依赖解耦）/ 就绪探针（DB·Redis·LLM 连通性，不可用返回 503）/ 数据库检查 / 就绪失败自动告警（站内通知 admin + 日志 + Sentry）/ Docker·K8s 三探针配置 | 真实连通性探测（SELECT 1 / Redis connect / /models）+ 转移告警状态机（10 分钟重报去重） |
 | 开放 API | OpenAPI 3.0 规范 + `/docs` Swagger UI 交互式文档 / `/api/v1` 版本化表面（KB·流式问答·Agent·Webhook，API Key scope 强制）/ Webhook 事件推送（kb.ready·agent.completed·usage.alert，HMAC 签名 + 队列重试 + 死信）/ 三语言官方 SDK(JavaScript / Python / Go)/ 开发者门户（用量统计 + Webhook 管理 + 集成市场） | 手写 OpenAPI + swagger-ui-dist + scope 校验 + webhook-deliver 队列 + 零依赖 SDK |
 | 集成市场 | Embeddable Widget（单文件独立部署）/ Slack·飞书·钉钉群机器人（token 哈希鉴权 + 独立限流）/ Chrome 扩展（右键选中即问答）/ n8n·Zapier（API + Webhook 工作流） | 自包含 JS 组件 + 平台消息适配器 + MV3 扩展 + CORS 放行 |
@@ -33,7 +33,7 @@
 ## 🛠 技术栈
 
 - **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/` 单仓目录，pnpm workspace 包 `kai-frontend`，30 个页面全量承载 + 首页 SEO 预渲染 + PWA）
-- **后端/API**：Next.js 16 纯 API（Route Handlers + SSE 流式 + proxy 中间件限流）
+- **后端/API**：Next.js 16（Route Handlers + SSE 流式 + proxy 中间件限流；生产同镜像服务 `public/` 页面）
 - **共享单源**：i18next 语言包 / SSE 解析 / 主题引擎 / 格式化经 `@shared` 别名前后端复用（禁止拷贝）
 - **样式**：Element Plus 主题适配 + CSS 变量设计令牌（`frontend/src/styles/tokens.css` 单源：系统 / 亮 / 暗 + 高对比度 + 品牌色）
 - **语言**：TypeScript 严格模式（前端 vue-tsc / 后端 tsc 双门禁）
@@ -54,11 +54,12 @@ pnpm -C frontend dev        # → http://localhost:5173
 # 本地开发不需要 Docker：上面两条命令即完整环境（演示模式，数据不持久化）。
 # Dockerfile / docker-compose*.yml 仅用于部署，见下方“Docker 部署”。
 
-# 生产构建（后端 standalone + 前端 dist 含 SEO 预渲染首页）
+# 生产构建（单镜像：Vue 页面复制进 public + Next standalone API）
 pnpm build
-pnpm -C frontend build
-pnpm start
-pnpm -C frontend preview    # 本地预览前端构建产物（:4173）
+pnpm start                  # http://localhost:3000，页面与 /api 同源
+
+# 只调试前端（可选，:5173，/api 代理到 :3000）
+pnpm -C frontend dev
 
 # 代码检查
 pnpm lint
@@ -84,15 +85,13 @@ pnpm -C frontend lint && pnpm -C frontend typecheck
 # 复制环境变量，并把 AUTH_SECRET 替换为随机值（openssl rand -hex 32）
 cp .env.example .env.local
 
-# 一条命令完成：建表迁移 + 演示数据 + API(:3000) + worker
+# 一条命令完成：建表迁移 + 演示数据 + 单镜像页面/API(:3000) + worker
 # （migrate 一次性服务自动执行；幂等，重复 up 不会产生重复数据）
 docker compose up -d
+# 页面与 API 同源：http://localhost:3000（镜像内已包含 Vue public/）
+curl -s http://localhost:3000/api/health
 
-# UI（3000 是纯 API，Next 已无页面层；另起前端）
-pnpm -C frontend build
-pnpm -C frontend exec vite preview --port 4173   # UI :4173（/api 反代 :3000）
-
-# 单容器（应用自消费队列，仅 API；务必设置 QUEUE_CONSUMER=web）
+# 单容器（应用自消费队列；页面与 API 同源）
 docker build -t knowledgeai .
 docker run -p 3000:3000 --env-file .env.local -e QUEUE_CONSUMER=web knowledgeai
 ```
@@ -109,9 +108,9 @@ frontend/               # Vue 3 前端（30 个页面全量承载）
 │   ├── styles/         # tokens.css（设计令牌单源）+ element-adapter.css（EP 变量映射）
 │   └── pwa/            # Service Worker 注册
 ├── e2e/                # 前端 Playwright 套件（41 用例，CI e2e job）
-└── dist/               # 构建产物（网关切流挂载 /srv/vue，gitignored）
+└── dist/               # 构建产物（gitignored；由 pnpm build 复制到 public/）
 src/
-├── app/                # Next 纯 API：/api/** Route Handlers + 最小根 layout
+├── app/                # Next API：/api/** Route Handlers + 最小根 layout（生产同时服务 public）
 ├── proxy.ts            # 中间件（限流 + DB 水合）
 └── lib/
     ├── rag/             # RAG 引擎（全异步：嵌入/检索/生成）

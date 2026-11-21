@@ -1,6 +1,6 @@
 ---
 title: 部署指南
-description: KnowledgeAI 部署手册：三服务拆分部署（网关/业务/前端/AI）、Docker Compose 单机、CI Staging 自动部署、生产蓝绿切换与 Kubernetes
+description: KnowledgeAI 部署手册：单镜像（Vue 页面 + Next API）、Docker Compose 单机、CI Staging、生产蓝绿切换与 Kubernetes 示例
 type: how-to
 category: ops
 level: L2
@@ -8,7 +8,7 @@ version: 1.3.2
 authors:
   - technical-writer
 owner: devops-owner
-reviewed_at: 2026-11-05
+reviewed_at: 2026-11-21
 review_interval: 180
 status: published
 applies_to: ">=1.2.0"
@@ -24,25 +24,22 @@ related:
 
 ## 部署架构
 
-**三服务拆分形态（>=1.3.0，服务拆分阶段 6 起的生产形态，见“方式五”）**：
+当前唯一生产形态是**单镜像**（见“方式五”）：
 
 ```mermaid
 flowchart LR
-  C["浏览器 / SDK"] --> GW["网关 nginx<br/>/api → 业务（多副本）<br/>其余 → 前端"]
-  GW --> BIZ["业务服务（Java ×N）"]
-  GW --> FE["前端（Next）"]
-  BIZ --> AI["AI 服务（Python，仅内网）"]
-  BIZ --> PG[("PostgreSQL")]
-  BIZ & AI --> RD[("Redis")]
-  AI --> VDB[("向量库")]
-  BIZ --> S3[("S3 / MinIO")]
+  C["浏览器 / SDK"] --> APP["Next 单镜像<br/>Vue 页面 + /api + public 资产"]
+  APP --> PG[("PostgreSQL")]
+  APP --> RD[("Redis（可选）")]
+  APP --> S3[("S3 / MinIO（可选）")]
+  APP --> W["worker（同镜像）"]
 ```
 
-**单体形态（<=1.2.x，单机部署 / 演示模式，方式一～四）**——生产部署由 **4 个服务**组成：
+部署由 **4 个服务**组成：
 
 | 服务 | 镜像/来源 | 职责 | 说明 |
 |------|-----------|------|------|
-| `app` | 自建（`Dockerfile`） | Next.js standalone 服务 | 对外 :3000，生产者 |
+| `app` | 自建（`Dockerfile`） | Next standalone：Vue 页面 + API + `public/` | 对外 :3000 |
 | `worker` | 同镜像，命令 `node worker.js` | 消费队列（doc-process / agent-run / index-cleanup） | **必须部署**，否则队列任务无人处理 |
 | `redis` | `redis:7-alpine` | 限流 / 队列 / 事件总线 | 可外部化（`REDIS_URL`） |
 | `postgres` | `pgvector/pgvector:pg16` | 持久化 + 向量检索 | 可外部化（`DATABASE_URL`） |
@@ -51,11 +48,11 @@ flowchart LR
 - `app` 与 `worker` **共享上传目录**（`/app/.uploads` 卷），worker 需要读取 app 写入的文档文件；
 - 容器内 `localhost` 是容器自己，`DATABASE_URL` / `REDIS_URL` 必须指向服务名或外部地址（见 [FAQ](../faq/faq.md)）；
 - 未配置 `DATABASE_URL` / `REDIS_URL` 时应用自动回退演示模式（数据不持久化）；
-- **适用版本**：方式一～四描述单体形态；拆分生产形态（网关 + 业务 + 前端 + AI）见“方式五”。
+- 方式一～四是单机/K8s 的通用操作说明，不再代表“单体 <=1.2 / 拆分 >=1.3”的版本分界；拆分线资产已删除。
 
 ## 方式一：Docker Compose（单机部署）
 
-> **本地开发不使用 Docker。** 开发机直接跑 `pnpm install` → `pnpm dev`（Next 纯 API `:3000`，演示模式无需任何环境变量）+ `pnpm -C frontend dev`（Vue 页面 `:5173`，`/api` 经 vite 代理到 `:3000`）；需要验证构建产物时用 `pnpm -C frontend build && pnpm -C frontend exec vite preview --port 4173`。本方式用于单机部署或验证镜像/编排产物，日常开发迭代不需要启动 compose。
+> **本地开发不使用 Docker。** 开发机直接跑 `pnpm install` → `pnpm dev`（Next API `:3000`，演示模式无需任何环境变量）+ `pnpm -C frontend dev`（Vue 页面 `:5173`，`/api` 经 vite 代理到 `:3000`）；需要验证单镜像产物时用 `pnpm build && pnpm start`（:3000 同时服务页面与 API）。本方式用于单机部署或验证镜像/编排产物，日常开发迭代不需要启动 compose。
 
 ```bash
 # 1. 准备环境变量
