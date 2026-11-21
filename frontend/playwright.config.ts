@@ -2,7 +2,8 @@ import { defineConfig } from "@playwright/test";
 
 // V1 前端 e2e：页面由 vite dev（:5173）承载，/api 经 vite proxy 到 Next dev
 // （:3000，单体模式全量 API 可用）。webServer 数组自动拉起两端，本机已起则复用。
-// 与根 e2e（打 Next 页面）互为双轨：旧套件全程保持绿，本套件覆盖 Vue 已接管路由。
+// 与根 e2e 互补：根套件打 :4173 的构建产物（预渲染首页 + PWA 离线契约），
+// 本套件打 vite dev（:5173）覆盖 Vue 已接管路由。
 export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,

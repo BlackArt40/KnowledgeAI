@@ -36,6 +36,8 @@
 const VERSION = "v6-vue-1";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
+/** 本应用写过的 cache 命名空间：历史 p5-1-* + 现行 v<N>-*（由 VERSION 决定）。 */
+const APP_CACHE_RE = /^(?:p5-1-|v\d)/;
 /** Runtime endpoint that can retire this worker (E3). */
 const CONFIG_URL = "/sw-config.json";
 
@@ -121,10 +123,13 @@ self.addEventListener("activate", (event) => {
         await selfDestruct();
         return;
       }
+      // P2-7: 旧版本缓存必须随 VERSION 一起回收。历史版本用过 `p5-1-`
+      // 前缀，现行命名是 `${VERSION}-*`；只清本应用命名空间内的条目，
+      // 不碰同源其他应用的 cache。
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith("p5-1-") && k !== SHELL_CACHE && k !== RUNTIME_CACHE)
+          .filter((k) => APP_CACHE_RE.test(k) && k !== SHELL_CACHE && k !== RUNTIME_CACHE)
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
