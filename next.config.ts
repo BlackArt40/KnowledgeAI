@@ -11,6 +11,19 @@ const nextConfig: NextConfig = {
   // runtime. Most are hard dependencies; only the two @aws-sdk packages are
   // optionalDependencies (graceful S3 fallback when absent).
   serverExternalPackages: ["@prisma/client", "bullmq", "ioredis", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "stripe", "mammoth", "xlsx", "tesseract.js", "pdfjs-dist", "@napi-rs/canvas", "qrcode", "pino"],
+  // 单镜像部署：Vue 构建产物在 public/，由 Next 同时服务页面与 API。
+  // `/` 返回预渲染 home.html；其余页面走 SPA index.html。
+  // API、Next 静态资源、public 子目录与 PWA 文件不参与 fallback。
+  async rewrites() {
+    return [
+      { source: "/", destination: "/home.html" },
+      {
+        source:
+          "/((?!api(?:/|$)|_next(?:/|$)|assets(?:/|$)|vendor(?:/|$)|widget(?:/|$)|icons(?:/|$)|sw\\.js$|sw-config\\.json$|manifest\\.webmanifest$|favicon\\.ico$|index\\.html$|home\\.html$).*)",
+        destination: "/index.html",
+      },
+    ];
+  },
   // 生产安全响应头
   async headers() {
     return [

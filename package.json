@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "node scripts/tools/copy-swagger-ui.mjs",
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm -C frontend build && node scripts/tools/copy-vue-dist.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",

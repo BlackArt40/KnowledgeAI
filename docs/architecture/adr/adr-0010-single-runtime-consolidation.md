@@ -42,7 +42,7 @@ related:
 3. 唯一认证权威：Next 自签 `kai-token`；删除 Java 的 JWT/2FA 实现。
 4. RAG/Agent 默认走进程内 TS 实现；删除 `services/ai` 与 `AI_SERVICE_URL` 远程分支。
 5. 收编拆分线唯一确认缺失的行为：Agent SSE 25s 保活与 `AGENT_STREAM_TIMEOUT_SECONDS` 硬超时。
-6. 部署：Vue 构建产物由静态服务器/CDN 承载，`/api/*` 反代 Next；不再维护 split compose、K8s split、nginx 切流脚本。
+6. 部署：Vue 构建产物并入 Next 镜像，由 Next 同时服务页面与 `/api`；不再维护 split compose、K8s split、nginx 切流脚本，也不再单独发布静态包。
 
 ## 后果
 

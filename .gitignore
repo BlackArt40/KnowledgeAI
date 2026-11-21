@@ -114,3 +114,7 @@ docker-compose.override.yml
 
 # unplugin-vue-components 生成的全局组件类型（dev/build 写出的集合不同，别提交）
 frontend/src/components.d.ts
+# 单镜像部署：构建期从 frontend/dist 复制到 public/ 的页面资产
+/public/index.html
+/public/home.html
+/public/assets/
