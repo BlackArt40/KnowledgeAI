@@ -7,6 +7,8 @@
 // cleanup function.
 // ---------------------------------------------------------------------------
 
+import { log } from "@/lib/obs/log";
+
 export interface SseProducer {
   /** Send `data: <json>\n\n`; returns false once the client is gone. */
   send: (event: unknown) => boolean;
@@ -151,7 +153,7 @@ export function createSseResponse(
         // visible to the caller before the Response is returned.
         result = handler(sse);
       } catch (err) {
-        console.error("[sse-produce] handler failed", err);
+        log.error({ err }, "[sse-produce] handler failed");
         close();
         return;
       }
@@ -169,7 +171,7 @@ export function createSseResponse(
           }
         })
         .catch((err) => {
-          console.error("[sse-produce] handler failed", err);
+          log.error({ err }, "[sse-produce] handler failed");
           close();
         });
     },
