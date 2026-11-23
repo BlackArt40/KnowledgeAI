@@ -33,6 +33,7 @@ import { canViewKb } from "@/lib/team/store";
 import { classifyChatError } from "@/lib/chat/errors";
 import { getRequestUser, type RequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
+import { createSseResponse } from "@/lib/sse-produce";
 import { validateApiKey, logCall } from "@/lib/apikeys/store";
 import type { ApiTraceHandle } from "@/lib/obs/trace";
 import { reportError } from "@/lib/obs/errors";
@@ -239,89 +240,75 @@ export async function handleChatRequest(
       }));
       chunks = [...chunks, ...webChunks];
     }
-    const enc = new TextEncoder();
+    return createSseResponse(req, async (sse) => {
+      try {
+        // Send chunk metadata upfront so the frontend can render citation
+        // chips in real-time during streaming (before the final `done` event).
+        sse.send({
+          type: "sources",
+          count: chunks.length,
+          chunks: chunks.map((c) => ({
+            n: 0, // assigned dynamically as [n] markers appear in the stream
+            docId: c.docId,
+            docName: c.docName,
+            chunkIndex: c.chunkIndex,
+            snippet: c.text.slice(0, 180),
+            score: c.score,
+            ...(c.url ? { url: c.url } : {}),
+            ...(c.sourceType ? { sourceType: c.sourceType } : {}),
+          })),
+        });
+        let fullText = "";
+        let citations: Citation[] = [];
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const send = (obj: unknown): boolean => {
-          if (req.signal.aborted) return false;
-          try { controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`)); return true; }
-          catch { return false; /* client disconnected */ }
-        };
-
-        try {
-          // Send chunk metadata upfront so the frontend can render citation
-          // chips in real-time during streaming (before the final `done` event).
-          send({
-            type: "sources",
-            count: chunks.length,
-            chunks: chunks.map((c) => ({
-              n: 0, // assigned dynamically as [n] markers appear in the stream
-              docId: c.docId,
-              docName: c.docName,
-              chunkIndex: c.chunkIndex,
-              snippet: c.text.slice(0, 180),
-              score: c.score,
-              ...(c.url ? { url: c.url } : {}),
-              ...(c.sourceType ? { sourceType: c.sourceType } : {}),
-            })),
-          });
-          let fullText = "";
-          let citations: Citation[] = [];
-
-          // M-10: pass the request's abort signal so a client disconnect
-          // cancels the underlying LLM fetch (not just this loop).
-          const gen = generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages, req.signal);
-          let result;
-          while (true) {
-            // Stop generating as soon as the client disconnects / aborts.
-            if (req.signal.aborted) break;
-            const { value, done } = await gen.next();
-            if (done) { result = value; break; }
-            if (value.type === "token" && value.text) {
-              fullText += value.text;
-              // If send() throws the client has gone away -- stop the loop.
-              const ok = send({ type: "token", text: value.text });
-              if (!ok) break;
-              if (chunks.length > 0 && !process.env.OPENAI_API_KEY) await sleep(22);
-            }
+        // M-10: pass the request's abort signal so a client disconnect
+        // cancels the underlying LLM fetch (not just this loop).
+        const gen = generateStream(effectiveQuery, chunks, history, body.temperature ?? 0.3, llmImages, req.signal);
+        let result;
+        while (true) {
+          // Stop generating as soon as the client disconnects / aborts.
+          if (req.signal.aborted) break;
+          const { value, done } = await gen.next();
+          if (done) { result = value; break; }
+          if (value.type === "token" && value.text) {
+            fullText += value.text;
+            // If send() returns false the client has gone away -- stop the loop.
+            const ok = sse.send({ type: "token", text: value.text });
+            if (!ok) break;
+            if (chunks.length > 0 && !process.env.OPENAI_API_KEY) await sleep(22);
           }
-          if (result) citations = result.citations;
-
-          // An empty stream is a failure, not an answer: persisting it would
-          // create a blank assistant bubble in history and count the question
-          // against the billing meter. (Client aborts land here too and are
-          // deliberately kept: the partial text the user saw must survive.)
-          if (!fullText.trim() && !req.signal.aborted) {
-            throw new Error("模型未返回内容（empty_response）");
-          }
-
-          const assistant = addMessage(conv!.id, { role: "assistant", content: fullText, citations });
-          // Count this answered question against the current user's + workspace's meters.
-          recordQa(authUser.id, authUser.workspaceId);
-          // Generate follow-up question suggestions
-          const followUps = await suggestFollowUps(query, fullText, chunks);
-          send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });
-        } catch (err) {
-          // Failures are classified before reaching the client: a quota/auth
-          // problem must not read as "please retry" (see lib/chat/errors.ts).
-          const failure = classifyChatError(err);
-          log.error({ err, code: failure.code, status: failure.status }, "[chat] stream error");
-          // P6-1: error reporting + trace finalization (status 500). `end` is
-          // idempotent, so the finally below cannot overwrite this status.
-          reportError(err, { source: opts.endpoint, context: `conv ${conv!.id} code ${failure.code}` });
-          trace.end(500, err);
-          send({ type: "error", code: failure.code, message: failure.message });
-        } finally {
-          // P6-1: the trace covers the full SSE lifetime - finalize here.
-          trace.end(200);
-          controller.close();
         }
-      },
-    });
+        if (result) citations = result.citations;
 
-    return new Response(stream, {
-      headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" },
+        // An empty stream is a failure, not an answer: persisting it would
+        // create a blank assistant bubble in history and count the question
+        // against the billing meter. (Client aborts land here too and are
+        // deliberately kept: the partial text the user saw must survive.)
+        if (!fullText.trim() && !req.signal.aborted) {
+          throw new Error("模型未返回内容（empty_response）");
+        }
+
+        const assistant = addMessage(conv!.id, { role: "assistant", content: fullText, citations });
+        // Count this answered question against the current user's + workspace's meters.
+        recordQa(authUser.id, authUser.workspaceId);
+        // Generate follow-up question suggestions
+        const followUps = await suggestFollowUps(query, fullText, chunks);
+        sse.send({ type: "done", messageId: assistant?.id, conversationId: conv!.id, title: conv!.title, citations, followUps });
+      } catch (err) {
+        // Failures are classified before reaching the client: a quota/auth
+        // problem must not read as "please retry" (see lib/chat/errors.ts).
+        const failure = classifyChatError(err);
+        log.error({ err, code: failure.code, status: failure.status }, "[chat] stream error");
+        // P6-1: error reporting + trace finalization (status 500). `end` is
+        // idempotent, so the finally below cannot overwrite this status.
+        reportError(err, { source: opts.endpoint, context: `conv ${conv!.id} code ${failure.code}` });
+        trace.end(500, err);
+        sse.send({ type: "error", code: failure.code, message: failure.message });
+      } finally {
+        // P6-1: the trace covers the full SSE lifetime - finalize here.
+        trace.end(200);
+        sse.close();
+      }
     });
   };
 

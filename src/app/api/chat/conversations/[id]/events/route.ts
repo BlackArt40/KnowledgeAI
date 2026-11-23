@@ -3,12 +3,11 @@ import { getKb } from "@/lib/kb/store";
 import { canViewKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { subscribe } from "@/lib/realtime/bus";
+import { createSseResponse } from "@/lib/sse-produce";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-const HEARTBEAT_MS = 30_000;
 
 // GET /api/chat/conversations/[id]/events - live message stream for SHARED
 // conversations (P4-1 collaborative Q&A). Only shared conversations are
@@ -25,44 +24,11 @@ export async function GET(req: Request, { params }: Params) {
   if (!kb || !canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
     return Response.json({ error: "无权访问" }, { status: 403 });
 
-  const enc = new TextEncoder();
-  const stream = new ReadableStream({
-    start(controller) {
-      let closed = false;
-      const closeStream = () => {
-        if (closed) return;
-        closed = true;
-        try { controller.close(); } catch { /* already closed */ }
-      };
-      const send = (obj: unknown): boolean => {
-        if (req.signal.aborted || closed) return false;
-        try { controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`)); return true; }
-        catch { return false; }
-      };
-
-      const unsubscribe = subscribe(`conv:${id}`, (event) => {
-        send(event);
-      });
-      send({ type: "init", conversationId: id });
-
-      const ping = setInterval(() => {
-        if (closed) return;
-        try { controller.enqueue(enc.encode(": ping\n\n")); } catch { closeStream(); }
-      }, HEARTBEAT_MS);
-
-      req.signal.addEventListener("abort", () => {
-        unsubscribe();
-        clearInterval(ping);
-        closeStream();
-      });
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
+  return createSseResponse(req, (sse) => {
+    const unsubscribe = subscribe(`conv:${id}`, (event) => {
+      sse.send(event);
+    });
+    sse.send({ type: "init", conversationId: id });
+    return unsubscribe;
   });
 }
