@@ -20,6 +20,22 @@ import type { PrismaUser, PrismaUserSecurity, PrismaKb, PrismaDoc, PrismaAgentTa
 import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";
 import { hydrateInviteReservation } from "@/lib/team/invite-seats";
 import { log } from "@/lib/obs/log";
+import {
+  createEmptyAdminStore,
+  createEmptyAgentStore,
+  createEmptyApiKeyStore,
+  createEmptyAuthStore,
+  createEmptyBillingStore,
+  createEmptyChatStore,
+  createEmptyKbStore,
+  createEmptyKgStore,
+  createEmptyModelStore,
+  createEmptyNotificationStore,
+  createEmptySecurityStore,
+  createEmptyTeamStore,
+  createEmptyWebhookStore,
+  createEmptyWorkspaceStore,
+} from "./store-factories";
 
 let _hydrated = false;
 // P1-9: coalesce concurrent first-request calls (the proxy fires
@@ -139,84 +155,27 @@ export async function hydrateFromDb(): Promise<void> {
  */
 function ensureStores(): void {
   const g = globalThis as Record<string, unknown>;
-  if (!g.__KAI_USER_STORE__)
-    g.__KAI_USER_STORE__ = { users: new Map(), emailIndex: new Map(), seeded: false };
-  if (!g.__KAI_SECURITY_STORE__)
-    g.__KAI_SECURITY_STORE__ = { byUser: new Map() };
-  if (!g.__KAI_KB_STORE__)
-    g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
-  if (!g.__KAI_CHAT_STORE__)
-    g.__KAI_CHAT_STORE__ = { conversations: new Map() };
-  if (!g.__KAI_AGENT_STORE__)
-    g.__KAI_AGENT_STORE__ = { tasks: new Map() };
-  if (!g.__KAI_MODEL_STORE__)
-    g.__KAI_MODEL_STORE__ = new Map();
+  if (!g.__KAI_USER_STORE__) g.__KAI_USER_STORE__ = createEmptyAuthStore();
+  if (!g.__KAI_SECURITY_STORE__) g.__KAI_SECURITY_STORE__ = createEmptySecurityStore();
+  if (!g.__KAI_KB_STORE__) g.__KAI_KB_STORE__ = createEmptyKbStore();
+  if (!g.__KAI_CHAT_STORE__) g.__KAI_CHAT_STORE__ = createEmptyChatStore();
+  if (!g.__KAI_AGENT_STORE__) g.__KAI_AGENT_STORE__ = createEmptyAgentStore();
+  if (!g.__KAI_MODEL_STORE__) g.__KAI_MODEL_STORE__ = createEmptyModelStore();
   if (!g.__KAI_NOTIF_STORE__ || !(g.__KAI_NOTIF_STORE__ as { seededUsers?: unknown }).seededUsers)
-    g.__KAI_NOTIF_STORE__ = { prefsByUser: new Map(), notificationsByUser: new Map(), seededUsers: new Set() };
-  if (!g.__KAI_TEAM_STORE__)
-    g.__KAI_TEAM_STORE__ = {
-      team: { id: "team_default", name: "KnowledgeAI 团队", logoInitial: "K", plan: "专业版", createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90 },
-      members: new Map(),
-      audit: [],
-      kbAccess: new Map(),
-      kbMemberRoles: new Map(),
-      seeded: false,
-    };
-  if (!g.__KAI_WORKSPACE_STORE__)
-    g.__KAI_WORKSPACE_STORE__ = new Map();
-  if (!g.__KAI_INVITE_SEATS__)
-    g.__KAI_INVITE_SEATS__ = new Map();
-  if (!g.__KAI_WEBHOOK_STORE__)
-    g.__KAI_WEBHOOK_STORE__ = { subs: new Map(), deliveries: [] };
+    g.__KAI_NOTIF_STORE__ = createEmptyNotificationStore();
+  if (!g.__KAI_TEAM_STORE__) g.__KAI_TEAM_STORE__ = createEmptyTeamStore();
+  if (!g.__KAI_WORKSPACE_STORE__) g.__KAI_WORKSPACE_STORE__ = createEmptyWorkspaceStore();
+  if (!g.__KAI_INVITE_SEATS__) g.__KAI_INVITE_SEATS__ = new Map();
+  if (!g.__KAI_WEBHOOK_STORE__) g.__KAI_WEBHOOK_STORE__ = createEmptyWebhookStore();
   if (!g.__KAI_BOT_STORE__)
     g.__KAI_BOT_STORE__ = { bots: new Map(), plaintextTokens: new Map() };
-  if (!g.__KAI_GRAPH_STORE__)
-    g.__KAI_GRAPH_STORE__ = { entities: new Map(), relations: new Map(), labelIndex: new Map(), docGraphs: new Map() };
-  if (!g.__KAI_ADMIN_STORE__)
-    // Mirror admin/store.ts defaults - an empty config would make
-    // getConfig() throw (e.g. required2FARoles) and 2FA policy fails closed.
-    // rateLimitPerMin follows RATE_LIMIT_PER_MIN (documented user tier).
-    g.__KAI_ADMIN_STORE__ = {
-      config: {
-        defaultModel: "gpt-4o",
-        embeddingModel: "bge-m3",
-        rateLimitPerMin: parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10),
-        maxUploadMb: 50,
-        maintenanceMode: false,
-        allowSignup: true,
-        required2FARoles: [],
-      },
-    };
-  if (!g.__KAI_APIKEY_STORE__)
-    g.__KAI_APIKEY_STORE__ = { keys: [], logs: [] };
+  if (!g.__KAI_GRAPH_STORE__) g.__KAI_GRAPH_STORE__ = createEmptyKgStore();
+  if (!g.__KAI_ADMIN_STORE__) g.__KAI_ADMIN_STORE__ = createEmptyAdminStore();
+  if (!g.__KAI_APIKEY_STORE__) g.__KAI_APIKEY_STORE__ = createEmptyApiKeyStore();
   if (!g.__KAI_BILLING_STORE__)
     // seeded: true - DB rows are authoritative once hydration runs; the
     // demo subscription/invoice seed must not mix into a DB-backed store.
-    g.__KAI_BILLING_STORE__ = {
-      subscriptionsByUser: new Map(),
-      invoicesByUser: new Map(),
-      orders: new Map(),
-      usageByUser: new Map(),
-      seeded: true,
-    };
-
-  // The default workspace is the tenant fallback for every request (cookie /
-  // no-cookie resolution); it must exist even when the DB has no row for it.
-  const wsStore = g.__KAI_WORKSPACE_STORE__ as Map<string, {
-    id: string; name: string; plan: string; ownerId: string;
-    members: string[]; createdAt: number; brandColor: string;
-  }>;
-  if (!wsStore.has("ws_default")) {
-    wsStore.set("ws_default", {
-      id: "ws_default",
-      name: "KnowledgeAI 团队",
-      plan: "pro",
-      ownerId: "usr_owner",
-      members: ["owner@knowledgeai.dev", "admin@knowledgeai.dev", "editor@knowledgeai.dev", "viewer@knowledgeai.dev"],
-      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
-      brandColor: "indigo",
-    });
-  }
+    g.__KAI_BILLING_STORE__ = createEmptyBillingStore(true);
 }
 
 /** Block demo seed() paths now that DB rows are authoritative. */

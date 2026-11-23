@@ -36,10 +36,12 @@ export interface Conversation {
   tags?: string[];
 }
 
+import { createEmptyChatStore } from "@/lib/db/store-factories";
+
 type Store = { conversations: Map<string, Conversation> };
 const g = globalThis as unknown as { __KAI_CHAT_STORE__?: Store };
 function store(): Store {
-  if (!g.__KAI_CHAT_STORE__) g.__KAI_CHAT_STORE__ = { conversations: new Map() };
+  if (!g.__KAI_CHAT_STORE__) g.__KAI_CHAT_STORE__ = createEmptyChatStore();
   return g.__KAI_CHAT_STORE__;
 }
 

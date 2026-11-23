@@ -64,12 +64,14 @@ async function passwordMatches(password: string, stored: string): Promise<boolea
   return stored === legacyHash(password);
 }
 
+import { createEmptyAuthStore } from "@/lib/db/store-factories";
+
 type Store = { users: Map<string, User>; emailIndex: Map<string, string>; seeded: boolean };
 const g = globalThis as unknown as { __KAI_USER_STORE__?: Store };
 
 function store(): Store {
   if (!g.__KAI_USER_STORE__) {
-    g.__KAI_USER_STORE__ = { users: new Map(), emailIndex: new Map(), seeded: false };
+    g.__KAI_USER_STORE__ = createEmptyAuthStore();
   }
   return g.__KAI_USER_STORE__;
 }

@@ -4,6 +4,7 @@ import { getUserById } from "@/lib/auth/store";
 import { persistInvoice, persistOrder, persistSubscription, deleteBillingDataFromDb, bumpWorkspaceUsage, bumpUserUsage } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
+import { createEmptyBillingStore } from "@/lib/db/store-factories";
 
 
 // ── Per-user billing store ───────────────────────────────────────────────
@@ -22,22 +23,10 @@ const g = globalThis as unknown as { __KAI_BILLING_STORE__?: Store };
 
 function store(): Store {
   if (!g.__KAI_BILLING_STORE__) {
-    g.__KAI_BILLING_STORE__ = {
-      subscriptionsByUser: new Map(),
-      invoicesByUser: new Map(),
-      orders: new Map(),
-      usageByUser: new Map(),
-      seeded: false,
-    };
+    g.__KAI_BILLING_STORE__ = createEmptyBillingStore();
   } else if (!g.__KAI_BILLING_STORE__.subscriptionsByUser) {
     // HMR migration: old singleton shape → re-init per-user maps.
-    g.__KAI_BILLING_STORE__ = {
-      subscriptionsByUser: new Map(),
-      invoicesByUser: new Map(),
-      orders: new Map(),
-      usageByUser: new Map(),
-      seeded: false,
-    };
+    g.__KAI_BILLING_STORE__ = createEmptyBillingStore();
   }
   return g.__KAI_BILLING_STORE__;
 }

@@ -1,4 +1,5 @@
 import type { AdminUser, AdminOverview, KbMonitor, SystemConfig, UserStatus } from "./types";
+import { createEmptyAdminStore } from "@/lib/db/store-factories";
 import {
   listUsers as authListUsers,
   getUserById,
@@ -34,23 +35,7 @@ const g = globalThis as unknown as { __KAI_ADMIN_STORE__?: Store };
 
 function store(): Store {
   if (!g.__KAI_ADMIN_STORE__) {
-    g.__KAI_ADMIN_STORE__ = {
-      config: {
-        defaultModel: "gpt-4o",
-        embeddingModel: "bge-m3",
-        // RATE_LIMIT_PER_MIN is the documented user-tier source (.env.example,
-        // docs/ops/env-vars.md; /api/admin/config reports the same value with
-        // rateLimitEnvControlled). The seeded default used to be a hardcoded
-        // 60, which silently overrode the documented tier (200) for every
-        // route-level check - e.g. a deployment raising the env still got
-        // 429s at 60/min.
-        rateLimitPerMin: parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10),
-        maxUploadMb: 50,
-        maintenanceMode: false,
-        allowSignup: true,
-        required2FARoles: [],
-      },
-    };
+    g.__KAI_ADMIN_STORE__ = createEmptyAdminStore();
   }
   return g.__KAI_ADMIN_STORE__;
 }

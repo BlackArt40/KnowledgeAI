@@ -15,6 +15,7 @@
 
 import { recordAudit } from "@/lib/security/audit";
 import { DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
+import { createEmptyWorkspaceStore } from "@/lib/db/store-factories";
 import { persistWorkspace, deleteWorkspaceFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 
@@ -39,21 +40,7 @@ const g = globalThis as unknown as { __KAI_WORKSPACE_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_WORKSPACE_STORE__) {
     // Seed the default workspace with the 4 demo users (mirrors the team).
-    const ws: Workspace = {
-      id: DEFAULT_WORKSPACE_ID,
-      name: "KnowledgeAI 团队",
-      plan: "pro",
-      ownerId: "usr_owner",
-      members: [
-        "owner@knowledgeai.dev",
-        "admin@knowledgeai.dev",
-        "editor@knowledgeai.dev",
-        "viewer@knowledgeai.dev",
-      ],
-      createdAt: Date.now() - 90 * 86_400_000,
-      brandColor: DEFAULT_BRAND_COLOR,
-    };
-    g.__KAI_WORKSPACE_STORE__ = new Map([[ws.id, ws]]);
+    g.__KAI_WORKSPACE_STORE__ = createEmptyWorkspaceStore();
   }
   return g.__KAI_WORKSPACE_STORE__;
 }

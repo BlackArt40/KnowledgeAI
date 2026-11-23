@@ -91,7 +91,7 @@ pnpm start                  # :3000，页面与 API 同源
 | 路径 | 职责 |
 |---|---|
 | `src/app/api/**` | HTTP/SSE 路由；认证、校验、编排 |
-| `src/lib/**` | 业务逻辑；15 个 `store.ts` 是内存仓储，`db/hydrate|persist` 负责 DB 映射 |
+| `src/lib/**` | 业务逻辑；15 个 `store.ts` 是内存仓储，`db/store-factories.ts` 定义统一空形状，`db/hydrate|persist` 负责 DB 映射 |
 | `src/proxy.ts` | 限流 + CORS + trace + hydration 门；**不做认证** |
 | `frontend/src/**` | Vue 页面、API 客户端、少量 Pinia（当前只有 theme） |
 | `public/**` | PWA/vendor/widget 单源；`index.html`/`home.html`/`assets/` 是构建生成物 |
@@ -110,6 +110,6 @@ pnpm start                  # :3000，页面与 API 同源
 
 1. 不要 `git add .`（会带进 `.codebuddy/`）。
 2. 不要删 `public/sw.js`、`kb_chunks`、Next API、Prisma。
-3. 不要改 `hydrate/persist` 的结构而不改 `ensureStores`；漏改只会在 DB 模式重启后暴露。
+3. 新增 store 字段改 `db/store-factories.ts`；`ensureStores` 和各 `store()` 都从这里取空形状，漏改只会在 DB 模式重启后暴露。
 4. `src/proxy.ts` 不是认证中间件；认证在 route/lib。
 5. 租户过滤不是自动的：`canViewKb/canEditKb` 等需要调用方显式传 workspace。
