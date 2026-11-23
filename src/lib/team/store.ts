@@ -3,6 +3,7 @@ import { persistTeam, persistAuditEntry, persistTeamMember, deleteTeamMemberFrom
 import { getUserById, setUserRole } from "@/lib/auth/store";
 import { getWorkspace } from "@/lib/workspace/store";
 import { uid } from "@/lib/ids";
+import { createEmptyTeamStore } from "@/lib/db/store-factories";
 
 type Store = {
   team: Team;
@@ -18,14 +19,7 @@ const g = globalThis as unknown as { __KAI_TEAM_STORE__?: Store };
 
 function store(): Store {
   if (!g.__KAI_TEAM_STORE__) {
-    g.__KAI_TEAM_STORE__ = {
-      team: { id: "team_default", name: "KnowledgeAI 团队", logoInitial: "K", plan: "专业版", createdAt: Date.now() - 1000 * 60 * 60 * 24 * 90 },
-      members: new Map(),
-      audit: [],
-      kbAccess: new Map(),
-      kbMemberRoles: new Map(),
-      seeded: false,
-    };
+    g.__KAI_TEAM_STORE__ = createEmptyTeamStore();
   } else {
     // HMR migration: stores created before P4-2 lack the per-KB role map.
     if (!g.__KAI_TEAM_STORE__.kbMemberRoles) g.__KAI_TEAM_STORE__.kbMemberRoles = new Map();

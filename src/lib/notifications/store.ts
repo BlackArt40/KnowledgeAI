@@ -9,6 +9,7 @@ import type { Notification, NotificationPrefs, NotifType } from "./types";
 import { persistNotification, persistNotificationPrefs, deleteNotificationFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
 import { uid } from "@/lib/ids";
+import { createEmptyNotificationStore } from "@/lib/db/store-factories";
 
 interface Store {
   prefsByUser: Map<string, NotificationPrefs>;
@@ -23,12 +24,7 @@ const g = globalThis as unknown as { __KAI_NOTIF_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_NOTIF_STORE__ || !g.__KAI_NOTIF_STORE__.seededUsers) {
     // HMR migration: reset singletons created by an older store revision.
-    g.__KAI_NOTIF_STORE__ = {
-      prefsByUser: new Map(),
-      notificationsByUser: new Map(),
-      seededUsers: new Set(),
-      hydrated: false,
-    };
+    g.__KAI_NOTIF_STORE__ = createEmptyNotificationStore();
   }
   return g.__KAI_NOTIF_STORE__;
 }

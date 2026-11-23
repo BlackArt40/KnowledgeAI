@@ -7,6 +7,7 @@ import { deleteConversationsOlderThan } from "@/lib/chat/store";
 import { getConfig } from "@/lib/admin/store";
 import { uid } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
+import { createEmptySecurityStore } from "@/lib/db/store-factories";
 
 type UserState = SecurityState & { seeded: boolean; authVersion?: number };
 
@@ -19,7 +20,7 @@ const g = globalThis as unknown as { __KAI_SECURITY_STORE__?: Store };
 function store(): Store {
   if (!g.__KAI_SECURITY_STORE__ || !g.__KAI_SECURITY_STORE__.byUser) {
     // HMR migration: reset singletons created by an older store revision.
-    g.__KAI_SECURITY_STORE__ = { byUser: new Map() };
+    g.__KAI_SECURITY_STORE__ = createEmptySecurityStore();
   }
   return g.__KAI_SECURITY_STORE__;
 }

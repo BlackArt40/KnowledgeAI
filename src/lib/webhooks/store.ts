@@ -12,6 +12,7 @@ import { WEBHOOK_EVENTS } from "./types";
 import { persistWebhookSubscription, deleteWebhookSubscriptionFromDb } from "@/lib/db/persist";
 import { recordAudit } from "@/lib/security/audit";
 import { log } from "@/lib/obs/log";
+import { createEmptyWebhookStore } from "@/lib/db/store-factories";
 
 interface StoreShape {
   subs: Map<string, WebhookSubscription>;
@@ -26,7 +27,7 @@ const MAX_DELIVERY_RECORDS = 100;
 
 function store(): StoreShape {
   if (!globalThis.__KAI_WEBHOOK_STORE__) {
-    globalThis.__KAI_WEBHOOK_STORE__ = { subs: new Map(), deliveries: [] };
+    globalThis.__KAI_WEBHOOK_STORE__ = createEmptyWebhookStore();
   }
   return globalThis.__KAI_WEBHOOK_STORE__;
 }

@@ -5,13 +5,14 @@ import { getDb, isDbEnabled } from "@/lib/db/client";
 import { decryptFromString, isEncrypted } from "@/lib/crypto";
 import { uid, genSecret } from "@/lib/ids";
 import { log } from "@/lib/obs/log";
+import { createEmptyApiKeyStore } from "@/lib/db/store-factories";
 
 type Store = { keys: ApiKey[]; logs: CallLog[] };
 const g = globalThis as unknown as { __KAI_APIKEY_STORE__?: Store };
 
 function store(): Store {
   if (!g.__KAI_APIKEY_STORE__) {
-    g.__KAI_APIKEY_STORE__ = { keys: [], logs: [] };
+    g.__KAI_APIKEY_STORE__ = createEmptyApiKeyStore();
   }
   return g.__KAI_APIKEY_STORE__;
 }

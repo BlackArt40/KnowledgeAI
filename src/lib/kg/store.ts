@@ -10,6 +10,7 @@
 import type { GraphEntity, GraphRelation } from "./types";
 import { extractEntities, extractRelations, aggregateMentions } from "./extract";
 import { persistEntity, persistRelation, deleteEntityFromDb, deleteRelationFromDb } from "@/lib/db/persist";
+import { createEmptyKgStore } from "@/lib/db/store-factories";
 
 interface StoreShape {
   entities: Map<string, GraphEntity>;
@@ -28,7 +29,7 @@ declare global {
 
 function store(): StoreShape {
   if (!globalThis.__KAI_GRAPH_STORE__) {
-    globalThis.__KAI_GRAPH_STORE__ = { entities: new Map(), relations: new Map(), labelIndex: new Map(), docGraphs: new Map() };
+    globalThis.__KAI_GRAPH_STORE__ = createEmptyKgStore();
   }
   return globalThis.__KAI_GRAPH_STORE__;
 }

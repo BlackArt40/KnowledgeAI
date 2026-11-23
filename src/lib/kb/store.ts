@@ -18,6 +18,7 @@ import type { DocAccess } from "@/lib/team/types";
 import { promises as fs } from "fs";
 import path from "path";
 import { log } from "@/lib/obs/log";
+import { createEmptyKbStore } from "@/lib/db/store-factories";
 
 // ---------------------------------------------------------------------------
 // In-memory store (demo). Structured to be swapped for PostgreSQL/Prisma +
@@ -34,7 +35,7 @@ const g = globalThis as unknown as { __KAI_KB_STORE__?: Store };
 
 function getStore(): Store {
   if (!g.__KAI_KB_STORE__) {
-    g.__KAI_KB_STORE__ = { kbs: new Map(), docs: new Map(), seeded: false };
+    g.__KAI_KB_STORE__ = createEmptyKbStore();
   } else {
     // HMR migration: KBs created before per-user isolation lack ownerId;
     // assign them to the demo owner so access checks keep working. KBs

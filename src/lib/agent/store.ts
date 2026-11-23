@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type { AgentTask, ShareConfig, ReportVersion, Comment } from "./types";
+import { createEmptyAgentStore } from "@/lib/db/store-factories";
 import { persistTask, deleteAgentTaskFromDb, deleteAgentTasksByUserFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";
 import {
@@ -12,7 +13,7 @@ type Store = { tasks: Map<string, AgentTask> };
 // re-evaluation keeps the first instance), and it always stores { tasks: Map }.
 const g = globalThis as unknown as { __KAI_AGENT_STORE__?: Store };
 function store(): Store {
-  if (!g.__KAI_AGENT_STORE__) g.__KAI_AGENT_STORE__ = { tasks: new Map() };
+  if (!g.__KAI_AGENT_STORE__) g.__KAI_AGENT_STORE__ = createEmptyAgentStore();
   return g.__KAI_AGENT_STORE__;
 }
 

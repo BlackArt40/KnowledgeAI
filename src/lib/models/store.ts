@@ -86,11 +86,13 @@ export function getProvider(id: ProviderId): ProviderPreset | undefined {
 // ── Per-user store ───────────────────────────────────────────────────────
 // Outer map: userId -> (inner map: modelId -> ModelConfig)
 
+import { createEmptyModelStore } from "@/lib/db/store-factories";
+
 type Store = Map<string, Map<string, ModelConfig>>;
 const g = globalThis as unknown as { __KAI_MODEL_STORE__?: Store };
 
 function store(): Store {
-  if (!g.__KAI_MODEL_STORE__) g.__KAI_MODEL_STORE__ = new Map();
+  if (!g.__KAI_MODEL_STORE__) g.__KAI_MODEL_STORE__ = createEmptyModelStore();
   return g.__KAI_MODEL_STORE__;
 }
 

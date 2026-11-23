@@ -38,12 +38,14 @@ export interface UploadSession {
   updatedAt: number;
 }
 
+import { createEmptyUploadStore } from "@/lib/db/store-factories";
+
 type Store = Map<string, UploadSession>;
 
 const g = globalThis as unknown as { __KAI_UPLOAD_STORE__?: Store };
 
 function store(): Store {
-  if (!g.__KAI_UPLOAD_STORE__) g.__KAI_UPLOAD_STORE__ = new Map();
+  if (!g.__KAI_UPLOAD_STORE__) g.__KAI_UPLOAD_STORE__ = createEmptyUploadStore();
   return g.__KAI_UPLOAD_STORE__;
 }
 
