@@ -1,5 +1,5 @@
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { subscribe } from "@/lib/realtime/bus";
 import { getKbViewers, joinKbViewers, touchKbViewers } from "@/lib/realtime/viewers";
@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
   const kb = getKb(id);
   if (!kb) return Response.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
+  if (!canAccessKb(u, kb))
     return Response.json({ error: "无权访问" }, { status: 403 });
   const rl = await kbRateLimit(id);
   if (!rl.allowed) return rateLimitResponse(rl, "kb");

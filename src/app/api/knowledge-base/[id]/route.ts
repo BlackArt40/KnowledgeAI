@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getKb, listDocuments, updateKbSettings, deleteKb, canViewDoc } from "@/lib/kb/store";
-import { canViewKb, canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { recordAudit } from "@/lib/security/audit";
@@ -18,7 +18,7 @@ async function loadAccessible(req: Request, id: string) {
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
   if (kb.workspaceId !== u.workspaceId)
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
+  if (!canAccessKb(u, kb))
     return { error: NextResponse.json({ error: "无权访问" }, { status: 403 }) };
   // P3-3: per-KB tier (proxy can't see path params) - covers GET/PATCH/DELETE/upload.
   const rl = await kbRateLimit(id);
@@ -55,10 +55,7 @@ export async function GET(req: Request, { params }: Params) {
     size: docs.reduce((s, d) => s + Math.max(0, d.size), 0),
   };
   // 共享与分发：canEdit 决定前端是否展示分享入口（编辑权限才能建链接）。
-  const canEdit = canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId, {
-    callerWorkspaceId: r.u.workspaceId,
-    kbWorkspaceId: r.kb.workspaceId,
-  });
+  const canEdit = canAccessKb(r.u, r.kb, "edit");
   return NextResponse.json({ kb: r.kb, docs, stats, permissions: { canEdit } });
 }
 
@@ -69,7 +66,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const { id } = await params;
   const r = await loadAccessible(req, id);
   if ("error" in r) return r.error;
-  if (!canEditKb(r.kb.id, r.kb.name, r.u.id, r.kb.ownerId, { callerWorkspaceId: r.u.workspaceId, kbWorkspaceId: r.kb.workspaceId }))
+  if (!canAccessKb(r.u, r.kb, "edit"))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   let body: { baseVersion?: number } & Record<string, unknown>;
   try {

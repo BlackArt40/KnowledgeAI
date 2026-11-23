@@ -1,6 +1,6 @@
 import { listSharedConversations } from "@/lib/chat/store";
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getUserById } from "@/lib/auth/store";
 import { getRequestUser } from "@/lib/auth/guard";
 
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   const convs = listSharedConversations().filter((c) => {
     const kb = getKb(c.kbId);
-    return kb && canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId });
+    return kb && canAccessKb(u, kb);
   });
 
   return Response.json({

@@ -346,6 +346,19 @@ export function canEditKb(
   return getKbAccess(kbId, kbName) === "edit";
 }
 
+/** Single entry point for route/lib access checks: workspace IDs are taken
+ *  from the user/KB objects, so callers cannot forget the tenant boundary. */
+export function canAccessKb(
+  user: { id: string; workspaceId: string },
+  kb: { id: string; name: string; ownerId: string; workspaceId: string },
+  mode: "view" | "edit" = "view"
+): boolean {
+  const opts = { callerWorkspaceId: user.workspaceId, kbWorkspaceId: kb.workspaceId };
+  return mode === "edit"
+    ? canEditKb(kb.id, kb.name, user.id, kb.ownerId, opts)
+    : canViewKb(kb.id, kb.name, user.id, kb.ownerId, opts);
+}
+
 export function setKbAccess(kbId: string, access: KbAccess): void {
   seed();
   const s = store();

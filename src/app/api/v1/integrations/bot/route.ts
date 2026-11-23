@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import {
   createBotBinding,
   listBotBindings,
@@ -55,7 +55,7 @@ async function handlePOST(req: Request) {
 
   const kb = getKb(body.kbId);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (!canAccessKb(u, kb)) {
     return NextResponse.json({ error: "无权使用该知识库" }, { status: 403 });
   }
 

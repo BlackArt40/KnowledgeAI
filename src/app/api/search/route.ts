@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listAllKbs, listDocuments, canViewDoc } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { listAllConversations } from "@/lib/chat/store";
 import { listTasks } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
@@ -87,7 +87,7 @@ async function handleSearch(req: Request) {
   if (q) {
     // ── knowledge bases (workspace-scoped + team visibility) ────────────
     const kbs = sortScored(
-      listAllKbs(u.workspaceId).filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })),
+      listAllKbs(u.workspaceId).filter((kb) => canAccessKb(u, kb)),
       (kb) => rankOf(q, kb.name),
       (kb) => kb.updatedAt
     ).slice(0, LIMIT);
