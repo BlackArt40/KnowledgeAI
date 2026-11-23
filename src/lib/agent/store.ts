@@ -17,11 +17,22 @@ function store(): Store {
   return g.__KAI_AGENT_STORE__;
 }
 
-export function listTasks(userId?: string, workspaceId?: string): AgentTask[] {
-  const all = Array.from(store().tasks.values());
-  let filtered = userId ? all.filter((t) => t.userId === userId) : all;
-  if (workspaceId) filtered = filtered.filter((t) => t.workspaceId === workspaceId);
-  return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+export function listTasks(userId: string, workspaceId: string): AgentTask[] {
+  return Array.from(store().tasks.values())
+    .filter((t) => t.userId === userId && t.workspaceId === workspaceId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Workspace-wide task list for usage/admin dashboards. */
+export function listWorkspaceTasks(workspaceId: string): AgentTask[] {
+  return Array.from(store().tasks.values())
+    .filter((t) => t.workspaceId === workspaceId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Cross-tenant task list; admin-only aggregate path. */
+export function listAllTasksForAdmin(): AgentTask[] {
+  return Array.from(store().tasks.values()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function getTask(id: string): AgentTask | undefined {

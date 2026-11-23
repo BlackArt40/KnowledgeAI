@@ -58,10 +58,10 @@ export function listConversations(kbId: string, userId?: string): Conversation[]
 
 /** All conversations across every KB, most-recent first.
  *  Pass userId to scope to a single user (per-user isolation). */
-export function listAllConversations(limit?: number, userId?: string): Conversation[] {
-  let all = Array.from(store().conversations.values());
-  if (userId) all = all.filter((c) => c.userId === userId);
-  all.sort((a, b) => b.updatedAt - a.updatedAt);
+export function listAllConversations(userId: string, workspaceId: string, limit?: number): Conversation[] {
+  const all = Array.from(store().conversations.values())
+    .filter((c) => c.userId === userId && c.workspaceId === workspaceId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
   return limit ? all.slice(0, limit) : all;
 }
 

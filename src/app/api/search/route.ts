@@ -126,7 +126,7 @@ async function handleSearch(req: Request) {
 
     // ── conversations (workspace-scoped, P4-3) ──────────────────────────
     results.conversations = sortScored(
-      listAllConversations(undefined, u.id).filter(
+      listAllConversations(u.id, u.workspaceId).filter(
         (c) => c.workspaceId === u.workspaceId && matches(q, c.title)
       ),
       (c) => rankOf(q, c.title),

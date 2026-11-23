@@ -172,7 +172,7 @@ describe("agent run SSE 终态载荷（多进程）", () => {
     expect(payload.message).toContain("系统繁忙");
     expect(jobs).toHaveLength(0); // rejected before it reached the queue
     // The task is marked failed so the UI/history reflect the refusal.
-    const task = listTasks("usr_owner").find((t) => t.topic === "回归：队列繁忙");
+    const task = listTasks("usr_owner", "ws_default").find((t) => t.topic === "回归：队列繁忙");
     expect(task?.status).toBe("failed");
     // 被背压拒绝 = 没进队列 = 不该扣配额
     expect(meter.calls).toEqual([]);

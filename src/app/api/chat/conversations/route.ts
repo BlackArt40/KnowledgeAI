@@ -20,7 +20,7 @@ async function handleGET(req: Request) {
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : undefined;
   const list = kbId
     ? listConversations(kbId, u.id).filter((c) => c.workspaceId === u.workspaceId)
-    : listAllConversations(limit, u.id).filter((c) => c.workspaceId === u.workspaceId);
+    : listAllConversations(u.id, u.workspaceId, limit);
   return NextResponse.json({
     conversations: list.filter((c) => (archivedOnly ? !!c.archived : !c.archived)),
   });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getUsage, getSubscription, getWorkspaceUsage } from "@/lib/billing/store";
 import { getPlan } from "@/lib/billing/plans";
 import { listAllKbs, listDocuments } from "@/lib/kb/store";
-import { listTasks } from "@/lib/agent/store";
+import { listTasks, listWorkspaceTasks } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { findUserByEmail } from "@/lib/auth/store";
 import { getWorkspace } from "@/lib/workspace/store";
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     (s, kb) => s + listDocuments(kb.id).reduce((x, d) => x + Math.max(0, d.size), 0),
     0
   );
-  const agentCount = listTasks(undefined, user.workspaceId).length;
+  const agentCount = listWorkspaceTasks(user.workspaceId).length;
 
   // Per-member breakdown is a management view (member.manage). Everyone else
   // keeps the workspace aggregate + their own meters only.
