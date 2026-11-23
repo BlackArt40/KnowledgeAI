@@ -114,7 +114,7 @@ npx prisma migrate status
 - 本地 `knowledgeai` 库补齐 5 个迁移后：26 applied、`prisma migrate status` 为 up to date；`kb_chunks` 保留 25 行，`test:db` 4/4 通过。
 - 已有 `_prisma_migrations` 的库再执行 `--apply`：按预期拒绝，退出码 1。
 
-> `kb_chunks` 是 `src/lib/rag/vector-store-pgvector.ts` 在运行时创建的 pgvector 表，**不是历史垃圾表**，不要用 Prisma 迁移删除或重建它。
+> `kb_chunks` 是 `src/lib/rag/vector-index-pgvector.ts` 在运行时创建的 pgvector 表，**不是历史垃圾表**，不要用 Prisma 迁移删除或重建它。
 
 ## 6. 与 CI 的关系
 

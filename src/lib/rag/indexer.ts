@@ -1,5 +1,5 @@
 import { chunkText, smartChunk } from "./chunker";
-import { indexChunks, clearDoc } from "./vector-store";
+import { indexChunks, clearDoc } from "./vector-index";
 import { indexBM25, clearBM25Doc } from "./bm25";
 import type { KbDocument, KbSettings } from "@/lib/kb/types";
 

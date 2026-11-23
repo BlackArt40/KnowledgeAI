@@ -48,7 +48,7 @@ async function main() {
   delete process.env.QUERY_REWRITE_ENABLED;
 
   // ── 5. hybridSearch with docIdFilter ──────────────────────────────────
-  const { indexChunks } = await import("../../src/lib/rag/vector-store");
+  const { indexChunks } = await import("../../src/lib/rag/vector-index");
   const { indexBM25 } = await import("../../src/lib/rag/bm25");
   const { hybridSearch } = await import("../../src/lib/rag/hybrid-search");
   const { embedText } = await import("../../src/lib/llm/provider");

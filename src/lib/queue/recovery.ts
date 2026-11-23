@@ -5,7 +5,7 @@
 // handles stalled jobs, so this is a no-op when REDIS_URL is configured.
 // ---------------------------------------------------------------------------
 
-import { getDb, isDbEnabled } from "@/lib/db/client";
+import { getDb, isDbEnabled } from "@/lib/db/prisma";
 import { enqueue, isQueueExternal } from "./index";
 import { log } from "@/lib/obs/log";
 

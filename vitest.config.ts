@@ -16,7 +16,7 @@
 //
 // Excluded on purpose (each needs a live service or has no runtime code):
 //   - rag/ocr.ts                      tesseract binaries + filesystem fixtures
-//   - rag/vector-store-{chromadb,pinecone,interface}.ts  external backends
+//   - rag/vector-index-{chromadb,pinecone,interface}.ts  external backends
 //   - rag/types.ts, team/types.ts     type-only modules
 //   - every *.test.ts                 the probes themselves
 // rag/remote.ts is NOT excluded anymore: remote.test.ts drives the HTTP/SSE
@@ -62,9 +62,9 @@ export default defineConfig({
       exclude: [
         "**/*.test.ts",
         "src/lib/rag/ocr.ts",
-        "src/lib/rag/vector-store-chromadb.ts",
-        "src/lib/rag/vector-store-pinecone.ts",
-        "src/lib/rag/vector-store-interface.ts",
+        "src/lib/rag/vector-index-chromadb.ts",
+        "src/lib/rag/vector-index-pinecone.ts",
+        "src/lib/rag/vector-index-interface.ts",
         "src/lib/rag/types.ts",
         "src/lib/team/types.ts",
       ],

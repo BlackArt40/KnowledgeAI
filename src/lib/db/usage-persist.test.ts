@@ -3,12 +3,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/db/client", () => ({
+vi.mock("@/lib/db/prisma", () => ({
   getDb: vi.fn(),
   isDbEnabled: vi.fn(() => true),
 }));
 
-import { getDb } from "./client";
+import { getDb } from "./prisma";
 import { bumpUserUsage, bumpWorkspaceUsage } from "./persist";
 
 const upsert = vi.fn(async (_options: unknown) => ({}));

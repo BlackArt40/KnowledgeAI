@@ -41,7 +41,7 @@ flowchart LR
   B --> C["清洗 / 文本抽取"]
   C --> D["切片 chunker.ts<br/>标题感知 · 表格代码保护"]
   D --> E["嵌入 embeddings.ts<br/>Provider 或本地哈希回退"]
-  E --> F["向量库入库<br/>vector-store-*"]
+  E --> F["向量库入库<br/>vector-index-*"]
   F --> G["索引状态更新<br/>kb.ready 事件"]
 ```
 
@@ -94,7 +94,7 @@ flowchart LR
 | ChromaDB | `VECTOR_STORE=chromadb` | 自托管、内网 |
 | Pinecone | `VECTOR_STORE=pinecone` | Serverless 大规模 |
 
-新增后端：实现 `vector-store-interface.ts` 的接口，在 `vector-store.ts` 工厂注册即可。迁移脚本 `scripts/migrate-vector-store.ts` 可将内存索引批量导入目标后端。
+新增后端：实现 `vector-index-interface.ts` 的接口，在 `vector-index.ts` 工厂注册即可。迁移脚本 `scripts/migrate-vector-index.ts` 可将内存索引批量导入目标后端。
 
 ## 关键取舍
 

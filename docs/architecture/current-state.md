@@ -66,7 +66,7 @@ pnpm start                  # :3000，页面与 API 同源
 |---|---|---|
 | 数据 | `globalThis` 内存 store，重启即失 | `DATABASE_URL` + Prisma；启动 `hydrateFromDb()`，写内存后异步 `persistX()` |
 | 队列 | 进程内队列，`QUEUE_CONSUMER=web` | `REDIS_URL` + BullMQ，独立 `worker` |
-| 向量 | 内存向量 + BM25 | `VECTOR_STORE=pgvector`；`kb_chunks` 由 `vector-store-pgvector.ts` 运行时创建 |
+| 向量 | 内存向量 + BM25 | `VECTOR_STORE=pgvector`；`kb_chunks` 由 `vector-index-pgvector.ts` 运行时创建 |
 | LLM | 本地抽取式回退 | `OPENAI_API_KEY` / `CHAT_MODEL` / `EMBEDDING_MODEL` |
 | 认证 | demo 账号 + 自签 `kai-token` | 同一套 `AUTH_SECRET`；NextAuth 仅作 OAuth 协议引擎 |
 

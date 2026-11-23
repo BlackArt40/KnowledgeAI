@@ -2,7 +2,7 @@
 // Verify in-memory fallback works when DATABASE_URL is NOT set.
 async function main() {
   const { createUser, listUsers } = await import("../../src/lib/auth/store");
-  const { isDbEnabled } = await import("../../src/lib/db/client");
+  const { isDbEnabled } = await import("../../src/lib/db/prisma");
   const { createKb, listAllKbs } = await import("../../src/lib/kb/store");
   const { updateConfig, getConfig } = await import("../../src/lib/admin/store");
 

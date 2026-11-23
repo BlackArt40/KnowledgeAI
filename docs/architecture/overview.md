@@ -124,7 +124,7 @@ flowchart LR
 
 ### 2. Provider 适配层：配置即切换
 
-每个外部依赖都有“真实实现 + 演示回退”双实现（`src/lib/*/provider.ts` + `src/lib/config.ts` 聚合状态）：
+每个外部依赖都有“真实实现 + 演示回退”双实现（`src/lib/*/provider.ts` + `src/lib/providers/status.ts` 聚合状态）：
 
 | 模块 | 环境变量（示例） | 真实服务 | 未配置时回退 |
 |------|------|------|------|

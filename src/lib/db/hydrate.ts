@@ -9,7 +9,7 @@
 // When DB is not configured, hydration is a no-op (stores use seed data).
 // ---------------------------------------------------------------------------
 
-import { getDb, isDbEnabled } from "./client";
+import { getDb, isDbEnabled } from "./prisma";
 import { decryptFromString } from "@/lib/crypto";
 import { hydrateSecurityState } from "@/lib/security/store";
 import { markNotificationsHydrated } from "@/lib/notifications/store";

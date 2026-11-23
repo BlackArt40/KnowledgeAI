@@ -6,7 +6,7 @@
 import { isLLMEnabled, embeddingModel, llmLabel } from "@/lib/llm/provider";
 import { isPaymentEnabled, paymentLabel } from "@/lib/billing/provider";
 import { isStorageEnabled } from "@/lib/storage";
-import { isDbEnabled } from "@/lib/db/client";
+import { isDbEnabled } from "@/lib/db/prisma";
 import { isExternalEnabled, externalLabel } from "@/lib/external";
 import { isEmailEnabled } from "@/lib/email";
 import { getRateLimitLimits, isDistributedRateLimit } from "@/lib/rate-limit";

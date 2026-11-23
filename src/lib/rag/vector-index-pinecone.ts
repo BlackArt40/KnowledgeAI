@@ -12,7 +12,7 @@
 // Each KB maps to a Pinecone namespace "kai_{kbId}" for per-KB isolation.
 // ---------------------------------------------------------------------------
 
-import type { VectorStore, SearchResult } from "./vector-store-interface";
+import type { VectorStore, SearchResult } from "./vector-index-interface";
 import { log } from "@/lib/obs/log";
 
 // ── Configuration ────────────────────────────────────────────────────────

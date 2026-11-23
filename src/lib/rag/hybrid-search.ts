@@ -13,7 +13,7 @@
 //             and individual rank learning methods" (SIGIR 2009)
 // ---------------------------------------------------------------------------
 
-import { search } from "./vector-store";
+import { search } from "./vector-index";
 import { searchBM25 } from "./bm25";
 import type { RetrievedChunk } from "./types";
 

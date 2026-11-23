@@ -9,7 +9,7 @@
 // Collections are named "kai_{kbId}" for per-KB isolation.
 // ---------------------------------------------------------------------------
 
-import type { VectorStore, SearchResult } from "./vector-store-interface";
+import type { VectorStore, SearchResult } from "./vector-index-interface";
 
 // ── Configuration ────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(async (..._args: unknown[]) => [] as unknown[]),
 }));
 
-vi.mock("@/lib/db/client", () => ({
+vi.mock("@/lib/db/prisma", () => ({
   isDbEnabled: () => mocks.enabled,
   getDb: async () => ({
     $executeRawUnsafe: mocks.exec,
@@ -23,7 +23,7 @@ vi.mock("@/lib/obs/log", () => ({
 /** Fresh module per test - the store keeps a module-level schema cache. */
 async function newStore() {
   vi.resetModules();
-  const mod = await import("./vector-store-pgvector");
+  const mod = await import("./vector-index-pgvector");
   return new mod.PgVectorStore();
 }
 

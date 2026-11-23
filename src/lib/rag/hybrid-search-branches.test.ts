@@ -7,7 +7,7 @@ import type { RetrievedChunk } from "./types";
 const vector: RetrievedChunk[] = [];
 const bm25: RetrievedChunk[] = [];
 
-vi.mock("./vector-store", () => ({
+vi.mock("./vector-index", () => ({
   search: vi.fn(async () => vector),
 }));
 vi.mock("./bm25", () => ({

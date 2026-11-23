@@ -1,6 +1,6 @@
-// P6-3 unit tests: rag/vector-store (public API over the memory backend).
+// P6-3 unit tests: rag/vector-index (public API over the memory backend).
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { indexChunks, clearDoc, clearKb, search, chunkCount } from "./vector-store";
+import { indexChunks, clearDoc, clearKb, search, chunkCount } from "./vector-index";
 import { embed } from "@/lib/llm/embeddings";
 
 const env = process.env;
@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("vector-store public API", () => {
+describe("vector-index public API", () => {
   it("indexChunks -> search finds the nearest chunks", async () => {
     await indexChunks(KB, "doc-a", "Doc A", ["向量数据库检索技术详解", "另一个完全不相关的句子"]);
     const hits = await search(KB, embed("向量检索"), 5);

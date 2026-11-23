@@ -18,7 +18,7 @@
 // dev HMR doesn't reset it.
 // ---------------------------------------------------------------------------
 
-import { isDbEnabled, getDb } from "@/lib/db/client";
+import { isDbEnabled, getDb } from "@/lib/db/prisma";
 import { listUsers } from "@/lib/auth/store";
 import { notify } from "@/lib/notifications/store";
 import { log } from "@/lib/obs/log";

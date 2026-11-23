@@ -17,12 +17,12 @@ import { persistApiKey } from "./persist";
 import { hydrateFromDb } from "./hydrate";
 import { validateApiKey } from "@/lib/apikeys/store";
 
-vi.mock("@/lib/db/client", () => ({
+vi.mock("@/lib/db/prisma", () => ({
   getDb: vi.fn(),
   isDbEnabled: vi.fn(() => true),
 }));
 
-import { getDb } from "./client";
+import { getDb } from "./prisma";
 
 const PLAINTEXT = "kai_sk_persist_hydrate_contract_test_secret";
 

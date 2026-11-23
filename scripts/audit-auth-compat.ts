@@ -8,7 +8,7 @@
 // those rows instead of treating them as public. Explicitly enabling only a
 // reviewed set of known legacy links remains a separate, human-approved step.
 
-import { getDb } from "../src/lib/db/client";
+import { getDb } from "../src/lib/db/prisma";
 
 interface LegacyCounts {
   legacy_null: number;

@@ -1,7 +1,7 @@
 // P6-3 unit tests: rag/indexer (doc -> chunks -> vector + BM25 + parent map).
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { indexDocument, getParentText } from "./indexer";
-import { search } from "./vector-store";
+import { search } from "./vector-index";
 import { searchBM25, bm25ChunkCount } from "./bm25";
 import { embed } from "@/lib/llm/embeddings";
 import type { KbDocument, KbSettings } from "@/lib/kb/types";
