@@ -90,8 +90,8 @@ describe("listing", () => {
     const mine = createConversation("kb_1", "mine", "usr_1");
     createConversation("kb_1", "other", "usr_2");
 
-    expect(listAllConversations(undefined, "usr_1").map((c) => c.id)).toEqual([mine.id]);
-    expect(listAllConversations(1).length).toBe(1);
+    expect(listAllConversations("usr_1", "ws_default").map((c) => c.id)).toEqual([mine.id]);
+    expect(listAllConversations("usr_1", "ws_default", 1).length).toBe(1);
   });
 
   it("lists shared conversations only", () => {
@@ -189,8 +189,8 @@ describe("regenerate + retention", () => {
     expect(getConversation(old.id)).toBeUndefined();
 
     expect(deleteAllConversations("usr_1")).toBe(1);
-    expect(listAllConversations(undefined, "usr_1")).toEqual([]);
-    expect(listAllConversations(undefined, "usr_2")).toHaveLength(1);
+    expect(listAllConversations("usr_1", "ws_default")).toEqual([]);
+    expect(listAllConversations("usr_2", "ws_default")).toHaveLength(1);
     vi.useRealTimers();
   });
 });

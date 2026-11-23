@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/store";
 import { listAllKbs, listDocuments, totalStorageBytes, listKbs as listKbsByOwner, deleteKb } from "@/lib/kb/store";
 import { getUsage, listAllInvoices, deleteBillingData } from "@/lib/billing/store";
-import { listTasks, deleteAllTasks } from "@/lib/agent/store";
+import { listAllTasksForAdmin, deleteAllTasks } from "@/lib/agent/store";
 import { deleteAllConversations } from "@/lib/chat/store";
 import { deleteSecurityData } from "@/lib/security/store";
 import {
@@ -119,7 +119,7 @@ function monthLabel(ts: number): string {
 export function getOverview(): AdminOverview {
   const users = authListUsers();
   const allKbs = listAllKbs();
-  const allTasks = listTasks();
+  const allTasks = listAllTasksForAdmin();
   const now = Date.now();
   const monthStart = (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d.getTime(); })();
 
