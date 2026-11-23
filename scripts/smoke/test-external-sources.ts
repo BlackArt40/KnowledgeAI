@@ -85,7 +85,7 @@ async function main() {
   check("orchestrator: citations include external source types", orchSource.includes("sourceType"));
 
   // ── 9. Config.ts registers external provider ──────────────────────────
-  const configSource = await read_file("../../src/lib/config.ts");
+  const configSource = await read_file("../../src/lib/providers/status.ts");
   check("config: registers external provider in getProviderStatus", configSource.includes("external"));
   check("config: externalLabel imported", configSource.includes("externalLabel"));
 

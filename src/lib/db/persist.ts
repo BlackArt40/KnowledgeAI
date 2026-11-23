@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from "crypto";
-import { getDb, isDbEnabled } from "./client";
+import { getDb, isDbEnabled } from "./prisma";
 import { encryptToString } from "@/lib/crypto";
 import { log } from "@/lib/obs/log";
 

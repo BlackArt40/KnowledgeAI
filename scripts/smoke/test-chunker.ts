@@ -118,7 +118,7 @@ function resolveConfig(overrides?: Partial<Config>): Config {\n  return { ...def
   // parentChild=true and populating the parent map the same way indexer.ts does.
   const { getParentText } = await import("../../src/lib/rag/indexer");
   const { retrieve } = await import("../../src/lib/rag/retriever");
-  const { indexChunks } = await import("../../src/lib/rag/vector-store");
+  const { indexChunks } = await import("../../src/lib/rag/vector-index");
   const { indexBM25 } = await import("../../src/lib/rag/bm25");
 
   const kbPc = "test-kb-p13-parent-child";

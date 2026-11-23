@@ -33,9 +33,9 @@
 // pg_class entry / 23505), so DDL here tolerates those benign errors.
 // ---------------------------------------------------------------------------
 
-import { getDb, isDbEnabled } from "@/lib/db/client";
+import { getDb, isDbEnabled } from "@/lib/db/prisma";
 import { log } from "@/lib/obs/log";
-import type { VectorStore, SearchResult } from "./vector-store-interface";
+import type { VectorStore, SearchResult } from "./vector-index-interface";
 
 // Prisma client shape for raw queries (avoids importing @prisma/client types)
 interface PrismaClient {

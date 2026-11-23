@@ -202,7 +202,7 @@ flowchart TB
 1. **接口层不碰 ORM**：`src/app/api/**/route.ts` 中 `grep -c prisma` = **0**，持久化只能经 `src/lib/db/*` 或领域 store；
 2. **接口层不写业务规则**：路由只做“取用户 → 校验归属 → 限流 → 调 `lib` → 序列化”，复用入口如 `handleChatRequest`、`handleAgentRun`；
 3. **领域层不依赖 Next**：`src/lib/**` 不 import `next/server`，因此可被 worker、脚本、测试直接调用；
-4. **外部实现藏在适配器后**：`llm/provider.ts`、`billing/provider.ts`、`external/provider.ts`、`rag/vector-store-*.ts`、`queue/*-queue.ts`、`storage/s3.ts` 是同层可替换实现，切换只由环境变量决定；
+4. **外部实现藏在适配器后**：`llm/provider.ts`、`billing/provider.ts`、`external/provider.ts`、`rag/vector-index-*.ts`、`queue/*-queue.ts`、`storage/s3.ts` 是同层可替换实现，切换只由环境变量决定；
 5. **共享资产单源**：前端 i18n、SSE 解析、主题引擎经 `@shared` 指向 `src/lib`，禁止拷贝（Vue 与 Next 共用一份）。
 
 ### 3.2 模块依赖（只列主要边）
@@ -220,7 +220,7 @@ flowchart LR
   Q --> WH["webhooks/"]
   Q --> OBS["obs/"]
   RAG --> LLM["llm/provider.ts"]
-  RAG --> VS["vector-store-*"]
+  RAG --> VS["vector-index-*"]
   BILL --> PAY["billing/provider.ts"]
   KB --> ST["storage/ · upload/"]
 ```

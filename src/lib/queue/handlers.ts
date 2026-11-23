@@ -140,7 +140,7 @@ const agentRunHandler: JobHandler = async (payload) => {
 
 const indexCleanupHandler: JobHandler = async (payload) => {
   try {
-    const { clearDoc, clearKb } = await import("@/lib/rag/vector-store");
+    const { clearDoc, clearKb } = await import("@/lib/rag/vector-index");
     if (payload.docId && payload.kbId) {
       await clearDoc(payload.kbId as string, payload.docId as string);
     } else if (payload.kbId) {

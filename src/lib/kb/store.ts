@@ -6,7 +6,7 @@ import {
   type DocStatus,
 } from "./types";
 import { indexDocument } from "@/lib/rag/indexer";
-import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-store";
+import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-index";
 import { indexDocGraph, clearKbGraph } from "@/lib/kg/store";
 import { persistKb, persistDoc, persistDocs, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";

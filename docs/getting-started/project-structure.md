@@ -94,7 +94,7 @@ src/
 │   │   ├── parser.ts             # 多格式解析（PDF/Word/Excel/PPT/HTML/OCR/字幕）
 │   │   ├── ocr.ts                # Tesseract.js OCR（语言包在 .tessdata/）
 │   │   ├── chunker.ts            # 智能切片（标题感知 / 表格代码保护）
-│   │   ├── vector-store-*.ts     # 向量库适配器（memory/pgvector/chromadb/pinecone）
+│   │   ├── vector-index-*.ts     # 向量库适配器（memory/pgvector/chromadb/pinecone）
 │   │   ├── bm25.ts               # BM25 关键词检索（miniSearch，CJK 分词）
 │   │   ├── hybrid-search.ts      # 混合检索（向量 + BM25 经 RRF 融合）
 │   │   ├── retriever.ts          # 检索入口（查询改写 → 多路混合 → 重排）
@@ -170,7 +170,7 @@ scripts/
 ├── cleanup-e2e-fixtures.ts      # 清理 e2e / 手工验证残留数据（对运行中的服务发 HTTP）
 ├── audit-auth-compat.ts         # 只读发布前检查（历史 AgentTask.shareConfig 兼容项）
 ├── generate-pwa-icons.ts        # 重新生成 public/icons（PWA 192/512/maskable/apple-touch）
-├── migrate-vector-store.ts      # 内存索引批量迁移到向量库
+├── migrate-vector-index.ts      # 内存索引批量迁移到向量库
 ├── tools/                       # CI 门禁 / 生成器（docs frontmatter、env parity、openapi、swagger-ui 拷贝）
 ├── local/                       # 本地测试数据准备（gitignored，不入库）
 └── smoke/                       # 验收 smoke 套件（run-all.ts 按 lib/limits/http/ui/infra 分组调度）

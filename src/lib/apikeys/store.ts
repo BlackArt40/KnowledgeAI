@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import type { ApiKey, CallLog, KeyStatus } from "./types";
 import { persistApiKey, deleteApiKeyFromDb } from "@/lib/db/persist";
-import { getDb, isDbEnabled } from "@/lib/db/client";
+import { getDb, isDbEnabled } from "@/lib/db/prisma";
 import { decryptFromString, isEncrypted } from "@/lib/crypto";
 import { uid, genSecret } from "@/lib/ids";
 import { log } from "@/lib/obs/log";

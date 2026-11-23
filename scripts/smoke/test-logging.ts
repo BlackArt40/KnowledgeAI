@@ -31,7 +31,7 @@ const SCAN_FILES = [
   "worker.ts",
   "prisma/seed.ts",
   "scripts/cleanup-temp-files.ts",
-  "scripts/migrate-vector-store.ts",
+  "scripts/migrate-vector-index.ts",
   "scripts/generate-pwa-icons.ts",
 ];
 // The ONLY files allowed to call console.* (Edge-safe log-edge.ts).

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(async (..._args: unknown[]) => undefined),
 }));
 
-vi.mock("@/lib/db/client", () => ({
+vi.mock("@/lib/db/prisma", () => ({
   isDbEnabled: () => mocks.enabled,
   getDb: async () => ({
     message: { upsert: mocks.upsert },

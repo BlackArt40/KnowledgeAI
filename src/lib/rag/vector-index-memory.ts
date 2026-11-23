@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { cosine } from "@/lib/llm/embeddings";
-import type { VectorStore, SearchResult } from "./vector-store-interface";
+import type { VectorStore, SearchResult } from "./vector-index-interface";
 
 interface StoredChunk {
   docId: string;

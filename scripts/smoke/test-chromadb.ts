@@ -9,7 +9,7 @@ async function main() {
   process.env.VECTOR_STORE = "chromadb";
   process.env.CHROMA_URL = "http://localhost:8000";
 
-  const { ChromaVectorStore } = await import("../../src/lib/rag/vector-store-chromadb");
+  const { ChromaVectorStore } = await import("../../src/lib/rag/vector-index-chromadb");
   const store = new ChromaVectorStore();
 
   const KB_ID = "test_kb_chroma_e2e";

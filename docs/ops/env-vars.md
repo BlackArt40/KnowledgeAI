@@ -104,7 +104,7 @@ related:
 | `CHROMA_URL` | 条件 | — | 仅 `chromadb` 时使用 |
 | `PINECONE_API_KEY` / `PINECONE_INDEX_HOST` | 条件 | — | 仅 `pinecone` 时使用 |
 
-> `pgvector` 的 `vector` 扩展由应用在首次检索时自动创建（`CREATE EXTENSION IF NOT EXISTS vector`，见 `src/lib/rag/vector-store-pgvector.ts`）；数据库角色无建扩展权限时需 DBA 预先执行 `CREATE EXTENSION vector;`。
+> `pgvector` 的 `vector` 扩展由应用在首次检索时自动创建（`CREATE EXTENSION IF NOT EXISTS vector`，见 `src/lib/rag/vector-index-pgvector.ts`）；数据库角色无建扩展权限时需 DBA 预先执行 `CREATE EXTENSION vector;`。
 
 ## Agent SSE
 
@@ -218,7 +218,7 @@ related:
 
 - [部署指南](deployment-guide.md)
 - [监控与告警](monitoring.md)
-- [Provider 状态聚合（管理端面板）](../../src/lib/config.ts)
+- [Provider 状态聚合（管理端面板）](../../src/lib/providers/status.ts)
 
 ## 修订记录
 

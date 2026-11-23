@@ -105,7 +105,7 @@ function diffBody(sql: string): string {
 /**
  * 运行期由应用管理的表，不属于 Prisma schema，但也不能删除：
  * - flyway_schema_history：拆分线历史记录，按规程保留；
- * - kb_chunks：pgvector 向量表，由 src/lib/rag/vector-store-pgvector.ts 创建。
+ * - kb_chunks：pgvector 向量表，由 src/lib/rag/vector-index-pgvector.ts 创建。
  */
 const RUNTIME_TABLES = ["flyway_schema_history", "kb_chunks"];
 

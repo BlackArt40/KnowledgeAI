@@ -3,12 +3,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { encryptToString } from "@/lib/crypto";
 
-vi.mock("@/lib/db/client", () => ({
+vi.mock("@/lib/db/prisma", () => ({
   getDb: vi.fn(),
   isDbEnabled: vi.fn(() => true),
 }));
 
-import { getDb, isDbEnabled } from "@/lib/db/client";
+import { getDb, isDbEnabled } from "@/lib/db/prisma";
 import { validateApiKey, validateApiKeyShared, __resetApiKeySweepForTest } from "./store";
 
 const PLAINTEXT = "kai_sk_shared_read_path_test_secret";
