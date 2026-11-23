@@ -118,3 +118,6 @@ frontend/src/components.d.ts
 /public/index.html
 /public/home.html
 /public/assets/
+
+# CodeBuddy agent workspace (plans/reports/cache)
+/.codebuddy/
