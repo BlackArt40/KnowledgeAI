@@ -5,7 +5,7 @@ import {
   resetDocsForReindex,
   markDocFailed,
 } from "@/lib/kb/store";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { enqueueBulk } from "@/lib/queue";
 import { recordAudit } from "@/lib/security/audit";
@@ -32,12 +32,7 @@ async function handlePOST(req: Request, { params }: Params) {
   if (kb.workspaceId && u.workspaceId && kb.workspaceId !== u.workspaceId) {
     return NextResponse.json({ error: "无权访问" }, { status: 403 });
   }
-  if (
-    !canEditKb(id, kb.name, u.id, kb.ownerId, {
-      callerWorkspaceId: u.workspaceId,
-      kbWorkspaceId: kb.workspaceId,
-    })
-  ) {
+  if (!canAccessKb(u, kb, "edit")) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   }
 

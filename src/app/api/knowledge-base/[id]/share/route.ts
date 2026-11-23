@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getKb } from "@/lib/kb/store";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import {
   createKbShare,
   getKbShareByKb,
@@ -24,10 +24,7 @@ async function loadKb(req: Request, id: string) {
   if (!u) return { error: NextResponse.json({ error: "未登录" }, { status: 401 }) };
   const kb = getKb(id);
   if (!kb) return { error: NextResponse.json({ error: "知识库不存在" }, { status: 404 }) };
-  const allowed = canEditKb(kb.id, kb.name, u.id, kb.ownerId, {
-    callerWorkspaceId: u.workspaceId,
-    kbWorkspaceId: kb.workspaceId,
-  });
+  const allowed = canAccessKb(u, kb, "edit");
   if (!allowed) return { error: NextResponse.json({ error: "无编辑权限" }, { status: 403 }) };
   return { u, kb };
 }

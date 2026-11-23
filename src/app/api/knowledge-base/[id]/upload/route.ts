@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getKb, addDocument, deleteDocument, markDocFailed } from "@/lib/kb/store";
 import type { KbDocument } from "@/lib/kb/types";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getConfig } from "@/lib/admin/store";
 import { notify } from "@/lib/notifications/store";
 import { getRequestUser } from "@/lib/auth/guard";
@@ -22,7 +22,7 @@ async function handleUpload(req: Request, { params }: Params) {
   const { id } = await params;
   const kb = getKb(id);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
+  if (!canAccessKb(u, kb, "edit"))
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
 
   const contentType = req.headers.get("content-type") ?? "";

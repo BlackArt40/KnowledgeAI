@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { searchEntities } from "@/lib/kg/store";
 import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/knowledge-base/[id]/graph/search?q= - entity search within the KB
 // graph (used by the GraphRAG debug panel + graph page search box).
-// canViewKb-gated + KB-tier rate limited (mirrors the sibling /graph route).
+// canAccessKb-gated + KB-tier rate limited (mirrors the sibling /graph route).
 async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
@@ -18,7 +18,7 @@ async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> })
 
   const kb = getKb(id);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (kb.workspaceId !== u.workspaceId || !canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (kb.workspaceId !== u.workspaceId || !canAccessKb(u, kb)) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
   const rl = await kbRateLimit(id);

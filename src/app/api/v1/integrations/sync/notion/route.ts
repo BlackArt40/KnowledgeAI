@@ -4,7 +4,7 @@
 // token wins, else NOTION_TOKEN env. 400 when neither is configured.
 import { NextResponse } from "next/server";
 import { getKb } from "@/lib/kb/store";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import { syncNotionToKb } from "@/lib/integrations/sync";
@@ -33,7 +33,7 @@ async function handlePOST(req: Request) {
 
   const kb = getKb(body.kbId ?? "");
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (!canAccessKb(u, kb, "edit")) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   }
 

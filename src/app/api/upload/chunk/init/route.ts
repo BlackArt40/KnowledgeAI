@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getKb } from "@/lib/kb/store";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { validateFile } from "@/lib/storage";
 import { isStorageEnabled } from "@/lib/storage";
 import { createMultipartUpload } from "@/lib/storage/s3";
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
   const kb = getKb(kbId);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (!canAccessKb(u, kb, "edit")) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   }
 

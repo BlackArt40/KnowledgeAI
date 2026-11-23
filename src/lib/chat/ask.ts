@@ -29,7 +29,7 @@ import {
 } from "@/lib/chat/store";
 import { deleteMessageFromDb } from "@/lib/db/persist";
 import { recordQa } from "@/lib/billing/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { classifyChatError } from "@/lib/chat/errors";
 import { getRequestUser, type RequestUser } from "@/lib/auth/guard";
 import { runWithUser } from "@/lib/models/context";
@@ -99,7 +99,7 @@ export async function handleChatRequest(
 
   const kb = getKb(kbId);
   if (!kb) return early(Response.json({ error: "知识库不存在" }, { status: 404 }));
-  if (!canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, { callerWorkspaceId: authUser.workspaceId, kbWorkspaceId: kb.workspaceId }))
+  if (!canAccessKb(authUser, kb))
     return early(Response.json({ error: "无权访问该知识库" }, { status: 403 }));
 
   // P3-3: chat routes are skipped by the proxy (SSE), so enforce the user + KB
@@ -126,7 +126,7 @@ export async function handleChatRequest(
         !!conv.shared &&
         conv.kbId === kbId &&
         conv.workspaceId === authUser.workspaceId &&
-        canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, { callerWorkspaceId: authUser.workspaceId, kbWorkspaceId: kb.workspaceId });
+        canAccessKb(authUser, kb);
       if (!sharedOk) {
         return early(Response.json({ error: "无权访问该会话" }, { status: 403 }));
       }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getUserById } from "@/lib/auth/store";
 import { requireApiKeyScope } from "@/lib/apikeys/scopes";
@@ -19,7 +19,7 @@ async function handleGET(req: Request) {
   if (scope.error) return scope.error;
 
   const kbs = listAllKbs(u.workspaceId)
-    .filter((kb) => canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId }))
+    .filter((kb) => canAccessKb(u, kb))
     .map((kb) => {
       const docs = listDocuments(kb.id);
       const owner = getUserById(kb.ownerId);

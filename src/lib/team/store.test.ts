@@ -17,6 +17,7 @@ import {
   listKbMemberRoles,
   canViewKb,
   canEditKb,
+  canAccessKb,
 } from "./store";
 import { seed as seedUsers, findUserByEmail } from "@/lib/auth/store";
 
@@ -99,6 +100,14 @@ describe("KB access", () => {
     expect(canViewKb("kb-fin", "财务报告", OWNER_ID, OWNER_ID, inWs())).toBe(true);
     expect(canViewKb("kb-fin", "财务报告", viewer.id, OWNER_ID, inWs())).toBe(false);
     expect(canViewKb("kb-ops", "运维手册", viewer.id, OWNER_ID, inWs())).toBe(true);
+  });
+
+  it("canAccessKb takes the tenant boundary from the objects", () => {
+    const viewer = findUserByEmail("viewer@knowledgeai.dev")!;
+    const kb = { id: "kb-fin", name: "财务报告", ownerId: OWNER_ID, workspaceId: "ws_default" };
+    expect(canAccessKb({ id: viewer.id, workspaceId: "ws_default" }, kb)).toBe(false);
+    expect(canAccessKb({ id: viewer.id, workspaceId: "ws_other" }, kb)).toBe(false);
+    expect(canAccessKb({ id: OWNER_ID, workspaceId: "ws_default" }, kb)).toBe(true);
   });
 
   it("canEditKb: owner + edit access; viewer cannot edit", () => {

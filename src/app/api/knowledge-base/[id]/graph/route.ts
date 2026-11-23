@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getGraph } from "@/lib/kg/store";
 import { kbRateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/knowledge-base/[id]/graph - the KB's knowledge graph
 // (entities + relations) for the graph visualization. Workspace-isolated,
-// canViewKb-gated, KB-tier rate limited (mirrors /api/knowledge-base/[id]).
+// canAccessKb-gated, KB-tier rate limited (mirrors /api/knowledge-base/[id]).
 async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const u = await getRequestUser(req);
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
@@ -21,7 +21,7 @@ async function handleGET(req: Request, ctx: { params: Promise<{ id: string }> })
   if (kb.workspaceId !== u.workspaceId) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
-  if (!canViewKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (!canAccessKb(u, kb)) {
     return NextResponse.json({ error: "无权访问该知识库" }, { status: 403 });
   }
   const rl = await kbRateLimit(id);

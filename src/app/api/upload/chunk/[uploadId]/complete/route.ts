@@ -4,7 +4,7 @@ import { getSession, deleteSession } from "@/lib/upload/store";
 import { isStorageEnabled, validateFile, docStorageKey } from "@/lib/storage";
 import { completeMultipartUpload, downloadFromS3, copyS3Object, deleteFromS3 } from "@/lib/storage/s3";
 import { getKb, addDocument, docTypeFromName, isTextLike } from "@/lib/kb/store";
-import { canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { notify } from "@/lib/notifications/store";
 import { parseDocument } from "@/lib/rag/parser";
 import { promises as fs } from "fs";
@@ -37,7 +37,7 @@ export async function POST(_req: Request, { params }: Params) {
 
   const kb = getKb(session.kbId);
   if (!kb) return NextResponse.json({ error: "知识库不存在" }, { status: 404 });
-  if (!canEditKb(kb.id, kb.name, u.id, kb.ownerId, { callerWorkspaceId: u.workspaceId, kbWorkspaceId: kb.workspaceId })) {
+  if (!canAccessKb(u, kb, "edit")) {
     return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
   }
 

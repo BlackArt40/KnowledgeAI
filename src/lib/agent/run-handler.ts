@@ -10,7 +10,7 @@
 import { createTask, saveTask, getTask } from "@/lib/agent/store";
 import { recordAgentTask } from "@/lib/billing/store";
 import { getKb } from "@/lib/kb/store";
-import { canViewKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import type { OutputFormat } from "@/lib/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
@@ -66,14 +66,7 @@ export async function handleAgentRun(
   // Agent against a shared KB - the old owner-only check blocked members from
   // using Agent on shared knowledge bases.
   const kb = body.kbId ? getKb(body.kbId) : undefined;
-  if (
-    body.kbId &&
-    (!kb ||
-      !canViewKb(kb.id, kb.name, authUser.id, kb.ownerId, {
-        callerWorkspaceId: authUser.workspaceId,
-        kbWorkspaceId: kb.workspaceId,
-      }))
-  )
+  if (body.kbId && (!kb || !canAccessKb(authUser, kb)))
     return Response.json({ error: "无权访问该知识库" }, { status: 403 });
 
   const task = createTask(

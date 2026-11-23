@@ -10,7 +10,7 @@ import { clearDoc as vsClearDoc, clearKb as vsClearKb } from "@/lib/rag/vector-i
 import { indexDocGraph, clearKbGraph } from "@/lib/kg/store";
 import { persistKb, persistDoc, persistDocs, deleteKbFromDb, deleteDocFromDb } from "@/lib/db/persist";
 import { publish } from "@/lib/realtime/bus";
-import { canViewKb, canEditKb } from "@/lib/team/store";
+import { canAccessKb } from "@/lib/team/store";
 import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/store";
 import { QueueBackpressureError } from "@/lib/queue/interface";
 import { uid } from "@/lib/ids";
@@ -534,10 +534,7 @@ export function canViewDoc(
 ): boolean {
   if (kb.ownerId === userId) return true;
   if (doc.access === "private") return false;
-  return canViewKb(kb.id, kb.name, userId, kb.ownerId, {
-    callerWorkspaceId,
-    kbWorkspaceId: kb.workspaceId,
-  });
+  return canAccessKb({ id: userId, workspaceId: callerWorkspaceId }, kb);
 }
 
 /** Can the user EDIT a document? Owner always; private docs are owner-only;
@@ -552,10 +549,7 @@ export function canEditDoc(
   if (kb.ownerId === userId) return true;
   if (doc.access === "private") return false;
   if (doc.access === "edit") return true;
-  return canEditKb(kb.id, kb.name, userId, kb.ownerId, {
-    callerWorkspaceId,
-    kbWorkspaceId: kb.workspaceId,
-  });
+  return canAccessKb({ id: userId, workspaceId: callerWorkspaceId }, kb, "edit");
 }
 
 export type DocSaveResult =
