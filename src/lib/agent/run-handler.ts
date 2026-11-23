@@ -19,6 +19,7 @@ import { enqueue, subscribeAgentEvents, QueueBackpressureError } from "@/lib/que
 import { agentRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/obs/errors";
 import { log } from "@/lib/obs/log";
+import { createSseResponse } from "@/lib/sse-produce";
 
 /** SSE keep-alive interval; matches the split business service's 25s ping. */
 const SSE_PING_INTERVAL_MS = 25_000;
@@ -88,99 +89,37 @@ export async function handleAgentRun(
     authUser.id,
     authUser.workspaceId
   );
-  const enc = new TextEncoder();
-
-  const streamResponse = () => {
-    const stream = new ReadableStream({
-      async start(controller) {
-        let lastActivityAt = Date.now();
-        const sendRaw = (chunk: string): boolean => {
-          if (req.signal.aborted) return false;
-          try {
-            controller.enqueue(enc.encode(chunk));
-            return true;
-          } catch {
-            return false;
-          }
-        };
-        const send = (obj: unknown): boolean => {
-          const ok = sendRaw(`data: ${JSON.stringify(obj)}\n\n`);
-          if (ok) lastActivityAt = Date.now();
-          return ok;
-        };
-
+  return runWithUser(authUser.id, () =>
+    createSseResponse(
+      req,
+      async (sse) => {
         // Subscribe to the event bus BEFORE enqueuing so we never miss the
         // first event (avoids a race where the worker publishes before we
         // attach the listener).
         let unsubscribe: (() => void) | null = null;
-        let streamClosed = false;
-        let watchdog: ReturnType<typeof setInterval> | null = null;
-
-        const closeStream = () => {
-          if (streamClosed) return;
-          streamClosed = true;
-          if (watchdog) {
-            clearInterval(watchdog);
-            watchdog = null;
-          }
-          if (unsubscribe) {
-            try { unsubscribe(); } catch { /* already unsubscribed */ }
-          }
-          try { controller.close(); } catch { /* already closed */ }
-        };
-
-        // 阶段 2 收编：拆分业务服务的 SSE watchdog —— worker 静默时不能把
-        // 连接永久挂住。空闲 25s 发 `: ping` 保活；超过硬超时发
-        // error(stream_timeout) + end 并关流（任务仍由 worker/队列恢复兜底）。
-        const timeoutMs = streamTimeoutMs();
-        const tickMs = Math.min(SSE_PING_INTERVAL_MS, Math.max(250, Math.floor(timeoutMs / 2)));
-        watchdog = setInterval(() => {
-          if (streamClosed) return;
-          const idleMs = Date.now() - lastActivityAt;
-          if (idleMs >= timeoutMs) {
-            log.warn({ taskId: task.id, idleMs }, "[agent/run] stream timeout");
-            send({
-              type: "error",
-              code: "stream_timeout",
-              message: "等待超时，请稍后在任务列表查看结果",
-            });
-            send({ type: "end" });
-            closeStream();
-            return;
-          }
-          if (idleMs >= SSE_PING_INTERVAL_MS && sendRaw(": ping\n\n")) {
-            lastActivityAt = Date.now();
-          }
-        }, tickMs);
-        (watchdog as unknown as { unref?: () => void }).unref?.();
 
         // P4-3: 只有真正进了队列的任务才计配额 —— 背压/入队失败时用户并没有
         // 消耗算力，之前在建 task 后就 +1，等于让被拒绝的请求也扣一次额度。
         let queued = false;
         try {
           unsubscribe = await subscribeAgentEvents(task.id, (event) => {
-            if (streamClosed) return;
+            if (sse.closed) return;
             if (event.type === "step") {
-              send({ type: "step", step: event.step });
+              sse.send({ type: "step", step: event.step });
             } else if (event.type === "done") {
               // Cross-process (BullMQ worker): this process's in-memory copy is
               // still the queued snapshot - report / duration / versions are
               // produced by the worker and travel only in the event payload.
-              // Prefer the event snapshot (in single-process mode getTask()
-              // returns the same object, so both are equivalent) and keep the
-              // local copy purely as a fallback.
-              send({ type: "done", task: event.task ?? getTask(task.id) });
+              sse.send({ type: "done", task: event.task ?? getTask(task.id) });
             } else if (event.type === "error") {
-              send({ type: "error", message: event.message });
+              sse.send({ type: "error", message: event.message });
             } else if (event.type === "end") {
-              closeStream();
+              sse.close();
             }
           });
 
-          send({ type: "init", taskId: task.id });
+          sse.send({ type: "init", taskId: task.id });
 
-          // Enqueue the background job. Worker picks it up and publishes
-          // step/done/error events to the bus, which we relay above.
           // P6-1: forward the request's traceId so the queue stage continues
           // the same trace.
           await enqueue("agent-run", { taskId: task.id, userId: authUser.id, traceId: traceIdOf(req) });
@@ -189,10 +128,8 @@ export async function handleAgentRun(
           log.error({ err }, "[agent/run] stream error");
           reportError(err, { source: "/api/agent/run", context: `task ${task.id}` });
           // X5/X6: distinguish queue backpressure from a real failure so the
-          // client knows it can simply retry in a moment. `code` is the stable
-          // machine-readable tag (the client localizes it); `message` stays for
-          // API consumers, logs and unknown codes.
-          send({
+          // client knows it can simply retry in a moment.
+          sse.send({
             type: "error",
             code: err instanceof QueueBackpressureError ? "queue_busy" : "queue_failed",
             message:
@@ -200,27 +137,31 @@ export async function handleAgentRun(
                 ? "系统繁忙（任务队列已满），请稍后重试"
                 : "排队或执行失败",
           });
-          // Mark the task as failed so the UI reflects the error state.
           task.status = "failed";
           saveTask(task);
-          closeStream();
+          sse.close();
         }
 
         if (queued) recordAgentTask(authUser.workspaceId, authUser.id);
-
-        // If the client disconnects, clean up the subscription.
-        req.signal.addEventListener("abort", () => {
-          closeStream();
-        });
+        return unsubscribe;
       },
-    });
-
-    return new Response(stream, {
-      headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" },
-    });
-  };
-
-  return runWithUser(authUser.id, streamResponse);
+      {
+        heartbeatMs: SSE_PING_INTERVAL_MS,
+        timeoutMs: streamTimeoutMs(),
+        onTimeout: (sse) => {
+          // 阶段 2 收编：worker 静默时不能把连接永久挂住。超时下发
+          // error(stream_timeout)+end；任务仍由 worker/队列恢复兜底。
+          log.warn({ taskId: task.id }, "[agent/run] stream timeout");
+          sse.send({
+            type: "error",
+            code: "stream_timeout",
+            message: "等待超时，请稍后在任务列表查看结果",
+          });
+          sse.send({ type: "end" });
+        },
+      }
+    )
+  );
 }
 
 /** P6-1: the trace id assigned by the proxy (or minted by withApiTrace). */
