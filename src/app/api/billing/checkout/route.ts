@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/billing/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { createCheckoutSession, isPaymentEnabled } from "@/lib/billing/provider";
-import { PLANS } from "@/lib/billing/plans";
+import { PLANS } from "@kai/shared/billing/plans";
 import type { PlanId, PayMethod } from "@kai/shared/billing/types";
 export const dynamic = "force-dynamic";
 

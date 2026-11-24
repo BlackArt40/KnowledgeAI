@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // 订阅计费（V4，复刻 src/app/(app)/billing/page.tsx）：当前套餐卡（状态/
 // 周期/席位/支付方式/cancelAtPeriodEnd）、取消|恢复|升级、套餐对比表
-// （PLANS+COMPARISON 单源 @shared/billing/plans）、账单列表 + CSV 导出。
+// （PLANS+COMPARISON 单源 @kai/shared/billing/plans）、账单列表 + CSV 导出。
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { CreditCard, Download, RefreshRight, MagicStick, Star, Coin } from "@element-plus/icons-vue";
-import { COMPARISON } from "@shared/billing/plans";
+import { COMPARISON } from "@kai/shared/billing/plans";
 import { METHOD_LABEL, STATUS_LABEL, type Invoice, type Plan } from "@kai/shared/billing/types";
 import { cancelResume, fetchBilling, type BillingData } from "@/api/billing";
 import { refreshWorkspaces } from "@/lib/workspace-store";

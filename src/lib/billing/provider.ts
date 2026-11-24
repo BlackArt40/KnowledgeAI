@@ -10,7 +10,7 @@
 
 import type Stripe from "stripe";
 import type { PlanId, PayMethod } from "@kai/shared/billing/types";
-import { getPlan } from "./plans";
+import { getPlan } from "@kai/shared/billing/plans";
 import { log, redactText } from "@/lib/obs/log";
 
 type StripeCtor = new (apiKey: string) => Stripe;

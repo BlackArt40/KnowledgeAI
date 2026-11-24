@@ -14,7 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { recordAudit } from "@/lib/security/audit";
-import { DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
+import { DEFAULT_BRAND_COLOR } from "@kai/shared/theme/brand-colors";
 import { createEmptyWorkspaceStore } from "@/lib/db/store-factories";
 import { persistWorkspace, deleteWorkspaceFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";

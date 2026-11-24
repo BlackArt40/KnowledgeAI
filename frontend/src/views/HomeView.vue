@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 营销首页（V5，复刻 src/app/page.tsx + src/components/marketing/*）：
 // Navbar（登录态区分）→ Hero（含实时演示台）→ Features → Workflow →
-// Pricing（三档套餐 @shared/billing/plans）→ CTA → Footer。构建期由
+// Pricing（三档套餐 @kai/shared/billing/plans）→ CTA → Footer。构建期由
 // scripts/prerender-home.mjs 经 @vue/server-renderer 预渲染出 dist/home.html
 // 保 SEO（国内搜索引擎不执行 JS），浏览器端正常挂载接管交互。
 import { onMounted, ref } from "vue";
@@ -10,7 +10,7 @@ import {
   MagicStick, ChatDotRound, Promotion, CircleCheck, Check, ArrowRight,
   Upload, Collection, ChatLineRound, DataAnalysis, Document,
 } from "@element-plus/icons-vue";
-import { getPlan } from "@shared/billing/plans";
+import { getPlan } from "@kai/shared/billing/plans";
 import { request } from "@/api/client";
 import MktNavbar from "@/components/marketing/MktNavbar.vue";
 import MktHero from "@/components/marketing/MktHero.vue";

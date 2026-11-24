@@ -15,8 +15,8 @@ import type {
 import type { RetrievedChunk } from "@/lib/rag/types";
 import { GraphBuilder, runGraph } from "./graph";
 import type { GraphState, GraphEvent } from "./graph";
-import { getTemplate } from "./templates";
-import type { TemplateId, WorkflowTemplate } from "./templates";
+import { getTemplate } from "@kai/shared/agent/templates";
+import type { TemplateId, WorkflowTemplate } from "@kai/shared/agent/templates";
 import { saveVersion } from "./store";
 
 export interface AgentEvent {

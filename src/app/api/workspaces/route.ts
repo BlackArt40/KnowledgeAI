@@ -6,7 +6,7 @@ import {
   updateWorkspace,
 } from "@/lib/workspace/store";
 import { getRequestIdentity, getRequestUser } from "@/lib/auth/guard";
-import { isValidBrandColor, DEFAULT_BRAND_COLOR } from "@/lib/theme/brand-colors";
+import { isValidBrandColor, DEFAULT_BRAND_COLOR } from "@kai/shared/theme/brand-colors";
 import { recordAudit } from "@/lib/security/audit";
 import { withApiTrace } from "@/lib/obs/trace";
 
