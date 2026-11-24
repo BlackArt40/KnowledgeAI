@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { AgentTask, ShareConfig, ReportVersion, Comment } from "./types";
+import type { AgentTask, ShareConfig, ReportVersion, Comment } from "@kai/shared/agent/types";
 import { createEmptyAgentStore } from "@/lib/db/store-factories";
 import { persistTask, deleteAgentTaskFromDb, deleteAgentTasksByUserFromDb } from "@/lib/db/persist";
 import { uid } from "@/lib/ids";

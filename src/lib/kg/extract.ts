@@ -11,7 +11,7 @@
 // default - tests rely on its determinism.
 // ---------------------------------------------------------------------------
 
-import type { EntityMention, RelationMention } from "./types";
+import type { EntityMention, RelationMention } from "@kai/shared/kg/types";
 
 const SURNAMES = "王李张刘陈杨赵黄周吴徐孙马朱胡郭何林罗高郑梁谢宋唐许韩冯邓曹彭曾萧田董袁潘蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦傅方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤";
 

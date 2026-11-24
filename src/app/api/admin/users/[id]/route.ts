@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { deleteUserDeep, setUserStatus } from "@/lib/admin/store";
 import { getUserById } from "@/lib/auth/store";
-import type { UserStatus } from "@/lib/admin/types";
+import type { UserStatus } from "@kai/shared/admin/types";
 import { requireRoleJwt as requireRole } from "@/lib/auth/guard";
 import { recordAudit } from "@/lib/security/audit";
 export const dynamic = "force-dynamic";

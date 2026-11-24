@@ -7,7 +7,7 @@ import {
   canAccessTask,
 } from "@/lib/agent/store";
 import type { SharePatch } from "@/lib/agent/store";
-import type { ShareConfig } from "@/lib/agent/types";
+import type { ShareConfig } from "@kai/shared/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
 

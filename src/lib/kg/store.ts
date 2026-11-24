@@ -7,7 +7,7 @@
 // derived from (kbId, label) / (kbId, source, target) so upserts are idempotent.
 // ---------------------------------------------------------------------------
 
-import type { GraphEntity, GraphRelation } from "./types";
+import type { GraphEntity, GraphRelation } from "@kai/shared/kg/types";
 import { extractEntities, extractRelations, aggregateMentions } from "./extract";
 import { persistEntity, persistRelation, deleteEntityFromDb, deleteRelationFromDb } from "@/lib/db/persist";
 import { createEmptyKgStore } from "@/lib/db/store-factories";

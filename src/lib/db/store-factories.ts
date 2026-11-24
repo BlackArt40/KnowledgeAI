@@ -3,14 +3,14 @@
 // Both the domain store (store()) and hydrate.ts use these factories. This is
 // the single place where a new field/default must be added; otherwise DB
 // hydration can silently create a different shape than the runtime store.
-import type { SystemConfig } from "@/lib/admin/types";
-import type { AgentTask } from "@/lib/agent/types";
+import type { SystemConfig } from "@kai/shared/admin/types";
+import type { AgentTask } from "@kai/shared/agent/types";
 import type { ApiKey, CallLog } from "@/lib/apikeys/types";
 import type { User } from "@/lib/auth/store";
-import type { Invoice, Order, Subscription, Usage } from "@/lib/billing/types";
+import type { Invoice, Order, Subscription, Usage } from "@kai/shared/billing/types";
 import type { Conversation } from "@/lib/chat/store";
 import type { KbDocument, KnowledgeBase } from "@/lib/kb/types";
-import type { GraphEntity, GraphRelation } from "@/lib/kg/types";
+import type { GraphEntity, GraphRelation } from "@kai/shared/kg/types";
 import type { ModelConfig } from "@/lib/models/types";
 import type { Notification, NotificationPrefs } from "@/lib/notifications/types";
 import type { SecurityState } from "@/lib/security/types";

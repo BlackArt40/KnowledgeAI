@@ -2,7 +2,7 @@
 // init/step/done/error/end 冻结）在视图内用 @kai/shared/sse 消费。类型单源
 // 复用 Next 侧 src/lib/agent/types（纯 TS，@shared 直引）。
 import { request } from "./client";
-import type { AgentTask } from "@shared/agent/types";
+import type { AgentTask } from "@kai/shared/agent/types";
 
 export type {
   AgentTask,
@@ -18,7 +18,7 @@ export type {
   Comment,
   ShareConfig,
   ExportFormat,
-} from "@shared/agent/types";
+} from "@kai/shared/agent/types";
 
 export async function fetchAgentTasks(): Promise<AgentTask[]> {
   const d = await request<{ tasks?: AgentTask[] }>("/api/agent/tasks");
@@ -50,7 +50,7 @@ export function restoreAgentVersion(taskId: string, versionId: string): Promise<
 /** GET 当前分享配置（与 PUT 同路径）。 */
 export function fetchAgentShare(
   taskId: string
-): Promise<{ shareConfig?: import("@shared/agent/types").ShareConfig | null }> {
+): Promise<{ shareConfig?: import("@kai/shared/agent/types").ShareConfig | null }> {
   return request(`/api/agent/tasks/${encodeURIComponent(taskId)}/share`);
 }
 
@@ -58,7 +58,7 @@ export function fetchAgentShare(
 export function putAgentShare(
   taskId: string,
   body: { enabled: boolean; expiresAt?: number | null; password?: string | null; maxViews?: number | null }
-): Promise<{ shareConfig?: import("@shared/agent/types").ShareConfig | null }> {
+): Promise<{ shareConfig?: import("@kai/shared/agent/types").ShareConfig | null }> {
   return request(`/api/agent/tasks/${encodeURIComponent(taskId)}/share`, { method: "PUT", body });
 }
 

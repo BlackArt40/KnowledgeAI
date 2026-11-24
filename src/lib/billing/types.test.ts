@@ -1,6 +1,6 @@
 // P6-3 unit tests: billing/types (label maps).
 import { describe, it, expect } from "vitest";
-import { METHOD_LABEL, STATUS_LABEL } from "./types";
+import { METHOD_LABEL, STATUS_LABEL } from "@kai/shared/billing/types";
 
 describe("billing label maps", () => {
   it("maps every payment method", () => {

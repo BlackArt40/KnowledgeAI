@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentStep } from "@shared/agent/types";
+import type { AgentStep } from "@kai/shared/agent/types";
 import { inferDagEdges, inferDagNodes, roleLabel } from "./agent-dag";
 
 const t = (k: string) => k;

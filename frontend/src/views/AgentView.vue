@@ -26,7 +26,7 @@ import { formatDateTime } from "@kai/shared/format";
 import { streamRequest } from "@/api/client";
 import { diffLines, type DiffLine } from "@shared/agent/diff";
 import { TEMPLATES, type TemplateId } from "@shared/agent/templates";
-import type { AgentStep, AgentTask, DagEdge, DagNode, ExportFormat, OutputFormat, ReportVersion, ShareConfig } from "@shared/agent/types";
+import type { AgentStep, AgentTask, DagEdge, DagNode, ExportFormat, OutputFormat, ReportVersion, ShareConfig } from "@kai/shared/agent/types";
 import { fetchKbs } from "@/api/kb";
 import { fetchCurrentUser } from "@/api/auth";
 import {

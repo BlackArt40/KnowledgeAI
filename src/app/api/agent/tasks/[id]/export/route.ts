@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getTask, canAccessTask } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { exportReport } from "@/lib/agent/export";
-import type { ExportFormat } from "@/lib/agent/types";
+import type { ExportFormat } from "@kai/shared/agent/types";
 
 export const dynamic = "force-dynamic";
 

@@ -4,7 +4,7 @@
 // must never survive into the returned name.
 import { describe, expect, it } from "vitest";
 
-import type { AgentTask, ExportFormat } from "../types";
+import type { AgentTask, ExportFormat } from "@kai/shared/agent/types";
 import { exportReport } from "./index";
 
 function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {

@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import { renderMarkdownToHtml, escapeHtml } from "./markdown-html";
-import type { AgentTask } from "../types";
+import type { AgentTask } from "@kai/shared/agent/types";
 
 export function renderPrintHtml(task: AgentTask): string {
   const body = renderMarkdownToHtml(task.report ?? "");

@@ -11,7 +11,7 @@ import type {
   AgentCitation,
   DagNode,
   DagEdge,
-} from "./types";
+} from "@kai/shared/agent/types";
 import type { RetrievedChunk } from "@/lib/rag/types";
 import { GraphBuilder, runGraph } from "./graph";
 import type { GraphState, GraphEvent } from "./graph";

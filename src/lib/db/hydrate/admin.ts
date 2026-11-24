@@ -14,7 +14,7 @@ import { decryptFromString } from "@/lib/crypto";
 import { hydrateSecurityState } from "@/lib/security/store";
 import { markNotificationsHydrated } from "@/lib/notifications/store";
 import { hydrateUserUsage, hydrateWorkspaceUsage } from "@/lib/billing/store";
-import type { UsagePoint } from "@/lib/billing/types";
+import type { UsagePoint } from "@kai/shared/billing/types";
 import type { SecurityState } from "@/lib/security/types";
 import type { PrismaUser, PrismaUserSecurity, PrismaKb, PrismaDoc, PrismaAgentTask } from "../types";
 import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";

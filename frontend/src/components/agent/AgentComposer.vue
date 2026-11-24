@@ -6,7 +6,7 @@ import {
   Check, DataAnalysis, EditPen, List, Search, VideoPause, VideoPlay,
 } from "@element-plus/icons-vue";
 import { TEMPLATES, type TemplateId } from "@shared/agent/templates";
-import type { OutputFormat } from "@shared/agent/types";
+import type { OutputFormat } from "@kai/shared/agent/types";
 import { ROLE_ORDER, roleLabel, type TFunc } from "@/lib/agent-dag";
 
 interface KbLite {

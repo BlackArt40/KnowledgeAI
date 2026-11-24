@@ -4,7 +4,7 @@ import { useTranslation } from "i18next-vue";
 import {
   ArrowRight, Check, DataAnalysis, EditPen, List, Loading, MagicStick, Search, WarningFilled,
 } from "@element-plus/icons-vue";
-import type { AgentStep, DagEdge, DagNode } from "@shared/agent/types";
+import type { AgentStep, DagEdge, DagNode } from "@kai/shared/agent/types";
 
 const props = defineProps<{
   show: boolean;

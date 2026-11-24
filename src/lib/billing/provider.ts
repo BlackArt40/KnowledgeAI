@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type Stripe from "stripe";
-import type { PlanId, PayMethod } from "./types";
+import type { PlanId, PayMethod } from "@kai/shared/billing/types";
 import { getPlan } from "./plans";
 import { log, redactText } from "@/lib/obs/log";
 

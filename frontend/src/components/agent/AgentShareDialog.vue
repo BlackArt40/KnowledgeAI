@@ -2,7 +2,7 @@
 // 报告公开分享设置：链接、有效期、密码、访问次数。
 import { useTranslation } from "i18next-vue";
 import { Check, CopyDocument } from "@element-plus/icons-vue";
-import type { ShareConfig } from "@shared/agent/types";
+import type { ShareConfig } from "@kai/shared/agent/types";
 
 const props = defineProps<{
   open: boolean;
