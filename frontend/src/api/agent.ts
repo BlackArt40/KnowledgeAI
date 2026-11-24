@@ -1,5 +1,5 @@
 // Agent 调研 API（V4）。运行流 POST /api/agent/run 的 SSE（事件名
-// init/step/done/error/end 冻结）在视图内用 @shared/sse 消费。类型单源
+// init/step/done/error/end 冻结）在视图内用 @kai/shared/sse 消费。类型单源
 // 复用 Next 侧 src/lib/agent/types（纯 TS，@shared 直引）。
 import { request } from "./client";
 import type { AgentTask } from "@shared/agent/types";

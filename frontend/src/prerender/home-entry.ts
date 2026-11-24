@@ -7,7 +7,7 @@ import { createPinia } from "pinia";
 import I18NextVue from "i18next-vue";
 import { renderToString } from "vue/server-renderer";
 import { ID_INJECTION_KEY, ZINDEX_INJECTION_KEY } from "element-plus";
-import { getI18nInstance } from "@shared/i18n/translate";
+import { getI18nInstance } from "@kai/shared/i18n/translate";
 import HomeView from "@/views/HomeView.vue";
 
 export async function renderHome(): Promise<string> {

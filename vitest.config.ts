@@ -36,7 +36,7 @@ const floor = (lines: number, statements: number, functions: number, branches: n
 
 export default defineConfig({
   resolve: {
-    alias: { "@": srcDir },
+    alias: { "@": srcDir, "@kai/shared": fileURLToPath(new URL("./packages/shared/src", import.meta.url)) },
   },
   test: {
     environment: "node",

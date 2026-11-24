@@ -70,7 +70,7 @@ function emailFrame(title: string, actions: string[], note: string): string {
   ].join("");
 }
 
-import { getI18nInstance, normalizeLocale } from "@/lib/i18n/translate";
+import { getI18nInstance, normalizeLocale } from "@kai/shared/i18n/translate";
 
 function buttonLink(url: string, label: string): string {
   return `<p><a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${label}</a></p>`;

@@ -7,7 +7,7 @@ import { onBeforeUnmount, ref } from "vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import en from "element-plus/es/locale/lang/en";
 import { useRoute } from "vue-router";
-import { getI18nInstance } from "@shared/i18n/translate";
+import { getI18nInstance } from "@kai/shared/i18n/translate";
 import AppShell from "@/components/AppShell.vue";
 import AuthLayout from "@/layouts/AuthLayout.vue";
 import { useThemeStore } from "@/stores/theme";

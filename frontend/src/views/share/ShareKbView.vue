@@ -8,7 +8,7 @@ import { useTranslation } from "i18next-vue";
 import { ArrowLeft, Clock, Collection, Hide, Link as LinkIcon, Lock } from "@element-plus/icons-vue";
 import { fetchSharedKb, type SharedKb, type ShareErrorCode } from "@/api/share";
 import { ApiError } from "@/api/client";
-import { formatRelative, formatSize } from "@shared/format";
+import { formatRelative, formatSize } from "@kai/shared/format";
 
 const { t } = useTranslation();
 const route = useRoute();

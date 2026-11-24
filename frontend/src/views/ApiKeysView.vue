@@ -9,7 +9,7 @@ import {
   type ApiKey,
 } from "@/api/apikeys";
 import { ApiError } from "@/api/client";
-import { formatDate, formatRelative } from "@shared/format";
+import { formatDate, formatRelative } from "@kai/shared/format";
 
 const { t, i18next } = useTranslation();
 

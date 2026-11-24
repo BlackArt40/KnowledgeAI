@@ -10,7 +10,7 @@ import { createKb, deleteKb, fetchKbs, type KbListItem } from "@/api/kb";
 import { ApiError } from "@/api/client";
 import { kbAvatarBackground } from "@/lib/kb-color";
 import { KB_COLORS } from "@/lib/palette";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 
 const { t } = useTranslation();
 const route = useRoute();

@@ -4,7 +4,7 @@
 // their placeholder (the n8n `{{ $json.question }}` templates rely on it),
 // and {count} pluralization degrades to the base key (zh has no plurals).
 import { describe, it, expect } from "vitest";
-import { normalizeLocale, getI18nInstance, type Locale } from "./translate";
+import { normalizeLocale, getI18nInstance, type Locale } from "../../../packages/shared/src/i18n/translate";
 
 /** Test helper mirroring the old `t(locale, key, vars)` entry point. */
 function t(locale: Locale, key: string, vars?: Record<string, string | number>): string {

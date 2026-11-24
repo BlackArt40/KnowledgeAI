@@ -64,7 +64,7 @@ frontend/
 └── dist/                     # 构建产物（gitignored；由 pnpm build 复制到根 public/）
 ```
 
-> 共享资产**单源复用**：i18n 语言包（`src/lib/i18n/messages/`）、SSE 解析（`src/lib/sse.ts`）、格式化（`src/lib/format.ts`）经 `@shared` 别名引用；主题模式/语音/OAuth/图谱布局/swagger 已迁 `packages/shared`，前端经 `@kai/shared` 引用。
+> 共享资产**单源复用**：i18n 语言包（`packages/shared/src/i18n/messages/`）、SSE 解析（`packages/shared/src/sse.ts`）、格式化（`packages/shared/src/format.ts`）经 `@shared` 别名引用；主题模式/语音/OAuth/图谱布局/swagger 已迁 `packages/shared`，前端经 `@kai/shared` 引用。
 
 ## src/ — Next 纯 API + 业务库
 

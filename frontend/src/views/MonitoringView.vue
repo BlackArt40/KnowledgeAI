@@ -11,7 +11,7 @@ import {
 } from "@element-plus/icons-vue";
 import { fetchMonitoring, fetchTrace, type MonitoringData, type TraceSpan } from "@/api/admin";
 import UsageChart from "@/components/UsageChart.vue";
-import { formatMoney, formatPercent } from "@shared/format";
+import { formatMoney, formatPercent } from "@kai/shared/format";
 
 const { t, i18next } = useTranslation();
 

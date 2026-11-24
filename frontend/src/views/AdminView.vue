@@ -10,7 +10,7 @@ import {
   User, TrendCharts, Coin, Collection, ChatLineRound, MagicStick, Box, Search,
   Setting, Odometer, WarningFilled, CircleCheck, Document, RefreshRight, CreditCard, Delete,
 } from "@element-plus/icons-vue";
-import { formatMoney, formatRelative } from "@shared/format";
+import { formatMoney, formatRelative } from "@kai/shared/format";
 import { planLabelKey } from "@/lib/plan";
 import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@/api/admin";
 import {

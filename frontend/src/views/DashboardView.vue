@@ -6,7 +6,7 @@ import { useTranslation } from "i18next-vue";
 import { ArrowRight, ChatDotRound, Check, Collection, Document, Loading, Odometer, Plus } from "@element-plus/icons-vue";
 import UsageChart from "@/components/UsageChart.vue";
 import { api } from "@/api/client";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 import { currentPlan } from "@/lib/workspace-store";
 import { planLabelKey } from "@/lib/plan";
 

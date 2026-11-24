@@ -26,10 +26,10 @@ applies_to: ">=1.4.0"
 
 | 能力 | 单源位置 | 典型引用 |
 |------|----------|----------|
-| i18n 语言包与实例 | `src/lib/i18n/messages/*`、`src/lib/i18n` | `@shared/i18n/translate` |
-| SSE 事件解析 | `src/lib/sse.ts` | `@shared/sse` |
+| i18n 语言包与实例 | `packages/shared/src/i18n/messages/*`、`src/lib/i18n` | `@shared/i18n/translate` |
+| SSE 事件解析 | `packages/shared/src/sse.ts` | `@shared/sse` |
 | 主题引擎 | `src/lib/theme/` | `@shared/theme/*` |
-| 格式化（数字 / 日期 / 字节） | `src/lib/format.ts` | `@shared/format` |
+| 格式化（数字 / 日期 / 字节） | `packages/shared/src/format.ts` | `@shared/format` |
 | 语音 STT / TTS | `src/lib/voice/{stt,tts}.ts` | `@shared/voice/*` |
 | 计费套餐与类型 | `src/lib/billing/` | `@shared/billing/*` |
 | Agent 类型与模板 | `src/lib/agent/` | `@shared/agent/*` |
