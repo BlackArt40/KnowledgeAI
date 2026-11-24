@@ -21,14 +21,13 @@ const emit = defineEmits<{
 }>();
 
 const STATUS_LABEL: Record<string, string> = {
-  queued: "page.document-list.s2",
-  parsing: "page.document-list.s3",
-  chunking: "page.document-list.s4",
-  vectorizing: "page.document-list.s5",
-  ready: "page.document-list.s6",
-  failed: "page.document-list.s7",
-};
-</script>
+  ready: "page.document-list.s11",
+  queued: "page.document-list.s16",
+  parsing: "page.document-list.s17",
+  chunking: "page.document-list.s18",
+  vectorizing: "page.document-list.s13",
+  failed: "page.document-list.s12",
+};</script>
 
 <template>
   <!-- 文档表 -->
