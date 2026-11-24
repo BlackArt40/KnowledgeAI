@@ -7,7 +7,7 @@
 //   mindmap -> OPML outline (Xmind-importable)
 // ---------------------------------------------------------------------------
 
-import type { AgentTask, ExportFormat } from "../types";
+import type { AgentTask, ExportFormat } from "@kai/shared/agent/types";
 import { renderPrintHtml } from "./pdf-print";
 import { markdownToOpml } from "./opml";
 import { generatePptx } from "./pptx";

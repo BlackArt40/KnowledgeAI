@@ -2,7 +2,7 @@
 // 侧列：历史任务 + 引用来源 + 本次耗时。
 import { useTranslation } from "i18next-vue";
 import { ArrowRight, Clock, Document, Search } from "@element-plus/icons-vue";
-import type { AgentTask } from "@shared/agent/types";
+import type { AgentTask } from "@kai/shared/agent/types";
 
 const props = defineProps<{
   history: AgentTask[];

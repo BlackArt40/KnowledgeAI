@@ -7,7 +7,7 @@ import { useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { CreditCard, Download, RefreshRight, MagicStick, Star, Coin } from "@element-plus/icons-vue";
 import { COMPARISON } from "@shared/billing/plans";
-import { METHOD_LABEL, STATUS_LABEL, type Invoice, type Plan } from "@shared/billing/types";
+import { METHOD_LABEL, STATUS_LABEL, type Invoice, type Plan } from "@kai/shared/billing/types";
 import { cancelResume, fetchBilling, type BillingData } from "@/api/billing";
 import { refreshWorkspaces } from "@/lib/workspace-store";
 

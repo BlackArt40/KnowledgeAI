@@ -7,7 +7,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { ArrowLeft, ChatDotRound, Wallet, CreditCard, Check, MagicStick, Postcard, CircleCheck } from "@element-plus/icons-vue";
 import { getPlan, PLANS } from "@shared/billing/plans";
-import type { PayMethod, PlanId } from "@shared/billing/types";
+import type { PayMethod, PlanId } from "@kai/shared/billing/types";
 import { checkoutOrder, payOrder } from "@/api/billing";
 import { refreshWorkspaces } from "@/lib/workspace-store";
 

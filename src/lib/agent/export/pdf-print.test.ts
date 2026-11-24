@@ -5,7 +5,7 @@
 // report content into the page title and body.
 import { describe, expect, it } from "vitest";
 
-import type { AgentCitation, AgentTask } from "../types";
+import type { AgentCitation, AgentTask } from "@kai/shared/agent/types";
 import { renderPrintHtml } from "./pdf-print";
 
 const CREATED_AT = 1_700_000_000_000;

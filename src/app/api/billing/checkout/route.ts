@@ -3,7 +3,7 @@ import { createOrder } from "@/lib/billing/store";
 import { getRequestUser } from "@/lib/auth/guard";
 import { createCheckoutSession, isPaymentEnabled } from "@/lib/billing/provider";
 import { PLANS } from "@/lib/billing/plans";
-import type { PlanId, PayMethod } from "@/lib/billing/types";
+import type { PlanId, PayMethod } from "@kai/shared/billing/types";
 export const dynamic = "force-dynamic";
 
 // POST /api/billing/checkout  { plan, method } → create order + checkout session

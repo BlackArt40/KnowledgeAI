@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { zipFiles, type ZipEntry } from "./zip";
-import type { AgentTask } from "../types";
+import type { AgentTask } from "@kai/shared/agent/types";
 
 const A = "http://schemas.openxmlformats.org/drawingml/2006/main";
 const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";

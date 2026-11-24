@@ -1,4 +1,4 @@
-import type { AdminUser, AdminOverview, KbMonitor, SystemConfig, UserStatus } from "./types";
+import type { AdminUser, AdminOverview, KbMonitor, SystemConfig, UserStatus } from "@kai/shared/admin/types";
 import { createEmptyAdminStore } from "@/lib/db/store-factories";
 import {
   listUsers as authListUsers,

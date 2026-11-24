@@ -1,7 +1,7 @@
 // Pure DAG helpers extracted from AgentView so the inference rules can be
 // unit-tested without mounting the 1800-line SFC.
 import { TEMPLATES, type TemplateId } from "@shared/agent/templates";
-import type { AgentStep, DagEdge, DagNode } from "@shared/agent/types";
+import type { AgentStep, DagEdge, DagNode } from "@kai/shared/agent/types";
 
 export type TFunc = (k: string) => string;
 

@@ -7,7 +7,7 @@ import { inflateRawSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
-import type { AgentTask } from "../types";
+import type { AgentTask } from "@kai/shared/agent/types";
 import { generatePptx } from "./pptx";
 
 function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {

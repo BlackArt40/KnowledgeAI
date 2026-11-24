@@ -3,9 +3,9 @@
 // 在此声明同构镜像（src/lib/{rate-limit,config,security/audit} 是服务端模块，
 // 前端只消费其 JSON 形状，不 import 其实现）。
 import { request } from "./client";
-import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@shared/admin/types";
+import type { AdminOverview, AdminUser, KbMonitor, SystemConfig } from "@kai/shared/admin/types";
 
-export type { AdminOverview, AdminUser, KbMonitor, SystemConfig, SystemStats } from "@shared/admin/types";
+export type { AdminOverview, AdminUser, KbMonitor, SystemConfig, SystemStats } from "@kai/shared/admin/types";
 
 export interface RateLimitStat {
   kind: "ip" | "user" | "apikey" | "kb" | "integration" | "agent" | "other";

@@ -1,4 +1,4 @@
-import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "./types";
+import type { Subscription, Invoice, Usage, UsagePoint, Order, PlanId, PayMethod } from "@kai/shared/billing/types";
 import { getPlan } from "./plans";
 import { getUserById } from "@/lib/auth/store";
 import { persistInvoice, persistOrder, persistSubscription, deleteBillingDataFromDb, bumpWorkspaceUsage, bumpUserUsage } from "@/lib/db/persist";

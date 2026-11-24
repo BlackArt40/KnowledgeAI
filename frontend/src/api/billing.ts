@@ -1,9 +1,9 @@
 // 订阅计费 API（V4，契约与 /api/billing* /api/usage 冻结一致）。套餐目录、
 // 对比表与状态/支付方式标签单源复用 src/lib/billing/{types,plans}（纯 TS）。
 import { request } from "./client";
-import type { Invoice, PayMethod, Plan, PlanId, Subscription, Usage } from "@shared/billing/types";
+import type { Invoice, PayMethod, Plan, PlanId, Subscription, Usage } from "@kai/shared/billing/types";
 
-export type { Invoice, PayMethod, Plan, PlanId, Subscription, Usage } from "@shared/billing/types";
+export type { Invoice, PayMethod, Plan, PlanId, Subscription, Usage } from "@kai/shared/billing/types";
 
 export interface BillingData {
   subscription: Subscription;

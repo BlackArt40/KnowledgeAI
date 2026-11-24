@@ -11,7 +11,7 @@ import { createTask, saveTask, getTask } from "@/lib/agent/store";
 import { recordAgentTask } from "@/lib/billing/store";
 import { getKb } from "@/lib/kb/store";
 import { canAccessKb } from "@/lib/team/store";
-import type { OutputFormat } from "@/lib/agent/types";
+import type { OutputFormat } from "@kai/shared/agent/types";
 import { getRequestUser } from "@/lib/auth/guard";
 import { can } from "@/lib/team/rbac";
 import { runWithUser } from "@/lib/models/context";
