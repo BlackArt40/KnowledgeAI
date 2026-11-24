@@ -46,7 +46,8 @@
     "swagger-ui-dist": "^5.32.12",
     "tesseract.js": "^5.1.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "yjs": "^13.6.33"
+    "yjs": "^13.6.33",
+    "@kai/shared": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

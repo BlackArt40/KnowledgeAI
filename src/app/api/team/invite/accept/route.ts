@@ -3,7 +3,7 @@ import { readInviteRequest } from "@/lib/team/invite-guard";
 import { activateMemberByEmail, findMemberByEmail } from "@/lib/team/store";
 import { releaseInviteSeat } from "@/lib/team/invite-seats";
 import { addWorkspaceMember, getWorkspace } from "@/lib/workspace/store";
-import { getPlan } from "@/lib/billing/plans";
+import { getPlan } from "@kai/shared/billing/plans";
 
 export const dynamic = "force-dynamic";
 

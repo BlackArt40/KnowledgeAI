@@ -6,7 +6,7 @@ import { useTranslation } from "i18next-vue";
 import { Check, View } from "@element-plus/icons-vue";
 import {
   BRAND_COLORS, applyBrandColor, DEFAULT_BRAND_COLOR,
-} from "@shared/theme/brand-colors";
+} from "@kai/shared/theme/brand-colors";
 import { applyHighContrast, getHighContrast, type ThemeMode } from "@kai/shared/theme/mode";
 import { fetchWorkspaces, saveBrandColor } from "@/api/workspaces";
 import { ApiError } from "@/api/client";

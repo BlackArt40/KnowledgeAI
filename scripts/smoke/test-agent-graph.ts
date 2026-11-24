@@ -121,7 +121,7 @@ async function main() {
   check("graph: node_skip event emitted for disabled node", skipEvents.includes("b"));
 
   // ── 5. Templates (criterion #3: ≥3 preset templates) ─────────────────
-  const { TEMPLATES } = await import("../../src/lib/agent/templates");
+  const { TEMPLATES } = await import("../../packages/shared/src/agent/templates");
   check("templates: at least 3 presets (criterion #3)", TEMPLATES.length >= 3, `got ${TEMPLATES.length}`);
   check("templates: has competitive", TEMPLATES.some(t => t.id === "competitive"));
   check("templates: has tech-selection", TEMPLATES.some(t => t.id === "tech-selection"));

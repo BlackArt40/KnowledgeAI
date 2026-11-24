@@ -30,6 +30,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^4.0.40
         version: 4.0.40(zod@4.6.7)
+      '@kai/shared':
+        specifier: workspace:*
+        version: link:packages/shared
       '@napi-rs/canvas':
         specifier: ^0.1.65
         version: 0.1.100
@@ -188,6 +191,9 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.43(typescript@5.9.3))
+      '@kai/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
@@ -4768,6 +4774,7 @@ packages:
 
   tldts-core@7.4.20:
     resolution: {integrity: sha512-C630TWXZCZmLq0F2bW4QqwnaaxCQ/svpAqvJwnC4JvgEM5ohhBnGsEzTLSOXcN+xjz+kEaHS5uoWIw2klnqd0A==}
+    deprecated: Partial release, see https://github.com/remusao/tldts/issues/2735. Use >=7.4.22.
 
   tldts@7.4.19:
     resolution: {integrity: sha512-48dH6aSpQnpbzDUc4vIQZ1VjB8tkK+e8c1yx05/SZK+rkssgjEOlxDd/yU8/a4vGYQ9vRgJr9dwMq9TJ0b3X2Q==}

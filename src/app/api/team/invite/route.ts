@@ -6,7 +6,7 @@ import { notifyMember, roleLabel } from "@/lib/team/notify";
 import { INVITE_TTL_MS, signInviteToken } from "@/lib/team/invite-token";
 import { listPendingInviteEmails, reserveInviteSeat } from "@/lib/team/invite-seats";
 import { getWorkspace } from "@/lib/workspace/store";
-import { getPlan } from "@/lib/billing/plans";
+import { getPlan } from "@kai/shared/billing/plans";
 import { isEmailEnabled, sendInviteEmail } from "@/lib/email";
 import { EMAIL_RE } from "@/lib/validation/email";
 import type { Role } from "@/lib/team/types";

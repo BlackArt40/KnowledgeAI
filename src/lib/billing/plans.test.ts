@@ -1,6 +1,6 @@
 // P6-3 unit tests: billing/plans (pure plan table).
 import { describe, it, expect } from "vitest";
-import { PLANS, getPlan, COMPARISON } from "./plans";
+import { PLANS, getPlan, COMPARISON } from "../../../packages/shared/src/billing/plans";
 
 describe("plans", () => {
   it("has all three plans in order with required fields", () => {
@@ -16,8 +16,7 @@ describe("plans", () => {
     expect(getPlan("pro").price).toBe(49);
     expect(getPlan("enterprise").seats).toBeNull();
     expect(getPlan("free").qaLimit).toBe(100);
-    // @ts-expect-error unknown id falls back
-    expect(getPlan("hacker").id).toBe("free");
+    expect(getPlan("hacker" as never).id).toBe("free");
   });
 
   it("comparison table covers all plans", () => {

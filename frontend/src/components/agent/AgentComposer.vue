@@ -5,7 +5,7 @@ import { useTranslation } from "i18next-vue";
 import {
   Check, DataAnalysis, EditPen, List, Search, VideoPause, VideoPlay,
 } from "@element-plus/icons-vue";
-import { TEMPLATES, type TemplateId } from "@shared/agent/templates";
+import { TEMPLATES, type TemplateId } from "@kai/shared/agent/templates";
 import type { OutputFormat } from "@kai/shared/agent/types";
 import { ROLE_ORDER, roleLabel, type TFunc } from "@/lib/agent-dag";
 

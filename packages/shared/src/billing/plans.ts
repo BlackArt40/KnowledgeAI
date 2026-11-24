@@ -1,4 +1,4 @@
-import type { Plan, PlanId } from "@kai/shared/billing/types";
+import type { Plan, PlanId } from "./types";
 
 export const PLANS: Plan[] = [
   {

@@ -14,7 +14,7 @@ import {
   applyBrandColor,
   DEFAULT_BRAND_COLOR,
   isValidBrandColor,
-} from "@shared/theme/brand-colors";
+} from "@kai/shared/theme/brand-colors";
 
 // 供组件直接从 store 取主题模式类型（mode.ts 是共享单源）
 export type { ThemeMode };

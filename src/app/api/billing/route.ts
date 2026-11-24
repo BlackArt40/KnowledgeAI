@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSubscription, listInvoices, getUsage, getWorkspaceUsage } from "@/lib/billing/store";
-import { PLANS } from "@/lib/billing/plans";
+import { PLANS } from "@kai/shared/billing/plans";
 import { getRequestUser } from "@/lib/auth/guard";
 import { getWorkspace } from "@/lib/workspace/store";
 export const dynamic = "force-dynamic";

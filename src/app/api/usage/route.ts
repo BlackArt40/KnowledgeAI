@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUsage, getSubscription, getWorkspaceUsage } from "@/lib/billing/store";
-import { getPlan } from "@/lib/billing/plans";
+import { getPlan } from "@kai/shared/billing/plans";
 import { listAllKbs, listDocuments } from "@/lib/kb/store";
 import { listTasks, listWorkspaceTasks } from "@/lib/agent/store";
 import { getRequestUser } from "@/lib/auth/guard";
