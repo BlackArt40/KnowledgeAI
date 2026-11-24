@@ -18,7 +18,7 @@ import { applyLocale, type Locale } from "@/lib/i18n";
 import { currentPlan } from "@/lib/workspace-store";
 import { planLabelKey } from "@/lib/plan";
 import {
-  deleteAccount, fetchSecurity, patchPrivacy, revokeAllSessions, revokeSession, twofa,
+  deleteAccount, fetchSecurity, revokeAllSessions, revokeSession, twofa,
   type SecurityState,
 } from "@/api/security";
 import {
@@ -27,6 +27,7 @@ import {
 import ModelSettings from "@/components/ModelSettings.vue";
 import ThemeSettings from "@/components/ThemeSettings.vue";
 import DeleteAccountDialog from "./settings/DeleteAccountDialog.vue";
+import PrivacyTab from "./settings/PrivacyTab.vue";
 
 const { t } = useTranslation();
 const i18n = getI18nInstance();
@@ -200,17 +201,6 @@ async function doRevokeAll() {
     /* ignore */
   }
   await refresh();
-}
-async function doPatchPrivacy(patch: Record<string, unknown>) {
-  try {
-    await patchPrivacy(patch);
-  } catch {
-    /* ignore */
-  }
-  await refresh();
-}
-function exportData() {
-  window.open("/api/security/export", "_blank");
 }
 
 // ── profile ──────────────────────────────────────────────────────────────
@@ -667,120 +657,11 @@ const planLabel = computed(() => {
         <template #label>
           {{ t("page.settings.s2") }}
         </template>
-        <div class="space">
-          <div class="card">
-            <div class="card-head">
-              <h2>{{ t("page.settings.s8") }}</h2>
-            </div>
-            <div class="card-body">
-              <div class="pref-row">
-                <div>
-                  <p class="pref-label">
-                    {{ t("page.settings.s66") }}
-                  </p>
-                  <p class="hint">
-                    {{ t("page.settings.s67") }}
-                  </p>
-                </div>
-                <el-switch
-                  :model-value="data.privacy.analytics"
-                  :aria-label="t('page.settings.s66')"
-                  @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ analytics: !!v })"
-                />
-              </div>
-              <div class="pref-row">
-                <div>
-                  <p class="pref-label">
-                    {{ t("page.settings.s68") }}
-                  </p>
-                  <p class="hint">
-                    {{ t("page.settings.s69") }}
-                  </p>
-                </div>
-                <el-switch
-                  :model-value="data.privacy.crashReports"
-                  :aria-label="t('page.settings.s68')"
-                  @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ crashReports: !!v })"
-                />
-              </div>
-              <div class="pref-row">
-                <div>
-                  <p class="pref-label">
-                    {{ t("page.settings.s70") }}
-                  </p>
-                  <p class="hint">
-                    {{ t("page.settings.s71") }}
-                  </p>
-                </div>
-                <el-switch
-                  :model-value="data.privacy.trainingOptIn"
-                  :aria-label="t('page.settings.s70')"
-                  @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ trainingOptIn: !!v })"
-                />
-              </div>
-              <div class="divider" />
-              <div class="pref-row">
-                <div>
-                  <p class="pref-label">
-                    {{ t("page.settings.s26") }}
-                  </p>
-                  <p class="hint">
-                    {{ t("page.settings.s27") }}
-                  </p>
-                </div>
-                <el-select
-                  :model-value="String(data.privacy.dataRetentionDays)"
-                  style="width: 120px"
-                  :aria-label="t('page.settings.s26')"
-                  @update:model-value="(v: string | number | boolean) => doPatchPrivacy({ dataRetentionDays: Number(v) })"
-                >
-                  <el-option
-                    value="30"
-                    :label="t('page.settings.s28')"
-                  />
-                  <el-option
-                    value="60"
-                    :label="t('page.settings.s29')"
-                  />
-                  <el-option
-                    value="90"
-                    :label="t('page.settings.s30')"
-                  />
-                  <el-option
-                    value="180"
-                    :label="t('page.settings.s31')"
-                  />
-                  <el-option
-                    value="365"
-                    :label="t('page.settings.s32')"
-                  />
-                </el-select>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
-              <h2>{{ t("page.settings.s33") }}</h2>
-            </div>
-            <div class="card-body">
-              <p class="hint">
-                {{ t("page.settings.s91") }}
-              </p>
-              <div class="btns">
-                <el-button @click="exportData">
-                  {{ t("page.settings.s92") }}
-                </el-button>
-                <el-button
-                  type="danger"
-                  @click="openDeleteDialog"
-                >
-                  {{ t("page.settings.s93") }}
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PrivacyTab
+          :privacy="data.privacy"
+          @changed="refresh"
+          @delete="openDeleteDialog"
+        />
       </el-tab-pane>
 
       <!-- ── Models ───────────────────────────────────────────────────── -->
