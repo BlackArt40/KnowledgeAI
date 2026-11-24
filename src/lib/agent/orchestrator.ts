@@ -11,12 +11,12 @@ import type {
   AgentCitation,
   DagNode,
   DagEdge,
-} from "@kai/shared/agent/types";
+} from "../../../packages/shared/src/agent/types";
 import type { RetrievedChunk } from "@/lib/rag/types";
 import { GraphBuilder, runGraph } from "./graph";
 import type { GraphState, GraphEvent } from "./graph";
-import { getTemplate } from "@kai/shared/agent/templates";
-import type { TemplateId, WorkflowTemplate } from "@kai/shared/agent/templates";
+import { getTemplate } from "../../../packages/shared/src/agent/templates";
+import type { TemplateId, WorkflowTemplate } from "../../../packages/shared/src/agent/templates";
 import { saveVersion } from "./store";
 
 export interface AgentEvent {

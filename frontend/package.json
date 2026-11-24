@@ -28,7 +28,8 @@
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "y-codemirror.next": "^0.3.6",
-    "yjs": "^13.6.33"
+    "yjs": "^13.6.33",
+    "@kai/shared": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
