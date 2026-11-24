@@ -538,3 +538,7 @@ jobs:
         run: |
           npx tsx scripts/tools/gen-api-reference.ts
           git diff --exit-code -- docs/api/reference.md
+      - name: OpenAPI spec/types drift check
+        run: |
+          pnpm gen:openapi
+          git diff --exit-code -- docs/api/openapi.json frontend/src/api/generated.ts
