@@ -26,6 +26,7 @@ import {
 } from "@/api/notifications";
 import ModelSettings from "@/components/ModelSettings.vue";
 import ThemeSettings from "@/components/ThemeSettings.vue";
+import DeleteAccountDialog from "./settings/DeleteAccountDialog.vue";
 
 const { t } = useTranslation();
 const i18n = getI18nInstance();
@@ -949,39 +950,12 @@ const planLabel = computed(() => {
       </template>
     </el-dialog>
 
-    <!-- 删除账号确认 -->
-    <el-dialog
+    <DeleteAccountDialog
       v-model="deleteDialogOpen"
-      :title="t('page.settings.s9')"
-      width="420px"
-    >
-      <p class="hint">
-        {{ t("page.settings.s94") }}<strong>{{ t("page.settings.s35") }}</strong>。
-      </p>
-      <div class="alert-box">
-        {{ t("page.settings.s95") }}
-      </div>
-      <label class="field">
-        <span class="label">{{ t("page.settings.s10") }}<strong>DELETE</strong>{{ t("page.settings.s11") }}</span>
-        <el-input
-          v-model="deleteConfirm"
-          placeholder="DELETE"
-        />
-      </label>
-      <template #footer>
-        <el-button @click="deleteDialogOpen = false">
-          {{ t("page.settings.s38") }}
-        </el-button>
-        <el-button
-          type="danger"
-          :disabled="deleting || deleteConfirm !== 'DELETE'"
-          :loading="deleting"
-          @click="doDeleteAccount"
-        >
-          {{ t("page.settings.s96") }}
-        </el-button>
-      </template>
-    </el-dialog>
+      v-model:confirm="deleteConfirm"
+      :deleting="deleting"
+      @confirm="doDeleteAccount"
+    />
   </div>
 </template>
 
