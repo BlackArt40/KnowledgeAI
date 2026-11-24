@@ -1,4 +1,4 @@
-// 主题 Pinia store：薄封装共享主题引擎（@shared/theme/mode + brand-colors），
+// 主题 Pinia store：薄封装共享主题引擎（@kai/shared/theme/mode + brand-colors），
 // 状态本体的持久化与 DOM 应用全部在引擎侧（与 Next 端同 key：kai-theme/kai-hc）。
 import { defineStore } from "pinia";
 import {
@@ -9,7 +9,7 @@ import {
   resolveMode,
   subscribeSystemTheme,
   type ThemeMode,
-} from "@shared/theme/mode";
+} from "@kai/shared/theme/mode";
 import {
   applyBrandColor,
   DEFAULT_BRAND_COLOR,

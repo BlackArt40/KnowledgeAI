@@ -1,6 +1,6 @@
 // P7-4 unit tests: text-to-speech wrapper with a mock synthesis.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { speakText, isTtsSupported, ttsLang, type SynthesisLike } from "./tts";
+import { speakText, isTtsSupported, ttsLang, type SynthesisLike } from "../../../packages/shared/src/voice/tts";
 
 class MockUtterance {
   text = "";

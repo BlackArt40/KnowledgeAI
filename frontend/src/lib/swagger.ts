@@ -1,9 +1,9 @@
 // Swagger UI 装载器（V5，复刻 src/components/app/swagger-ui.tsx）：从
 // /vendor/swagger-ui（postinstall 由 scripts/tools/copy-swagger-ui.mjs 拷贝到
 // Next public/；生产经网关 location / 兜底命中 Next 静态目录，开发经 vite
-// proxy ^/vendor/ 转发）加载 bundle，再以 @shared/openapi/swagger-config 的
+// proxy ^/vendor/ 转发）加载 bundle，再以 @kai/shared/openapi/swagger-config 的
 // 同一配置渲染 /api/openapi.json。swagger 侧零框架依赖——渲染进裸 div。
-import { buildSwaggerUiConfig } from "@shared/openapi/swagger-config";
+import { buildSwaggerUiConfig } from "@kai/shared/openapi/swagger-config";
 
 declare global {
   interface Window {

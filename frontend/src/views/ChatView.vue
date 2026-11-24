@@ -4,7 +4,7 @@
 // chips（@/lib/markdown）、反馈/regenerate（temperature 0.7 + topK+3）、
 // 归档/标签/共享、联网搜索、图片附件（≤4 base64）、导出 MD、空态示例问
 // （按 KB 文档推导）、追问建议、KB 推荐、深链接 ?kb=&conv=。
-// V8 补齐语音输入（STT，@shared/voice/stt 单源复用：麦克风 + 中间转写 +
+// V8 补齐语音输入（STT，@kai/shared/voice/stt 单源复用：麦克风 + 中间转写 +
 // 终稿自动发送）；移动端横滑切换会话仍后置。
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";

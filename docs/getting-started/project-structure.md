@@ -46,7 +46,7 @@ KnowledgeAI/
 ```
 frontend/
 ├── index.html                # 入口（首帧主题/语言预置脚本——防闪烁的唯一实现）
-├── vite.config.ts            # Vite 7 配置（@shared 别名 → ../src/lib；^/api/ ^/vendor/ 代理）
+├── vite.config.ts            # Vite 7 配置（@shared → ../src/lib；@kai/shared → packages/shared/src）
 ├── src/
 │   ├── main.ts               # 入口（Pinia + router + i18next-vue + EP 样式装配）
 │   ├── App.vue               # 根组件（主题引擎 init + 路由出口）
@@ -64,7 +64,7 @@ frontend/
 └── dist/                     # 构建产物（gitignored；由 pnpm build 复制到根 public/）
 ```
 
-> 共享资产**单源复用**：i18n 语言包（`src/lib/i18n/messages/`）、SSE 解析（`src/lib/sse.ts`）、主题引擎（`src/lib/theme/`）、格式化（`src/lib/format.ts`）经 `@shared` 别名引用，禁止拷贝到 frontend/。
+> 共享资产**单源复用**：i18n 语言包（`src/lib/i18n/messages/`）、SSE 解析（`src/lib/sse.ts`）、格式化（`src/lib/format.ts`）经 `@shared` 别名引用；主题模式/语音/OAuth/图谱布局/swagger 已迁 `packages/shared`，前端经 `@kai/shared` 引用。
 
 ## src/ — Next 纯 API + 业务库
 
@@ -121,8 +121,7 @@ src/
 │   ├── openapi/                  # OpenAPI 3.0 规范（/api/openapi.json + /docs）
 │   ├── realtime/                 # 实时协作（事件总线 + 在线状态）
 │   ├── kg/                       # 知识图谱（NER 抽取 + GraphRAG + d3-force 布局）
-│   ├── voice/                    # 语音 STT/TTS 封装（可注入纯函数，Vue 侧 @shared 复用）
-│   ├── theme/                    # 主题引擎（三模式 + 高对比度 + 品牌色，Vue 侧 @shared 复用）
+│   ├── theme/                    # 品牌色（三模式/语音已迁 packages/shared）
 │   ├── i18n/                     # 国际化（i18next + zh-CN/en 语言包单源）
 │   ├── obs/                      # 可观测（指标/追踪/错误上报/结构化日志 pino）
 │   ├── health/                   # 健康检查（DB/Redis/LLM 连通性 + 告警状态机）

@@ -3,6 +3,7 @@
 packages:
   - "."
   - "frontend"
+  - "packages/*"
 
 allowBuilds:
   '@prisma/engines': true

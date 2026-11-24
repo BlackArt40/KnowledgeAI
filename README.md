@@ -34,7 +34,7 @@
 
 - **前端**：Vue 3.5 + Element Plus + Vite 7（`frontend/` 单仓目录，pnpm workspace 包 `kai-frontend`，30 个页面全量承载 + 首页 SEO 预渲染 + PWA）
 - **后端/API**：Next.js 16（Route Handlers + SSE 流式 + proxy 中间件限流；生产同镜像服务 `public/` 页面）
-- **共享单源**：i18next 语言包 / SSE 解析 / 主题引擎 / 格式化经 `@shared` 别名前后端复用（禁止拷贝）
+- **共享单源**：i18next / SSE / 格式化经 `@shared`；主题模式/语音/OAuth/图谱布局/swagger 在 `packages/shared`，前端经 `@kai/shared` 引用（禁止拷贝）
 - **样式**：Element Plus 主题适配 + CSS 变量设计令牌（`frontend/src/styles/tokens.css` 单源：系统 / 亮 / 暗 + 高对比度 + 品牌色）
 - **语言**：TypeScript 严格模式（前端 vue-tsc / 后端 tsc 双门禁）
 - **生产适配**：LLM Provider（含运行时导入外部模型）/ Payment / Database / Storage / Rate Limit / Auth
@@ -129,8 +129,7 @@ src/
     ├── db/              # ⭐ 数据库适配（Prisma 写穿：client/persist/hydrate）
     ├── storage/         # ⭐ 文件存储适配（S3 / 本地）
     ├── auth/            # ⭐ JWT 认证 + 角色守卫（Web Crypto + guard.ts）
-    ├── voice/           # 语音 STT/TTS 封装（Vue 侧经 @shared 复用）
-    ├── theme/           # 主题引擎（Vue 侧经 @shared 复用）
+    ├── theme/           # 品牌色（主题模式/语音已迁 packages/shared）
     ├── i18n/            # ⭐ 语言包单源（zh-CN / en，前后端共用）
     └── config.ts        # ⭐ Provider 状态聚合
 public/                 # 静态资产单源（PWA sw.js / manifest / icons、widget、swagger-ui vendor）

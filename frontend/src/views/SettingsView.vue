@@ -11,7 +11,7 @@ import { useTranslation } from "i18next-vue";
 import { WarningFilled, CopyDocument, Check } from "@element-plus/icons-vue";
 import { fetchCurrentUser } from "@/api/auth";
 import { ApiError, request } from "@/api/client";
-import { oauthSignIn } from "@shared/auth/oauth-signin";
+import { oauthSignIn } from "@kai/shared/auth/oauth-signin";
 import { formatRelative } from "@shared/format";
 import { getI18nInstance } from "@shared/i18n/translate";
 import { applyLocale, type Locale } from "@/lib/i18n";

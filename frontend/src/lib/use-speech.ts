@@ -10,8 +10,8 @@ import {
   recognitionCtor,
   startListening,
   type SttCallbacks,
-} from "@shared/voice/stt";
-import { isTtsSupported, speakText, type SynthesisLike } from "@shared/voice/tts";
+} from "@kai/shared/voice/stt";
+import { isTtsSupported, speakText, type SynthesisLike } from "@kai/shared/voice/tts";
 
 function currentLocale(): string {
   return getI18nInstance().language || "zh-CN";

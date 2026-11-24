@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // 服务可用性徽标条（V5，复刻 src/components/marketing/live-status.tsx）：
-// 轮询 /api/health/ready（30s），toReadinessPulse（@shared/marketing/readiness
+// 轮询 /api/health/ready（30s），toReadinessPulse（@kai/shared/marketing/readiness
 // 单源）归一化状态；compact 模式只显示总状态，完整模式带 db/redis/llm 三卡。
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
 import { TrendCharts, Collection, MagicStick, Promotion } from "@element-plus/icons-vue";
-import { toReadinessPulse, type ReadinessPulse } from "@shared/marketing/readiness";
+import { toReadinessPulse, type ReadinessPulse } from "@kai/shared/marketing/readiness";
 
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
 const { t } = useTranslation();
