@@ -5,7 +5,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useTranslation } from "i18next-vue";
 import { ChatLineRound, Key, Box, MagicStick, TrendCharts, RefreshRight } from "@element-plus/icons-vue";
-import { formatNumber, formatSize } from "@shared/format";
+import { formatNumber, formatSize } from "@kai/shared/format";
 import { fetchUsage, type WorkspaceUsage } from "@/api/billing";
 import UsageChart from "@/components/UsageChart.vue";
 

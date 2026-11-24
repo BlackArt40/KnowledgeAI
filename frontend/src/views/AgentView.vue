@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Agent 调研（V4，复刻 src/app/(app)/agent/page.tsx）：SSE 运行流
-// （@shared/sse 单源解析，事件 init/step/done/error/end 冻结）、composer
+// （@kai/shared/sse 单源解析，事件 init/step/done/error/end 冻结）、composer
 // （主题/知识库含公开检索哨兵/输出格式/深度/模板/Agent 组合）、时间线 +
 // DAG 可视化、报告 markdown+引用（复制/编辑/分享/导出 md|pdf|pptx|mindmap）、
 // 版本历史（diff+恢复）与协作评论（P2-3 报告增强）、历史任务侧栏、
@@ -21,8 +21,8 @@ import {
   RefreshRight,
   Plus,
 } from "@element-plus/icons-vue";
-import { consumeSseStream } from "@shared/sse";
-import { formatDateTime } from "@shared/format";
+import { consumeSseStream } from "@kai/shared/sse";
+import { formatDateTime } from "@kai/shared/format";
 import { streamRequest } from "@/api/client";
 import { diffLines, type DiffLine } from "@shared/agent/diff";
 import { TEMPLATES, type TemplateId } from "@shared/agent/templates";

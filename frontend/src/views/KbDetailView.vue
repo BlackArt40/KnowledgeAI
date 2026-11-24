@@ -19,7 +19,7 @@ import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
 import { applyKbEvent, type LiveKbViewer } from "@/lib/kb-events";
 import { kbAvatarBackground } from "@/lib/kb-color";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 
 const { t } = useTranslation();
 const route = useRoute();

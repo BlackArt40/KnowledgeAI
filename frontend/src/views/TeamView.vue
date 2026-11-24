@@ -22,7 +22,7 @@ import {
 } from "@/api/team";
 import { fetchCurrentUser } from "@/api/auth";
 import { errorMessage } from "@/api/client";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 import WorkspaceMembersCard from "@/components/team/WorkspaceMembersCard.vue";
 
 const { t } = useTranslation();

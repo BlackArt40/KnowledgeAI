@@ -11,7 +11,7 @@
 import { handleChatRequest, type ChatRequestOptions } from "@/lib/chat/ask";
 import type { RequestUser } from "@/lib/auth/guard";
 import type { ApiTraceHandle } from "@/lib/obs/trace";
-import { consumeSseStream } from "@/lib/sse";
+import { consumeSseStream } from "@kai/shared/sse";
 
 export interface AskOnceResult {
   answer: string;

@@ -11,7 +11,7 @@ import {
   Odometer, Collection, SwitchButton, Menu, ChatDotRound, MagicStick, Search,
   Setting, CircleCheck, Star, User,
 } from "@element-plus/icons-vue";
-import { getI18nInstance } from "@shared/i18n/translate";
+import { getI18nInstance } from "@kai/shared/i18n/translate";
 import AppLogo from "@/components/AppLogo.vue";
 import ThemeToggle from "@/components/ThemeToggle.vue";
 import GlobalSearch from "@/components/GlobalSearch.vue";
@@ -31,7 +31,7 @@ import {
   fetchNotifications, markAllRead, markOneRead,
   type Notification,
 } from "@/api/notifications";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 import { usePresence } from "@/lib/presence";
 import { subscribeEvents, type EventStreamHandle } from "@/lib/event-stream";
 

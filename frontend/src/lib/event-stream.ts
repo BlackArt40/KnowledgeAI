@@ -1,4 +1,4 @@
-// 客户端长连接订阅（SSE）：fetch + @shared/sse 单源切帧 + 断线重连。
+// 客户端长连接订阅（SSE）：fetch + @kai/shared/sse 单源切帧 + 断线重连。
 //
 // 为什么不用原生 EventSource：
 //  - 需要带 Cookie（EventSource 同源默认带，但跨域部署 VITE_API_BASE 下无法指定 base）
@@ -9,7 +9,7 @@
 //  - /api/knowledge-base/[id]/events  KB 变更（settings/docs/doc_status/doc_deleted/doc_access/deleted）
 //  - /api/team/presence/events        在线状态（presence: 全量在线列表）
 //  - /api/chat/conversations/[id]/events 共享会话新消息（message）
-import { consumeSseStream } from "@shared/sse";
+import { consumeSseStream } from "@kai/shared/sse";
 import { apiUrl } from "@/api/client";
 
 export type StreamEvent = Record<string, unknown>;

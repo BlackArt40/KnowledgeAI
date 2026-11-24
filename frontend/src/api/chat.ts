@@ -1,5 +1,5 @@
 // 聊天 API（V4，契约与 /api/chat* 冻结一致）。SSE 流式（POST /api/chat 与
-// 共享会话事件流）在视图内用 @shared/sse 的 consumeSseStream 消费——事件名
+// 共享会话事件流）在视图内用 @kai/shared/sse 的 consumeSseStream 消费——事件名
 // sources/token/done 冻结，勿在此层重命名。
 import { request } from "./client";
 

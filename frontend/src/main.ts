@@ -6,7 +6,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import { router } from "./router";
 import { initLocale } from "./lib/i18n";
-import { getI18nInstance } from "@shared/i18n/translate";
+import { getI18nInstance } from "@kai/shared/i18n/translate";
 import { clientLog } from "@shared/obs/log-browser";
 import { registerSw } from "./pwa/sw-register";
 import { installGlobalErrorReporter, reportClientError } from "./lib/error-reporter";

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@kai/shared"],
   output: "standalone",
   // Fix Turbopack workspace-root inference when a stray lockfile exists in a
   // parent directory (e.g. ~/package-lock.json) - without this, dev can hang.

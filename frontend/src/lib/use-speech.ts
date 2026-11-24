@@ -4,7 +4,7 @@
 // supported=false，控件按设计隐藏；locale 在 start/speak 调用时实时读取
 // 共享 i18next 实例（切语言后无需重建组件）。
 import { onBeforeUnmount, ref } from "vue";
-import { getI18nInstance } from "@shared/i18n/translate";
+import { getI18nInstance } from "@kai/shared/i18n/translate";
 import {
   isSttSupported,
   recognitionCtor,

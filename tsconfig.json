@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@kai/shared/*": ["./packages/shared/src/*"]
     }
   },
   "include": [

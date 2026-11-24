@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 智能问答（V4，复刻 src/app/(app)/chat/page.tsx）：SSE 流式对话
-// （@shared/sse 单源解析，事件 sources/token/done 冻结）、markdown+引用
+// （@kai/shared/sse 单源解析，事件 sources/token/done 冻结）、markdown+引用
 // chips（@/lib/markdown）、反馈/regenerate（temperature 0.7 + topK+3）、
 // 归档/标签/共享、联网搜索、图片附件（≤4 base64）、导出 MD、空态示例问
 // （按 KB 文档推导）、追问建议、KB 推荐、深链接 ?kb=&conv=。
@@ -10,7 +10,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { Delete } from "@element-plus/icons-vue";
-import { consumeSseStream } from "@shared/sse";
+import { consumeSseStream } from "@kai/shared/sse";
 import { extractLiveCitations } from "@/lib/chat-citations";
 import "@/styles/chat-view.css";
 import { streamRequest } from "@/api/client";

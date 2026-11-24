@@ -10,7 +10,7 @@ import { Lock, ArrowLeft, CopyDocument, Check, Download, Clock } from "@element-
 import { renderMarkdown } from "@/lib/markdown";
 import { fetchSharedReport, type SharedReport } from "@/api/share";
 import { ApiError } from "@/api/client";
-import { formatRelative } from "@shared/format";
+import { formatRelative } from "@kai/shared/format";
 
 const { t } = useTranslation();
 const route = useRoute();
