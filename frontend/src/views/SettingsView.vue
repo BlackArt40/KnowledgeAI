@@ -28,6 +28,7 @@ import ModelSettings from "@/components/ModelSettings.vue";
 import ThemeSettings from "@/components/ThemeSettings.vue";
 import DeleteAccountDialog from "./settings/DeleteAccountDialog.vue";
 import PrivacyTab from "./settings/PrivacyTab.vue";
+import NotificationPrefsCard from "./settings/NotificationPrefsCard.vue";
 
 const { t } = useTranslation();
 const i18n = getI18nInstance();
@@ -613,42 +614,12 @@ const planLabel = computed(() => {
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-head">
-              <h2>{{ t("page.settings.s90") }}</h2>
-            </div>
-            <div class="card-body">
-              <div
-                v-for="n in NOTIF_ITEMS"
-                :key="n.k"
-                class="pref-row"
-              >
-                <div>
-                  <p class="pref-label">
-                    {{ n.label }}
-                  </p>
-                  <p class="hint">
-                    {{ n.desc }}
-                  </p>
-                </div>
-                <div class="pref-right">
-                  <el-icon
-                    v-if="savingNotif === n.k"
-                    class="spin"
-                    :size="13"
-                  >
-                    <Loading />
-                  </el-icon>
-                  <el-switch
-                    :model-value="notifPrefs ? notifPrefs[n.k] : false"
-                    :disabled="!notifPrefs"
-                    :aria-label="n.label"
-                    @update:model-value="(v: string | number | boolean) => toggleNotif(n.k, !!v)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <NotificationPrefsCard
+            :items="NOTIF_ITEMS"
+            :prefs="notifPrefs"
+            :saving="savingNotif"
+            @toggle="(k: string, v: boolean) => toggleNotif(k as keyof NotifPrefs, v)"
+          />
         </div>
       </el-tab-pane>
 
