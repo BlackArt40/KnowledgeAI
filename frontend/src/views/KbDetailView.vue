@@ -5,7 +5,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
-import { EditPen, RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
+import { RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
 import {
   createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
   fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, saveDocContent, uploadDocs,
@@ -13,13 +13,13 @@ import {
 } from "@/api/kb";
 import { renderMarkdown } from "@/lib/markdown";
 import CollabMarkdownEditor from "@/components/kb/CollabMarkdownEditor.vue";
+import KbDocumentTable from "@/views/KbDocumentTable.vue";
 import { createCollabSession, type CollabSession, type CollabStatus } from "@/lib/collab-session";
 import { ApiError } from "@/api/client";
 import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
 import { applyKbEvent, type LiveKbViewer } from "@/lib/kb-events";
 import { kbAvatarBackground } from "@/lib/kb-color";
-import { formatRelative } from "@kai/shared/format";
 
 const { t } = useTranslation();
 const route = useRoute();
@@ -277,14 +277,6 @@ async function removeKb() {
   }
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  ready: "page.document-list.s11",
-  queued: "page.document-list.s16",
-  parsing: "page.document-list.s17",
-  chunking: "page.document-list.s18",
-  vectorizing: "page.document-list.s13",
-  failed: "page.document-list.s12",
-};
 
 const hasProcessing = computed(() =>
   docs.value.some((d) => ["queued", "parsing", "chunking", "vectorizing"].includes(d.status))
@@ -591,97 +583,18 @@ function onKbEvent(event: Record<string, unknown>) {
         </p>
       </div>
 
-      <!-- 文档表 -->
-      <div class="card">
-        <div class="card-head">
-          <h3>{{ t("page.document-list.s1") }}</h3>
-          <span
-            v-if="hasProcessing"
-            class="hint"
-          >↻ {{ t("page.knowledge-base-[id].s37", { count: stats?.processing ?? 0 }) }}…</span>
-          <span
-            v-else-if="reindexMsg"
-            class="hint"
-          >{{ reindexMsg }}</span>
-          <span
-            v-if="kbLive"
-            class="hint"
-            aria-live="polite"
-          >● {{ t("page.knowledge-base-[id].s38") }}</span>
-        </div>
-        <div class="card-body">
-          <div
-            v-if="docs.length === 0"
-            class="hint"
-            style="padding: 24px 0; text-align: center"
-          >
-            {{ t("page.document-list.s0") }}
-          </div>
-          <div
-            v-for="d in docs"
-            :key="d.id"
-            class="doc-row"
-          >
-            <span class="doc-main">
-              <span class="doc-name">{{ d.name }}</span>
-              <span class="doc-meta">
-                {{ d.type }} · {{ t("page.document-list.s15", { count: d.chunks }) }} · v{{ d.version ?? 1 }} · {{ formatRelative(d.uploadedAt) }}
-                <span
-                  v-if="d.error"
-                  class="err"
-                > · {{ d.error }}</span>
-              </span>
-            </span>
-            <span class="doc-right">
-              <span
-                class="badge"
-                :class="d.status === 'ready' ? 'ok' : d.status === 'failed' ? 'err' : 'warn'"
-              >
-                {{ t(STATUS_LABEL[d.status] ?? d.status) }}
-              </span>
-              <el-button
-                size="small"
-                text
-                :icon="EditPen"
-                @click="openDoc(d)"
-              >
-                {{ canEdit ? t("page.document-list.s22") : t("page.document-list.s26") }}
-              </el-button>
-              <el-tooltip
-                v-if="canEdit"
-                :content="t('page.share-link-dialog.s18')"
-                placement="top"
-              >
-                <el-button
-                  size="small"
-                  text
-                  :icon="Share"
-                  :aria-label="t('page.share-link-dialog.s18')"
-                  @click="openShare({ kind: 'doc', doc: d })"
-                />
-              </el-tooltip>
-              <el-button
-                v-if="!['queued', 'parsing', 'chunking', 'vectorizing'].includes(d.status)"
-                size="small"
-                text
-                :icon="RefreshRight"
-                @click="reindexOne(d)"
-              >
-                {{ t("page.document-list.s19") }}
-              </el-button>
-              <el-button
-                size="small"
-                text
-                type="danger"
-                @click="removeDoc(d)"
-              >
-                {{ t("page.document-list.s10") }}
-              </el-button>
-            </span>
-          </div>
-        </div>
-      </div>
-
+      <KbDocumentTable
+        :docs="docs"
+        :can-edit="canEdit"
+        :has-processing="hasProcessing"
+        :stats="stats"
+        :reindex-msg="reindexMsg"
+        :kb-live="kbLive"
+        @open="openDoc"
+        @share="(d) => openShare({ kind: 'doc', doc: d })"
+        @reindex="reindexOne"
+        @remove="removeDoc"
+      />
       <!-- KB 设置对话框 -->
       <el-dialog
         v-model="settingsOpen"
