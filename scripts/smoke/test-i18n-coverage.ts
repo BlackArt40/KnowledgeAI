@@ -3,7 +3,7 @@
 // code. V6：Next 页面层已退役（src/app 只剩 /api），UI 扫描范围收缩为
 // frontend/src（Vue 3 + EP，.vue 模板 + ts/tsx）。Skips:
 //   - comments (// and /* */ and <!-- -->)
-//   - the language packs themselves (src/lib/i18n/messages)
+//   - the language packs themselves (packages/shared/src/i18n/messages)
 //   - server-side API error messages & lib prompts (out of UI scope)
 //   - t("...") call sites (the key is English)
 // Also asserts zh-CN.json and en.json share the same key tree (a missing en
@@ -13,11 +13,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ROOT = join(process.cwd(), "src"); // 语言包仍单源在 src/lib（@shared 共享）
+const ROOT = process.cwd(); // 语言包单源在 packages/shared
 // V6：frontend/src 是唯一的客户端 UI 代码（Next 前端已退役）
 const FRONTEND_ROOT = join(process.cwd(), "frontend/src");
-const ZH = JSON.parse(readFileSync(join(ROOT, "lib/i18n/messages/zh-CN.json"), "utf8"));
-const EN = JSON.parse(readFileSync(join(ROOT, "lib/i18n/messages/en.json"), "utf8"));
+const ZH = JSON.parse(readFileSync(join(ROOT, "packages/shared/src/i18n/messages/zh-CN.json"), "utf8"));
+const EN = JSON.parse(readFileSync(join(ROOT, "packages/shared/src/i18n/messages/en.json"), "utf8"));
 
 const CJK = /[\u4e00-\u9fff]/;
 
