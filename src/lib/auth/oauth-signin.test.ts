@@ -1,7 +1,7 @@
 // P0 (batch 1): client-side OAuth kickoff — CSRF POST flow, provider
 // allowlist, open-redirect guard and every failure redirect.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { oauthSignIn } from "./oauth-signin";
+import { oauthSignIn } from "../../../packages/shared/src/auth/oauth-signin";
 
 type Loc = { assign: ReturnType<typeof vi.fn>; replace: ReturnType<typeof vi.fn>; origin: string };
 

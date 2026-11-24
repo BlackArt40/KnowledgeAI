@@ -2,7 +2,7 @@
 // 消息气泡（V4，复刻 src/components/app/chat/message-bubble.tsx）：
 // 用户右对齐纯文本；助手 markdown（@/lib/markdown，[n]→引用 chip，容器
 // click 委托读 data-cite）+ 流式光标 + 操作行（复制/重新生成/朗读 TTS/
-// 点赞/点踩+备注）。V8 补齐朗读：@shared/voice/tts 单源复用，不支持的
+// 点赞/点踩+备注）。V8 补齐朗读：@kai/shared/voice/tts 单源复用，不支持的
 // 浏览器（headless）按钮按设计隐藏。
 import { computed, ref } from "vue";
 import { useTranslation } from "i18next-vue";

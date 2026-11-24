@@ -6,7 +6,7 @@ import {
   isSttSupported,
   sttLang,
   type SpeechRecognitionLike,
-} from "./stt";
+} from "../../../packages/shared/src/voice/stt";
 
 /** A scripted mock recognition: the test drives onresult/onend manually. */
 function mockRecognition(): SpeechRecognitionLike & { events: Record<string, unknown> } {

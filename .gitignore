@@ -121,3 +121,6 @@ frontend/src/components.d.ts
 
 # CodeBuddy agent workspace (plans/reports/cache)
 /.codebuddy/
+
+# workspace package local node_modules
+packages/*/node_modules/

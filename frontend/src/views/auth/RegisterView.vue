@@ -6,7 +6,7 @@ import { useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { fetchCurrentUser, register, fetchOAuthProviders } from "@/api/auth";
 import { ApiError } from "@/api/client";
-import { oauthSignIn } from "@shared/auth/oauth-signin";
+import { oauthSignIn } from "@kai/shared/auth/oauth-signin";
 
 const { t } = useTranslation();
 const router = useRouter();

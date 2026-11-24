@@ -66,6 +66,7 @@ export default defineConfig({
     alias: {
       "@": srcDir,
       "@shared": sharedLibDir,
+      "@kai/shared": fileURLToPath(new URL("../packages/shared/src", import.meta.url)),
     },
   },
   server: {

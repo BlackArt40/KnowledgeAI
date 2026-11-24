@@ -8,7 +8,7 @@ import { useTranslation } from "i18next-vue";
 import { Connection } from "@element-plus/icons-vue";
 import { fetchGraph, type GraphEdge, type GraphNode } from "@/api/kb";
 import { ApiError } from "@/api/client";
-import { computeGraphLayout, type LayoutNode } from "@shared/kg/layout";
+import { computeGraphLayout, type LayoutNode } from "@kai/shared/kg/layout";
 import { ENTITY_COLORS, TINTS } from "@/lib/palette";
 
 const { t } = useTranslation();
@@ -38,7 +38,7 @@ onMounted(async () => {
 
 const layout = computed(() => {
   const l = computeGraphLayout(nodes.value, edges.value);
-  // @shared/kg/layout 输出的边端点是实体 label（API 形状），节点主键是 id
+  // @kai/shared/kg/layout 输出的边端点是实体 label（API 形状），节点主键是 id
   // （ent_*）——这里统一到 id 空间寻址，否则边坐标与选中高亮恒匹配失败
   //（Next 版同源缺陷：边全部塌在原点、选中节点后邻接边不变色）。
   // label 必有对应节点由 layout 的 labelSet 端点过滤保证。

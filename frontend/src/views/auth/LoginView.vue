@@ -9,7 +9,7 @@ import { useTranslation } from "i18next-vue";
 import { Message, CircleCheck, InfoFilled, ArrowLeft } from "@element-plus/icons-vue";
 import { fetchCurrentUser, login, fetchOAuthProviders } from "@/api/auth";
 import { ApiError } from "@/api/client";
-import { oauthSignIn } from "@shared/auth/oauth-signin";
+import { oauthSignIn } from "@kai/shared/auth/oauth-signin";
 
 const { t } = useTranslation();
 const route = useRoute();

@@ -271,6 +271,12 @@ importers:
         specifier: ^3.3.13
         version: 3.3.13(typescript@5.9.3)
 
+  packages/shared:
+    dependencies:
+      d3-force:
+        specifier: ^3.0.0
+        version: 3.0.0
+
 packages:
 
   '@ai-sdk/gateway@4.0.49':

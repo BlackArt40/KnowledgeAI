@@ -3,7 +3,7 @@
 // respect node/edge caps, clamp inside the viewBox, and keep label references
 // on edges (the SVG renderer resolves positions by label).
 import { describe, it, expect } from "vitest";
-import { computeGraphLayout, type GraphNodeData, type GraphEdgeData } from "./layout";
+import { computeGraphLayout, type GraphNodeData, type GraphEdgeData } from "../../../packages/shared/src/kg/layout";
 
 function node(id: string, label: string, mentions = 1): GraphNodeData {
   return { id, label, type: "concept", mentions, docCount: 1 };

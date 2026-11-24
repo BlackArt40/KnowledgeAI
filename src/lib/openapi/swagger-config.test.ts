@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSwaggerUiConfig } from "./swagger-config";
+import { buildSwaggerUiConfig } from "../../../packages/shared/src/openapi/swagger-config";
 
 describe("Swagger UI homepage config", () => {
   it("keeps the built-in API preset and download plugin required for spec loading", () => {
