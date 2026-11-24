@@ -9,33 +9,18 @@
 // When DB is not configured, hydration is a no-op (stores use seed data).
 // ---------------------------------------------------------------------------
 
-import { getDb, isDbEnabled } from "../prisma";
-import { decryptFromString } from "@/lib/crypto";
-import { hydrateSecurityState } from "@/lib/security/store";
-import { markNotificationsHydrated } from "@/lib/notifications/store";
-import { hydrateUserUsage, hydrateWorkspaceUsage } from "@/lib/billing/store";
-import type { UsagePoint } from "@kai/shared/billing/types";
-import type { SecurityState } from "@/lib/security/types";
-import type { PrismaUser, PrismaUserSecurity, PrismaKb, PrismaDoc, PrismaAgentTask } from "../types";
+import { getDb } from "../prisma";
+
+
+
+
+
+
+
 import { mergeApiKeyRow, type ApiKeyRow } from "@/lib/apikeys/store";
 import { hydrateInviteReservation } from "@/lib/team/invite-seats";
 import { log } from "@/lib/obs/log";
-import {
-  createEmptyAdminStore,
-  createEmptyAgentStore,
-  createEmptyApiKeyStore,
-  createEmptyAuthStore,
-  createEmptyBillingStore,
-  createEmptyChatStore,
-  createEmptyKbStore,
-  createEmptyKgStore,
-  createEmptyModelStore,
-  createEmptyNotificationStore,
-  createEmptySecurityStore,
-  createEmptyTeamStore,
-  createEmptyWebhookStore,
-  createEmptyWorkspaceStore,
-} from "../store-factories";
+
 
 // P1-9: coalesce concurrent first-request calls (the proxy fires
 // ensureHydrated() fire-and-forget on every request) into a single in-flight

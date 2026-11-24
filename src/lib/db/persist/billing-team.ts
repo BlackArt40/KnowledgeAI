@@ -13,7 +13,7 @@
 
 import { randomUUID } from "crypto";
 import { getDb, isDbEnabled } from "../prisma";
-import { encryptToString } from "@/lib/crypto";
+
 import { log } from "@/lib/obs/log";
 
 /**
@@ -21,7 +21,7 @@ import { log } from "@/lib/obs/log";
  * found") is expected and ignored; every other failure is logged. Previously
  * these paths used `.catch((err) => bestEffort(err))`, which silently diverged memory from DB.
  */
-import { bestEffort, withFkRetry, todayUtcDate } from "./core";
+import { bestEffort, todayUtcDate } from "./core";
 
 export async function persistSubscription(sub: {
   userId: string;
