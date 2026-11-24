@@ -42,8 +42,6 @@ interface NavItem {
   href: string;
   icon: object;
   roles?: Role[];
-  /** V2 起已由 Vue 接管的路由用 router-link，其余整页跳转回 Next */
-  migrated?: boolean;
 }
 
 // 角色导航（与 RBAC 矩阵对齐，路径/角色/文案 key 与 Next 版逐字一致）
@@ -51,29 +49,29 @@ const navGroups: { titleKey: string; items: NavItem[] }[] = [
   {
     titleKey: "page.app-shell.s5",
     items: [
-      { labelKey: "page.app-shell.s6", href: "/dashboard", icon: Odometer, migrated: true },
-      { labelKey: "page.app-shell.s7", href: "/knowledge-base", icon: Collection, migrated: true },
-      { labelKey: "page.app-shell.s8", href: "/chat", icon: ChatDotRound, migrated: true },
-      { labelKey: "page.app-shell.s9", href: "/agent", icon: MagicStick, roles: ["owner", "admin", "editor"], migrated: true },
+      { labelKey: "page.app-shell.s6", href: "/dashboard", icon: Odometer },
+      { labelKey: "page.app-shell.s7", href: "/knowledge-base", icon: Collection },
+      { labelKey: "page.app-shell.s8", href: "/chat", icon: ChatDotRound },
+      { labelKey: "page.app-shell.s9", href: "/agent", icon: MagicStick, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
     titleKey: "page.app-shell.s10",
     items: [
-      { labelKey: "page.app-shell.s11", href: "/team", icon: User, migrated: true },
-      { labelKey: "page.app-shell.s12", href: "/billing", icon: WalletFilled, roles: ["owner", "admin"], migrated: true },
-      { labelKey: "page.app-shell.s13", href: "/usage", icon: TrendCharts, roles: ["owner", "admin", "editor"], migrated: true },
+      { labelKey: "page.app-shell.s11", href: "/team", icon: User },
+      { labelKey: "page.app-shell.s12", href: "/billing", icon: WalletFilled, roles: ["owner", "admin"] },
+      { labelKey: "page.app-shell.s13", href: "/usage", icon: TrendCharts, roles: ["owner", "admin", "editor"] },
     ],
   },
   {
     titleKey: "page.app-shell.s14",
     items: [
-      { labelKey: "page.app-shell.s15", href: "/api-keys", icon: Key, roles: ["owner", "admin", "editor"], migrated: true },
-      { labelKey: "page.app-shell.s28", href: "/developer", icon: Notebook, roles: ["owner", "admin", "editor"], migrated: true },
-      { labelKey: "page.app-shell.s16", href: "/settings", icon: Setting, migrated: true },
-      { labelKey: "page.app-shell.s17", href: "/admin", icon: CircleCheck, roles: ["owner", "admin"], migrated: true },
+      { labelKey: "page.app-shell.s15", href: "/api-keys", icon: Key, roles: ["owner", "admin", "editor"] },
+      { labelKey: "page.app-shell.s28", href: "/developer", icon: Notebook, roles: ["owner", "admin", "editor"] },
+      { labelKey: "page.app-shell.s16", href: "/settings", icon: Setting },
+      { labelKey: "page.app-shell.s17", href: "/admin", icon: CircleCheck, roles: ["owner", "admin"] },
       // P6-1 可观测看板（owner/admin）
-      { labelKey: "page.app-shell.s27", href: "/admin/monitoring", icon: TrendCharts, roles: ["owner", "admin"], migrated: true },
+      { labelKey: "page.app-shell.s27", href: "/admin/monitoring", icon: TrendCharts, roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -458,7 +456,6 @@ const visibleGroups = computed(() =>
             :key="item.href"
           >
             <router-link
-              v-if="item.migrated"
               :to="item.href"
               class="nav-item"
               :class="{ active: route.path === item.href }"
@@ -468,14 +465,6 @@ const visibleGroups = computed(() =>
               </el-icon>
               <span>{{ t(item.labelKey) }}</span>
             </router-link>
-            <a
-              v-else
-              :href="item.href"
-              class="nav-item"
-            >
-              <el-icon :size="16"><component :is="item.icon" /></el-icon>
-              <span>{{ t(item.labelKey) }}</span>
-            </a>
           </template>
         </div>
       </nav>
@@ -527,7 +516,6 @@ const visibleGroups = computed(() =>
             :key="item.href"
           >
             <router-link
-              v-if="item.migrated"
               :to="item.href"
               class="nav-item"
               @click="mobileOpen = false"
@@ -537,15 +525,6 @@ const visibleGroups = computed(() =>
               </el-icon>
               <span>{{ t(item.labelKey) }}</span>
             </router-link>
-            <a
-              v-else
-              :href="item.href"
-              class="nav-item"
-              @click="mobileOpen = false"
-            >
-              <el-icon :size="16"><component :is="item.icon" /></el-icon>
-              <span>{{ t(item.labelKey) }}</span>
-            </a>
           </template>
         </div>
       </nav>
