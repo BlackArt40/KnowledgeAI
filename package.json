@@ -20,10 +20,12 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "verify:migrations": "tsx scripts/db/verify-migrations.ts",
     "db:baseline": "tsx scripts/db/audit-migration-baseline.ts",
-    "test:perf": "node scripts/perf/load.mjs"
+    "test:perf": "node scripts/perf/load.mjs",
+    "gen:openapi": "tsx scripts/tools/gen-openapi-json.ts && pnpm --dir frontend exec openapi-typescript ../docs/api/openapi.json -o src/api/generated.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.40",
+    "@kai/shared": "workspace:*",
     "@napi-rs/canvas": "^0.1.65",
     "@prisma/client": "^6.19.3",
     "ai": "^7.0.62",
@@ -46,8 +48,7 @@
     "swagger-ui-dist": "^5.32.12",
     "tesseract.js": "^5.1.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "yjs": "^13.6.33",
-    "@kai/shared": "workspace:*"
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
