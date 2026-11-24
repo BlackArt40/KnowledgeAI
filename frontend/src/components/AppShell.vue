@@ -7,26 +7,21 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import {
-  BellFilled, Check, Finished, ArrowDown, Notebook, WalletFilled, TrendCharts, Compass, Key,
-  Odometer, Collection, SwitchButton, Menu, ChatDotRound, MagicStick, Search,
-  Setting, CircleCheck, Star, User,
+  BellFilled, Finished, WalletFilled, TrendCharts, Compass, Key, Notebook, Odometer, Collection, SwitchButton, Menu, ChatDotRound, MagicStick, Search,
+  Setting, CircleCheck, User,
 } from "@element-plus/icons-vue";
 import { getI18nInstance } from "@kai/shared/i18n/translate";
-import AppLogo from "@/components/AppLogo.vue";
+import AppSidebar from "@/components/app-shell/AppSidebar.vue";
 import ThemeToggle from "@/components/ThemeToggle.vue";
 import GlobalSearch from "@/components/GlobalSearch.vue";
 import { fetchCurrentUser } from "@/api/auth";
 import { ApiError, api } from "@/api/client";
-import {
-  createWorkspace, switchTo,
-} from "@/api/workspaces";
 import {
   currentWorkspaceName as currentName,
   onFreePlan,
   refreshWorkspaces,
   workspaceList as workspaces,
 } from "@/lib/workspace-store";
-import { planLabelKey } from "@/lib/plan";
 import {
   fetchNotifications, markAllRead, markOneRead,
   type Notification,
@@ -117,9 +112,6 @@ const userMenuOpen = ref(false);
 const langOpen = ref(false);
 const notifs = ref<Notification[]>([]);
 const unread = ref(0);
-const wsOpen = ref(false);
-const creating = ref(false);
-const newName = ref("");
 
 // P4-1 在线状态：长连接挂在壳上（打开流即在线），事件推全量在线列表
 const { online: onlineUsers, start: presenceStart, stop: presenceStop } = usePresence();
@@ -259,21 +251,6 @@ async function refreshNotifs() {
   }
 }
 
-function planText(plan: string): string {
-  const key = planLabelKey(plan);
-  return key ? t(key) : plan;
-}
-
-async function createWs() {
-  if (!newName.value.trim()) return;
-  try {
-    const d = await createWorkspace(newName.value.trim());
-    if (d.workspace?.id) switchTo(d.workspace.id);
-  } catch {
-    /* ignore */
-  }
-}
-
 async function logout() {
   userMenuOpen.value = false;
   try {
@@ -369,166 +346,13 @@ const visibleGroups = computed(() =>
     <GlobalSearch v-model:open="searchOpen" />
 
     <!-- 桌面侧栏 -->
-    <aside class="sidebar hidden lg:block">
-      <div class="side-head">
-        <AppLogo />
-      </div>
-      <div class="ws-box">
-        <el-popover
-          v-model:visible="wsOpen"
-          placement="bottom-start"
-          :width="230"
-          trigger="click"
-        >
-          <template #reference>
-            <button
-              class="ws-btn"
-              type="button"
-            >
-              <span class="ws-avatar">{{ (currentName || "W").charAt(0) }}</span>
-              <span class="ws-name">{{ currentName || t("page.app-shell.s5") }}</span>
-              <el-icon :size="12">
-                <ArrowDown />
-              </el-icon>
-            </button>
-          </template>
-          <div class="ws-menu">
-            <button
-              v-for="w in workspaces"
-              :key="w.id"
-              type="button"
-              class="ws-item"
-              :class="{ active: w.active }"
-              @click="switchTo(w.id)"
-            >
-              <span class="ws-item-name">{{ w.name }}</span>
-              <el-icon
-                v-if="w.active"
-                :size="12"
-              >
-                <Check />
-              </el-icon>
-              <span
-                class="ws-plan"
-                :class="{ pro: w.plan !== 'free' }"
-              >{{ planText(w.plan) }}</span>
-            </button>
-            <div class="ws-create">
-              <template v-if="creating">
-                <input
-                  v-model="newName"
-                  class="ws-input"
-                  :placeholder="t('page.app-shell.s18')"
-                  @keydown.enter="createWs"
-                >
-                <el-button
-                  size="small"
-                  type="primary"
-                  @click="createWs"
-                >
-                  {{ t("common.create") }}
-                </el-button>
-              </template>
-              <button
-                v-else
-                type="button"
-                class="ws-add"
-                @click="creating = true"
-              >
-                {{ t("page.app-shell.s30") }}
-              </button>
-            </div>
-          </div>
-        </el-popover>
-      </div>
-
-      <nav class="nav kai-scroll">
-        <div
-          v-for="g in visibleGroups"
-          :key="g.titleKey"
-          class="nav-group"
-        >
-          <p class="nav-title">
-            {{ t(g.titleKey) }}
-          </p>
-          <template
-            v-for="item in g.items"
-            :key="item.href"
-          >
-            <router-link
-              :to="item.href"
-              class="nav-item"
-              :class="{ active: route.path === item.href }"
-            >
-              <el-icon :size="16">
-                <component :is="item.icon" />
-              </el-icon>
-              <span>{{ t(item.labelKey) }}</span>
-            </router-link>
-          </template>
-        </div>
-      </nav>
-
-      <div
-        v-if="onFreePlan"
-        class="upgrade"
-      >
-        <div class="upgrade-head">
-          <el-icon
-            :size="14"
-            color="hsl(var(--primary))"
-          >
-            <Star />
-          </el-icon>
-          <span>{{ t("page.app-shell.s0") }}</span>
-        </div>
-        <p class="upgrade-desc">
-          {{ t("page.app-shell.s31") }}
-        </p>
-        <router-link
-          to="/checkout?plan=pro"
-          class="upgrade-btn"
-        >
-          {{ t("page.app-shell.s32") }}
-        </router-link>
-      </div>
-    </aside>
-
-    <!-- 移动端抽屉 -->
-    <el-drawer
-      v-model="mobileOpen"
-      direction="ltr"
-      size="280px"
-      :title="t('page.app-shell.s1')"
-      class="mobile-drawer"
-    >
-      <nav class="nav kai-scroll">
-        <div
-          v-for="g in visibleGroups"
-          :key="g.titleKey"
-          class="nav-group"
-        >
-          <p class="nav-title">
-            {{ t(g.titleKey) }}
-          </p>
-          <template
-            v-for="item in g.items"
-            :key="item.href"
-          >
-            <router-link
-              :to="item.href"
-              class="nav-item"
-              @click="mobileOpen = false"
-            >
-              <el-icon :size="16">
-                <component :is="item.icon" />
-              </el-icon>
-              <span>{{ t(item.labelKey) }}</span>
-            </router-link>
-          </template>
-        </div>
-      </nav>
-    </el-drawer>
+    <AppSidebar
+      v-model:mobile-open="mobileOpen"
+      :groups="visibleGroups"
+      :current-name="currentName"
+      :workspaces="workspaces"
+      :on-free-plan="onFreePlan"
+    />
 
     <!-- 主区 -->
     <div class="main">
