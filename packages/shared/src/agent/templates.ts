@@ -7,7 +7,7 @@
 //
 // Templates: competitive (竞品分析), tech-selection (技术选型), market (市场洞察).
 
-import type { AgentRole } from "@kai./types";
+import type { AgentRole } from "./types";
 
 export type TemplateId = "competitive" | "tech-selection" | "market" | "default";
 

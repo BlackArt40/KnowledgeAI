@@ -16,8 +16,7 @@ describe("plans", () => {
     expect(getPlan("pro").price).toBe(49);
     expect(getPlan("enterprise").seats).toBeNull();
     expect(getPlan("free").qaLimit).toBe(100);
-    // @ts-expect-error unknown id falls back
-    expect(getPlan("hacker").id).toBe("free");
+    expect(getPlan("hacker" as never).id).toBe("free");
   });
 
   it("comparison table covers all plans", () => {

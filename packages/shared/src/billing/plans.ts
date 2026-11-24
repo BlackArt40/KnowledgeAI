@@ -1,4 +1,4 @@
-import type { Plan, PlanId } from "@kai./types";
+import type { Plan, PlanId } from "./types";
 
 export const PLANS: Plan[] = [
   {
