@@ -3,7 +3,6 @@ import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vitest/config";
 
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
-const sharedLibDir = fileURLToPath(new URL("../src/lib", import.meta.url));
 
 export default defineConfig({
   // Component tests import .vue single-file components; the production config
@@ -13,7 +12,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": srcDir,
-      "@shared": sharedLibDir,
       "@kai/shared": fileURLToPath(new URL("../packages/shared/src", import.meta.url)),
     },
   },

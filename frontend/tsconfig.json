@@ -16,7 +16,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../src/lib/*"],
       "@kai/shared/*": ["../packages/shared/src/*"]
     }
   },

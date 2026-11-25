@@ -9,7 +9,6 @@ import { defineConfig } from "vite";
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 // 共享资产单源：i18n 语言包 / SSE 解析 / 主题引擎都在 Next 侧 src/lib，
 // 经 @shared 直接引用，禁止拷贝（design log 十五·二十七 的同步义务）。
-const sharedLibDir = fileURLToPath(new URL("../src/lib", import.meta.url));
 const distDir = fileURLToPath(new URL("./dist", import.meta.url));
 // PWA 资产单源在根 public/（Next 静态目录——widget/swagger 等同源共享）：
 // V6 后 preview/网关 Vue 流量也需 sw.js/manifest/icons，构建期仅拷贝 PWA
@@ -65,7 +64,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": srcDir,
-      "@shared": sharedLibDir,
       "@kai/shared": fileURLToPath(new URL("../packages/shared/src", import.meta.url)),
     },
   },
