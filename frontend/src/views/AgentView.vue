@@ -24,7 +24,7 @@ import {
 import { consumeSseStream } from "@kai/shared/sse";
 import { formatDateTime } from "@kai/shared/format";
 import { streamRequest } from "@/api/client";
-import { diffLines, type DiffLine } from "@shared/agent/diff";
+import { diffLines, type DiffLine } from "@kai/shared/agent/diff";
 import { TEMPLATES, type TemplateId } from "@kai/shared/agent/templates";
 import type { AgentStep, AgentTask, DagEdge, DagNode, ExportFormat, OutputFormat, ReportVersion, ShareConfig } from "@kai/shared/agent/types";
 import { fetchKbs } from "@/api/kb";

@@ -17,7 +17,7 @@ async function main() {
 
   const store = await import("../../src/lib/agent/store");
   const { exportReport } = await import("../../src/lib/agent/export");
-  const { diffLines, diffSummary } = await import("../../src/lib/agent/diff");
+  const { diffLines, diffSummary } = await import("../../packages/shared/src/agent/diff");
 
   // Build a finished task with a report + citations.
   const task = store.createTask(
