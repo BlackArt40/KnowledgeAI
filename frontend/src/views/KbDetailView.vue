@@ -2,20 +2,18 @@
 // KB 详情（V3，复刻 knowledge-base/[id]/page.tsx）：统计头 + 上传区
 // （multipart files，201=已入队）+ 文档表（状态/轮询/删除）+ KB 设置
 // （改名/删库）+ 图谱入口。上传后 3s 轮询刷新直到无 processing 文档。
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { RefreshRight, Share } from "@element-plus/icons-vue";
 import {
   createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
-  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, saveDocContent,
+  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare,
   type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
 } from "@/api/kb";
-import { renderMarkdown } from "@/lib/markdown";
-import CollabMarkdownEditor from "@/components/kb/CollabMarkdownEditor.vue";
+import KbContentEditor from "@/views/KbContentEditor.vue";
 import KbDocumentTable from "@/views/KbDocumentTable.vue";
 import KbUploadPanel from "@/views/KbUploadPanel.vue";
-import { createCollabSession, type CollabSession, type CollabStatus } from "@/lib/collab-session";
 import { ApiError } from "@/api/client";
 import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
@@ -25,6 +23,11 @@ import { kbAvatarBackground } from "@/lib/kb-color";
 const { t } = useTranslation();
 const route = useRoute();
 const router = useRouter();
+const editorRef = ref<{
+  open: (d: KbDoc) => void;
+  applyYjs: (docId: string, update: string) => void;
+  notifyRemote: (docId: string, editedBy?: string, version?: number) => void;
+} | null>(null);
 
 const kbId = String(route.params.id ?? "");
 const kb = ref<Kb | null>(null);
@@ -267,119 +270,15 @@ const viewers = ref<LiveKbViewer[]>([]);
 const viewerAvatars = computed(() => viewers.value.slice(0, 3));
 const viewerNames = computed(() => viewers.value.map((v) => v.name).join(", "));
 
-// ── 正文编辑（P3）：乐观并发 + 只读角色禁止保存 ──────────────────────────
-const editorOpen = ref(false);
-const editorDoc = ref<KbDoc | null>(null);
-const editorText = ref("");
-const editorLoadedText = ref("");
-const editorBase = ref(1);
-const editorMode = ref<"edit" | "preview">("edit");
-const editorSaving = ref(false);
-const editorError = ref<string | null>(null);
-const editorRemote = ref<{ editedBy?: string; version?: number } | null>(null);
-const editorDirty = computed(() => editorText.value !== editorLoadedText.value);
-// Phase 2c: when a Yjs session is active the editor is CodeMirror-bound; the
-// textarea/save button stay as the fallback when bootstrap fails.
-const collabSession = shallowRef<CollabSession | null>(null);
-const collabEnabled = ref(false);
-const collabText = ref("");
-const collabStatus = ref<CollabStatus | "">("");
-let collabTextOff: (() => void) | null = null;
-let collabStatusOff: (() => void) | null = null;
-
-const editorPreview = computed(() =>
-  renderMarkdown(collabEnabled.value ? collabText.value : editorText.value)
-);
-
-function stopCollab() {
-  collabTextOff?.();
-  collabStatusOff?.();
-  collabTextOff = null;
-  collabStatusOff = null;
-  collabSession.value?.destroy();
-  collabSession.value = null;
-  collabEnabled.value = false;
-  collabStatus.value = "";
-  collabText.value = "";
-}
-
-async function startCollab(doc: KbDoc) {
-  stopCollab();
-  try {
-    const session = await createCollabSession(kbId, doc.id);
-    collabSession.value = session;
-    collabEnabled.value = true;
-    collabStatus.value = "synced";
-    collabTextOff = session.onText((value) => { collabText.value = value; });
-    collabStatusOff = session.onStatus((status) => { collabStatus.value = status; });
-  } catch {
-    // Fall back to the Phase 1 textarea + explicit save.
-    stopCollab();
-  }
-}
-
 function openDoc(d: KbDoc) {
-  editorDoc.value = d;
-  editorText.value = String(d.content ?? "");
-  editorLoadedText.value = editorText.value;
-  editorBase.value = d.version ?? 1;
-  editorMode.value = "edit";
-  editorError.value = null;
-  editorRemote.value = null;
-  editorOpen.value = true;
-  void startCollab(d);
-}
-
-/** 其他成员保存后：用最新内容覆盖编辑器（仅在用户确认后，避免吞掉未保存输入）。 */
-async function reloadEditor() {
-  if (!editorDoc.value) return;
-  const id = editorDoc.value.id;
-  await refresh();
-  const latest = docs.value.find((d) => d.id === id);
-  if (!latest) return;
-  editorDoc.value = latest;
-  editorText.value = String(latest.content ?? "");
-  editorLoadedText.value = editorText.value;
-  editorBase.value = latest.version ?? 1;
-  editorRemote.value = null;
-  editorError.value = null;
-}
-
-async function saveEditor() {
-  if (!editorDoc.value || !canEdit.value || editorSaving.value) return;
-  if (!editorText.value.trim()) {
-    editorError.value = t("page.document-list.s28");
-    return;
-  }
-  editorSaving.value = true;
-  editorError.value = null;
-  try {
-    const r = await saveDocContent(kbId, editorDoc.value.id, editorText.value, editorBase.value);
-    editorDoc.value = r.doc;
-    editorText.value = String(r.doc.content ?? editorText.value);
-    editorLoadedText.value = editorText.value;
-    editorBase.value = r.doc.version ?? editorBase.value + 1;
-    editorRemote.value = null;
-    await refresh();
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 409) {
-      editorError.value = t("page.document-list.s25");
-      editorRemote.value = { version: Number((e.body as { currentVersion?: number })?.currentVersion) || undefined };
-    } else {
-      editorError.value = e instanceof ApiError && e.message ? e.message : t("common.requestFailed");
-    }
-  } finally {
-    editorSaving.value = false;
-  }
+  editorRef.value?.open(d);
 }
 
 function onKbEvent(event: Record<string, unknown>) {
   const type = String(event.type ?? "");
   // Phase 2c: Yjs 增量直接进入当前会话，不参与列表归约
   if (type === "doc_yjs") {
-    if (collabSession.value && editorDoc.value?.id === String(event.docId ?? "")) {
-      collabSession.value.applyRemote(String(event.update ?? ""));
-    }
+    editorRef.value?.applyYjs(String(event.docId ?? ""), String(event.update ?? ""));
     return;
   }
   // 事件语义在 lib/kb-events.ts（纯函数，单测覆盖）；这里只做副作用
@@ -396,16 +295,12 @@ function onKbEvent(event: Record<string, unknown>) {
   if (type === "docs") schedulePoll();
   if (result.refresh) void refresh();
   // 其他成员保存了正文：不自动覆盖，提示用户重新加载（协同会话已实时同步）
-  if (
-    !collabEnabled.value &&
-    result.docUpdated &&
-    editorOpen.value &&
-    editorDoc.value?.id === result.docUpdated.docId
-  ) {
-    editorRemote.value = {
-      editedBy: result.docUpdated.editedBy,
-      version: result.docUpdated.version,
-    };
+  if (result.docUpdated) {
+    editorRef.value?.notifyRemote(
+      result.docUpdated.docId,
+      result.docUpdated.editedBy,
+      result.docUpdated.version
+    );
   }
 }
 </script>
@@ -594,99 +489,12 @@ function onKbEvent(event: Record<string, unknown>) {
         @revoke="removeShare"
       />
 
-      <!-- 正文编辑（P3）：Markdown 编辑 + 预览，乐观并发 -->
-      <el-drawer
-        v-model="editorOpen"
-        size="60%"
-        :title="editorDoc?.name ?? ''"
-        @closed="stopCollab"
-      >
-        <div class="doc-editor">
-          <div class="de-head">
-            <span class="de-meta">
-              <template v-if="collabEnabled">
-                {{ collabStatus === "error" ? t("page.document-list.s33") : collabStatus === "syncing" ? t("page.document-list.s32") : t("page.document-list.s31") }}
-              </template>
-              <template v-else>
-                {{ t("page.document-list.s27", { version: editorBase, name: editorDoc?.editedBy || "—" }) }}
-              </template>
-            </span>
-            <el-radio-group
-              v-model="editorMode"
-              size="small"
-            >
-              <el-radio-button value="edit">
-                {{ t("page.document-list.s23") }}
-              </el-radio-button>
-              <el-radio-button value="preview">
-                {{ t("page.document-list.s24") }}
-              </el-radio-button>
-            </el-radio-group>
-          </div>
-
-          <el-alert
-            v-if="editorRemote && !collabEnabled"
-            type="warning"
-            :closable="false"
-            show-icon
-          >
-            <template #title>
-              {{ t("page.document-list.s25") }}
-            </template>
-            <el-button
-              size="small"
-              @click="reloadEditor"
-            >
-              {{ t("page.document-list.s29") }}
-            </el-button>
-          </el-alert>
-
-          <CollabMarkdownEditor
-            v-if="editorMode === 'edit' && collabEnabled && collabSession"
-            :text="collabSession.text"
-            :read-only="!canEdit"
-          />
-          <el-input
-            v-else-if="editorMode === 'edit'"
-            v-model="editorText"
-            type="textarea"
-            :rows="20"
-            :readonly="!canEdit"
-          />
-          <!-- markdown-it html:false 渲染，无脚本注入面 -->
-          <div
-            v-else
-            class="de-preview"
-            v-html="editorPreview"
-          />
-
-          <p
-            v-if="editorError"
-            class="err"
-          >
-            {{ editorError }}
-          </p>
-          <div class="de-foot">
-            <span
-              v-if="collabEnabled"
-              class="hint"
-            >{{ collabStatus === "error" ? t("page.document-list.s33") : collabStatus === "syncing" ? t("page.document-list.s32") : t("page.document-list.s31") }}</span>
-            <span
-              v-else-if="editorDirty"
-              class="hint"
-            >{{ t("page.document-list.s30") }}</span>
-            <el-button
-              v-if="canEdit && !collabEnabled"
-              type="primary"
-              :loading="editorSaving"
-              :disabled="!editorDirty"
-              @click="saveEditor"
-            >
-              {{ t("common.save") }}
-            </el-button>
-          </div>
-        </div>
-      </el-drawer>
+      <KbContentEditor
+        ref="editorRef"
+        :kb-id="kbId"
+        :can-edit="canEdit"
+        @saved="refresh"
+      />
     </template>
   </div>
 </template>
