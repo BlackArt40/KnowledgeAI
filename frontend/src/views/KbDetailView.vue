@@ -5,15 +5,16 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
-import { RefreshRight, Share, UploadFilled } from "@element-plus/icons-vue";
+import { RefreshRight, Share } from "@element-plus/icons-vue";
 import {
   createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
-  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, saveDocContent, uploadDocs,
+  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare, saveDocContent,
   type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
 } from "@/api/kb";
 import { renderMarkdown } from "@/lib/markdown";
 import CollabMarkdownEditor from "@/components/kb/CollabMarkdownEditor.vue";
 import KbDocumentTable from "@/views/KbDocumentTable.vue";
+import KbUploadPanel from "@/views/KbUploadPanel.vue";
 import { createCollabSession, type CollabSession, type CollabStatus } from "@/lib/collab-session";
 import { ApiError } from "@/api/client";
 import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
@@ -33,9 +34,6 @@ const stats = ref<KbStats | null>(null);
 const canEdit = ref(true);
 const loading = ref(true);
 const notFound = ref(false);
-const uploading = ref(false);
-const uploadErrors = ref<string[]>([]);
-const fileInput = ref<HTMLInputElement | null>(null);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function refresh() {
@@ -100,28 +98,6 @@ onBeforeUnmount(() => {
   kbEvents?.stop();
   kbEvents = null;
 });
-
-function pickFiles() {
-  fileInput.value?.click();
-}
-
-async function onFilesChosen(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const files = Array.from(input.files ?? []);
-  if (files.length === 0) return;
-  uploading.value = true;
-  uploadErrors.value = [];
-  try {
-    const r = await uploadDocs(kbId, files);
-    uploadErrors.value = r.errors ?? [];
-    await refresh();
-  } catch (err) {
-    uploadErrors.value = [err instanceof ApiError && err.message ? err.message : t("common.requestFailed")];
-  } finally {
-    uploading.value = false;
-    input.value = "";
-  }
-}
 
 async function removeDoc(doc: KbDoc) {
   if (!window.confirm(t("page.kb.s8", { name: doc.name }) )) return;
@@ -541,47 +517,10 @@ function onKbEvent(event: Record<string, unknown>) {
         <span class="stat-chip">{{ t("page.document-list.s15", { count: stats?.chunks ?? 0 }) }}</span>
       </div>
 
-      <!-- 上传区 -->
-      <div
-        class="upload"
-        @click="pickFiles"
-      >
-        <el-icon
-          :size="22"
-          color="hsl(var(--primary))"
-        >
-          <UploadFilled />
-        </el-icon>
-        <p class="upload-title">
-          {{ t("page.upload-zone.s15") }}
-          <span class="upload-link">{{ t("page.upload-zone.s16") }}</span>
-        </p>
-        <p class="upload-sub">
-          {{ t("page.upload-zone.s17") }}
-        </p>
-        <input
-          ref="fileInput"
-          type="file"
-          multiple
-          hidden
-          @change="onFilesChosen"
-        >
-        <span
-          v-if="uploading"
-          class="hint"
-        >{{ t("page.settings.s87") }}…</span>
-      </div>
-      <div
-        v-if="uploadErrors.length > 0"
-        class="alert-box"
-      >
-        <p
-          v-for="(err, i) in uploadErrors"
-          :key="i"
-        >
-          {{ err }}
-        </p>
-      </div>
+      <KbUploadPanel
+        :kb-id="kbId"
+        @uploaded="refresh"
+      />
 
       <KbDocumentTable
         :docs="docs"
