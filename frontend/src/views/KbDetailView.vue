@@ -7,15 +7,16 @@ import { useRoute, useRouter } from "vue-router";
 import { useTranslation } from "i18next-vue";
 import { RefreshRight, Share } from "@element-plus/icons-vue";
 import {
-  createDocShare, createKbShare, deleteDoc, deleteKb, fetchDocShare, fetchKbDetail,
-  fetchKbShare, patchKb, reindexDoc, reindexKb, revokeDocShare, revokeKbShare,
-  type Kb, type KbDoc, type KbStats, type ShareInput, type ShareLink,
+  deleteDoc, fetchKbDetail,
+  reindexDoc, reindexKb,
+  type Kb, type KbDoc, type KbStats,
 } from "@/api/kb";
 import KbContentEditor from "@/views/KbContentEditor.vue";
 import KbDocumentTable from "@/views/KbDocumentTable.vue";
 import KbUploadPanel from "@/views/KbUploadPanel.vue";
 import { ApiError } from "@/api/client";
-import ShareLinkDialog from "@/components/kb/ShareLinkDialog.vue";
+import KbSettingsDialog from "@/views/KbSettingsDialog.vue";
+import KbShareDialog from "@/views/KbShareDialog.vue";
 import { subscribeEvents } from "@/lib/event-stream";
 import { applyKbEvent, type LiveKbViewer } from "@/lib/kb-events";
 import { kbAvatarBackground } from "@/lib/kb-color";
@@ -145,115 +146,16 @@ async function reindexAll() {
 // ── 共享与分发：库级 / 文档级公开链接 ────────────────────────────────────
 type ShareTarget = { kind: "kb" } | { kind: "doc"; doc: KbDoc };
 
-const shareTarget = ref<ShareTarget | null>(null);
-const shareOpen = ref(false);
-const shareInfo = ref<ShareLink | null>(null);
-const shareLoading = ref(false);
-const shareSaving = ref(false);
-const shareError = ref<string | null>(null);
+const shareRef = ref<{ show: (target: ShareTarget) => void } | null>(null);
 
-const shareTitle = computed(() =>
-  shareTarget.value?.kind === "doc" ? t("page.share-link-dialog.s18") : t("page.kb-share.s0")
-);
-const shareSubtitle = computed(() =>
-  shareTarget.value?.kind === "doc" ? shareTarget.value.doc.name : kb.value?.name
-);
-/** 公开页地址：库 → /share-kb/[token]，文档 → /share-doc/[token]（路由已冻结）。 */
-const shareLink = computed(() => {
-  const target = shareTarget.value;
-  const share = shareInfo.value;
-  if (!target || !share) return "";
-  const prefix = target.kind === "kb" ? "share-kb" : "share-doc";
-  return `${window.location.origin}/${prefix}/${share.token}`;
-});
-
-function shareErrorText(e: unknown): string {
-  return e instanceof ApiError && e.message ? e.message : t("common.requestFailed");
+function openShare(target: ShareTarget) {
+  shareRef.value?.show(target);
 }
 
-async function openShare(target: ShareTarget) {
-  shareTarget.value = target;
-  shareInfo.value = null;
-  shareError.value = null;
-  shareOpen.value = true;
-  shareLoading.value = true;
-  try {
-    shareInfo.value =
-      target.kind === "kb"
-        ? await fetchKbShare(kbId)
-        : await fetchDocShare(kbId, target.doc.id);
-  } catch (e) {
-    shareError.value = shareErrorText(e);
-  } finally {
-    shareLoading.value = false;
-  }
-}
-
-async function submitShare(payload: ShareInput) {
-  const target = shareTarget.value;
-  if (!target) return;
-  shareSaving.value = true;
-  shareError.value = null;
-  try {
-    shareInfo.value =
-      target.kind === "kb"
-        ? await createKbShare(kbId, payload)
-        : await createDocShare(kbId, target.doc.id, payload);
-  } catch (e) {
-    shareError.value = shareErrorText(e);
-  } finally {
-    shareSaving.value = false;
-  }
-}
-
-async function removeShare() {
-  const target = shareTarget.value;
-  if (!target) return;
-  shareSaving.value = true;
-  shareError.value = null;
-  try {
-    if (target.kind === "kb") await revokeKbShare(kbId);
-    else await revokeDocShare(kbId, target.doc.id);
-    shareInfo.value = null;
-  } catch (e) {
-    shareError.value = shareErrorText(e);
-  } finally {
-    shareSaving.value = false;
-  }
-}
-
-// ── KB 设置（改名/删库）──────────────────────────────────────────────────
-const settingsOpen = ref(false);
-const editName = ref("");
-const editDesc = ref("");
-const settingsMsg = ref<string | null>(null);
+const settingsRef = ref<{ show: () => void } | null>(null);
 
 function openSettings() {
-  editName.value = kb.value?.name ?? "";
-  editDesc.value = kb.value?.desc ?? "";
-  settingsMsg.value = null;
-  settingsOpen.value = true;
-}
-
-async function saveSettings() {
-  if (!editName.value.trim()) return;
-  try {
-    await patchKb(kbId, { name: editName.value.trim(), desc: editDesc.value.trim() });
-    settingsOpen.value = false;
-    await refresh();
-  } catch (e) {
-    settingsMsg.value = e instanceof ApiError && e.message ? e.message : t("page.settings.s40");
-  }
-}
-
-async function removeKb() {
-  if (!window.confirm(t("page.kb.s8", { name: kb.value?.name ?? "" }))) return;
-  try {
-    await deleteKb(kbId);
-    await router.push("/knowledge-base");
-  } catch {
-    /* ignore */
-  }
+  settingsRef.value?.show();
 }
 
 
@@ -429,64 +331,18 @@ function onKbEvent(event: Record<string, unknown>) {
         @reindex="reindexOne"
         @remove="removeDoc"
       />
-      <!-- KB 设置对话框 -->
-      <el-dialog
-        v-model="settingsOpen"
-        :title="t('page.app-shell.s16')"
-        width="420px"
-      >
-        <div class="form">
-          <label class="field">
-            <span class="label">{{ t("page.kb-settings-dialog.s0") }}</span>
-            <el-input v-model="editName" />
-          </label>
-          <label class="field">
-            <span class="label">{{ t("page.kb-settings-dialog.s18") }}</span>
-            <el-input
-              v-model="editDesc"
-              type="textarea"
-              :rows="2"
-            />
-          </label>
-          <p
-            v-if="settingsMsg"
-            class="err"
-          >
-            {{ settingsMsg }}
-          </p>
-        </div>
-        <template #footer>
-          <el-button
-            type="danger"
-            plain
-            @click="removeKb"
-          >
-            {{ t("page.document-list.s10") }}
-          </el-button>
-          <el-button @click="settingsOpen = false">
-            {{ t("common.cancel") }}
-          </el-button>
-          <el-button
-            type="primary"
-            @click="saveSettings"
-          >
-            {{ t("common.save") }}
-          </el-button>
-        </template>
-      </el-dialog>
+      <KbSettingsDialog
+        ref="settingsRef"
+        :kb-id="kbId"
+        :kb="kb"
+        @saved="refresh"
+        @deleted="router.push('/knowledge-base')"
+      />
 
-      <!-- 共享与分发：库级 / 文档级公开链接 -->
-      <ShareLinkDialog
-        v-model:open="shareOpen"
-        :title="shareTitle"
-        :subtitle="shareSubtitle"
-        :share="shareInfo"
-        :link="shareLink"
-        :loading="shareLoading"
-        :saving="shareSaving"
-        :error="shareError"
-        @create="submitShare"
-        @revoke="removeShare"
+      <KbShareDialog
+        ref="shareRef"
+        :kb-id="kbId"
+        :kb-name="kb?.name ?? ''"
       />
 
       <KbContentEditor
