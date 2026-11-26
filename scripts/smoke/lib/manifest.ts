@@ -7,8 +7,9 @@
 //            (anon 20 / kb 60 / user 200 / key 500) - run it in its own step,
 //            never alongside a server whose limits were raised for the suite
 //   ui     - needs the server + a Chrome/Chromium binary for CDP driving
-//   infra  - needs its own extra server/credentials (DB, chromadb, mock OIDC...);
-//            excluded from CI, run manually with --group infra
+//   infra  - needs its own extra server/credentials (DB, chromadb, mock OIDC...).
+//            The smoke-infra CI job builds and runs `pnpm start`, then invokes
+//            --group infra; scripts that need isolation spawn their own :3100.
 export type SmokeGroup = "lib" | "http" | "limits" | "ui" | "infra";
 
 export type SmokePrereq =
@@ -115,6 +116,9 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   ui("test-widget-ui", { prereq: ["chrome"] }),
 
   // ── infra: brings its own server / external dependency ───────────────
+  infra("test-single-image", {
+    note: "单镜像静态承载：/ -> home.html、SPA fallback、/api 不被吞、安全响应头（需要 pnpm build 产物）",
+  }),
   infra("test-chromadb", { prereq: ["chromadb"] }),
   infra("test-health", { note: "spawns a second production server to assert the 503 degraded path" }),
   infra("test-integrations", { note: "spawns its own low-rate-limit :3100 instance (explicit CORS allowlist); the F17 assertions on :3000 expect production mode" }),
