@@ -1,9 +1,10 @@
+
 // ---------------------------------------------------------------------------
 // Node.js-only instrumentation entrypoint.
 //
 // Imported by instrumentation.ts only when NEXT_RUNTIME === "nodejs". Keeps
-// process.on / process.exit out of the Edge-compiled instrumentation.ts so
-// the Edge Runtime compiler doesn't reject them.
+// process.on / process.exit and the queue/storage imports out of the
+// Edge-compiled variant of instrumentation.ts (see the header there).
 // ---------------------------------------------------------------------------
 
 import { startQueue, stopQueue } from "@/lib/queue";

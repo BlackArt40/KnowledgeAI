@@ -1,11 +1,42 @@
 // ===========================================================================
 // KnowledgeAI · 性能测试 (Performance Tests)
 // 运行: node tests/performance/performance-test.mjs
-// 前置: pnpm dev (dev server running on http://localhost:3000)
+// 前置: pnpm dev (API on http://localhost:3000)
+//       pnpm -C frontend build && pnpm -C frontend exec vite preview --port 4173
+//       （页面基准打静态载体；V6 后 Next 纯 API，没有服务端渲染）
 // ===========================================================================
 
 import fs from "fs";
 import { login, api, BASE, AUTH } from "../helpers.mjs";
+
+// 双基址：API 基准打 :3000；页面基准打 :4173（Vue 构建产物，本地与 CI 同源）。
+const PAGE_BASE = process.env.PAGE_BASE ?? "http://localhost:4173";
+const pageBenchmarks = [];
+
+/** 页面基准：量静态文件 / SPA fallback 的投递耗时，并断言拿到的是应用壳。 */
+async function benchmarkPage(name, path, runs = 3) {
+  const times = [];
+  let lastStatus = 0;
+  let lastSize = 0;
+  let shell = false;
+  for (let i = 0; i < runs; i++) {
+    const start = performance.now();
+    const res = await fetch(`${PAGE_BASE}${path}`).catch(() => null);
+    const body = res ? await res.text().catch(() => "") : "";
+    times.push(performance.now() - start);
+    lastStatus = res?.status ?? 0;
+    lastSize = body.length;
+    shell = body.includes('id="app"');
+  }
+  times.sort((a, b) => a - b);
+  const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+  const p95 = Math.round(times[Math.ceil(times.length * 0.95) - 1] ?? times[times.length - 1]);
+  const ok = lastStatus === 200 && shell;
+  pageBenchmarks.push({ name, path, avg, p95, status: lastStatus, sizeKB: Math.round(lastSize / 1024), ok });
+  const icon = ok ? "✅" : "❌";
+  console.log(`${icon} ${name.padEnd(18)} path=${path.padEnd(16)} avg=${avg}ms p95=${p95}ms size=${(lastSize / 1024).toFixed(1)}KB status=${lastStatus}`);
+  return { avg, p95 };
+}
 
 const benchmarks = [];
 
@@ -83,14 +114,16 @@ async function main() {
   await benchmark("KB监控", "GET", "/api/admin/kbs");
   await benchmark("系统配置", "GET", "/api/admin/config");
 
-  // ── 2. 页面渲染时间 ──
-  console.log("\n── 页面渲染时间 (3次/页面) ──\n");
-  await benchmark("落地页", "GET", "/", null, 3);
-  await benchmark("仪表盘", "GET", "/dashboard", null, 3);
-  await benchmark("知识库列表页", "GET", "/knowledge-base", null, 3);
-  await benchmark("智能问答页", "GET", "/chat", null, 3);
-  await benchmark("管理后台页", "GET", "/admin", null, 3);
-  await benchmark("设置页", "GET", "/settings", null, 3);
+  // ── 2. 页面静态载体响应时间 ──
+  // V6 后页面是 Vue CSR：没有服务端渲染可测，这里量静态文件与 SPA fallback
+  // 的投递耗时（首页是构建期预渲染的 home.html）。
+  console.log(`\n── 页面静态载体响应时间 (${PAGE_BASE}, 3次/页面) ──\n`);
+  await benchmarkPage("预渲染首页", "/");
+  await benchmarkPage("仪表盘(壳)", "/dashboard");
+  await benchmarkPage("知识库列表(壳)", "/knowledge-base");
+  await benchmarkPage("智能问答(壳)", "/chat");
+  await benchmarkPage("管理后台(壳)", "/admin");
+  await benchmarkPage("设置(壳)", "/settings");
 
   // ── 3. SSE 流式首 token 延迟 ──
   console.log("\n── SSE 流式首 token 延迟 ──\n");
@@ -205,7 +238,7 @@ function generateReport(avgFirstToken, avgTotal, concResults, concAvg, rateLimit
   const md = `# KnowledgeAI · 性能测试报告
 
 > 自动生成于 ${new Date().toLocaleString("zh-CN", { hour12: false })}
-> 测试环境: Next.js 16 Dev Server (Turbopack) · localhost:3000
+> 测试环境: API 为 Next.js 16 Dev Server (Turbopack) · ${BASE}；页面为静态载体 · ${PAGE_BASE}
 
 ## 测试概要
 
@@ -225,11 +258,13 @@ function generateReport(avgFirstToken, avgTotal, concResults, concAvg, rateLimit
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${benchmarks.map(b => `| ${b.name} | ${b.method} | ${b.avg}ms | ${b.p50}ms | ${b.p95}ms | ${b.min}ms | ${b.max}ms | ${b.sizeKB}KB | ${b.avg < 50 ? "🟢" : b.avg < 150 ? "🟡" : "🔴"} |`).join("\n")}
 
-## 2. 页面渲染时间
+## 2. 页面静态载体响应时间
 
-> 测试 3 次/页面，测量从请求到完整 HTML 响应的时间。
+> 页面由 Vue 构建产物承载（本地/CI 为 vite preview :4173）。V6 后页面是 CSR，没有服务端渲染——这里测的是静态文件与 SPA fallback 的投递耗时，**不是页面渲染耗时**。
 
-${benchmarks.filter(b => ["落地页","仪表盘","知识库列表页","智能问答页","管理后台页","设置页"].includes(b.name)).map(b => `| ${b.name} | 平均 ${b.avg}ms | P95 ${b.p95}ms | ${b.sizeKB}KB |`).join("\n")}
+| 页面 | 路径 | 平均 | P95 | 大小 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+${pageBenchmarks.map(b => `| ${b.name} | ${b.path} | ${b.avg}ms | ${b.p95}ms | ${b.sizeKB}KB | ${b.ok ? "✅ 200 + 应用壳" : `❌ ${b.status}`} |`).join("\n")}
 
 ## 3. SSE 流式首 token 延迟
 

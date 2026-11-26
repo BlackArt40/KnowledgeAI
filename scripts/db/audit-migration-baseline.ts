@@ -256,6 +256,14 @@ function printReport(a: Audit): void {
     if (failed.length) log(`  ✖ failed: ${failed.map((r) => r.version ?? "?").join(", ")}`);
     if (a.unknownFlywayVersions.length) log(`  ✖ unknown versions: ${a.unknownFlywayVersions.join(", ")}`);
   }
+  // Retirement verdict for this tool itself: it only exists to carry Flyway-era
+  // databases over to Prisma. One library decides it per database; the script
+  // can be deleted once every deployed database reports "absent".
+  log(
+    a.hasFlywayHistory
+      ? "退役判定: 本库仍有 Flyway 历史 -> 先完成基线收编（第 2 节）再考虑删除本脚本"
+      : "退役判定: 本库无 Flyway 历史 -> 不需要基线；所有已部署库都如此时可删除 db:baseline"
+  );
   if (a.drift === "ignored") {
     log(`drift: none（忽略运行期表：${RUNTIME_TABLES.join(" / ")}）`);
   } else {

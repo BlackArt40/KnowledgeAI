@@ -20,6 +20,7 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "verify:migrations": "tsx scripts/db/verify-migrations.ts",
     "db:baseline": "tsx scripts/db/audit-migration-baseline.ts",
+    "db:audit-legacy": "tsx scripts/db/audit-legacy-rows.ts",
     "test:perf": "node scripts/perf/load.mjs",
     "gen:openapi": "tsx scripts/tools/gen-openapi-json.ts && pnpm --dir frontend exec openapi-typescript ../docs/api/openapi.json -o src/api/generated.ts"
   },
