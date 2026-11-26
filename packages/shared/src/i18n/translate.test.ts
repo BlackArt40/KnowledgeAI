@@ -4,7 +4,7 @@
 // their placeholder (the n8n `{{ $json.question }}` templates rely on it),
 // and {count} pluralization degrades to the base key (zh has no plurals).
 import { describe, it, expect } from "vitest";
-import { normalizeLocale, getI18nInstance, type Locale } from "../../../packages/shared/src/i18n/translate";
+import { normalizeLocale, getI18nInstance, type Locale } from "./translate";
 
 /** Test helper mirroring the old `t(locale, key, vars)` entry point. */
 function t(locale: Locale, key: string, vars?: Record<string, string | number>): string {
@@ -45,7 +45,7 @@ describe("translation contract (i18next adapter)", () => {
     expect(t("en", "no.such.key")).toBe("no.such.key");
   });
 
-  it("does not double-escape interpolated values (React escapes on render)", () => {
+  it("does not double-escape interpolated values (the renderer escapes on render)", () => {
     expect(t("en", "page.developer.s70", { origin: "https://a.com/x?y=1&z=2" }))
       .toContain("https://a.com/x?y=1&z=2");
   });

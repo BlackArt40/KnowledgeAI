@@ -11,16 +11,17 @@
 // ≥85 target. P1 (db / queue / agent / chat / kb / security / storage / upload /
 // collab / webhooks / realtime / llm / health / admin / notifications /
 // integrations / kg / models) sits on its baseline floor and is raised to ≥70
-// in batch 2 as the tests land. P2 (external / email / theme / voice / i18n /
-// marketing / validation / openapi / obs) is statistics-only.
+// on its measured baseline floor (a ratchet: raise as tests land, never lower).
+// P2 (external / email / voice / validation / openapi / obs) is statistics-only.
+//
+// Tests for the isomorphic package live next to their source under
+// packages/shared/** and run here as well; coverage only counts src/lib.
 //
 // Excluded on purpose (each needs a live service or has no runtime code):
 //   - rag/ocr.ts                      tesseract binaries + filesystem fixtures
 //   - rag/vector-index-{chromadb,pinecone,interface}.ts  external backends
 //   - rag/types.ts, team/types.ts     type-only modules
 //   - every *.test.ts                 the probes themselves
-// rag/remote.ts is NOT excluded anymore: remote.test.ts drives the HTTP/SSE
-// contract with a stubbed fetch, so the adapter counts like any other module.
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
@@ -40,7 +41,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/lib/**/*.test.ts"],
+    include: ["src/lib/**/*.test.ts", "packages/shared/**/*.test.ts"],
     // Coverage gates must be deterministic: with one fork per file the V8
     // reports of modules exercised by several test files drifted between runs
     // (workspace/** functions measured 81.5% / 88.9% / 100% for one commit).
