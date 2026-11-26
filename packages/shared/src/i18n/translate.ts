@@ -5,8 +5,8 @@
 // Missing keys fall back to the key itself so gaps are visible during
 // development - i18next's default behavior.
 //
-// escapeValue: false - React already escapes text nodes on render; escaping
-// here would double-escape interpolated values.
+// escapeValue: false - the renderer (Vue text interpolation) escapes text on
+// render; escaping here would double-escape interpolated values.
 import i18next, { type i18n } from "i18next";
 import zh from "./messages/zh-CN.json";
 import en from "./messages/en.json";

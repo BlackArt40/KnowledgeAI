@@ -6,9 +6,9 @@
 //   - If DB is enabled: writes to Prisma (errors logged, not thrown)
 //   - If DB is not configured: no-op
 //
-// The in-memory store remains the source of truth for reads. The DB is the
-// persistence layer that survives restarts and enables multi-instance in
-// future iterations (when stores are migrated to read directly from DB).
+// The in-memory store remains the source of truth for reads (ADR-0001). The DB
+// is the recovery copy that survives restarts; multi-instance shared reads still
+// need a separate evolution per that ADR.
 // ---------------------------------------------------------------------------
 
 

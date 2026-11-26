@@ -1,115 +1,54 @@
 # KnowledgeAI · 测试套件
 
-> 三套独立测试：功能测试、接口测试、性能测试。每套测试自动生成 Markdown 报告。
+> 三套独立的 Node 验收脚本：功能测试、接口测试、性能测试。每套运行后在自己的目录下生成一份中文命名的 Markdown 报告（报告不入库）。
 
-## 测试总览
+这三套脚本是「打真实服务」的验收层，和另外几层测试的分工：
 
-| 测试套件 | 脚本 | 报告 | 测试数 | 通过率 |
-| --- | --- | --- | --- | --- |
-| 功能测试 | `functional/functional-test.mjs` | `functional/功能测试报告.md` | 25 | 100% ✅ |
-| 接口测试 | `api/api-test.mjs` | `api/接口测试报告.md` | 38 | 100% ✅ |
-| 性能测试 | `performance/performance-test.mjs` | `performance/性能测试报告.md` | 24 基准 | ✅ |
+| 层 | 入口 | 打什么 |
+| --- | --- | --- |
+| 单元测试 | `pnpm test:unit` | vitest，`src/lib/**` 与 `packages/shared/**` |
+| 真实数据库测试 | `pnpm test:db` | vitest，需要 `DATABASE_URL` |
+| 本目录 | `pnpm test:integration` | 运行中的 Next API（:3000）与 vite preview（:4173） |
+| 冒烟验收 | `pnpm test:smoke`、`pnpm test:smoke:all` | `scripts/smoke/`，分 lib / limits / http / ui / infra 五组 |
+| 浏览器端到端 | `pnpm test:e2e`、`pnpm -C frontend test:e2e` | Playwright |
 
-## 快速运行
+## 运行
+
+先起两个服务。Next 只提供 `/api/*`，页面由 Vue 构建产物的 preview 承载：
 
 ```bash
-# 前置：启动开发服务器
-pnpm dev
-
-# 运行全部测试（约 2 分钟，性能测试含限流窗口等待）
-node tests/functional/functional-test.mjs   # ~5s
-node tests/api/api-test.mjs                 # ~15s
-node tests/performance/performance-test.mjs # ~120s
+pnpm dev                                                   # Next API，:3000
+pnpm -C frontend build && pnpm -C frontend exec vite preview --port 4173   # 页面，:4173
 ```
 
-## 目录结构
+再逐个运行：
 
-```
-tests/
-├── README.md                          # 本文件
-├── functional/                        # 功能测试
-│   ├── functional-test.mjs            # 测试脚本
-│   └── 功能测试报告.md                 # 测试报告（自动生成）
-├── api/                               # 接口测试
-│   ├── api-test.mjs                   # 测试脚本
-│   └── 接口测试报告.md                 # 测试报告（自动生成）
-└── performance/                       # 性能测试
-    ├── performance-test.mjs           # 测试脚本
-    └── 性能测试报告.md                 # 测试报告（自动生成）
+```bash
+node tests/functional/functional-test.mjs     # 页面壳 + 5 条 API 流程
+node tests/api/api-test.mjs                   # 约 15s，API 路由与 SSE
+node tests/performance/performance-test.mjs   # 约 120s，含限流窗口等待
 ```
 
----
+`pnpm test:integration` 依次跑这三条，但不会替你拉起服务。
 
-## 一、功能测试
+基址可用环境变量覆盖：API 用 `KAI_TEST_BASE`（默认 `http://localhost:3000`），页面用 `PAGE_BASE`（默认 `http://localhost:4173`）。共用工具（`login` / `api` / `BASE` / `AUTH`）在 `tests/helpers.mjs`。
 
-测试 25 个页面的渲染与 5 条端到端用户流程。
+## 各套内容
 
-### 测试范围
-- **页面渲染**（20 项）：公开页（落地/登录/注册/验证）、工作台（仪表盘/知识库/问答/Agent/团队/计费/用量/收银台/密钥/设置/管理后台）、特殊页（隐私/条款/维护/404）、动态页（知识库详情）
-- **用户流程**（5 条）：
-  1. 知识库 -> SSE 流式问答 -> 引用返回
-  2. 计费 -> 创建订单 -> 支付 -> 订阅升级
-  3. API 密钥 -> 创建 -> 删除
-  4. 2FA -> 关闭 -> 开启（生成备用码）
-  5. 管理后台 -> 封禁用户 -> 解封
+### 功能测试 `functional/functional-test.mjs`
 
-### 验证内容
-- HTTP 状态码（200 / 404）
-- 页面 HTML 包含预期关键词
-- 响应体大小
-- SSE 流式输出包含 token / done 事件
-- API 响应数据结构正确
+- **页面检查**：从 :4173 取页面，断言 Vue SPA 壳标记 `id="app"`（除预渲染首页外页面都是客户端渲染，没有服务端渲染内容可断言）。
+- **API 流程**：知识库 → SSE 问答 → 引用返回；计费下单与订阅；API 密钥增删；2FA 开关；管理后台封禁与解封。
 
----
+### 接口测试 `api/api-test.mjs`
 
-## 二、接口测试
+按模块逐个打 `/api/*`：知识库、问答、Agent、团队、计费、密钥、安全隐私、管理后台，以及错误用例。SSE 用例断言 `/api/chat` 的 `token` / `done` 帧与 `/api/agent/run` 的 `init` / `step` / `done` 帧。
 
-测试 35 个 API 路由，覆盖全部 8 个模块 + 错误用例。
+### 性能测试 `performance/performance-test.mjs`
 
-### 测试范围（38 项）
+对运行中的服务取延迟样本：API 基准（avg / P50 / P95）、SSE 首 token 延迟、并发、限流阈值、写操作。结果是观察值，不是门禁；CI 的延迟门禁在 `.github/workflows/ci.yml` 的 `integration` job 里。
 
-| 模块 | 测试数 | 测试内容 |
-| --- | --- | --- |
-| 知识库 | 4 | 列表 / 详情 / 文档状态 / 新建 |
-| 智能问答 | 2 | 会话列表 / SSE 流式问答 |
-| Agent 调研 | 2 | 任务列表 / SSE 流式执行 |
-| 团队协作 | 2 | 团队详情 / 审计日志 |
-| 订阅计费 | 6 | 总览 / 用量 / 创建订单 / 支付 / 取消 / 恢复 |
-| API 密钥 | 6 | 列表 / 创建 / 禁用 / 启用 / 删除 / 日志 |
-| 安全隐私 | 6 | 总览 / 2FA开关 / 撤销会话 / 更新隐私 / GDPR导出 |
-| 管理后台 | 7 | 总览 / 用户列表 / 封禁 / 解封 / KB监控 / 配置 / 更新配置 |
-| 错误用例 | 3 | 404（不存在）/ 400（缺参）/ 404（密钥不存在） |
+## 注意
 
-### SSE 流式验证
-- `POST /api/chat`：token 逐字推送 + done 事件携带引用
-- `POST /api/agent/run`：init 事件 + step 进度推送 + done 事件
-
----
-
-## 三、性能测试
-
-24 项基准测试 + SSE 延迟 + 并发 + 限流。
-
-### 测试结果摘要
-
-| 指标 | 数值 | 评级 |
-| --- | --- | --- |
-| API 平均响应时间 | 24ms | 🟢 优秀 |
-| 最快端点 | 计费总览 3ms | 🟢 |
-| 最慢端点 | 落地页 147ms | 🟡 良好 |
-| SSE 首 token 延迟 | 12ms | 🟢 |
-| 10 路并发平均 | 33ms | 🟢 |
-| 限流触发 | 第 61 次请求 429 | ✅ |
-
-### 评级标准
-- 🟢 优秀：< 50ms（内存存储，极速响应）
-- 🟡 良好：50-150ms（页面渲染 / SSE 初始化）
-- 🔴 需优化：≥ 150ms
-
-### 测试维度
-1. **API 响应基准**：14 个 GET 端点，各 5 次，取 avg/P50/P95
-2. **页面渲染时间**：6 个页面，各 3 次
-3. **SSE 首 token 延迟**：Chat 流式问答，3 次
-4. **并发请求**：10 路并发 GET，3 批
-5. **限流测试**：70 次连续请求，验证 429 触发
-6. **写操作性能**：4 个 POST/PATCH 端点
+- 脚本使用演示账号登录，并会创建知识库、订单等数据。本地限流默认档位较低，连续跑容易触发 429；需要时可按 `docs/ops/env-vars.md` 调高 `RATE_LIMIT_*`。
+- 脚本用演示账号登录，只适用于本地或 CI 的一次性环境。

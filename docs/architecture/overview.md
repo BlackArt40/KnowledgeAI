@@ -4,7 +4,7 @@ description: KnowledgeAI 系统架构总览：单镜像生产形态（Vue 页面
 type: explanation
 category: architecture
 level: L1
-version: 1.3.2
+version: 1.3.3
 authors:
   - technical-writer
 owner: 技术负责人
@@ -210,7 +210,7 @@ flowchart LR
 | `kb/` `chat/` `models/` `notifications/` | 领域业务 | — |
 | `team/` `billing/` `admin/` | 协作 / 计费 / 管理 | — |
 | `external/` | Web 搜索、ArXiv、GitHub 数据源 | — |
-| `db/` | Prisma client / hydrate / persist / repository | [ADR-0001](adr/adr-0001-in-memory-store-write-through-db.md) |
+| `db/` | Prisma client / store 工厂 / hydrate / persist | [ADR-0001](adr/adr-0001-in-memory-store-write-through-db.md) |
 | `storage/` `upload/` | 文件存储与分片上传 | — |
 | `webhooks/` | 出站事件订阅与签名投递 | [../api/webhooks.md](../api/webhooks.md) |
 | `openapi/` | OpenAPI 3.0.3 规范（v1 API 单一事实源） | [../api/reference.md](../api/reference.md) |
@@ -247,3 +247,4 @@ flowchart LR
 | 1.3.0 | 2026-10-13 | 服务拆分阶段 6：新增“生产形态：三服务拆分”章节（网关/业务/前端/AI 拓扑、部署产物、适用版本标注——单体章节适用于 <=1.2.x 与开发模式） |
 | 1.3.1 | 2026-10-22 | 新增核心决策 7“角色模型：平台管理员 vs 工作区成员”——明确 `User.role` 为平台级跨租户语义、工作区内权限走 Team 角色与 KB access、删号仅 Owner |
 | 1.3.2 | 2026-11-05 | 口径校正：容器图前端页面数 28 → 30（`frontend/src/router/index.ts`）；后台队列任务类型补 `email-send`，与 `src/lib/queue/interface.ts` 的 5 种对齐 |
+| 1.3.3 | 2026-11-26 | 模块地图校正：`db/` 不再列 repository（该层最终未采用，见 ADR-0001 更正），改为 store 工厂 / hydrate / persist |
