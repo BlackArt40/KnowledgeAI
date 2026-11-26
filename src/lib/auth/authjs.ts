@@ -87,7 +87,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers } = NextAuth({
   // Same secret as the kai-token HMAC - the Auth.js JWT (JWE) is encrypted
   // with it, and the bridge decrypts via getToken().
   // P0-2: production must set AUTH_SECRET (getAuthSecret throws otherwise).

@@ -190,13 +190,6 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
   return { id: claims.id, email: claims.email, name: claims.name, role: claims.role };
 }
 
-/** Extract and verify user from a Request's Authorization header. */
-export async function getUserFromRequest(req: Request): Promise<AuthUser | null> {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) return null;
-  return verifyToken(auth.slice(7));
-}
-
 /** Hash a password using PBKDF2 (Web Crypto). */
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));

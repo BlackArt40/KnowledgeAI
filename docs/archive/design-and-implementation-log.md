@@ -1203,7 +1203,7 @@ KnowledgeAI/
 └── README.md
 ```
 
-> ⭐ = 生产化接入新增文件。所有 `*/store.ts` 均为内存存储（`globalThis` 持久），接口与 Prisma 对齐，可通过 `src/lib/db/repository.ts` 平滑替换。
+> ⭐ = 生产化接入新增文件。所有 `*/store.ts` 均为内存存储（`globalThis` 持久），接口与 Prisma 对齐，可通过 `src/lib/db/repository.ts` 平滑替换。（更正 2026-11-26：repository 层最终未采用，store 直接经 `db/hydrate/*` 与 `db/persist/*` 读写 DB，见 ADR-0001 的更正说明。）
 
 ### 技术选型原则：不造重复轮子
 

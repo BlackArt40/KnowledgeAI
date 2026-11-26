@@ -22,9 +22,8 @@ function extractToken(req: Request): string | null {
 //
 // The session cookie is httpOnly, so the client cannot clear it with
 // document.cookie: "退出登录" used to only drop the localStorage copy and
-// navigate, leaving the 7-day JWT valid server-side (and, once /login started
-// bouncing signed-in visitors, that bounce sent the user straight back into
-// the workspace). Logout must therefore go through the server.
+// navigate, leaving the 7-day JWT valid server-side. Logout must therefore go
+// through the server.
 //
 // Order matters: blacklist the jti first (works even when this instance holds
 // no session record - e.g. right after a restart), then drop the record.

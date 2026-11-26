@@ -89,18 +89,16 @@ export async function proxy(req: NextRequest) {
   // P1: await hydration before serving the request. Fire-and-forget let the
   // first requests after a restart read empty stores (and race writes against
   // the rows being loaded). It is a one-time cost; later calls return at once.
-  // NOTE: the proxy only matches /api/* (see config.matcher below), so this
-  // guard is effectively always true - kept as a cheap safety net.
-  if (!pathname.startsWith("/_next")) {
-    await ensureHydrated();
-  }
+  // config.matcher limits this proxy to /api/* - no other path reaches here.
+  await ensureHydrated();
 
   // L-9: the old `if (!pathname.startsWith("/api/")) return next()` branch was
   // dead code - config.matcher already limits this proxy to /api/*. Removed.
 
-  // P7-2 / L-1: CORS for the public API surface. Auth is header-based
-  // (Bearer kai_sk_... / JWT), never cookies, so the API can be called
-  // cross-origin by the embedded widget + the Chrome extension. Handle
+  // P7-2 / L-1: CORS for the public API surface. The public API authenticates
+  // with headers (Bearer kai_sk_... / JWT), so it can be called cross-origin by
+  // the embedded widget + the Chrome extension. Browser sessions additionally
+  // carry the httpOnly kai-token cookie (see the tier resolution above). Handle
   // preflight + attach headers to the (possibly modified) response below.
   // L-1: instead of echoing any Origin (cache-poisoning risk via a CDN),
   // only reflect Origins on an explicit allowlist (CORS_ALLOWED_ORIGINS).

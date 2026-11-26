@@ -5,7 +5,6 @@ import {
   verifyToken,
   createPreAuthToken,
   verifyPreAuthToken,
-  getUserFromRequest,
   hashPassword,
   verifyPassword,
   revokeJti,
@@ -137,14 +136,6 @@ describe("session JWT", () => {
     expect(await verifyToken(pre)).toBeNull();
     const payload = await verifyPreAuthToken(pre);
     expect(payload?.purpose).toBe("2fa-enroll");
-  });
-
-  it("getUserFromRequest reads Bearer header", async () => {
-    const token = await createToken(user);
-    const req = new Request("http://localhost/api/x", { headers: { authorization: `Bearer ${token}` } });
-    expect(await getUserFromRequest(req)).toMatchObject({ id: "usr_1" });
-    const noAuth = new Request("http://localhost/api/x");
-    expect(await getUserFromRequest(noAuth)).toBeNull();
   });
 });
 

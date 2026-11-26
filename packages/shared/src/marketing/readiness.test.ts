@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toReadinessPulse } from "../../../packages/shared/src/marketing/readiness";
+import { toReadinessPulse } from "./readiness";
 
 describe("homepage readiness pulse", () => {
   it("does not report a healthy state when the readiness request fails", () => {
