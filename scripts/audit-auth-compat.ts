@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   const db = await getDb();
   if (!db) {
     throw new Error(
-      "DATABASE_URL is required; run this audit against a trusted staging/production read-only connection."
+      "DATABASE_URL is required; run this audit against a trusted production read-only connection."
     );
   }
 

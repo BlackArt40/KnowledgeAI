@@ -163,7 +163,6 @@ src/
 ```
 scripts/
 ├── deploy/
-│   ├── staging.sh               # staging 部署（CI 调用）
 │   └── blue-green.sh            # 生产蓝绿切换（单镜像 + 健康门）
 ├── cleanup-temp-files.ts        # 临时文件清理（可配 cron）
 ├── cleanup-e2e-fixtures.ts      # 清理 e2e / 手工验证残留数据（对运行中的服务发 HTTP）

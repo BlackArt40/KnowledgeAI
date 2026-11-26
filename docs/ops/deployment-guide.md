@@ -1,6 +1,6 @@
 ---
 title: 部署指南
-description: KnowledgeAI 部署手册：单镜像（Vue 页面 + Next API）、Docker Compose 单机、CI Staging、生产蓝绿切换与 Kubernetes 示例
+description: KnowledgeAI 部署手册：单镜像（Vue 页面 + Next API）、Docker Compose 单机、生产蓝绿切换与 Kubernetes 示例
 type: how-to
 category: ops
 level: L2
@@ -24,7 +24,7 @@ related:
 
 ## 部署架构
 
-当前唯一生产形态是**单镜像**（见“方式五”）：
+当前唯一生产形态是**单镜像**（见“方式四”）：
 
 ```mermaid
 flowchart LR
@@ -83,19 +83,7 @@ npx prisma db seed   # 写入演示数据（可选）
 - `RATE_LIMIT_PER_MIN` 等档位可通过环境变量覆盖（性能测试需调高）。
 - 历史 Flyway 库升级前先按[数据库迁移基线核对](./migration-baseline.md)补齐 `_prisma_migrations`。
 
-## 方式二：Staging 自动部署（CI）
-
-push `main` 触发 `.github/workflows/deploy.yml`：构建镜像推 GHCR → SSH 到服务器执行 `scripts/deploy/staging.sh <image> <compose-dir>`。
-
-**前置配置**(GitHub Secrets)：`STAGING_HOST` / `STAGING_USER` / `STAGING_SSH_KEY`。未配置时 staging job 自动跳过（镜像仍构建推送）。
-
-服务器侧 `staging.sh` 流程：
-1. `docker pull` 新镜像（GHCR）；
-2. 幂等拉起依赖（redis / postgres，首次自动创建）；
-3. `docker compose up -d --no-deps` 更新 app + worker（`KAI_ENV_FILE` 默认 `.env`）；
-4. 等待 Docker 内置 HEALTHCHECK 通过。
-
-## 方式三：生产蓝绿部署（手动 + 审批门）
+## 方式二：生产蓝绿部署（手动 + 审批门）
 
 `.github/workflows/deploy-prod.yml`（workflow_dispatch 手动触发，`production` environment **必需评审人审批**）：
 
@@ -116,7 +104,7 @@ flowchart LR
 - 任一步骤失败自动回滚（退出码 1，旧版本仍在服务）；
 - **回滚方式**：重新触发 workflow 并指定上一个镜像 tag。
 
-## 方式四：Kubernetes
+## 方式三：Kubernetes
 
 > ⚠️ **示例清单，不可直接用于生产**：`k8s/deployment.yaml` 仅演示探针与卷的接线方式。
 >
@@ -139,7 +127,7 @@ kubectl apply -f k8s/deployment.yaml
   2. 改用**对象存储**（`S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`）——分片上传链路直接读写 S3/MinIO，不落本地盘。
      注意：直传（非分片）上传与后台解析仍读写本地 `.uploads`，选方案 2 时需把上传统一走分片链路，或保留 RWX 卷。
 
-## 方式五：单镜像（Vue + Next API，当前形态）
+## 方式四：单镜像（Vue + Next API，当前形态）
 
 拆分线（Java/Python/nginx 切流）已于 2026-11-20 退役，仓库不再提供 split compose、K8s split 或切流脚本。
 
@@ -153,9 +141,9 @@ kubectl apply -f k8s/deployment.yaml
 
 ### CI 发布产物
 
-`Deploy Staging` / `Deploy Production` 只产出一个 Next 镜像：
+`Deploy Production` 只产出一个 Next 镜像：
 
-- `ghcr.io/<owner>/<repo>:staging-<sha>` / `prod-<tag>`；
+- `ghcr.io/<owner>/<repo>:prod-<tag>`；
 - 镜像内已包含 `public/` 下的 Vue 页面、`assets/`、PWA 资产与 API。
 
 SSH 部署更新 app/worker 即可，不再有独立的 `frontend-dist` artifact 或静态站发布步骤。
@@ -166,8 +154,8 @@ SSH 部署更新 app/worker 即可，不再有独立的 `frontend-dist` artifact
 
 | 场景 | 操作 |
 |------|------|
-| 常规升级 | 构建新镜像 → compose 更新（方式一/二）或蓝绿切换（方式三） |
-| 回滚 | 方式三：重新触发 workflow 指定旧 tag；方式一/二：`docker compose up -d <旧镜像>` |
+| 常规升级 | 构建新镜像 → compose 更新（方式一）或蓝绿切换（方式二） |
+| 回滚 | 方式二：重新触发 workflow 指定旧 tag；方式一：`docker compose up -d <旧镜像>` |
 | 数据库迁移 | 升级前在宿主机执行 `DATABASE_URL=... npx prisma migrate deploy`（运行镜像不含 Prisma CLI，迁移文件在仓库 `prisma/migrations/`） |
 | 降级处理 | 演示模式与生产模式可随时互切（移除/设置 `DATABASE_URL` 即可） |
 
@@ -209,3 +197,4 @@ SSH 部署更新 app/worker 即可，不再有独立的 `frontend-dist` artifact
 | 1.3.0 | 2026-10-16 | 前端绞杀重写 V1(Vue 3 + Element Plus + Vite)：新增“前端切流与回退”节——deploy/nginx/routes.conf 单一事实源 + scripts/deploy/switch-frontend.sh 唯一入口（apply/rollback/revert-all，nginx -t 失败自动回写占位）；compose 网关挂载 switch conf 与 frontend/dist |
 | 1.3.1 | 2026-10-30 | 明确本地开发不使用 Docker（`pnpm dev` + `pnpm -C frontend dev`，无需环境变量），“方式一”由“本地 / 单机”改为“单机部署”；同步删除本地已作废的 compose override(3000→nginx / 3001→app) |
 | 1.3.2 | 2026-11-05 | 前端切流节页面数 28 → 30（`frontend/src/router/index.ts`）；`routes.conf` 仍为 28 条切流规则，两者口径分开表述 |
+| 1.4.0 | 2026-11-26 | 取消 staging 自动部署：删除 `deploy.yml` / `staging.sh` / `STAGING_*` 配置；发布流程只保留生产蓝绿，部署方式重新编号 |

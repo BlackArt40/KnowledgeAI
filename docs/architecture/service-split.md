@@ -29,4 +29,4 @@ related:
 - 原拆分部署、K8s split、nginx 切流与 Flyway 验收步骤不再适用。
 - 历史决策背景见 `docs/archive/design-and-implementation-log.md` 与 ADR-0008/0009（均标记 Superseded）。
 
-需要部署方式时见 `docs/ops/deployment-guide.md`「方式五：单镜像（Vue + Next API）」。
+需要部署方式时见 `docs/ops/deployment-guide.md`「方式四：单镜像（Vue + Next API）」。
