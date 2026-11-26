@@ -4,11 +4,11 @@ description: 拆分线退役后，如何核对历史库的 Flyway/Prisma 迁移�
 type: how-to
 category: ops
 level: L2
-version: 1.0.0
+version: 1.1.0
 authors:
   - tech-lead
 owner: devops-owner
-reviewed_at: 2026-11-21
+reviewed_at: 2026-11-26
 review_interval: 180
 status: published
 applies_to: ">=1.4.0"
@@ -125,3 +125,35 @@ CI `quality` job 已包含：
 - `pnpm test:db`（真实 PostgreSQL 语义测试）。
 
 本脚本面向**已有历史库**，不进入 CI 日常路径；无库时 SKIP。
+
+`pnpm db:baseline` 会为每个库打印一行退役判定：无 `flyway_schema_history` 时写 `退役判定: 本库无 Flyway 历史 -> 不需要基线`。**所有已部署库都报这一行之后**，`db:baseline`、`scripts/db/audit-migration-baseline.ts` 与本页的第 2–4 节才可删除；在此之前删掉它会让 Flyway 时代的库无法收编。
+
+## 7. 旧数据兼容分支的退役判定
+
+`src/lib` 里有几段代码只为兼容迁移前的数据行而存在，删不删取决于**数据**，不取决于仓库。用只读脚本判定：
+
+```bash
+# 默认复用 DATABASE_URL；生产建议只读连接
+BASELINE_DATABASE_URL='postgresql://readonly@host/db' pnpm db:audit-legacy
+
+# 机器可读
+pnpm db:audit-legacy --json
+```
+
+无库时打印 `SKIP` 并退出 0。脚本只执行 `count(*)`，不写任何表。
+
+| 检查项 | 判定为 0 后可以做的改动 |
+| --- | --- |
+| `User.passwordHash` 非 `pbkdf2$` 前缀（旧无盐 SHA-256） | 删除 `auth/store.ts` 的 `legacyHash` / `passwordMatches` 旧分支；`seed()` 需同时改为写 PBKDF2（它是同步函数，要改成异步或预生成哈希） |
+| `ApiKey.keyHash` 非 `sha256$` 前缀（AES 密文或 pre-P3-4 明文） | 删除 `apikeys/store.ts` 的 `storedSecretOf` / 明文比较分支 |
+| `User.plan` 不为 `free`（`@deprecated` 列） | 生成一个删除该列的迁移；读取路径已全部走 `Workspace.plan` |
+| `ApiKey.expiresAt` 为 NULL 的 active 行（信息项） | 不阻塞删除；用于安排密钥轮换回填 |
+
+判定顺序建议：先删代码再清理数据是无法回滚的方向，所以**先跑审计、先迁移数据，再删代码**。
+
+## 8. 修订记录
+
+| 版本 | 日期 | 变更 |
+| --- | --- | --- |
+| 1.0.0 | 2026-11-21 | 初版：Flyway→Prisma 基线核对、映射表与已验证场景 |
+| 1.1.0 | 2026-11-26 | 补退役判定：`db:baseline` 的自退役条件；新增第 7 节（`pnpm db:audit-legacy` 与旧数据兼容分支的删除条件） |
