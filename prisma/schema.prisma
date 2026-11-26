@@ -21,9 +21,11 @@ model User {
   passwordHash     String?
   role             Role       @default(EDITOR)
   status           UserStatus @default(ACTIVE)
-  /// @deprecated 套餐已迁到 `Workspace.plan`（支付成功只写工作区，见 billing/store.payOrder）；
-  /// 此列仅作历史数据兼容，**不要在任何写入路径更新它**，读取一律走
-  /// `workspace/store.effectiveWorkspacePlan()`（按当前工作区解析）。
+  /// @deprecated 套餐已迁到 `Workspace.plan`（支付成功只写工作区，见 billing/store.payOrder）。
+  /// 业务代码不得再改这个值；但它仍被两处读取：`db/persist/identity.ts` 随用户
+  /// 写穿（M-1：不写会导致重启后默认降级为 free），以及 `billing/store.ts`
+  /// 的 defaultSubscription 用它推导种子订阅。对外展示一律走
+  /// `workspace/store.effectiveWorkspacePlan()`。删列前先清掉上述两处引用。
   plan             String     @default("free")
   twoFactorEnabled Boolean    @default(false)
   lastLoginAt      DateTime?

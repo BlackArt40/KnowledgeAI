@@ -146,7 +146,7 @@ pnpm db:audit-legacy --json
 | --- | --- |
 | `User.passwordHash` 非 `pbkdf2$` 前缀（旧无盐 SHA-256） | 删除 `auth/store.ts` 的 `legacyHash` / `passwordMatches` 旧分支；`seed()` 需同时改为写 PBKDF2（它是同步函数，要改成异步或预生成哈希） |
 | `ApiKey.keyHash` 非 `sha256$` 前缀（AES 密文或 pre-P3-4 明文） | 删除 `apikeys/store.ts` 的 `storedSecretOf` / 明文比较分支 |
-| `User.plan` 不为 `free`（`@deprecated` 列） | 生成一个删除该列的迁移；读取路径已全部走 `Workspace.plan` |
+| `User.plan` 不为 `free`（`@deprecated` 列） | **行数不构成门槛**（该检查是信息项）。删列被代码引用挡住：`billing/store.ts` 的 `defaultSubscription` 仍在读它，`db/persist/identity.ts` 仍在写穿它。先改这两处，再生成删列迁移 |
 | `ApiKey.expiresAt` 为 NULL 的 active 行（信息项） | 不阻塞删除；用于安排密钥轮换回填 |
 
 判定顺序建议：先删代码再清理数据是无法回滚的方向，所以**先跑审计、先迁移数据，再删代码**。

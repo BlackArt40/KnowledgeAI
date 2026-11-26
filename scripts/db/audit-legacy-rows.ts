@@ -47,10 +47,14 @@ const CHECKS: Check[] = [
   },
   {
     id: "deprecated-user-plan",
-    label: "User.plan 不是 free（@deprecated 列仍带历史值）",
-    unlocks: "为删除 User.plan 列准备一次迁移；读取路径已全部走 Workspace.plan",
+    // NOT a row-count gate: the column is still read on the demo path
+    // (billing/store.ts defaultSubscription) and round-tripped by
+    // db/persist/identity.ts, so deleting it is blocked by *code references*,
+    // not by how many rows carry a non-free value. The count is informational.
+    label: "User.plan 不是 free（@deprecated 列，代码仍引用）",
+    unlocks: "先把 billing/store.ts 的 defaultSubscription 改为读工作区套餐，并让 identity 水合/写穿不再搬运该列，再生成删列迁移（不需要数据迁移）",
     sql: `select count(*)::int as n from "User" where plan <> 'free'`,
-    blocking: true,
+    blocking: false,
   },
   {
     id: "never-expiring-api-keys",
@@ -108,9 +112,10 @@ async function main(): Promise<void> {
 
     log("");
     for (const r of results) {
-      const verdict = r.count === 0 ? "✔ 0 行，可删除对应兼容分支" : `✖ ${r.count} 行，先迁移/轮换`;
-      log(`${r.count === 0 ? "✔" : "✖"} ${r.label}: ${r.count}`);
-      log(`    ${verdict}${r.blocking ? "" : "（信息项）"} -> ${r.unlocks}`);
+      const icon = !r.blocking ? "ℹ" : r.count === 0 ? "✔" : "✖";
+      const verdict = !r.blocking ? "信息项，不影响删除判定" : r.count === 0 ? "0 行，可删除对应兼容分支" : `${r.count} 行，先迁移/轮换`;
+      log(`${icon} ${r.label}: ${r.count}`);
+      log(`    ${verdict} -> ${r.unlocks}`);
     }
     log("");
     log(
@@ -122,9 +127,10 @@ async function main(): Promise<void> {
     const blocking = results.filter((r) => r.blocking && r.count > 0);
     log(
       blocking.length === 0
-        ? "\n结论: 数据侧没有阻塞项——兼容分支可以按 PR 逐个删除（先删代码，再回滚风险最低）"
+        ? "\n结论: 数据侧没有阻塞项——旧格式兼容分支可以逐个删除（每次删完再跑一遍本脚本）"
         : `\n结论: ${blocking.length} 项仍有历史行，先迁移数据再删代码`
     );
+    log("注意: 本脚本只查数据库。演示模式（无 DATABASE_URL）的 seed 账号与内存 store 不在扫描范围内。");
   } finally {
     await prisma.$disconnect();
   }
