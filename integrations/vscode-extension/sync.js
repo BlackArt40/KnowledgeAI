@@ -3,7 +3,7 @@
 //
 // Collects code/text files from the workspace (respecting ignore dirs and
 // size caps) and uploads them as KB documents via
-// POST /api/v1/knowledge-bases/[id]/documents (kb:write API key).
+// POST /api/knowledge-base/[id]/documents (kb:write API key).
 // Pure Node module (no `vscode` imports) - unit-testable standalone.
 // ---------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ async function syncWorkspaceToKb({ endpoint, apiKey, kbId, files, onProgress }) 
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     try {
-      const res = await fetch(`${base}/api/v1/knowledge-bases/${encodeURIComponent(kbId)}/documents`, {
+      const res = await fetch(`${base}/api/knowledge-base/${encodeURIComponent(kbId)}/documents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

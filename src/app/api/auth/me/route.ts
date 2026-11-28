@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserById, updateUser, deleteUser, sanitize, type User } from "@/lib/auth/store";
+import { getRequestUser } from "@/lib/auth/guard";
 import { verifyToken, createToken } from "@/lib/auth/session";
 import { listKbs, deleteKb } from "@/lib/kb/store";
 import { deleteAllConversations } from "@/lib/chat/store";
@@ -7,7 +8,7 @@ import { deleteAllTasks } from "@/lib/agent/store";
 import { deleteSecurityData } from "@/lib/security/store";
 import { recordAudit } from "@/lib/security/audit";
 import { deleteBillingData } from "@/lib/billing/store";
-import { effectiveWorkspacePlan } from "@/lib/workspace/store";
+import { effectiveWorkspacePlan, getWorkspace } from "@/lib/workspace/store";
 import { withApiTrace } from "@/lib/obs/trace";
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,25 @@ async function authId(req: Request): Promise<string | null> {
 
 // GET /api/auth/me - get current user from cookie or Authorization header
 async function handleGET(req: Request) {
+  // Single API surface (2026-11-27): SDKs identify themselves with an API key,
+  // so this read path (and only this one) opts into API-key auth. The response
+  // gains workspaceId/workspaceName — the fields the former /api/v1/me exposed.
+  const bearerToken = req.headers.get("authorization")?.startsWith("Bearer ")
+    ? req.headers.get("authorization")!.slice(7)
+    : "";
+  if (bearerToken.startsWith("kai_sk_")) {
+    const u = await getRequestUser(req, { allowApiKey: true });
+    const owner = u ? getUserById(u.id) : null;
+    if (!u || !owner) return NextResponse.json({ user: null }, { status: 401 });
+    return NextResponse.json({
+      user: {
+        ...withEffectivePlan(req, owner),
+        workspaceId: u.workspaceId,
+        workspaceName: getWorkspace(u.workspaceId)?.name,
+      },
+    });
+  }
+
   const id = await authId(req);
   // Keep the response body stable for JSON-only clients while returning the
   // semantically correct status for a missing or expired session.

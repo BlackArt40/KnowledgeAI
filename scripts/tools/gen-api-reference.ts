@@ -70,7 +70,7 @@ function build(): string {
   const lines: string[] = [];
   lines.push(`---
 title: API 参考
-description: KnowledgeAI v1 公开 API 端点总表，由 OpenAPI 3.0.3 规范自动生成，禁止手写
+description: KnowledgeAI 公开 API 端点总表，由 OpenAPI 3.0.3 规范自动生成，禁止手写
 type: reference
 category: api
 level: L2
@@ -91,7 +91,7 @@ related: [guide.md, errors.md, webhooks.md]
 > 交互式文档：启动服务后访问 \`/docs\`（Swagger UI）；原始规范：\`GET /api/openapi.json\`。
 > 使用指南（鉴权 / 限流 / 错误处理 / 调用示例）见 [API 使用指南](guide.md)。
 
-## 端点总表（${Object.keys(paths).length} 组，均为 \`/api/v1\` 前缀下的公开表面）
+## 端点总表（${Object.keys(paths).length} 组，均为 \`/api/*\` 下的公开表面）
 
 | 方法 | 路径 | 摘要 | 鉴权 | Scope | 流式 |
 |------|------|------|------|-------|------|

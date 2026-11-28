@@ -97,6 +97,3 @@ export const api = {
   del: <T>(path: string, opts: Omit<RequestOptions, "method" | "body"> = {}) =>
     request<T>(path, { ...opts, method: "DELETE" }),
 };
-
-// Generated from docs/api/openapi.json; do not hand-edit the generated file.
-export type { paths as ApiPaths, components as ApiComponents } from "./generated";

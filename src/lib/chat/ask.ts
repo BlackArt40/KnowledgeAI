@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
 // Shared Q&A handler - the core SSE chat pipeline.
 //
-// Used by both the legacy route (/api/chat) and the versioned public API
-// (/api/v1/chat, P7-1). The v1 route layers API-key scope enforcement on top
-// (see src/lib/apikeys/scopes.ts) and passes its own endpoint path so key
-// usage logging records the versioned URL.
+// Used by POST /api/chat for both auth kinds: JWT sessions and API keys
+// (P7-1 public surface). The route layers API-key scope enforcement on top
+// (see src/lib/apikeys/scopes.ts) and passes `allowApiKey` so key calls can
+// resolve their owner; usage logging records the same URL.
 //
 // SSE events (asserted by tests - do not rename):
 //   sources / token / done / error
@@ -68,7 +68,7 @@ export interface ChatRequestOptions {
   skipUserTier?: boolean;
 }
 
-/** POST /api/chat  ->  text/event-stream (shared by /api/chat + /api/v1/chat). */
+/** POST /api/chat  ->  text/event-stream (shared by /api/chat + /api/chat). */
 export async function handleChatRequest(
   req: Request,
   trace: ApiTraceHandle,

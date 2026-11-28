@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Shared agent-run SSE handler (used by /api/agent/run + /api/v1/agent/run).
+// Shared agent-run SSE handler (used by /api/agent/run + /api/agent/run).
 //
 // Creates the task, enqueues an agent-run job, then opens an SSE stream that
 // relays events from the background worker (via the agent event bus) to the
@@ -32,7 +32,7 @@ function streamTimeoutMs(): number {
   return seconds * 1000;
 }
 
-/** POST /api/agent/run -> text/event-stream (shared by legacy + v1 routes). */
+/** POST /api/agent/run -> text/event-stream (JWT sessions and API keys alike). */
 export async function handleAgentRun(
   req: Request,
   opts?: { allowApiKey?: boolean }

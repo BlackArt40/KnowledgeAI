@@ -63,8 +63,6 @@ export default defineConfig({
       exclude: [
         "**/*.test.ts",
         "src/lib/rag/ocr.ts",
-        "src/lib/rag/vector-index-chromadb.ts",
-        "src/lib/rag/vector-index-pinecone.ts",
         "src/lib/rag/vector-index-interface.ts",
         "src/lib/rag/types.ts",
         "src/lib/team/types.ts",

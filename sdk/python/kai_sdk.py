@@ -91,23 +91,23 @@ class KnowledgeAI:
 
     # ── public API ────────────────────────────────────────────────────────
     def me(self):
-        return self._request("GET", "/api/v1/me")
+        return self._request("GET", "/api/auth/me")
 
     def list_knowledge_bases(self):
-        return self._request("GET", "/api/v1/knowledge-bases")
+        return self._request("GET", "/api/knowledge-base")
 
     def create_knowledge_base(self, name, desc="", color=None):
         body = {"name": name, "desc": desc}
         if color:
             body["color"] = color
-        return self._request("POST", "/api/v1/knowledge-bases", body)
+        return self._request("POST", "/api/knowledge-base", body)
 
     def ask(self, kb_id, query, on_token=None, on_sources=None, web_search=False, timeout=None):
         """Streamed Q&A. Returns the `done` event dict.
         on_token(text) / on_sources(chunks) are called as events arrive."""
         payload = {"kbId": kb_id, "query": query, "webSearch": web_search}
         req = urllib.request.Request(
-            self.base_url + "/api/v1/chat",
+            self.base_url + "/api/chat",
             data=json.dumps(payload).encode("utf-8"),
             headers=self._headers(True),
             method="POST",
@@ -135,7 +135,7 @@ class KnowledgeAI:
     def run_agent(self, topic, on_step=None):
         """Streamed agent research. Returns the final task dict."""
         req = urllib.request.Request(
-            self.base_url + "/api/v1/agent/run",
+            self.base_url + "/api/agent/run",
             data=json.dumps({"topic": topic}).encode("utf-8"),
             headers=self._headers(True),
             method="POST",
@@ -159,17 +159,17 @@ class KnowledgeAI:
             raise KnowledgeAIError(str(e.reason))
 
     def list_webhooks(self):
-        return self._request("GET", "/api/v1/webhooks")
+        return self._request("GET", "/api/webhooks")
 
     def create_webhook(self, url, events, name="", secret=""):
         return self._request(
             "POST",
-            "/api/v1/webhooks",
+            "/api/webhooks",
             {"url": url, "events": events, "name": name, "secret": secret},
         )
 
     def delete_webhook(self, webhook_id):
-        return self._request("DELETE", "/api/v1/webhooks/%s" % webhook_id)
+        return self._request("DELETE", "/api/webhooks/%s" % webhook_id)
 
 
 if __name__ == "__main__":

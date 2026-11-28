@@ -1,7 +1,7 @@
 // Tessa test-debt #2 (P32): API-key scope matrix.
 // #20 was a scope-bypass regression, and this module had no direct coverage -
 // `requireApiKeyScope` is the only thing standing between a read-only key and
-// the write surface of /api/v1/*.
+// the write surface of /api/*.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const validateApiKey = vi.fn();
@@ -34,7 +34,7 @@ function apiKey(scopes: string[]): ApiKey {
 }
 
 function req(headers: Record<string, string>): Request {
-  return new Request("http://localhost/api/v1/knowledge-bases", { headers });
+  return new Request("http://localhost/api/knowledge-base", { headers });
 }
 
 beforeEach(() => {

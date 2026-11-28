@@ -165,14 +165,6 @@ async function missingPrereq(prereq: SmokePrereq): Promise<string | null> {
     case "db":
       if (!process.env.DATABASE_URL) reason = "DATABASE_URL not set";
       break;
-    case "chromadb":
-      if (!(await reachable(`${process.env.CHROMADB_URL ?? "http://localhost:8000"}/api/v1/heartbeat`))) {
-        reason = "chromadb not reachable on :8000";
-      }
-      break;
-    case "pinecone-mock":
-      if (!(await reachable("http://localhost:5080"))) reason = "mock pinecone server not running on :5080";
-      break;
   }
   prereqCache.set(prereq, reason);
   return reason;

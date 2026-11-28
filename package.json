@@ -22,7 +22,7 @@
     "db:baseline": "tsx scripts/db/audit-migration-baseline.ts",
     "db:audit-legacy": "tsx scripts/db/audit-legacy-rows.ts",
     "test:perf": "node scripts/perf/load.mjs",
-    "gen:openapi": "tsx scripts/tools/gen-openapi-json.ts && pnpm --dir frontend exec openapi-typescript ../docs/api/openapi.json -o src/api/generated.ts"
+    "gen:openapi": "tsx scripts/tools/gen-openapi-json.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.40",
@@ -32,6 +32,7 @@
     "ai": "^7.0.62",
     "bullmq": "^5.80.2",
     "d3-force": "^3.0.0",
+    "fflate": "^0.8.3",
     "i18next": "^26.3.6",
     "ioredis": "^5.11.1",
     "jose": "^6.2.8",
@@ -43,6 +44,7 @@
     "pdfjs-dist": "^4.8.69",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
+    "rate-limiter-flexible": "^11.6.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "stripe": "^22.5.0",
@@ -66,10 +68,8 @@
     "fast-check": "^4.10.2",
     "mermaid": "^11.16.1",
     "prisma": "^6.19.3",
-    "tailwindcss": "^4",
     "tsx": "^4.0.0",
     "typescript": "^5",
-    "unified": "^11.0.5",
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.12"

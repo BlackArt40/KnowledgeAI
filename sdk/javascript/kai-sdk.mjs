@@ -62,23 +62,23 @@ export class KnowledgeAI {
     }
   }
 
-  /** GET /api/v1/me - identity of the authenticated caller. */
+  /** GET /api/auth/me - identity of the authenticated caller. */
   async me() {
-    return this.request("GET", "/api/v1/me");
+    return this.request("GET", "/api/auth/me");
   }
 
-  /** GET /api/v1/knowledge-bases - list KBs in the workspace. */
+  /** GET /api/knowledge-base - list KBs in the workspace. */
   async listKnowledgeBases() {
-    return this.request("GET", "/api/v1/knowledge-bases");
+    return this.request("GET", "/api/knowledge-base");
   }
 
-  /** POST /api/v1/knowledge-bases - create a KB. */
+  /** POST /api/knowledge-base - create a KB. */
   async createKnowledgeBase({ name, desc = "", color }) {
-    return this.request("POST", "/api/v1/knowledge-bases", { name, desc, color });
+    return this.request("POST", "/api/knowledge-base", { name, desc, color });
   }
 
   /**
-   * POST /api/v1/chat - streamed Q&A over SSE.
+   * POST /api/chat - streamed Q&A over SSE.
    * @param {string} kbId
    * @param {string} query
    * @param {object} [opts]
@@ -91,7 +91,7 @@ export class KnowledgeAI {
     const ctrl = opts.signal ? null : new AbortController();
     const timer = setTimeout(() => ctrl?.abort(), this.timeoutMs);
     try {
-      const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+      const res = await fetch(`${this.baseUrl}/api/chat`, {
         method: "POST",
         headers: this.headers(true),
         body: JSON.stringify({ kbId, query, webSearch: opts.webSearch }),
@@ -138,14 +138,14 @@ export class KnowledgeAI {
   }
 
   /**
-   * POST /api/v1/agent/run - streamed agent research over SSE.
+   * POST /api/agent/run - streamed agent research over SSE.
    * @param {string} topic
    * @param {object} [opts]
    * @param {(step: unknown) => void} [opts.onStep]
    * @returns {Promise<unknown>} the final task
    */
   async runAgent(topic, opts = {}) {
-    const res = await fetch(`${this.baseUrl}/api/v1/agent/run`, {
+    const res = await fetch(`${this.baseUrl}/api/agent/run`, {
       method: "POST",
       headers: this.headers(true),
       body: JSON.stringify({ topic }),
@@ -177,19 +177,19 @@ export class KnowledgeAI {
     return task;
   }
 
-  /** GET /api/v1/webhooks - list webhook subscriptions. */
+  /** GET /api/webhooks - list webhook subscriptions. */
   async listWebhooks() {
-    return this.request("GET", "/api/v1/webhooks");
+    return this.request("GET", "/api/webhooks");
   }
 
-  /** POST /api/v1/webhooks - create a subscription. */
+  /** POST /api/webhooks - create a subscription. */
   async createWebhook({ name, url, secret = "", events }) {
-    return this.request("POST", "/api/v1/webhooks", { name, url, secret, events });
+    return this.request("POST", "/api/webhooks", { name, url, secret, events });
   }
 
-  /** DELETE /api/v1/webhooks/{id} */
+  /** DELETE /api/webhooks/{id} */
   async deleteWebhook(id) {
-    return this.request("DELETE", `/api/v1/webhooks/${id}`);
+    return this.request("DELETE", `/api/webhooks/${id}`);
   }
 }
 

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { listAllKbs, createKb, listDocuments } from "@/lib/kb/store";
 import { persistKb } from "@/lib/db/persist";
 import { canAccessKb } from "@/lib/team/store";
-import { getRequestUser, requireRole } from "@/lib/auth/guard";
+import { getRequestUser } from "@/lib/auth/guard";
+import { requireApiKeyScope } from "@/lib/apikeys/scopes";
 import { getUserById } from "@/lib/auth/store";
 import { withApiTrace } from "@/lib/obs/trace";
 
@@ -11,8 +12,13 @@ export const dynamic = "force-dynamic";
 // GET /api/knowledge-base - list the user's own KBs PLUS KBs shared by
 // other team members (access != "private"), scoped to the current workspace
 // (P4-3 tenant isolation). Each KB includes a `shared` flag and `ownerName`.
+//
+// Single API surface (2026-11-27): API-key callers must hold `kb:read`;
+// `description` mirrors `desc` so the documented/SDK shape stays stable.
 async function handleGET(req: Request) {
-  const u = await getRequestUser(req);
+  const scope = await requireApiKeyScope(req, "kb:read");
+  if (scope.error) return scope.error;
+  const u = await getRequestUser(req, { allowApiKey: true });
   if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const kbs = listAllKbs(u.workspaceId)
     .filter((kb) => canAccessKb(u, kb))
@@ -21,6 +27,7 @@ async function handleGET(req: Request) {
       const owner = getUserById(kb.ownerId);
       return {
         ...kb,
+        description: kb.desc,
         shared: kb.ownerId !== u.id,
         ownerName: owner?.name ?? "未知",
         stats: {
@@ -39,9 +46,13 @@ async function handleGET(req: Request) {
 // POST /api/knowledge-base - create a knowledge base owned by the current user.
 // RBAC: viewer is read-only ("KB 只读 + 问答"), so creating requires EDITOR+.
 async function handlePOST(req: Request) {
-  const guard = await requireRole(req, ["owner", "admin", "editor"]);
-  if (guard.error) return guard.error;
-  const u = guard.user;
+  const scope = await requireApiKeyScope(req, "kb:write");
+  if (scope.error) return scope.error;
+  const u = await getRequestUser(req, { allowApiKey: true });
+  if (!u) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!["owner", "admin", "editor"].includes(u.role)) {
+    return NextResponse.json({ error: "权限不足" }, { status: 403 });
+  }
   let body: { name?: string; desc?: string; color?: string; initial?: string };
   try {
     body = await req.json();

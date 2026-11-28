@@ -39,14 +39,13 @@ RUN pnpm exec esbuild worker.ts --bundle --platform=node --format=cjs \
 # Next 16 (Turbopack) standalone 输出会把整个项目源码一并复制（框架行为）。
 # 生成一个只含运行时文件的干净副本，runner 从它 COPY——直接把源码层带进
 # 镜像的话，后续 RUN rm 无法释放分层空间（镜像会大几百 MB）。
-# 剥离清单需随仓库演化维护——frontend/（Vue 重写源码）、docs/ 等均为纯构建/
-# 文档资产，运行时只需 server.js + package.json + node_modules + 编译产物
-# .next + public/。清单里的每一项都对应仓库里现存的路径，删除目录时同步删这里。
+# 剥离清单需随仓库演化维护——frontend/（Vue 重写源码）等均为纯构建资产，
+# 运行时只需 server.js + package.json + node_modules + 编译产物 .next + public/。
 RUN cp -a /app/.next/standalone /app/standalone-clean && \
     rm -rf /app/standalone-clean/src /app/standalone-clean/tests /app/standalone-clean/e2e \
-    /app/standalone-clean/sdk /app/standalone-clean/integrations /app/standalone-clean/k8s \
-    /app/standalone-clean/frontend /app/standalone-clean/docs \
-    /app/standalone-clean/deliverables /app/standalone-clean/playwright-report \
+    /app/standalone-clean/sdk /app/standalone-clean/integrations \
+    /app/standalone-clean/frontend \
+    /app/standalone-clean/playwright-report \
     /app/standalone-clean/scripts /app/standalone-clean/Dockerfile /app/standalone-clean/docker-compose.yml \
     /app/standalone-clean/AGENTS.md /app/standalone-clean/README.md \
     /app/standalone-clean/worker.ts /app/standalone-clean/next.config.ts \

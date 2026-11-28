@@ -15,7 +15,7 @@
  *   </script>
  *
  * Zero dependencies, no build step, no module system - it injects its own
- * DOM + CSS and talks to the v1 SSE chat API. Works standalone on any static
+ * DOM + CSS and talks to the SSE chat API. Works standalone on any static
  * host (this file is the whole widget; demo.html shows usage).
  *
  * The endpoint must allow the page origin (CORS) - see the docs. The widget
@@ -111,7 +111,7 @@
     state.msgs.appendChild(botEl);
     state.msgs.scrollTop = state.msgs.scrollHeight;
 
-    fetch(state.endpoint + "/api/v1/chat", {
+    fetch(state.endpoint + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + state.apiKey },
       body: JSON.stringify({ kbId: state.kbId, query: q }),

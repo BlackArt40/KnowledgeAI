@@ -101,7 +101,7 @@ async function main() {
   const imgB64 = imgBuf.toString("base64");
   writeFileSync("/tmp/kai-multimodal-test.png", imgBuf);
 
-  const kbRes = await req("POST", "/api/v1/knowledge-bases", { token, body: { name: "多模态验收库" } });
+  const kbRes = await req("POST", "/api/knowledge-base", { token, body: { name: "多模态验收库" } });
   const kbId = kbRes.data?.kb?.id;
   check("create kb", !!kbId);
 

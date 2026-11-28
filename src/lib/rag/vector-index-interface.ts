@@ -4,8 +4,7 @@
 // Implementations:
 //   - MemoryVectorStore  (default, in-memory Map + cosine similarity)
 //   - PgVectorStore      (PostgreSQL + pgvector extension, HNSW/IVFFlat index)
-//   - ChromaVectorStore  (future - self-hosted ChromaDB)
-//   - PineconeVectorStore (managed Pinecone, VECTOR_STORE=pinecone)
+//   - PgVectorStore     (PostgreSQL + pgvector, production)
 //
 // Selected via VECTOR_STORE env var: "memory" (default) | "pgvector"
 // ---------------------------------------------------------------------------

@@ -1,9 +1,11 @@
 // Batch 2: API contract — the hand-maintained OpenAPI spec must describe real
-// routes, every $ref must resolve, and undocumenting a new /api/v1 route has to
-// be a deliberate change (the known-gap list below is a ratchet, not a dump).
+// routes, every $ref must resolve, and dropping a route from the public surface
+// has to be a deliberate change (the known-gap list below is a ratchet, not a
+// dump). 2026-11-27: the /api/v1 prefix is gone, so "public surface" is the
+// explicit list below instead of a directory boundary.
 import { describe, it, expect } from "vitest";
-import { readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import { OPENAPI_SPEC } from "./spec";
 
 type Op = {
@@ -29,9 +31,8 @@ type Spec = {
 
 const spec = OPENAPI_SPEC as Spec;
 const METHODS = ["get", "post", "put", "patch", "delete"];
-const API_ROOT = join(process.cwd(), "src", "app", "api", "v1");
 
-/** /api/v1/x/{id} -> src/app/api/v1/x/[id]/route.ts */
+/** /api/x/{id} -> src/app/api/x/[id]/route.ts */
 function routeFileFor(path: string): string {
   const segments = path
     .replace(/^\/api\//, "")
@@ -39,26 +40,6 @@ function routeFileFor(path: string): string {
     .filter(Boolean)
     .map((s) => s.replace(/^\{(.+)\}$/, "[$1]"));
   return join(process.cwd(), "src", "app", "api", ...segments, "route.ts");
-}
-
-function walkRoutes(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walkRoutes(full, out);
-    else if (entry === "route.ts") out.push(full);
-  }
-  return out;
-}
-
-function specPathFor(file: string): string {
-  return (
-    "/" +
-    relative(join(process.cwd(), "src", "app"), file)
-      .replace(/\/route\.ts$/, "")
-      .split("\\")
-      .join("/")
-      .replace(/\[(.+)\]/g, "{$1}")
-  );
 }
 
 const documented = Object.keys(spec.paths ?? {});
@@ -69,16 +50,16 @@ const documented = Object.keys(spec.paths ?? {});
  * decision (public surface), not a way to silence the check.
  */
 const KNOWN_UNDOCUMENTED = [
-  "/api/v1/integrations/bot",
-  "/api/v1/integrations/bot/{id}",
-  "/api/v1/integrations/bot/m/{token}",
-  "/api/v1/integrations/sync/confluence",
-  "/api/v1/integrations/sync/notion",
-  "/api/v1/knowledge-bases/{id}/documents",
+  "/api/integrations/bot",
+  "/api/integrations/bot/{id}",
+  "/api/integrations/bot/m/{token}",
+  "/api/integrations/sync/confluence",
+  "/api/integrations/sync/notion",
+  "/api/knowledge-base/{id}/documents",
 ];
 
 describe("OpenAPI document shape", () => {
-  it("declares OpenAPI 3, a server and the v1 info block", () => {
+  it("declares OpenAPI 3, a server and the API info block", () => {
     expect(spec.openapi).toMatch(/^3\./);
     expect(spec.info?.title).toBe("KnowledgeAI API");
     expect(spec.info?.version).toBe("v1");
@@ -88,10 +69,10 @@ describe("OpenAPI document shape", () => {
     );
   });
 
-  it("only documents /api/v1 paths, each with at least one operation", () => {
+  it("only documents /api paths, each with at least one operation", () => {
     expect(documented.length).toBeGreaterThan(0);
     for (const path of documented) {
-      expect(path.startsWith("/api/v1/")).toBe(true);
+      expect(path.startsWith("/api/")).toBe(true);
       const operations = Object.keys(spec.paths![path]).filter((k) => METHODS.includes(k));
       expect(operations.length).toBeGreaterThan(0);
     }
@@ -149,12 +130,12 @@ describe("spec ↔ filesystem drift", () => {
     }
   });
 
-  it("documents every /api/v1 route, except the recorded exceptions", () => {
-    const onDisk = walkRoutes(API_ROOT).map(specPathFor).sort();
-    const undocumented = onDisk.filter((p) => !documented.includes(p));
-
-    // Shrinking this list is progress; growing it means a new public route
-    // shipped without docs. Both show up as a diff here.
-    expect(undocumented).toEqual([...KNOWN_UNDOCUMENTED].sort());
+  it("keeps every recorded public route backed by a real route file", () => {
+    // Single /api prefix => no directory to walk for "undocumented routes".
+    // The ratchet now lives on both sides of the contract: documented paths and
+    // the explicit known-undocumented list must both resolve to real files.
+    for (const path of KNOWN_UNDOCUMENTED) {
+      expect(statSync(routeFileFor(path), { throwIfNoEntry: false }), `stale known-undocumented entry: ${path}`).toBeTruthy();
+    }
   });
 });

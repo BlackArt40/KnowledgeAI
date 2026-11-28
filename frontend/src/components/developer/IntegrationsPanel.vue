@@ -252,7 +252,7 @@ const widgetSnippet = computed(
           <code class="token-code">{{ botToken.token }}</code>
           <div class="token-meta">
             <span>{{ t("page.developer.s58") }}:</span>
-            <code class="token-url">{{ origin }}/api/v1/integrations/bot/m/{{ botToken.token }}</code>
+            <code class="token-url">{{ origin }}/api/integrations/bot/m/{{ botToken.token }}</code>
           </div>
           <el-button
             size="small"

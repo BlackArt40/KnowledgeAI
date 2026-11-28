@@ -109,7 +109,7 @@ describe("toggleKey / deleteKey", () => {
 
   it("deletes the key, its DB row and its call logs", () => {
     const key = createKey("gone", [], "usr_1", null);
-    logCall(key.id, "/api/v1/kb", "GET", 200, 12);
+    logCall(key.id, "/api/knowledge-base", "GET", 200, 12);
     expect(g.__KAI_APIKEY_STORE__!.logs).toHaveLength(1);
 
     expect(deleteKey(key.id, "usr_1")).toBe(true);
@@ -123,7 +123,7 @@ describe("toggleKey / deleteKey", () => {
 describe("logCall + listLogs", () => {
   it("increments counters and records the call", () => {
     const key = createKey("logged", [], "usr_1", null);
-    logCall(key.id, "/api/v1/kb", "GET", 200, 12);
+    logCall(key.id, "/api/knowledge-base", "GET", 200, 12);
 
     const [stored] = listKeys("usr_1");
     expect(stored.calls).toBe(1);
@@ -132,7 +132,7 @@ describe("logCall + listLogs", () => {
 
     const logs = listLogs("usr_1");
     expect(logs).toHaveLength(1);
-    expect(logs[0]).toMatchObject({ keyId: key.id, endpoint: "/api/v1/kb", method: "GET", status: 200, latencyMs: 12 });
+    expect(logs[0]).toMatchObject({ keyId: key.id, endpoint: "/api/knowledge-base", method: "GET", status: 200, latencyMs: 12 });
   });
 
   it("records a call even when the key id is unknown", () => {

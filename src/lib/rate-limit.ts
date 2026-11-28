@@ -1,23 +1,30 @@
 // ---------------------------------------------------------------------------
-// Distributed Rate Limiter - Redis-backed sliding window with memory fallback.
+// Distributed Rate Limiter - rate-limiter-flexible with a Redis store and an
+// in-memory fallback.
 //
-// When REDIS_URL is set: uses Redis EVAL (Lua script) for atomic sliding window.
-// Otherwise: falls back to in-memory Map (single-instance, demo mode).
+// 2026-11-27: the hand-written ZSET sliding-window Lua + memory bucket map was
+// replaced by `rate-limiter-flexible` (mature, maintained). The public API of
+// this module is unchanged: callers still get {allowed, limit, remaining,
+// resetAt, count} and the same tier helpers / 429 body / dashboard stats.
 //
-// Features:
-//   - Sliding window counter (not fixed window)
-//   - Tiered rate limiting (P3-3): anonymous IP / user / API key / KB
-//   - Integration tier (P7-2): third-party integrations (bots, widget) get
-//     their own dimension so one integration can't starve a user's quota
-//   - Configurable window + limit
-//   - Returns remaining + accurate reset timestamp (earliest entry expiry)
+// Semantics note: the library counts in a **fixed window** (INCR + PTTL), while
+// the old Redis path used a sliding window (ZSET). A burst that straddles a
+// window boundary can therefore see up to 2x the limit in the worst case.
+// Retry-After stays accurate: resetAt is derived from the real msBeforeNext of
+// the current window, not from a nominal start time.
+//
+// Features kept:
+//   - Tiered limits (P3-3): anonymous IP / user / API key / KB / integration
+//   - F9: a Redis failure falls back to per-instance memory buckets and is
+//     surfaced (warn log + counters on /api/health/ready)
 //   - Stats ring buffer + live view for the admin rate-limit dashboard
 // ---------------------------------------------------------------------------
 
-
+import { RateLimiterMemory, RateLimiterRedis, RateLimiterRes } from "rate-limiter-flexible";
 import { log } from "@/lib/obs/log";
 
 const WINDOW_MS = 60_000;
+const WINDOW_SECONDS = 60;
 const DEFAULT_LIMIT = parseInt(process.env.RATE_LIMIT_PER_MIN || "200", 10);
 const ANON_LIMIT = parseInt(process.env.RATE_LIMIT_ANON_PER_MIN || "20", 10);
 const KEY_LIMIT = parseInt(process.env.RATE_LIMIT_KEY_PER_MIN || "500", 10);
@@ -72,80 +79,22 @@ export function getBaseLimit(): number {
   return DEFAULT_LIMIT;
 }
 
-// ── Memory rate limiter (fallback) ───────────────────────────────────────
+// ── Limiter instances (one memory limiter per distinct tier limit) ────────
 
-interface Bucket {
-  count: number;
-  resetAt: number;
-  limit: number;
-}
+const memoryLimiters = new Map<number, RateLimiterMemory>();
+const redisLimiters = new Map<number, RateLimiterRedis>();
 
-const memoryBuckets = new Map<string, Bucket>();
-let lastMemoryCleanup = Date.now();
-
-function memoryRateLimit(key: string, limit: number): RateLimitResult {
-  // Periodic cleanup
-  const now = Date.now();
-  if (now - lastMemoryCleanup > 30_000) {
-    lastMemoryCleanup = now;
-    for (const [k, b] of memoryBuckets) {
-      if (b.resetAt < now) memoryBuckets.delete(k);
-    }
+function memoryLimiter(limit: number): RateLimiterMemory {
+  let l = memoryLimiters.get(limit);
+  if (!l) {
+    l = new RateLimiterMemory({ points: limit, duration: WINDOW_SECONDS });
+    memoryLimiters.set(limit, l);
   }
-
-  let bucket = memoryBuckets.get(key);
-  if (!bucket || bucket.resetAt < now) {
-    bucket = { count: 0, resetAt: now + WINDOW_MS, limit };
-    memoryBuckets.set(key, bucket);
-  }
-
-  bucket.count++;
-  const allowed = bucket.count <= limit;
-  return {
-    allowed,
-    limit,
-    remaining: Math.max(0, limit - bucket.count),
-    resetAt: bucket.resetAt,
-    count: bucket.count,
-  };
+  return l;
 }
-
-// ── Redis rate limiter ───────────────────────────────────────────────────
-
-// Lua script for atomic sliding window rate limiting.
-// resetAt = earliest entry score + window, so Retry-After reflects the real
-// time until the oldest request slides out of the window (P3-3 acceptance).
-const REDIS_SCRIPT = `
-local key = KEYS[1]
-local limit = tonumber(ARGV[1])
-local window = tonumber(ARGV[2])
-local now = tonumber(ARGV[3])
-
--- Remove expired entries
-redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
-
--- Count current entries
-local count = redis.call('ZCARD', key)
-
--- Earliest entry expiry = accurate resetAt
-local first = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-local resetAt = now + window
-if first[2] then resetAt = tonumber(first[2]) + window end
-
-if count < limit then
-  -- Add current request
-  redis.call('ZADD', key, now, now .. '-' .. math.random())
-  redis.call('PEXPIRE', key, window)
-  return {1, limit, limit - count - 1, resetAt, count + 1}
-else
-  return {0, limit, 0, resetAt, count}
-end
-`;
 
 let redisClient: unknown = null;
-/** Last Redis failure reason for the current `rateLimit()` call (null = none).
- *  Set by the helpers, consumed by rateLimit() so degradation is recorded in
- *  exactly one place - F9. */
+/** Last Redis failure reason for the current `rateLimit()` call (null = none). */
 let lastRedisFailure: unknown = null;
 
 async function getRedisClient(): Promise<unknown | null> {
@@ -153,14 +102,12 @@ async function getRedisClient(): Promise<unknown | null> {
   if (!process.env.REDIS_URL) return null;
 
   try {
-    // Dynamic import ioredis (memory fallback when load fails or REDIS_URL unset)
     const Redis = (await import("ioredis")).default;
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,
       lazyConnect: true,
-      // L-6: was `null` (one hiccup = permanent memory fallback). A few
-      // retries let a transient blip self-heal; exhausting them still falls
-      // back to memory (so a truly-down Redis doesn't block requests).
+      // L-6: a few retries let a transient blip self-heal; exhausting them
+      // still falls back to memory (so a truly-down Redis doesn't block).
       retryStrategy: (times) => (times < 3 ? Math.min(times * 500, 2000) : null),
     });
     log.info("[ratelimit] Redis client initialized");
@@ -172,39 +119,50 @@ async function getRedisClient(): Promise<unknown | null> {
   }
 }
 
-async function redisRateLimit(key: string, limit: number): Promise<RateLimitResult | null> {
-  const client = (await getRedisClient()) as {
-    eval: (script: string, keys: number, ...args: (string | number)[]) => Promise<number[]>;
-  } | null;
+async function redisLimiter(limit: number): Promise<RateLimiterRedis | null> {
+  const client = await getRedisClient();
   if (!client) return null;
+  let l = redisLimiters.get(limit);
+  if (!l) {
+    l = new RateLimiterRedis({
+      // ioredis instance; the library calls defineCommand/eval on it.
+      storeClient: client as never,
+      points: limit,
+      duration: WINDOW_SECONDS,
+      // Reject immediately instead of queueing when Redis is not "ready" - we
+      // want the memory fallback (and its degradation counter), not latency.
+      rejectIfRedisNotReady: true,
+    });
+    redisLimiters.set(limit, l);
+  }
+  return l;
+}
 
+function isRateLimitRes(v: unknown): v is RateLimiterRes {
+  return !!v && typeof v === "object" && "msBeforeNext" in v && "consumedPoints" in v;
+}
+
+function toResult(res: RateLimiterRes, allowed: boolean, limit: number): RateLimitResult {
+  return {
+    allowed,
+    limit,
+    remaining: Math.max(0, res.remainingPoints ?? 0),
+    resetAt: Date.now() + (res.msBeforeNext ?? WINDOW_MS),
+    count: res.consumedPoints ?? 0,
+  };
+}
+
+/** Consume one point from a limiter, mapping its rejection into `allowed:false`. */
+async function consume(
+  limiter: RateLimiterMemory | RateLimiterRedis,
+  key: string,
+  limit: number
+): Promise<RateLimitResult> {
   try {
-    const now = Date.now();
-    const result = await client.eval(
-      REDIS_SCRIPT,
-      1,
-      `rl:${key}`,
-      limit,
-      WINDOW_MS,
-      now
-    );
-    markRedisHealthy();
-    return {
-      allowed: result[0] === 1,
-      limit: result[1],
-      remaining: result[2],
-      resetAt: result[3],
-      count: result[4],
-    };
+    return toResult(await limiter.consume(key, 1), true, limit);
   } catch (err) {
-    // F9: Redis error -> fall back to the memory bucket, but LOUDLY. The old
-    // code returned null silently, so a Redis outage silently downgraded the
-    // limiter to per-instance memory buckets: with >1 replica each instance
-    // counts independently (limits effectively multiplied), and a restart
-    // resets every counter. Nothing surfaced that. The recording itself
-    // happens in rateLimit() so it fires once per request.
-    lastRedisFailure = err;
-    return null;
+    if (isRateLimitRes(err)) return toResult(err, false, limit);
+    throw err;
   }
 }
 
@@ -258,7 +216,7 @@ function markRedisDegraded(err: unknown): void {
         fallbacks: d.fallbacks,
         degradedForMs: DEGRADE_LOG_INTERVAL_MS,
       },
-      "[ratelimit] Redis 不可用 - 已回落单实例内存限流（多实例下限额会被放大）",
+      "[ratelimit] Redis 不可用 - 已回落单实例内存限流（多实例下限额会被放大）"
     );
   }
 }
@@ -347,7 +305,7 @@ function recordStat(key: string, limit: number, result: RateLimitResult) {
 /**
  * Dashboard data: `live` is one entry per key seen (current window state),
  * `recent` is the last 50 checks in call order. Works for both backends -
- * memory buckets and Redis results both funnel through recordStat().
+ * memory and Redis results both funnel through recordStat().
  */
 export function rateLimitStats(): { live: RateLimitStat[]; recent: RateLimitStat[] } {
   const now = Date.now();
@@ -362,7 +320,7 @@ export function rateLimitStats(): { live: RateLimitStat[]; recent: RateLimitStat
 
 /**
  * Check rate limit for a key (IP / user ID / API key / KB id).
- * Uses Redis when available, falls back to memory.
+ * Uses the Redis store when available, falls back to memory.
  *
  * F9: when REDIS_URL is configured and Redis cannot answer, the fallback to
  * per-instance memory buckets is recorded as a degradation (warn log +
@@ -372,17 +330,29 @@ export async function rateLimit(
   key: string,
   limit: number = getBaseLimit()
 ): Promise<RateLimitResult> {
-  // Try Redis first
   lastRedisFailure = null;
-  const redisResult = await redisRateLimit(key, limit);
-  if (redisResult) {
-    markRedisHealthy();
-  } else if (process.env.REDIS_URL) {
-    // Configured but unusable (EVAL failure, client construction failure, or
-    // a client that never came up) - this process is on memory buckets now.
-    markRedisDegraded(lastRedisFailure ?? new Error("Redis 不可用（未返回结果）"));
+  const memory = memoryLimiter(limit);
+
+  if (process.env.REDIS_URL) {
+    const redis = await redisLimiter(limit);
+    if (redis) {
+      try {
+        // consume() only throws for non-rate-limit errors (Redis down).
+        const result = await consume(redis, key, limit);
+        markRedisHealthy();
+        recordStat(key, limit, result);
+        return result;
+      } catch (err) {
+        // Configured but unusable - this process is on memory buckets now.
+        lastRedisFailure = err;
+        markRedisDegraded(err);
+      }
+    } else {
+      markRedisDegraded(lastRedisFailure ?? new Error("Redis 不可用（未返回结果）"));
+    }
   }
-  const result = redisResult ?? memoryRateLimit(key, limit);
+
+  const result = await consume(memory, key, limit);
   recordStat(key, limit, result);
   return result;
 }

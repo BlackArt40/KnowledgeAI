@@ -7,7 +7,7 @@ import { renderChatMarkdown, renderMarkdown } from "./markdown";
 
 describe("renderChatMarkdown", () => {
   it("renders fenced code blocks as <pre><code>", () => {
-    const html = renderChatMarkdown('```js\nconst api = fetch("/api/v1");\n```');
+    const html = renderChatMarkdown('```js\nconst api = fetch("/api/chat");\n```');
     expect(html).toContain("<pre");
     expect(html).toContain("<code");
     expect(html).toContain("const api");

@@ -122,7 +122,7 @@ async function main() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "owner@knowledgeai.dev", password: "password123" }),
     }).then((r) => r.json());
-    const kbs = await fetch(`${BASE}/api/v1/knowledge-bases`, {
+    const kbs = await fetch(`${BASE}/api/knowledge-base`, {
       headers: { Authorization: `Bearer ${login2.token}` },
     }).then((r) => r.json());
     const firstKb = kbs.kbs?.[0]?.id ?? "";

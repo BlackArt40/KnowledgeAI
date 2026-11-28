@@ -28,7 +28,7 @@ npx @vscode/vsce package   # 生成 kai-vscode-0.1.0.vsix
 
 ## 架构
 
-- `ask.js` / `sync.js`：纯 Node 模块（无 `vscode` 依赖）——SSE 分帧与 `/api/v1/chat`、`/api/v1/knowledge-bases/[id]/documents` 协议，可脱离 VS Code 单测
+- `ask.js` / `sync.js`：纯 Node 模块（无 `vscode` 依赖）——SSE 分帧与 `/api/chat`、`/api/knowledge-base/[id]/documents` 协议，可脱离 VS Code 单测
 - `extension.js`：VS Code 命令注册 + `context.secrets` 配置 + 输出面板流式渲染
 
 验收测试：`node scripts/smoke/test-vscode.ts`（manifest 结构 + ask.js/sync.js 对 live server 全流程）。

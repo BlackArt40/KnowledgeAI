@@ -4,7 +4,7 @@
 //   1. Local mock Notion (:5090) + mock Confluence (:5091) API servers.
 //   2. :3100 production instance configured with NOTION_TOKEN /
 //      CONFLUENCE_* env pointing at the mocks.
-//   3. POST /api/v1/integrations/sync/{notion,confluence} -> pages land in
+//   3. POST /api/integrations/sync/{notion,confluence} -> pages land in
 //      the KB as documents (queue -> ready), duplicate re-sync skipped.
 //   4. Unconfigured instance (:3000 dev) -> 400.
 //
@@ -153,7 +153,7 @@ async function main() {
   check("创建 KB", !!kbId);
 
   console.log("\n── Notion 同步 ──");
-  const notionRes = await fetch(`${url}/api/v1/integrations/sync/notion`, {
+  const notionRes = await fetch(`${url}/api/integrations/sync/notion`, {
     method: "POST", headers, body: JSON.stringify({ kbId, databaseId: "db-123" }),
   });
   const notionData = await notionRes.json();
@@ -162,7 +162,7 @@ async function main() {
   check("notion 失败 0", notionData.failed === 0);
 
   console.log("\n── Confluence 同步 ──");
-  const confRes = await fetch(`${url}/api/v1/integrations/sync/confluence`, {
+  const confRes = await fetch(`${url}/api/integrations/sync/confluence`, {
     method: "POST", headers, body: JSON.stringify({ kbId, spaceKey: "DEV" }),
   });
   const confData = await confRes.json();
@@ -170,7 +170,7 @@ async function main() {
   check("confluence 导入 2 个（开发规范/发布流程）", confData.imported === 2, JSON.stringify(confData));
 
   console.log("\n── 重跑去重 + 文档就绪 ──");
-  const reNotion = await fetch(`${url}/api/v1/integrations/sync/notion`, {
+  const reNotion = await fetch(`${url}/api/integrations/sync/notion`, {
     method: "POST", headers, body: JSON.stringify({ kbId, databaseId: "db-123" }),
   }).then((r) => r.json());
   check("重跑 notion -> 全部跳过（按名去重）", reNotion.imported === 0 && reNotion.skipped === 2, JSON.stringify(reNotion));
@@ -200,11 +200,11 @@ async function main() {
   check("审计 integration.sync ≥2（notion+confluence）", (audit.audit ?? []).length >= 2, JSON.stringify(audit.audit?.length));
 
   // invalid inputs
-  const noDb = await fetch(`${url}/api/v1/integrations/sync/notion`, {
+  const noDb = await fetch(`${url}/api/integrations/sync/notion`, {
     method: "POST", headers, body: JSON.stringify({ kbId }),
   });
   check("缺 databaseId -> 400", noDb.status === 400, String(noDb.status));
-  const noKb = await fetch(`${url}/api/v1/integrations/sync/confluence`, {
+  const noKb = await fetch(`${url}/api/integrations/sync/confluence`, {
     method: "POST", headers, body: JSON.stringify({ kbId: "kb_nope", spaceKey: "DEV" }),
   });
   check("KB 不存在 -> 404", noKb.status === 404, String(noKb.status));
@@ -220,7 +220,7 @@ async function main() {
     headers: { "Content-Type": "application/json", Cookie: `kai-token=${refLogin.token}` },
     body: JSON.stringify({ name: "同步未配置库" }),
   }).then((r) => r.json());
-  const unconf = await fetch(`${BASE}/api/v1/integrations/sync/notion`, {
+  const unconf = await fetch(`${BASE}/api/integrations/sync/notion`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: `kai-token=${refLogin.token}` },
     body: JSON.stringify({ kbId: refKb.kb?.id, databaseId: "db-1" }),

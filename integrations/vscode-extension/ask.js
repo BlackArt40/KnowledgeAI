@@ -8,13 +8,13 @@
 
 "use strict";
 
-/** Ask a question against a KB via /api/v1/chat (SSE stream).
+/** Ask a question against a KB via /api/chat (SSE stream).
  *  @param {{endpoint: string, apiKey: string, kbId: string, query: string}} opts
  *  @returns {Promise<{answer: string, sources: unknown[]}>}
  */
 async function askOnce({ endpoint, apiKey, kbId, query }) {
   const base = String(endpoint || "http://localhost:3000").replace(/\/+$/, "");
-  const res = await fetch(`${base}/api/v1/chat`, {
+  const res = await fetch(`${base}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

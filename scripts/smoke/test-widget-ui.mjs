@@ -58,7 +58,7 @@ async function main() {
     body: JSON.stringify({ name: "widget-ui", scopes: ["chat:read"] }),
   }).then((r) => r.json());
   const apiKey = key.key?.secret;
-  const kbs = await fetch(`${BASE}/api/v1/knowledge-bases`, { headers: H }).then((r) => r.json());
+  const kbs = await fetch(`${BASE}/api/knowledge-base`, { headers: H }).then((r) => r.json());
   const kbId = kbs.kbs?.[0]?.id;
   check("setup: api key + kb", !!apiKey && !!kbId);
 

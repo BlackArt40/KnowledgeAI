@@ -43,7 +43,7 @@ async function main() {
     check(`文件存在: ${f}`, fs.existsSync(path.join(EXT_DIR, f)));
   }
   const extSrc = fs.readFileSync(path.join(EXT_DIR, "extension.js"), "utf8");
-  check("extension.js 不含网络请求协议（委托 ask.js/sync.js）", !extSrc.includes("/api/v1/chat") && extSrc.includes('"./ask"'));
+  check("extension.js 不含网络请求协议（委托 ask.js/sync.js）", !extSrc.includes("/api/chat") && extSrc.includes('"./ask"'));
   // extension.js needs the vscode module at runtime - verify its shape
   // statically (can't require() it outside the VS Code host).
   check("extension.js 声明 activate/deactivate 导出", /module\.exports\s*=\s*\{\s*activate,\s*deactivate\s*\}/.test(extSrc));
@@ -72,7 +72,7 @@ async function main() {
   }).then((r) => r.json());
   const kbId = kb.kb?.id;
   check("创建 KB", !!kbId);
-  const docRes = await fetch(`${BASE}/api/v1/knowledge-bases/${kbId}/documents`, {
+  const docRes = await fetch(`${BASE}/api/knowledge-base/${kbId}/documents`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ name: "guide.md", content: "# 部署指南\n\n使用 pnpm build 构建项目，然后用 pnpm start 启动生产服务器。端口默认为 3000。" }),

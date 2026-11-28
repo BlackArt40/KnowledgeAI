@@ -22,7 +22,7 @@ import { createEmptyKbStore } from "@/lib/db/store-factories";
 
 // ---------------------------------------------------------------------------
 // In-memory store (demo). Structured to be swapped for PostgreSQL/Prisma +
-// a real LangChain + ChromaDB pipeline. Persisted on globalThis for dev HMR.
+// a real pgvector-backed pipeline. Persisted on globalThis for dev HMR.
 // ---------------------------------------------------------------------------
 
 type Store = {
@@ -327,7 +327,7 @@ function seed() {
       kbName: "运维手册", name: "K8s部署手册.md", size: 64000, status: "ready", ageMin: 10080,
       content:
         "KnowledgeAI 通过 Docker 镜像部署，生产环境使用 Kubernetes 编排。前端 Next.js 部署于 Vercel 或自建节点，后端服务运行于 K8s 集群。" +
-        "依赖组件包括 PostgreSQL 主数据库、Redis 缓存与任务队列、ChromaDB 向量数据库、对象存储用于文档存储。" +
+        "依赖组件包括 PostgreSQL 主数据库、Redis 缓存与任务队列、pgvector 向量数据库、对象存储用于文档存储。" +
         "部署步骤：1. 构建镜像并推送至镜像仓库；2. 通过 Helm chart 部署至 K8s；3. 配置 Ingress 与 TLS；4. 执行数据库迁移；5. 健康检查通过后接入流量。",
     },
     { kbName: "产品文档", name: "交互设计稿说明.md", size: 38000, status: "ready", ageMin: 180 },
@@ -467,7 +467,7 @@ export async function deleteKb(id: string): Promise<boolean> {
   void deleteKbFromDb(id);
   // P7-3: drop the KB's knowledge graph (entities + relations).
   void clearKbGraph(id);
-  // 阶段 2（service-split.md 2.5）：逐个删除文档文件（S3 对象或本地文件），
+  // 阶段 2（删库流程）：逐个删除文档文件（S3 对象或本地文件），
   // 并经 index-cleanup 清理检索索引（含远端）。
   void import("@/lib/storage")
     .then(({ deleteDocFile }) =>
@@ -668,9 +668,9 @@ export async function deleteDocument(docId: string): Promise<boolean> {
   const ok = store.docs.delete(docId);
   if (ok && doc) {
     publish(`kb:${doc.kbId}`, { type: "doc_deleted", kbId: doc.kbId, docId });
-    // 阶段 2（service-split.md 2.5）：业务侧删除文件（S3 对象或本地文件），
-    // 并经 index-cleanup 队列清理检索索引（AI 服务开启时为远端 DELETE，
-    // 单体模式为进程内向量库——重复清除无害）。失败随队列重试/死信。
+    // 阶段 2（删库流程）：业务侧删除文件（S3 对象或本地文件），
+    // 并经 index-cleanup 队列清理检索索引（单体模式为进程内向量库——
+    // 重复清除无害）。失败随队列重试/死信。
     void import("@/lib/storage")
       .then(({ deleteDocFile }) => deleteDocFile(doc.kbId, docId, doc.name))
       .catch((e) => log.warn({ err: e }, "[kb] doc file delete failed"));
