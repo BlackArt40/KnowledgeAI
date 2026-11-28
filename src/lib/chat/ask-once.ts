@@ -34,7 +34,7 @@ export async function askOnce(
 
   const trace = opts.trace ?? { traceId: "internal", end: () => {} };
   const res = await handleChatRequest(req, trace, {
-    endpoint: opts.endpoint ?? "/api/v1/integrations/bot",
+    endpoint: opts.endpoint ?? "/api/integrations/bot",
     user,
     skipUserTier: true,
     ...opts,

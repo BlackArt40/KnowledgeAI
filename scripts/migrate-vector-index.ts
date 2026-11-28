@@ -2,12 +2,10 @@
 // ---------------------------------------------------------------------------
 // Vector Store Migration Script
 //
-// Migrates all KB document indexes from the in-memory store into a target
-// vector database (pgvector / chromadb / pinecone).
+// Migrates all KB document indexes from the in-memory store into PostgreSQL
+// (pgvector), the only persistent vector backend.
 //
 // Usage:
-//   MIGRATE_TO=chromadb npx tsx scripts/migrate-vector-index.ts
-//   MIGRATE_TO=pinecone  npx tsx scripts/migrate-vector-index.ts
 //   MIGRATE_TO=pgvector  npx tsx scripts/migrate-vector-index.ts
 //
 // Options:
@@ -16,8 +14,6 @@
 //
 // Prerequisites (target-specific env vars):
 //   pgvector:  DATABASE_URL
-//   chromadb:  CHROMA_URL (default http://localhost:8000)
-//   pinecone:  PINECONE_API_KEY + PINECONE_INDEX_HOST (or PINECONE_INDEX_NAME)
 //
 // The script instantiates the target VectorStore directly (bypassing the
 // factory singleton) so it runs independently of the app's VECTOR_STORE setting.
@@ -43,20 +39,12 @@ async function embedBatchSafe(texts: string[]): Promise<Float32Array[]> {
 
 async function createTargetStore(target: string): Promise<VectorStore> {
   switch (target) {
-    case "chromadb": {
-      const { ChromaVectorStore } = await import("../src/lib/rag/vector-index-chromadb");
-      return new ChromaVectorStore();
-    }
-    case "pinecone": {
-      const { PineconeVectorStore } = await import("../src/lib/rag/vector-index-pinecone");
-      return new PineconeVectorStore();
-    }
     case "pgvector": {
       const { PgVectorStore } = await import("../src/lib/rag/vector-index-pgvector");
       return new PgVectorStore();
     }
     default:
-      throw new Error(`Unknown target "${target}". Use: chromadb, pgvector, or pinecone`);
+      throw new Error(`Unknown target "${target}". Use: pgvector`);
   }
 }
 
@@ -69,7 +57,7 @@ async function main() {
   const kbFilter = kbFilterIdx >= 0 ? process.argv[kbFilterIdx + 1] : undefined;
 
   if (!target) {
-    log.error("Usage: MIGRATE_TO=<chromadb|pgvector|pinecone> npx tsx scripts/migrate-vector-index.ts [--dry-run] [--kb <id>]");
+    log.error("Usage: MIGRATE_TO=pgvector npx tsx scripts/migrate-vector-index.ts [--dry-run] [--kb <id>]");
     process.exit(1);
   }
 

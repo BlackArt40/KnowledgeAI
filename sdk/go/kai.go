@@ -22,7 +22,7 @@ import (
 
 const defaultTimeout = 60 * time.Second
 
-// Client talks to the KnowledgeAI v1 API.
+// Client talks to the KnowledgeAI API.
 type Client struct {
 	apiKey  string
 	baseURL string
@@ -146,7 +146,7 @@ func (c *Client) sse(ctx context.Context, method, path string, body any, onEvent
 
 // ── Public API ────────────────────────────────────────────────────────────
 
-// Me is the identity response of GET /api/v1/me.
+// Me is the identity response of GET /api/auth/me.
 type Me struct {
 	User struct {
 		ID          string `json:"id"`
@@ -160,13 +160,13 @@ type Me struct {
 // Me returns the authenticated caller's identity.
 func (c *Client) Me(ctx context.Context) (*Me, error) {
 	var out Me
-	if err := c.do(ctx, http.MethodGet, "/api/v1/me", nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, "/api/auth/me", nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-// KbList is the response of GET /api/v1/knowledge-bases.
+// KbList is the response of GET /api/knowledge-base.
 type KbList struct {
 	Kbs []map[string]any `json:"kbs"`
 }
@@ -174,7 +174,7 @@ type KbList struct {
 // ListKnowledgeBases lists KBs visible in the workspace.
 func (c *Client) ListKnowledgeBases(ctx context.Context) (*KbList, error) {
 	var out KbList
-	if err := c.do(ctx, http.MethodGet, "/api/v1/knowledge-bases", nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, "/api/knowledge-base", nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -187,7 +187,7 @@ func (c *Client) CreateKnowledgeBase(ctx context.Context, name, desc, color stri
 		body["color"] = color
 	}
 	var out map[string]any
-	if err := c.do(ctx, http.MethodPost, "/api/v1/knowledge-bases", body, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, "/api/knowledge-base", body, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -207,7 +207,7 @@ type AskResult struct {
 func (c *Client) Ask(ctx context.Context, kbID, query string, onToken func(string)) (*AskResult, error) {
 	body := map[string]any{"kbId": kbID, "query": query}
 	var out *AskResult
-	err := c.sse(ctx, http.MethodPost, "/api/v1/chat", body, func(ev SSEEvent) error {
+	err := c.sse(ctx, http.MethodPost, "/api/chat", body, func(ev SSEEvent) error {
 		switch ev["type"] {
 		case "token":
 			if onToken != nil {
@@ -236,7 +236,7 @@ func (c *Client) Ask(ctx context.Context, kbID, query string, onToken func(strin
 // RunAgent streams an agent research task over SSE. Returns the final task.
 func (c *Client) RunAgent(ctx context.Context, topic string) (map[string]any, error) {
 	var out map[string]any
-	err := c.sse(ctx, http.MethodPost, "/api/v1/agent/run", map[string]any{"topic": topic}, func(ev SSEEvent) error {
+	err := c.sse(ctx, http.MethodPost, "/api/agent/run", map[string]any{"topic": topic}, func(ev SSEEvent) error {
 		switch ev["type"] {
 		case "done":
 			task, _ := ev["task"].(map[string]any)
@@ -253,7 +253,7 @@ func (c *Client) RunAgent(ctx context.Context, topic string) (map[string]any, er
 	return out, nil
 }
 
-// WebhookList is the response of GET /api/v1/webhooks.
+// WebhookList is the response of GET /api/webhooks.
 type WebhookList struct {
 	Webhooks []map[string]any `json:"webhooks"`
 }
@@ -261,7 +261,7 @@ type WebhookList struct {
 // ListWebhooks lists webhook subscriptions in the workspace.
 func (c *Client) ListWebhooks(ctx context.Context) (*WebhookList, error) {
 	var out WebhookList
-	if err := c.do(ctx, http.MethodGet, "/api/v1/webhooks", nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, "/api/webhooks", nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -271,7 +271,7 @@ func (c *Client) ListWebhooks(ctx context.Context) (*WebhookList, error) {
 func (c *Client) CreateWebhook(ctx context.Context, url string, events []string, name, secret string) (map[string]any, error) {
 	body := map[string]any{"url": url, "events": events, "name": name, "secret": secret}
 	var out map[string]any
-	if err := c.do(ctx, http.MethodPost, "/api/v1/webhooks", body, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, "/api/webhooks", body, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -279,5 +279,5 @@ func (c *Client) CreateWebhook(ctx context.Context, url string, events []string,
 
 // DeleteWebhook removes a subscription.
 func (c *Client) DeleteWebhook(ctx context.Context, id string) error {
-	return c.do(ctx, http.MethodDelete, "/api/v1/webhooks/"+id, nil, nil)
+	return c.do(ctx, http.MethodDelete, "/api/webhooks/"+id, nil, nil)
 }

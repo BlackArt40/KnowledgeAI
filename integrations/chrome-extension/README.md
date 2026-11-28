@@ -20,4 +20,4 @@
 ## 说明
 
 - 认证独立：使用专用 API Key，服务端按 `apikey:<keyId>` 维度独立限流。
-- 问答走 `/api/v1/chat` SSE 流式接口。
+- 问答走 `/api/chat` SSE 流式接口。

@@ -59,7 +59,7 @@ async function main() {
   });
   const token = login.data?.token;
   check("login: owner token", !!token);
-  const kbs = await req("GET", "/api/v1/knowledge-bases", { token });
+  const kbs = await req("GET", "/api/knowledge-base", { token });
   const kbId = kbs.data?.kbs?.[0]?.id;
   check("setup: kbId", !!kbId);
 
@@ -80,7 +80,7 @@ async function main() {
   // Access-Control-Allow-Origin header at all (the browser then blocks the
   // request). The allowlist-hit path is asserted further down against the
   // :3100 instance, which is spawned with an explicit allowlist.
-  const cors = await req("POST", "/api/v1/chat", {
+  const cors = await req("POST", "/api/chat", {
     origin: "https://example-widget-site.com",
     token,
     body: { kbId, query: "测试 CORS" },
@@ -95,7 +95,7 @@ async function main() {
     String(cors.headers?.get?.("vary") ?? "").includes("Origin"),
     String(cors.headers?.get?.("vary"))
   );
-  const preflight = await fetch(`${BASE}/api/v1/chat`, {
+  const preflight = await fetch(`${BASE}/api/chat`, {
     method: "OPTIONS",
     headers: { Origin: "https://example-widget-site.com", "Access-Control-Request-Method": "POST" },
   });
@@ -107,58 +107,58 @@ async function main() {
 
   // ── 2. Chat bots ─────────────────────────────────────────────────────
   console.log("\n── 2. 群机器人 ──");
-  const badToken = await req("POST", "/api/v1/integrations/bot/m/kai_bot_000000000000000000000000000000000000", {
+  const badToken = await req("POST", "/api/integrations/bot/m/kai_bot_000000000000000000000000000000000000", {
     body: { text: "hi" },
   });
   check("bot callback with bad token: 401", badToken.status === 401, `status=${badToken.status}`);
 
-  const created = await req("POST", "/api/v1/integrations/bot", {
+  const created = await req("POST", "/api/integrations/bot", {
     token,
     body: { name: "验收机器人", platform: "test", kbId },
   });
   const botToken = created.data?.bot?.token;
   const botId = created.data?.bot?.id;
   check("create bot: 201 + token", created.status === 201 && !!botToken && botToken.startsWith("kai_bot_"), JSON.stringify(created.data).slice(0, 150));
-  check("list bots: includes binding", (await req("GET", "/api/v1/integrations/bot", { token })).data?.bots?.some((b) => b.id === botId));
-  check("list bots: no tokenHash/secret leak", !JSON.stringify((await req("GET", "/api/v1/integrations/bot", { token })).data).includes(botToken));
+  check("list bots: includes binding", (await req("GET", "/api/integrations/bot", { token })).data?.bots?.some((b) => b.id === botId));
+  check("list bots: no tokenHash/secret leak", !JSON.stringify((await req("GET", "/api/integrations/bot", { token })).data).includes(botToken));
 
   // test platform: raw { answer, citations }
-  const answer = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, { body: { text: "你好" } });
+  const answer = await req("POST", `/api/integrations/bot/m/${botToken}`, { body: { text: "你好" } });
   check("bot (test) answers: 200 + text", answer.status === 200 && typeof answer.data?.answer === "string" && answer.data.answer.length > 0, JSON.stringify(answer.data).slice(0, 150));
 
   // platform format verification (slack/feishu/dingtalk parse + reply shapes)
-  const slackChallenge = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, {
+  const slackChallenge = await req("POST", `/api/integrations/bot/m/${botToken}`, {
     body: { type: "url_verification", challenge: "slack-verify-1" },
     xPlatform: "slack",
   });
   check("bot: slack challenge echoes", slackChallenge.status === 200 && slackChallenge.data?.challenge === "slack-verify-1", JSON.stringify(slackChallenge.data));
-  const slackReply = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, { body: { text: "你好" }, xPlatform: "slack" });
+  const slackReply = await req("POST", `/api/integrations/bot/m/${botToken}`, { body: { text: "你好" }, xPlatform: "slack" });
   check("bot: slack reply format", typeof slackReply.data?.text === "string" && slackReply.data.text.length > 0, JSON.stringify(slackReply.data).slice(0, 120));
-  const feishuReply = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, {
+  const feishuReply = await req("POST", `/api/integrations/bot/m/${botToken}`, {
     body: { event: { message: { content: JSON.stringify({ text: "你好" }) } } },
     xPlatform: "feishu",
   });
   check("bot: feishu reply format", feishuReply.data?.msg_type === "text" && typeof feishuReply.data?.content?.text === "string", JSON.stringify(feishuReply.data).slice(0, 120));
-  const dingReply = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, {
+  const dingReply = await req("POST", `/api/integrations/bot/m/${botToken}`, {
     body: { msgtype: "text", text: { content: "你好" } },
     xPlatform: "dingtalk",
   });
   check("bot: dingtalk reply format", dingReply.data?.msgtype === "text" && typeof dingReply.data?.text?.content === "string", JSON.stringify(dingReply.data).slice(0, 120));
 
   // empty message -> hint reply
-  const emptyReply = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, { body: {} });
+  const emptyReply = await req("POST", `/api/integrations/bot/m/${botToken}`, { body: {} });
   check("bot: empty message gets hint", typeof emptyReply.data?.answer === "string", JSON.stringify(emptyReply.data).slice(0, 100));
 
   // toggle off -> callback 401
-  await req("PATCH", `/api/v1/integrations/bot/${botId}`, { token, body: { active: false } });
-  const disabled = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, { body: { text: "hi" } });
+  await req("PATCH", `/api/integrations/bot/${botId}`, { token, body: { active: false } });
+  const disabled = await req("POST", `/api/integrations/bot/m/${botToken}`, { body: { text: "hi" } });
   check("bot: disabled binding rejected", disabled.status === 401, `status=${disabled.status}`);
-  await req("PATCH", `/api/v1/integrations/bot/${botId}`, { token, body: { active: true } });
+  await req("PATCH", `/api/integrations/bot/${botId}`, { token, body: { active: true } });
 
   // delete -> 404 + callback 401
-  const del = await req("DELETE", `/api/v1/integrations/bot/${botId}`, { token });
+  const del = await req("DELETE", `/api/integrations/bot/${botId}`, { token });
   check("bot delete: 200", del.status === 200 && del.data?.ok === true, `status=${del.status}`);
-  const afterDel = await req("POST", `/api/v1/integrations/bot/m/${botToken}`, { body: { text: "hi" } });
+  const afterDel = await req("POST", `/api/integrations/bot/m/${botToken}`, { body: { text: "hi" } });
   check("bot callback after delete: 401", afterDel.status === 401, `status=${afterDel.status}`);
 
   // ── 3. 独立认证与限流（integration 档 429）──────────────────────────
@@ -212,7 +212,7 @@ async function main() {
       corsListed.headers.get("access-control-allow-origin") === CORS_ALLOWED_ORIGIN,
       String(corsListed.headers.get("access-control-allow-origin"))
     );
-    const corsListedPreflight = await fetch("http://localhost:3100/api/v1/knowledge-bases", {
+    const corsListedPreflight = await fetch("http://localhost:3100/api/knowledge-base", {
       method: "OPTIONS",
       headers: { Origin: CORS_ALLOWED_ORIGIN, "Access-Control-Request-Method": "GET" },
     });
@@ -236,11 +236,11 @@ async function main() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "owner@knowledgeai.dev", password: DEMO_PASSWORD }),
     }).then((r) => r.json());
-    const kbs3100 = await fetch("http://localhost:3100/api/v1/knowledge-bases", {
+    const kbs3100 = await fetch("http://localhost:3100/api/knowledge-base", {
       headers: { Authorization: `Bearer ${login3100.token}` },
     }).then((r) => r.json());
     const kb3100 = kbs3100.kbs?.[0]?.id;
-    const bot3100 = await fetch("http://localhost:3100/api/v1/integrations/bot", {
+    const bot3100 = await fetch("http://localhost:3100/api/integrations/bot", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${login3100.token}` },
       body: JSON.stringify({ name: "限流机器人", platform: "test", kbId: kb3100 }),
@@ -249,7 +249,7 @@ async function main() {
 
     const statuses = [];
     for (let i = 0; i < 6; i++) {
-      const r = await fetch(`http://localhost:3100/api/v1/integrations/bot/m/${t3100}`, {
+      const r = await fetch(`http://localhost:3100/api/integrations/bot/m/${t3100}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "测试" }),
@@ -260,7 +260,7 @@ async function main() {
     check("integration tier: first requests still served", statuses.slice(0, 3).every((s) => s === 200), `statuses=${statuses.join(",")}`);
 
     // 同一属主的普通 API 不受影响（apikey 档独立）
-    const ownerApi = await fetch("http://localhost:3100/api/v1/me", {
+    const ownerApi = await fetch("http://localhost:3100/api/auth/me", {
       headers: { Authorization: `Bearer ${login3100.token}` },
     });
     check("integration tier: owner quota untouched", ownerApi.status === 200, `status=${ownerApi.status}`);

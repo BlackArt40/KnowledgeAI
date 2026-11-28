@@ -37,7 +37,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 async function askOnce({ query, endpoint, apiKey, kbId }) {
-  const res = await fetch(endpoint.replace(/\/+$/, "") + "/api/v1/chat", {
+  const res = await fetch(endpoint.replace(/\/+$/, "") + "/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
     body: JSON.stringify({ kbId, query }),

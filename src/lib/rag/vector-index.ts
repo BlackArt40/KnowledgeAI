@@ -11,8 +11,6 @@
 import { embed } from "@/lib/llm/embeddings";
 import { MemoryVectorStore } from "./vector-index-memory";
 import { PgVectorStore } from "./vector-index-pgvector";
-import { ChromaVectorStore } from "./vector-index-chromadb";
-import { PineconeVectorStore } from "./vector-index-pinecone";
 import { clearBM25Doc, clearBM25Kb } from "./bm25";
 import type { VectorStore } from "./vector-index-interface";
 import { log } from "@/lib/obs/log";
@@ -25,12 +23,6 @@ function getStore(): VectorStore {
   switch (backend) {
     case "pgvector":
       _instance = new PgVectorStore();
-      break;
-    case "chromadb":
-      _instance = new ChromaVectorStore();
-      break;
-    case "pinecone":
-      _instance = new PineconeVectorStore();
       break;
     case "memory":
     default:

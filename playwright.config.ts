@@ -1,4 +1,4 @@
-// P6-3 → V6：E2E 关键用户流程（登录 → 上传 → 问答 → Agent）。
+// P6-3 → V6：E2E 整站契约（官网/认证守卫/实时演示/退出登录）。
 // V6 退役后 Next 只服务 /api/**，页面由 vite preview（:4173，服务 frontend
 // dist 含 SEO 预渲染 home.html）承载——双 webServer：Next dev 提供 API、
 // preview 提供页面，用例统一打 :4173（/api 经 preview proxy 到 :3000）。
@@ -18,13 +18,15 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  // 批 4：跨浏览器（第 12 类测试手段）。根套件只有 8 例、串行执行，
-  // 每加一个引擎增量约 1.2min；Vue 套件（51 例）仍只跑 chromium，避免翻三倍。
+  // 批 4：跨浏览器（第 12 类测试手段）。2026-11-27 收缩：main-flow 只保留 4 条
+  // 整站契约（页面级流程交由 frontend/e2e 的 chromium 套件）。offline 契约在
+  // spec 内用 test.skip 锁死 chromium（SW/离线语义跨引擎差异大），因此 firefox
+  // 实际只跑这 4 条（约 +30s），用于守住营销页/认证守卫/退出登录的引擎差异。
   // webkit 暂缓：本机 Playwright WebKit 与 driver 不匹配（newPage 报
   // "Unknown setting: PushAPIEnabled"），重装后仍复现，待单独排查。
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] }, testIgnore: /offline\.spec\.ts/ },
   ],
   webServer: [
     {

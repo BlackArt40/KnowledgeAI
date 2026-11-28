@@ -51,7 +51,7 @@ async function main() {
   const apiKey = keyRes.data?.key?.secret;
   check("create api key", !!apiKey);
 
-  const kbs = await req("GET", "/api/v1/knowledge-bases", { token });
+  const kbs = await req("GET", "/api/knowledge-base", { token });
   const kbId = (kbs.data?.kbs ?? [])[0]?.id;
   check("setup: kbId for chat", !!kbId);
 

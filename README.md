@@ -139,14 +139,9 @@ scripts/                # 运维脚本（deploy / 清理 / 迁移 / CI 检查）
 └── tools/              # 文档/契约门禁脚本（env parity、docs frontmatter、openapi、i18n 提取）
 tests/                  # 集成测试（需 dev server）
 e2e/                    # 根 Playwright 主流程套件（双 webServer）
-docs/                   # 文档中心（入门 / 架构 / API / 规范 / 运维 / FAQ）
 sdk/                    # 三语言官方 SDK（JavaScript / Python / Go）
 integrations/           # 集成产品（Chrome 扩展 / VS Code 扩展 / Embeddable Widget）
-k8s/                    # K8s 部署清单示例
-deliverables/           # 工程保障与评审交付物（历史归档，非运行时依赖）
 ```
-
-> 完整目录说明见 [docs/getting-started/project-structure.md](docs/getting-started/project-structure.md)。
 
 ## ⚙️ 生产化接入（配置即切换）
 
@@ -186,9 +181,8 @@ pnpm dev
 
 ## 📄 文档
 
-- [产品概述](docs/getting-started/product-overview.md) — 产品定位与页面路由（原始规划 25 项 / 当前 30 个路由）
-- [UI 设计体系](docs/architecture/design-system.md) — 设计令牌 / 组件 / 主题
-- [开发路线图（归档）](docs/archive/roadmap.md) — 12 周计划与实现记录
+API 文档随服务提供：启动后访问 `/docs`（Swagger UI），原始规范为 `GET /api/openapi.json`。
+内部设计/开发文档不纳入本仓库。
 
 ## 📜 许可
 

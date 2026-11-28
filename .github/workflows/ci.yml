@@ -346,9 +346,8 @@ jobs:
 
   # ── 验收 smoke（infra 组）：脚本各自 spawn 生产实例，需先 build ──────
   # test-health / test-oauth / test-sync / test-vscode / test-integrations 会自己
-  # 在 :3100 起 `next start` 生产实例，故先做生产构建；mock Pinecone (:5080) 供
-  # test-pinecone 使用。chromadb / OCR 语言包 / DATABASE_URL 缺失的脚本由
-  # runner 前置探测判定为 SKIP（不计失败）。
+  # 在 :3100 起 `next start` 生产实例，故先做生产构建。OCR 语言包 /
+  # DATABASE_URL 缺失的脚本由 runner 前置探测判定为 SKIP（不计失败）。
   smoke-infra:
     runs-on: ubuntu-latest
     steps:
@@ -397,17 +396,11 @@ jobs:
           SSRF_ALLOW_PRIVATE_HOSTS=true
           EOF
           pnpm start -p 3000 > /tmp/app.log 2>&1 &
-          npx tsx scripts/smoke/mock-pinecone-server.ts > /tmp/pinecone.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3000/api/health > /dev/null && break
             sleep 2
           done
           curl -sf http://localhost:3000/api/health > /dev/null
-          for i in $(seq 1 20); do
-            curl -s -o /dev/null http://localhost:5080 && break
-            sleep 1
-          done
-          curl -s -o /dev/null http://localhost:5080
       - name: Smoke - infra group
         run: npx tsx scripts/smoke/run-all.ts --group infra
       # E5 (engineering-assurance 2026-09-30): reclaim the servers this job and
@@ -420,13 +413,13 @@ jobs:
       - name: Teardown - reclaim spawned servers
         if: always()
         run: |
-          pkill -TERM -f 'next-server|next start|mock-pinecone-server|pnpm start' 2>/dev/null || true
+          pkill -TERM -f 'next-server|next start|pnpm start' 2>/dev/null || true
           sleep 2
-          pkill -KILL -f 'next-server|next start|mock-pinecone-server|pnpm start' 2>/dev/null || true
+          pkill -KILL -f 'next-server|next start|pnpm start' 2>/dev/null || true
           sleep 1
-          if pgrep -f 'next-server|mock-pinecone-server' > /dev/null; then
+          if pgrep -f 'next-server' > /dev/null; then
             echo "::error::teardown failed - spawned server processes are still alive:"
-            pgrep -af 'next-server|mock-pinecone-server' || true
+            pgrep -af 'next-server' || true
             exit 1
           fi
           echo "teardown ok - no spawned server processes remain"
@@ -511,34 +504,5 @@ jobs:
             frontend/playwright-report/
           retention-days: 7
 
-  # ── 文档门禁：docs 站点构建（死链即失败）+ Frontmatter 校验 + OpenAPI 参考漂移 ──
-  docs:
-    name: Docs check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11.7.0
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build docs site (dead links fail the build)
-        run: pnpm docs:build
-      - name: Validate Frontmatter metadata
-        run: npx tsx scripts/tools/check-docs-frontmatter.ts
-      - name: Env vars doc parity check
-        run: npx tsx scripts/tools/check-env-parity.ts
-      - name: API reference drift check
-        run: |
-          npx tsx scripts/tools/gen-api-reference.ts
-          git diff --exit-code -- docs/api/reference.md
-      - name: OpenAPI spec/types drift check
-        run: |
-          pnpm gen:openapi
-          git diff --exit-code -- docs/api/openapi.json frontend/src/api/generated.ts
+  # 文档门禁（docs job）已于 2026-11-28 移除：docs/ 与 deliverables/ 属于内部
+  # 设计/开发文档，不再纳入版本控制与 CI（对外说明只有 README）。

@@ -9,6 +9,8 @@
 //     plaintext next to `sha256$<hex>`
 //   - `User.plan` is `@deprecated` (plan lives on Workspace) but the column
 //     still carries historical values
+//   - `AgentTask.shareConfig` is NULL on pre-P2-3 rows; the public report
+//     endpoint default-denies them (403) instead of treating them as public
 //   - `pnpm db:baseline` (Flyway -> Prisma) is only needed while some deployed
 //     database still has `flyway_schema_history`
 //
@@ -61,6 +63,16 @@ const CHECKS: Check[] = [
     label: "ApiKey.expiresAt 为 NULL 的 active 行（legacy 永不返回过期）",
     unlocks: "信息项：可安排轮换回填，不阻塞任何删除",
     sql: `select count(*)::int as n from "ApiKey" where "expiresAt" is null and status = 'active'`,
+    blocking: false,
+  },
+  {
+    id: "legacy-agent-share-config",
+    // Informational: these rows are already default-denied at runtime (the
+    // public endpoint requires `enabled === true`). The count tells a release
+    // owner whether any previously public report link will start returning 403.
+    label: "AgentTask.shareConfig 为 NULL 的旧任务（公开报告端点默认 403）",
+    unlocks: "信息项：确认这些历史分享链接可以停用即可，无需数据迁移；如需保留，逐条显式写 shareConfig.enabled=true",
+    sql: `select count(*)::int as n from "AgentTask" where "shareConfig" is null`,
     blocking: false,
   },
 ];
@@ -122,6 +134,29 @@ async function main(): Promise<void> {
       flyway.present
         ? `flyway_schema_history: 存在（${flyway.rows ?? "?"} 行）——db:baseline 仍需要，先走 migration-baseline.md 的收编流程`
         : "flyway_schema_history: 不存在——本库不需要 Flyway 基线；所有已部署库都如此时 db:baseline 可退役"
+    );
+
+    // Legacy report links need a human decision per row, not just a count.
+    const legacyShare = results.find((r) => r.id === "legacy-agent-share-config");
+    if (legacyShare && legacyShare.count > 0) {
+      const rows = await prisma.$queryRawUnsafe<
+        { id: string; userId: string; workspaceId: string | null; status: string; createdAt: Date }[]
+      >(
+        `select id, "userId", "workspaceId", status, "createdAt" from "AgentTask" where "shareConfig" is null order by "createdAt" desc limit 100`
+      );
+      log("");
+      log(`shareConfig 为 NULL 的历史任务 ${legacyShare.count} 条，下列 ${rows.length} 条供人工确认：`);
+      for (const r of rows) {
+        log(
+          `  - ${r.id} | user=${r.userId} | workspace=${r.workspaceId ?? "ws_default"} | status=${r.status} | created=${r.createdAt.toISOString()}`
+        );
+      }
+      if (legacyShare.count > rows.length) log(`  ... 另有 ${legacyShare.count - rows.length} 条未列出`);
+    }
+
+    log("");
+    log(
+      "附注: API Key 调用不落库。发布前用 Loki/结构化日志检查 dimension=apikey 的调用分布；/api/v1/* 前缀已合并进 /api/*，旧客户端会得到 404。"
     );
 
     const blocking = results.filter((r) => r.blocking && r.count > 0);

@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
-// OpenAPI 3.0.3 spec for the versioned public API (P7-1).
+// OpenAPI 3.0.3 spec for the public API (P7-1).
 //
 // Served at GET /api/openapi.json and rendered interactively by /docs
-// (Swagger UI). Hand-maintained for the /api/v1/* surface - legacy routes
-// (/api/chat etc.) stay unchanged for backward compatibility.
+// (Swagger UI). 2026-11-27: the /api/v1/* prefix was removed - there is one
+// API surface under /api/*, and the operations below are the documented
+// (public) subset of it. Undocumented routes stay internal-only.
 //
 // Auth: either an API key (`Authorization: Bearer kai_sk_...`, scope-gated
 // per operation) or a session JWT (same header). Swagger UI's "Authorize"
@@ -28,7 +29,7 @@ export const OPENAPI_SPEC: Spec = {
       "KnowledgeAI 开放 API（v1）。支持知识库管理、流式智能问答、Agent 调研与 Webhook 事件订阅。\n\n" +
       "鉴权方式：在 Swagger UI 点击 Authorize，填入 `kai_sk_...` API 密钥（或会话 JWT）。" +
       "API 密钥在创建时分配 scope（kb:read / kb:write / chat:read / agent:run），" +
-      "v1 端点按 scope 强制校验。",
+      "API Key 调用按 scope 强制校验。",
     version: "v1",
     contact: { name: "KnowledgeAI" },
   },
@@ -41,7 +42,7 @@ export const OPENAPI_SPEC: Spec = {
     { name: "Account", description: "身份与账户" },
   ],
   paths: {
-    "/api/v1/me": {
+    "/api/auth/me": {
       get: {
         tags: ["Account"],
         summary: "当前用户信息",
@@ -58,7 +59,7 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/knowledge-bases": {
+    "/api/knowledge-base": {
       get: {
         tags: ["Knowledge Bases"],
         summary: "知识库列表",
@@ -101,7 +102,7 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/chat": {
+    "/api/chat": {
       post: {
         tags: ["Chat"],
         summary: "流式智能问答（SSE）",
@@ -128,7 +129,7 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/agent/run": {
+    "/api/agent/run": {
       post: {
         tags: ["Agent"],
         summary: "Agent 调研（SSE）",
@@ -153,11 +154,11 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/webhooks": {
+    "/api/webhooks": {
       get: {
         tags: ["Webhooks"],
         summary: "Webhook 订阅列表",
-        description: "当前工作区内的 Webhook 订阅 + 最近投递记录。",
+        description: "当前工作区内的 Webhook 订阅 + 最近投递记录。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         responses: {
           "200": {
@@ -173,7 +174,7 @@ export const OPENAPI_SPEC: Spec = {
         tags: ["Webhooks"],
         summary: "创建 Webhook 订阅",
         description:
-          "注册一个接收事件通知的 HTTPS 端点。投递带 `X-KAI-Signature: sha256=<HMAC(secret, body)>` 签名头，可校验来源真实性。",
+          "注册一个接收事件通知的 HTTPS 端点。投递带 `X-KAI-Signature: sha256=<HMAC(secret, body)>` 签名头，可校验来源真实性。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -193,10 +194,11 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/webhooks/{id}": {
+    "/api/webhooks/{id}": {
       get: {
         tags: ["Webhooks"],
         summary: "Webhook 订阅详情",
+        description: "单个订阅 + 投递历史。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: "#/components/parameters/WebhookId" }],
         responses: {
@@ -213,7 +215,7 @@ export const OPENAPI_SPEC: Spec = {
       patch: {
         tags: ["Webhooks"],
         summary: "更新 Webhook 订阅",
-        description: "修改名称 / 地址 / 密钥 / 事件 / 启用状态。",
+        description: "修改名称 / 地址 / 密钥 / 事件 / 启用状态。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: "#/components/parameters/WebhookId" }],
         requestBody: {
@@ -237,6 +239,7 @@ export const OPENAPI_SPEC: Spec = {
       delete: {
         tags: ["Webhooks"],
         summary: "删除 Webhook 订阅",
+        description: "删除订阅并停止后续投递。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: "#/components/parameters/WebhookId" }],
         responses: {
@@ -251,11 +254,11 @@ export const OPENAPI_SPEC: Spec = {
         },
       },
     },
-    "/api/v1/webhooks/{id}/test": {
+    "/api/webhooks/{id}/test": {
       post: {
         tags: ["Webhooks"],
         summary: "发送测试事件",
-        description: "向该订阅投递一条 `ping` 测试事件，验证端点与签名。",
+        description: "向该订阅投递一条 `ping` 测试事件，验证端点与签名。必需 scope: webhooks:write。",
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: "#/components/parameters/WebhookId" }],
         responses: {

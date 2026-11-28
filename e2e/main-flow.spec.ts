@@ -1,8 +1,13 @@
-// P6-3 → V6：关键用户流程（登录 → 上传 → 问答 → Agent）。
+// P6-3 → V6 → 2026-11-27：根套件只保留 frontend/e2e 覆盖不到的"整站/跨壳"契约。
 // V6 退役后 Next 只服务 /api/**，页面由 vite preview（:4173，frontend dist
 // 含 SEO 预渲染 home.html）承载——playwright.config 双 webServer 自动拉起，
-// 本套件统一打 Vue DOM（选择器与 frontend/e2e 同口径：登录表单沿用
-// #email/#password，业务页用 V1-V5 固化的稳定类名）。
+// 本套件统一打 Vue DOM（选择器与 frontend/e2e 同口径）。
+//
+// 分工（同一路径不再两套断言）：
+//   - frontend/e2e 负责页面级流程：登录、KB 新建→上传→就绪、chat / agent 全流程；
+//   - 本套件负责那些只在整站层面成立的行为：官网头部登录态与认证页守卫、
+//     未登录访问受保护路由的 401 跳转、首页实时演示交互、退出登录后服务端
+//     会话真正失效（cookie 清除 + /api/auth/me 401）。
 import { test, expect, type Page } from "@playwright/test";
 
 const EMAIL = "owner@knowledgeai.dev";
@@ -20,12 +25,6 @@ async function login(page: Page): Promise<void> {
   // 等待 AppShell 工作台首屏（统计卡渲染完成）
   await expect(page.locator(".stat-value").first()).toBeVisible({ timeout: 30_000 });
 }
-
-test("登录：demo 账号进入工作台", async ({ page }) => {
-  await login(page);
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.locator(".sidebar").getByText("仪表盘")).toBeVisible();
-});
 
 test("已登录：官网头部显示进入工作台，登录/注册页自动回工作台", async ({ page }) => {
   await login(page);
@@ -140,73 +139,4 @@ test("退出登录：会话真正失效并停在登录页", async ({ page }) => 
   // 受保护路由同样回到登录页
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login/, { timeout: 20_000 });
-});
-
-test("上传：新建知识库并上传文档，等待处理完成", async ({ page }) => {
-  await login(page);
-
-  // 新建知识库（不依赖种子数据；V3 e2e 同款选择器）
-  await page.goto("/knowledge-base");
-  await page.getByRole("button", { name: "新建知识库" }).first().click();
-  const kbName = `E2E-${Date.now().toString(36)}`;
-  await page.locator(".el-dialog input").first().fill(kbName);
-  await page.locator(".el-dialog button", { hasText: "创建" }).click();
-  await expect(page).toHaveURL(/\/knowledge-base\/kb_/, { timeout: 20_000 });
-
-  // 上传 fixture（详情页上传区）
-  await page.locator(".upload").click();
-  await page.setInputFiles('input[type="file"]', {
-    name: "sample.md",
-    mimeType: "text/markdown",
-    buffer: Buffer.from("# E2E Sample\n向量检索通过嵌入相似度实现。"),
-  });
-
-  // 文档行出现并进入「就绪」状态（demo 模式内存队列处理；V3 口径：行可见即可，
-  // 状态徽标文案随 i18n 包，不在此处精确锚定）
-  await expect(page.locator(".doc-row").first()).toBeVisible({ timeout: 30_000 });
-});
-
-test("问答：对上传的文档提问并收到回答", async ({ page }) => {
-  await login(page);
-
-  // 通过 API 取任意知识库 id（page.request 共享登录 cookie），直接进入问答
-  const res = await page.request.get("/api/knowledge-base");
-  const kbs = (await res.json()).kbs ?? [];
-  expect(kbs.length).toBeGreaterThan(0);
-  const kbId = kbs[0].id;
-
-  await page.goto(`/chat?kb=${kbId}`);
-  const question = "向量检索是怎么实现的？";
-  const chatBox = page.locator(".ask-input");
-  await expect(chatBox).toBeVisible();
-  await chatBox.fill(question);
-  await expect(chatBox).toHaveValue(question);
-  await chatBox.press("Enter");
-
-  // 用户气泡出现
-  await expect(page.locator(".bubble-user").getByText(question).first()).toBeVisible({ timeout: 15_000 });
-  // 助手回答出现（抽取式或检索不到提示，均为回答气泡）
-  await expect(page.locator(".bubble-ai").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".bubble-ai").first()).not.toHaveText("", { timeout: 30_000 });
-});
-
-test("Agent：创建调研任务并完成报告", async ({ page }) => {
-  // 真实 LLM 部署（docker compose）下单次调研为 1–3 分钟，demo 内存模式只需几秒。
-  test.setTimeout(300_000);
-
-  await login(page);
-
-  await page.goto("/agent");
-  const topicBox = page.locator(".topic-input");
-  await expect(topicBox).toBeVisible();
-  const topic = "帮我调研 AI 就业市场";
-  await topicBox.fill(topic);
-  await expect(topicBox).toHaveValue(topic);
-  await page.locator(".run-btn").click();
-
-  // 运行中按钮变为「停止调研」；演示模式可能在断言前就结束，因此两种文案都可
-  await expect(page.locator(".run-btn").getByText(/停止调研|开始调研/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".run-btn").getByText("开始调研")).toBeVisible({ timeout: 240_000 });
-  // 调研结果报告出现：终态随 done 事件下发，到达即为报告正文而非空面板
-  await expect(page.locator(".report").first()).toBeVisible({ timeout: 60_000 });
 });

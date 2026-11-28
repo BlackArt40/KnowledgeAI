@@ -7,7 +7,7 @@
 //            (anon 20 / kb 60 / user 200 / key 500) - run it in its own step,
 //            never alongside a server whose limits were raised for the suite
 //   ui     - needs the server + a Chrome/Chromium binary for CDP driving
-//   infra  - needs its own extra server/credentials (DB, chromadb, mock OIDC...).
+//   infra  - needs its own extra server/credentials (DB, mock OIDC...).
 //            The smoke-infra CI job builds and runs `pnpm start`, then invokes
 //            --group infra; scripts that need isolation spawn their own :3100.
 export type SmokeGroup = "lib" | "http" | "limits" | "ui" | "infra";
@@ -17,9 +17,7 @@ export type SmokePrereq =
   | "ocr"
   | "go"
   | "python"
-  | "db"
-  | "chromadb"
-  | "pinecone-mock";
+  | "db";
 
 export interface SmokeEntry {
   id: string;
@@ -119,14 +117,12 @@ export const SMOKE_MANIFEST: SmokeEntry[] = [
   infra("test-single-image", {
     note: "单镜像静态承载：/ -> home.html、SPA fallback、/api 不被吞、安全响应头（需要 pnpm build 产物）",
   }),
-  infra("test-chromadb", { prereq: ["chromadb"] }),
   infra("test-health", { note: "spawns a second production server to assert the 503 degraded path" }),
   infra("test-integrations", { note: "spawns its own low-rate-limit :3100 instance (explicit CORS allowlist); the F17 assertions on :3000 expect production mode" }),
   infra("test-oauth", { note: "mock OIDC server on :5092 + instance on :3100" }),
   infra("test-ocr-image", { prereq: ["ocr"] }),
   infra("test-ocr-scanned-pdf", { prereq: ["ocr"] }),
   infra("test-persistence", { prereq: ["db"] }),
-  infra("test-pinecone", { prereq: ["pinecone-mock"], note: "mock pinecone server on :5080" }),
   infra("test-sync", { note: "mock Notion/Confluence servers on :5090/:5091 + instance on :3100" }),
   infra("test-vscode", { note: "starts its own instance on :3100" }),
 ];

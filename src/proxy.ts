@@ -30,15 +30,13 @@ import { clientIpFromHeaders } from "@/lib/security/client-ip";
 const SKIP_PATHS = [
   "/api/chat",        // SSE stream + conversation CRUD (user + KB tiers enforced in routes)
   "/api/agent/run",   // SSE stream
-  "/api/v1/chat",     // P7-1: same SSE pipeline (user + KB tiers enforced in handleChatRequest)
-  "/api/v1/agent/run", // P7-1: same SSE relay as /api/agent/run (scope-gated by API key)
   "/api/billing/webhook",
   "/api/notifications",  // polled every 30s
   "/api/auth/me",        // called on every page load
   "/api/team/presence",  // P4-1: presence SSE stream + heartbeat (long-lived)
   "/api/share",          // P4-2: public doc share links (token is the credential)
   "/api/health",         // P6-4: liveness/readiness probes (probed every 5-30s by Docker/K8s)
-  "/api/v1/integrations/bot", // P7-2: platform bot callbacks (token auth + integration tier in-route)
+  "/api/integrations/bot", // P7-2: platform bot callbacks (token auth + integration tier in-route)
   "/api/openapi.json",   // P7-1: public API spec (docs page fetches it; anon tier too low)
 ];
 

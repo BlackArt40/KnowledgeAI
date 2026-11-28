@@ -2,7 +2,7 @@
 // P7-1 acceptance verification: webhook reliable push (with retry).
 //
 //   - creates a local receiver HTTP server and a webhook subscription
-//   - POST /api/v1/webhooks/[id]/test delivers a signed `ping` (HMAC verified)
+//   - POST /api/webhooks/[id]/test delivers a signed `ping` (HMAC verified)
 //   - kb.ready fires when a document finishes processing (upload -> ready)
 //   - agent.completed fires when an agent task completes
 //   - usage.alert fires when the workspace crosses the plan QA limit (the
@@ -94,28 +94,28 @@ async function main() {
   console.log("\n── 1. 订阅 CRUD + 签名投递 ──");
   const SECRET = "p7-test-secret-123";
   const receiver = await startReceiver(SECRET);
-  const subRes = await req("POST", "/api/v1/webhooks", {
+  const subRes = await req("POST", "/api/webhooks", {
     token,
     body: { name: "验收接收端", url: receiver.url, secret: SECRET, events: ["kb.ready", "agent.completed", "usage.alert"] },
   });
   const subId = subRes.data?.webhook?.id;
   check("create webhook: 201 + id", subRes.status === 201 && !!subId, JSON.stringify(subRes.data).slice(0, 150));
 
-  const badUrl = await req("POST", "/api/v1/webhooks", {
+  const badUrl = await req("POST", "/api/webhooks", {
     token,
     body: { name: "bad", url: "file:///etc/passwd", events: ["kb.ready"] },
   });
   check("reject non-http url: 400", badUrl.status === 400, `status=${badUrl.status}`);
 
-  const badEvents = await req("POST", "/api/v1/webhooks", {
+  const badEvents = await req("POST", "/api/webhooks", {
     token, body: { name: "bad", url: "https://example.com/x", events: ["nope"] },
   });
   check("reject unknown event: 400", badEvents.status === 400, `status=${badEvents.status}`);
 
-  const listRes = await req("GET", "/api/v1/webhooks", { token });
+  const listRes = await req("GET", "/api/webhooks", { token });
   check("list webhooks: includes sub", Array.isArray(listRes.data?.webhooks) && listRes.data.webhooks.some((w) => w.id === subId));
 
-  const ping = await req("POST", `/api/v1/webhooks/${subId}/test`, { token });
+  const ping = await req("POST", `/api/webhooks/${subId}/test`, { token });
   check("test ping: 200", ping.status === 200, `status=${ping.status}`);
   await sleep(1500);
   check("receiver got ping", receiver.deliveries.some((d) => d.event === "ping"), `events=${receiver.deliveries.map((d) => d.event).join(",")}`);
@@ -125,7 +125,7 @@ async function main() {
 
   // ── 2. kb.ready 事件 ─────────────────────────────────────────────────
   console.log("\n── 2. kb.ready 事件 ──");
-  const kbRes = await req("POST", "/api/v1/knowledge-bases", {
+  const kbRes = await req("POST", "/api/knowledge-base", {
     token, body: { name: "Webhook 验收库" },
   });
   const kbId = kbRes.data?.kb?.id;
@@ -182,7 +182,7 @@ async function main() {
   const wsId = wsRes.data?.workspace?.id;
   check("create fresh workspace for usage.alert", !!wsId, JSON.stringify(wsRes.data).slice(0, 120));
 
-  const wsSubRes = await req("POST", "/api/v1/webhooks", {
+  const wsSubRes = await req("POST", "/api/webhooks", {
     token,
     body: { name: "告警接收端", url: receiver.url, secret: SECRET, events: ["usage.alert"] },
     wsCookie: wsId,
@@ -190,7 +190,7 @@ async function main() {
   check("create webhook in fresh workspace", wsSubRes.status === 201, `status=${wsSubRes.status}`);
 
   // 并发补足 100 次问答（并行请求，避免串行等待生成）。
-  const kbInWs = await req("POST", "/api/v1/knowledge-bases", {
+  const kbInWs = await req("POST", "/api/knowledge-base", {
     token, wsCookie: wsId, body: { name: "告警库" },
   });
   const wsKbId = kbInWs.data?.kb?.id;
@@ -236,12 +236,12 @@ async function main() {
   // ── 5. 重试与死信 ────────────────────────────────────────────────────
   console.log("\n── 5. 重试 + 死信 ──");
   const flaky = await startReceiver(SECRET, { failFirst: 1 });
-  const flakySub = await req("POST", "/api/v1/webhooks", {
+  const flakySub = await req("POST", "/api/webhooks", {
     token,
     body: { name: "抖动接收端", url: flaky.url, secret: SECRET, events: ["kb.ready"] },
   });
   const flakyId = flakySub.data?.webhook?.id;
-  await req("POST", `/api/v1/webhooks/${flakyId}/test`, { token });
+  await req("POST", `/api/webhooks/${flakyId}/test`, { token });
   let retried = null;
   for (let i = 0; i < 40; i++) {
     retried = flaky.deliveries.find((d) => d.status === 200);
@@ -252,15 +252,15 @@ async function main() {
   check("retry: attempt count >= 2", flaky.deliveries.length >= 2, `attempts=${flaky.deliveries.length}`);
 
   const dead = await startReceiver(SECRET, { alwaysFail: true });
-  const deadSub = await req("POST", "/api/v1/webhooks", {
+  const deadSub = await req("POST", "/api/webhooks", {
     token,
     body: { name: "永久失败", url: dead.url, secret: SECRET, events: ["kb.ready"] },
   });
   const deadId = deadSub.data?.webhook?.id;
-  await req("POST", `/api/v1/webhooks/${deadId}/test`, { token });
+  await req("POST", `/api/webhooks/${deadId}/test`, { token });
   let deadState = null;
   for (let i = 0; i < 40; i++) {
-    const r = await req("GET", `/api/v1/webhooks/${deadId}`, { token });
+    const r = await req("GET", `/api/webhooks/${deadId}`, { token });
     if (r.data?.webhook?.failures > 0) { deadState = r.data.webhook; break; }
     await sleep(500);
   }
@@ -268,9 +268,9 @@ async function main() {
   check("dead-letter: lastError set", !!deadState?.lastError, String(deadState?.lastError));
 
   // delete + workspace isolation
-  const del = await req("DELETE", `/api/v1/webhooks/${subId}`, { token });
+  const del = await req("DELETE", `/api/webhooks/${subId}`, { token });
   check("delete webhook: 200", del.status === 200 && del.data?.ok === true, `status=${del.status}`);
-  const afterDel = await req("GET", `/api/v1/webhooks/${subId}`, { token });
+  const afterDel = await req("GET", `/api/webhooks/${subId}`, { token });
   check("deleted webhook: 404", afterDel.status === 404, `status=${afterDel.status}`);
 
   await receiver.close();

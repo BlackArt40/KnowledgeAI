@@ -2,7 +2,7 @@
 // Chat-bot integrations (P7-2): Slack / 飞书 / 钉钉 / test.
 //
 // A BotBinding ties a knowledge base to a platform webhook endpoint. The
-// callback URL is POST /api/v1/integrations/bot/m/<token>; the token IS the
+// callback URL is POST /api/integrations/bot/m/<token>; the token IS the
 // credential (delivered once at creation, stored SHA-256-hashed - same
 // pattern as P4-2 doc share links). Every bot has its own rate-limit tier
 // (integration:<id>, RATE_LIMIT_INTEGRATION_PER_MIN) so one bot can't starve

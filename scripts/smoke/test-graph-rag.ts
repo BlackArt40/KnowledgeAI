@@ -72,7 +72,7 @@ async function main() {
   const token = login.data?.token;
   check("login: owner token", !!token);
 
-  const kbRes = await req("POST", "/api/v1/knowledge-bases", { token, body: { name: "图谱验收库" } });
+  const kbRes = await req("POST", "/api/knowledge-base", { token, body: { name: "图谱验收库" } });
   const kbId = kbRes.data?.kb?.id;
   check("create kb", !!kbId);
 

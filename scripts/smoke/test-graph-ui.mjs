@@ -55,7 +55,7 @@ async function main() {
   const token = login.token;
   const H = { Authorization: `Bearer ${token}` };
 
-  const created = await fetch(`${BASE}/api/v1/knowledge-bases`, {
+  const created = await fetch(`${BASE}/api/knowledge-base`, {
     method: "POST",
     headers: { ...H, "Content-Type": "application/json" },
     body: JSON.stringify({ name: `图谱UI验收-${Date.now().toString(36)}` }),

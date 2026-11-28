@@ -9,14 +9,14 @@ import (
 )
 
 // Unit tests for the SDK wire format - they run against a local httptest
-// server that emulates the KnowledgeAI v1 endpoints (no live server needed).
+// server that emulates the KnowledgeAI API endpoints (no live server needed).
 // `go test ./sdk/go` runs these; scripts/smoke/test-sdk.ts additionally
 // exercises the SDKs against a live dev server end-to-end.
 
 func sdkServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/me", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/auth/me", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(401)
 			return
@@ -24,7 +24,7 @@ func sdkServer(t *testing.T) *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"user":{"id":"usr_1","email":"a@b.c","name":"A","role":"owner","workspaceId":"ws_default"}}`))
 	})
-	mux.HandleFunc("/api/v1/knowledge-bases", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/knowledge-base", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			w.Write([]byte(`{"kbs":[{"id":"kb_1","name":"产品文档"}]}`))
@@ -33,17 +33,17 @@ func sdkServer(t *testing.T) *httptest.Server {
 			w.Write([]byte(`{"kb":{"id":"kb_2","name":"新库"}}`))
 		}
 	})
-	mux.HandleFunc("/api/v1/chat", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/chat", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Write([]byte("data: {\"type\":\"sources\",\"count\":1,\"chunks\":[]}\n\n"))
 		w.Write([]byte("data: {\"type\":\"token\",\"text\":\"你好\"}\n\n"))
 		w.Write([]byte("data: {\"type\":\"done\",\"messageId\":\"msg_1\",\"conversationId\":\"conv_1\",\"citations\":[],\"followUps\":[]}\n\n"))
 	})
-	mux.HandleFunc("/api/v1/agent/run", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/agent/run", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Write([]byte("data: {\"type\":\"done\",\"task\":{\"id\":\"task_1\",\"status\":\"done\"}}\n\n"))
 	})
-	mux.HandleFunc("/api/v1/webhooks", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/webhooks", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			w.Write([]byte(`{"webhooks":[]}`))
@@ -52,7 +52,7 @@ func sdkServer(t *testing.T) *httptest.Server {
 			w.Write([]byte(`{"webhook":{"id":"whk_1"}}`))
 		}
 	})
-	mux.HandleFunc("/api/v1/webhooks/whk_1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/webhooks/whk_1", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
 			w.Write([]byte(`{"ok":true}`))
 		}

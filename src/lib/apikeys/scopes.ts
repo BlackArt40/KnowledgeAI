@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
-// API-key scope enforcement for the versioned public API (P7-1).
+// API-key scope enforcement for the public API surface (P7-1).
 //
-// ApiKey.scopes are stored at creation time (see SCOPES in apikeys/types.ts)
-// but the legacy routes never enforced them. The /api/v1/* surface DOES:
+// ApiKey.scopes are stored at creation time (see SCOPES in apikeys/types.ts).
+// 2026-11-27: the /api/v1/* prefix was merged into /api/*, so the documented
+// public routes enforce scopes directly:
 //   - requests authenticated with an API key (Bearer kai_sk_...) must carry
 //     the scope required by the route, otherwise 403;
 //   - JWT-authenticated requests (cookie/bearer session token) pass - they
@@ -21,7 +22,7 @@ export interface ScopeCheck {
 }
 
 /**
- * Enforce `scope` for API-key callers of a v1 route.
+ * Enforce `scope` for API-key callers of a public route.
  * JWT callers are never rejected here (routes apply their own RBAC checks).
  */
 export async function requireApiKeyScope(req: Request, scope: string): Promise<ScopeCheck> {
